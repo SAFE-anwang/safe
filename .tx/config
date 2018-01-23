@@ -1,0 +1,7 @@
+[main]
+host = https://www.transifex.com
+
+[safe.qt-translation-012x]
+file_filter = src/qt/locale/safe_<lang>.ts
+source_file = src/qt/locale/safe_en.ts
+source_lang = en

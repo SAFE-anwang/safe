@@ -1,0 +1,12 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Safe
+Comment=Safe P2P Cryptocurrency
+Comment[fr]=Safe, monnaie virtuelle cryptographique pair à pair
+Comment[tr]=Safe, eşten eşe kriptografik sanal para birimi
+Exec=safe-qt %u
+Terminal=false
+Type=Application
+Icon=safe128
+MimeType=x-scheme-handler/safe;
+Categories=Office;Finance;
