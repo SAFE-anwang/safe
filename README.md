@@ -57,7 +57,7 @@ System requirements
 --------------------
 
 C++ compilers are memory-hungry. It is recommended to have at least 1 GB of
-memory available when compiling Dash Core. With 512MB of memory or less
+memory available when compiling Safe Core. With 512MB of memory or less
 compilation will take much longer due to swap thrashing.
 
 Dependency Build Instructions: Ubuntu & Debian
@@ -205,7 +205,7 @@ Hardening enables the following features:
 
     To test that you have built PIE executable, install scanelf, part of paxutils, and use:
 
-    	scanelf -e ./dashd
+    	scanelf -e ./safed
 
     The output should contain:
 
@@ -214,13 +214,13 @@ Hardening enables the following features:
 
 * Non-executable Stack
     If the stack is executable then trivial stack based buffer overflow exploits are possible if
-    vulnerable buffers are found. By default, Dash Core should be built with a non-executable stack
+    vulnerable buffers are found. By default, Safe Core should be built with a non-executable stack
     but if one of the libraries it uses asks for an executable stack or someone makes a mistake
     and uses a compiler extension which requires an executable stack, it will silently build an
     executable without the non-executable stack protection.
 
     To verify that the stack is non-executable after compiling use:
-    `scanelf -e ./dashd`
+    `scanelf -e ./safed`
 
     the output should contain:
 	STK/REL/PTL
@@ -230,7 +230,7 @@ Hardening enables the following features:
 
 Disable-wallet mode
 --------------------
-When the intention is to run only a P2P node without a wallet, Dash Core may be compiled in
+When the intention is to run only a P2P node without a wallet, Safe Core may be compiled in
 disable-wallet mode with:
 
     ./configure --disable-wallet
