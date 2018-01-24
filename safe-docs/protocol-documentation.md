@@ -1,4 +1,4 @@
-Protocol Documentation - 1.0.0
+Protocol Documentation - 1.0.1
 =====================================
 
 This document describes the protocol extensions for all additional functionality build into the Safe protocol. This doesn't include any of the Bitcoin protocol, which has been left intact in the Safe project. For more information about the core protocol, please see https://en.bitcoin.it/w/index.php?title#Protocol_documentation&action#edit
