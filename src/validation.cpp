@@ -497,9 +497,19 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool bChe
         if(tx.nVersion >= SAFE_TX_VERSION)
         {
             const std::vector<unsigned char>& vReserve = txout.vReserve;
-            if(vReserve.size() < TXOUT_RESERVE_MIN_SIZE || vReserve.size() > TXOUT_RESERVE_MAX_SIZE ||
-               vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
-                return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-reserve");
+            if(g_nChainHeight + 1 < 817480)
+            {
+                if(vReserve.size() < TXOUT_RESERVE_MIN_SIZE || vReserve.size() > TXOUT_RESERVE_MAX_SIZE ||
+                   vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
+                    return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-reserve");
+            }
+            else
+            {
+                if(txout.nUnlockHeight != 0 ||
+                   vReserve.size() != TXOUT_RESERVE_MIN_SIZE ||
+                   vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
+                    return state.DoS(50, false, REJECT_INVALID, "bad-txns-vout-reserve");
+            }
         }
     }
 
