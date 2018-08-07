@@ -7,6 +7,7 @@
 
 #include <QFrame>
 #include <QMap>
+#include <QLabel>
 
 class BitcoinGUI;
 class ClientModel;
@@ -37,6 +38,7 @@ public:
     bool handlePaymentRequest(const SendCoinsRecipient& recipient);
 
     void showOutOfSyncWarning(bool fShow);
+    bool updateAssetsDisplay();
 
 Q_SIGNALS:
     /** Notify that the user has requested more information about the out-of-sync warning */
@@ -59,6 +61,14 @@ public Q_SLOTS:
     void gotoOverviewPage();
     /** Switch to history (transactions) page */
     void gotoHistoryPage();
+    /** Switch to locked history (transactions) page */
+    void gotoLockedHistoryPage();
+    /** Switch to asset disttribution page */
+    void gotoAssetsPage();
+    /** Switch to application page */
+    void gotoApplicationPage();
+    /** Switch to candy page */
+    void gotoCandyPage();
     /** Switch to masternode page */
     void gotoMasternodePage();
     /** Switch to receive coins page */

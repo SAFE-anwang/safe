@@ -8,6 +8,7 @@
 #include "amount.h"
 
 #include <QWidget>
+#include <QLabel>
 
 class AmountSpinBox;
 
@@ -29,6 +30,9 @@ public:
     explicit BitcoinAmountField(QWidget *parent = 0);
 
     CAmount value(bool *value=0) const;
+
+    QString textValue()const;
+
     void setValue(const CAmount& value);
 
     /** Set single step in satoshis **/
@@ -51,6 +55,8 @@ public:
     /** Enable/Disable. */
     void setEnabled(bool fEnabled);
 
+    void updateAssetUnit(const QString& unitName,bool fAsset,int nAssetDecimal);
+
     /** Qt messes up the tab chain by default in some cases (issue https://bugreports.qt-project.org/browse/QTBUG-10907),
         in these cases we have to set it up manually.
     */
@@ -66,6 +72,9 @@ protected:
 private:
     AmountSpinBox *amount;
     QValueComboBox *unit;
+    QLabel* label;
+    bool fAssets;
+    int nAssetDecimals;
 
 private Q_SLOTS:
     void unitChanged(int idx);

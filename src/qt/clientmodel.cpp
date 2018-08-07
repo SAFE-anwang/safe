@@ -9,6 +9,7 @@
 #include "bantablemodel.h"
 #include "guiconstants.h"
 #include "peertablemodel.h"
+#include "guiutil.h"
 
 #include "alert.h"
 #include "chainparams.h"
@@ -55,7 +56,7 @@ ClientModel::ClientModel(OptionsModel *optionsModel, QObject *parent) :
     connect(pollMnTimer, SIGNAL(timeout()), this, SLOT(updateMnTimer()));
     // no need to update as frequent as data for balances/txes/blocks
     pollMnTimer->start(MODEL_UPDATE_DELAY * 4);
-
+    qRegisterMetaType<CCandy_BlockTime_InfoVec>("CCandy_BlockTime_InfoVec");
     subscribeToCoreSignals();
 }
 
@@ -216,6 +217,16 @@ void ClientModel::updateAlert(const QString &hash, int status)
     Q_EMIT alertsChanged(getStatusBarWarnings());
 }
 
+void ClientModel::updateAsset(const QString &strAssetName)
+{
+    Q_EMIT assetFound(strAssetName);
+}
+
+void ClientModel::updateCandyPutVec()
+{
+    Q_EMIT candyPutVec();
+}
+
 bool ClientModel::inInitialBlockDownload() const
 {
     return IsInitialBlockDownload();
@@ -290,7 +301,7 @@ QString ClientModel::clientName() const
 
 QString ClientModel::formatClientStartupTime() const
 {
-    return QDateTime::fromTime_t(nClientStartupTime).toString();
+    return GUIUtil::dateTimeStr(nClientStartupTime);
 }
 
 QString ClientModel::dataDir() const
@@ -373,6 +384,17 @@ static void NotifyAdditionalDataSyncProgressChanged(ClientModel *clientmodel, do
                               Q_ARG(double, nSyncProgress));
 }
 
+static void AssetFound(ClientModel* clientmodel, const std::string& strAssetName)
+{
+    QMetaObject::invokeMethod(clientmodel, "updateAsset", Qt::QueuedConnection,
+                              Q_ARG(QString, QString::fromStdString(strAssetName)));
+}
+
+static void CandyVecPut(ClientModel* clientmodel)
+{
+    QMetaObject::invokeMethod(clientmodel, "updateCandyPutVec", Qt::QueuedConnection);
+}
+
 void ClientModel::subscribeToCoreSignals()
 {
     // Connect signals to client
@@ -384,6 +406,8 @@ void ClientModel::subscribeToCoreSignals()
     uiInterface.NotifyBlockTip.connect(boost::bind(BlockTipChanged, this, _1, _2, false));
     uiInterface.NotifyHeaderTip.connect(boost::bind(BlockTipChanged, this, _1, _2, true));
     uiInterface.NotifyAdditionalDataSyncProgressChanged.connect(boost::bind(NotifyAdditionalDataSyncProgressChanged, this, _1));
+    uiInterface.AssetFound.connect(boost::bind(AssetFound, this, _1));
+    uiInterface.CandyVecPut.connect(boost::bind(CandyVecPut, this));
 }
 
 void ClientModel::unsubscribeFromCoreSignals()
@@ -397,4 +421,6 @@ void ClientModel::unsubscribeFromCoreSignals()
     uiInterface.NotifyBlockTip.disconnect(boost::bind(BlockTipChanged, this, _1, _2, false));
     uiInterface.NotifyHeaderTip.disconnect(boost::bind(BlockTipChanged, this, _1, _2, true));
     uiInterface.NotifyAdditionalDataSyncProgressChanged.disconnect(boost::bind(NotifyAdditionalDataSyncProgressChanged, this, _1));
+    uiInterface.AssetFound.disconnect(boost::bind(AssetFound, this, _1));
+    uiInterface.CandyVecPut.disconnect(boost::bind(CandyVecPut, this));
 }

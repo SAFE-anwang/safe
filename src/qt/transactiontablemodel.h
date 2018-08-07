@@ -6,16 +6,58 @@
 #define BITCOIN_QT_TRANSACTIONTABLEMODEL_H
 
 #include "bitcoinunits.h"
-
+#include "transactionrecord.h"
+#include "uint256.h"
 #include <QAbstractTableModel>
-#include <QStringList>
+#include <QSet>
 
 class PlatformStyle;
-class TransactionRecord;
-class TransactionTablePriv;
+class TransactionTableModel;
 class WalletModel;
-
+class LockedTransactionTableModel;
+class CandyTableModel;
+class AssetsDistributeRecordModel;
+class ApplicationsRegistRecordModel;
 class CWallet;
+
+// Private implementation
+class TransactionTablePriv
+{
+public:
+    TransactionTablePriv(CWallet *wallet, int showType, TransactionTableModel *parent) :
+        wallet(wallet),
+        showType(showType),
+        parent(parent)
+    {
+    }
+
+    CWallet *wallet;
+    int showType;
+    TransactionTableModel *parent;
+
+    /* Local cache of wallet.
+     * As it is in the same order as the CWallet, by definition
+     * this is sorted by sha256.
+     */
+    QList<TransactionRecord> cachedWallet;
+
+    void refreshWallet();
+
+    /* Update our model of the wallet incrementally, to synchronize our model of the wallet
+       with that of the core.
+
+       Call with transaction that was added, removed or changed.
+     */
+    void updateWallet(const uint256 &hash, int status, bool showTransaction,bool& bUpdateAssets,QString& strAssetName);
+
+    int size();
+
+    TransactionRecord *index(int idx);
+
+    QString describe(TransactionRecord *rec, int unit,bool fAssets=false);
+
+    QString getTxHex(TransactionRecord *rec);
+};
 
 /** UI model for the transaction table of a wallet.
  */
@@ -24,16 +66,17 @@ class TransactionTableModel : public QAbstractTableModel
     Q_OBJECT
 
 public:
-    explicit TransactionTableModel(const PlatformStyle *platformStyle, CWallet* wallet, WalletModel *parent = 0);
+    explicit TransactionTableModel(const PlatformStyle *platformStyle, CWallet* wallet, int showType, WalletModel *parent = 0);
     ~TransactionTableModel();
 
     enum ColumnIndex {
-        Status = 0,
-        Watchonly = 1,
-        Date = 2,
-        Type = 3,
-        ToAddress = 4,
-        Amount = 5
+        TransactionColumnStatus = 0,
+        TransactionColumnWatchonly = 1,
+        TransactionColumnDate = 2,
+        TransactionColumnType = 3,
+        TransactionColumnToAddress = 4,
+        TransactionColumnAssetsName=5,
+        TransactionColumnAmount = 6
     };
 
     /** Roles to get specific information from a transaction row.
@@ -72,14 +115,39 @@ public:
         StatusRole,
         /** Unprocessed icon */
         RawDecorationRole,
+        /** Locked month */
+        LockedMonthRole,
+        /** Unlocked Height */
+        UnlockedHeightRole,
+        /** Locked transaction status */
+        LockedStatusRole,
+        /** Assets name*/
+        AssetsNameRole,
+        /** Applications Id*/
+        ApplicationsIdRole,
+        /** Applications Name*/
+        ApplicationsNameRole,
+        /** Assets Id*/
+        AssetsIDRole,
+        /** Assets decimal*/
+        AssetsDecimalsRole,
+        /** Assets Amount*/
+        AssetsAmountRole,
+        /** Assets Unit*/
+        AmountUnitRole,
+        /** SAFE Role*/
+        SAFERole
     };
 
     int rowCount(const QModelIndex &parent) const;
     int columnCount(const QModelIndex &parent) const;
-    QVariant data(const QModelIndex &index, int role) const;
-    QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+    virtual QVariant data(const QModelIndex &index, int role) const;
+    virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const;
     QModelIndex index(int row, int column, const QModelIndex & parent = QModelIndex()) const;
     bool processingQueuedTransactions() { return fProcessingQueuedTransactions; }
+    QList<TransactionRecord>& getTransactionRecord();
+    QMap<QString,AssetsDisplayInfo>& getAssetsNamesUnits();
+    void emitUpdateAsset(bool updateAll,bool bConfirmedNewAssets,const QString& strAssetName);
 
 private:
     CWallet* wallet;
@@ -88,6 +156,10 @@ private:
     TransactionTablePriv *priv;
     bool fProcessingQueuedTransactions;
     const PlatformStyle *platformStyle;
+    int showType;
+    int columnStatus;
+    int columnToAddress;
+    int columnAmount;
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
@@ -104,6 +176,21 @@ private:
     QVariant txWatchonlyDecoration(const TransactionRecord *wtx) const;
     QVariant txAddressDecoration(const TransactionRecord *wtx) const;
 
+    QString formatLockedTxAmount(const TransactionRecord *wtx, bool showUnconfirmed=true, BitcoinUnits::SeparatorStyle separators=BitcoinUnits::separatorStandard) const;
+    QString formatLockedMonth(const TransactionRecord *wtx) const;
+    QString formatUnlockedHeight(const TransactionRecord *wtx) const;
+    QString formatLockedStatus(const TransactionRecord *wtx) const;
+
+    QString formatAssetsDistributeType(const TransactionRecord *wtx) const;
+    QString formatAssetsAmount(const TransactionRecord *wtx, bool showUnconfirmed=true, BitcoinUnits::SeparatorStyle separators=BitcoinUnits::separatorStandard) const;
+    QString formatAssetsName(const TransactionRecord *wtx)const;
+    QString formatAssetsAddress(const TransactionRecord *wtx)const;
+
+    QString formatCandyAmount(const TransactionRecord *wtx, bool showUnconfirmed=true, BitcoinUnits::SeparatorStyle separators=BitcoinUnits::separatorStandard) const;
+
+Q_SIGNALS:
+    void updateAssets(int,bool,QString);
+
 public Q_SLOTS:
     /* New transaction, or transaction changed status */
     void updateTransaction(const QString &hash, int status, bool showTransaction);
@@ -113,8 +200,13 @@ public Q_SLOTS:
     void updateAmountColumnTitle();
     /* Needed to update fProcessingQueuedTransactions through a QueuedConnection */
     void setProcessingQueuedTransactions(bool value) { fProcessingQueuedTransactions = value; }
+    void refreshWallet();
 
     friend class TransactionTablePriv;
+    friend class CandyTableModel;
+    friend class AssetsDistributeRecordModel;
+    friend class ApplicationsRegistRecordModel;
+    friend class LockedTransactionTableModel;
 };
 
 #endif // BITCOIN_QT_TRANSACTIONTABLEMODEL_H

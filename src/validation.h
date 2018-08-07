@@ -20,6 +20,7 @@
 #include "sync.h"
 #include "versionbits.h"
 #include "spentindex.h"
+#include "app/app.h"
 
 #include <algorithm>
 #include <exception>
@@ -201,7 +202,7 @@ static const unsigned int DEFAULT_CHECKLEVEL = 3;
 // Setting the target to > than 945MB will make it likely we can respect the target.
 static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 945 * 1024 * 1024;
 
-/** 
+/**
  * Process an incoming block. This only returns after the best known valid
  * block is made active. Note that it does not, however, guarantee that the
  * specific block passed to it has been checked for validity!
@@ -212,7 +213,7 @@ static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 945 * 1024 * 1024;
  *
  * Note that we guarantee that either the proof-of-work is valid on pblock, or
  * (and possibly also) BlockChecked will have been called.
- * 
+ *
  * @param[in]   pblock  The block we want to process.
  * @param[in]   fForceProcessing Process this block even if unrequested; used for non-network block sources and whitelisted peers.
  * @param[out]  dbp     The already known disk position of pblock, or NULL if not yet stored.
@@ -311,6 +312,542 @@ std::string FormatStateMessage(const CValidationState &state);
 /** Get the BIP9 state for a given deployment at the current tip. */
 ThresholdState VersionBitsTipState(const Consensus::Params& params, Consensus::DeploymentPos pos);
 
+////////////////////////////////////////////////////////////////////////////////////////
+struct CName_Id_IndexValue
+{
+    uint256 id;
+    int nHeight;
+
+    CName_Id_IndexValue(const uint256& id = uint256(), const int& nHeight = 0) : id(id), nHeight(nHeight) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(id);
+        READWRITE(nHeight);
+    }
+};
+
+struct CAppId_AppInfo_IndexValue
+{
+    std::string strAdminAddress;
+    CAppData appData;
+    int nHeight;
+
+    CAppId_AppInfo_IndexValue(const std::string& strAdminAddress = "", const CAppData& appData = CAppData(), const int& nHeight = 0)
+        : strAdminAddress(strAdminAddress), appData(appData), nHeight(nHeight) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(LIMITED_STRING(strAdminAddress, MAX_ADDRESS_SIZE));
+        READWRITE(appData);
+        READWRITE(nHeight);
+    }
+};
+
+struct CAuth_IndexKey
+{
+    uint256 appId;
+    std::string strAddress;
+    uint32_t nAuth;
+
+    CAuth_IndexKey(const uint256& appId = uint256(), const std::string& strAddress = "", const uint32_t& nAuth = 0)
+        : appId(appId), strAddress(strAddress), nAuth(nAuth) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(appId);
+        READWRITE(LIMITED_STRING(strAddress, MAX_ADDRESS_SIZE));
+        READWRITE(nAuth);
+    }
+
+    friend bool operator==(const CAuth_IndexKey&  a, const CAuth_IndexKey& b)
+    {
+        return (a.appId == b.appId && a.strAddress == b.strAddress && a.nAuth == b.nAuth);
+    }
+
+    friend bool operator<(const CAuth_IndexKey&  a, const CAuth_IndexKey& b)
+    {
+        if(a.appId == b.appId)
+        {
+            if(a.strAddress == b.strAddress)
+                return a.nAuth < b.nAuth;
+            return a.strAddress < b.strAddress;
+        }
+        return a.appId < b.appId;
+    }
+};
+
+struct CAppTx_IndexKey
+{
+    uint256 appId;
+    std::string strAddress;
+    uint8_t nTxClass;
+    COutPoint out;
+
+    CAppTx_IndexKey(const uint256& appId = uint256(), const std::string& strAddress = "", const uint8_t& nTxClass = 0, const COutPoint& out = COutPoint())
+        : appId(appId), strAddress(strAddress), nTxClass(nTxClass), out(out) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(appId);
+        READWRITE(LIMITED_STRING(strAddress, MAX_ADDRESS_SIZE));
+        READWRITE(nTxClass);
+        READWRITE(out);
+    }
+
+    friend bool operator==(const CAppTx_IndexKey& a, const CAppTx_IndexKey& b)
+    {
+        return (a.appId == b.appId && a.strAddress == b.strAddress && a.nTxClass == b.nTxClass && a.out == b.out);
+    }
+};
+
+struct CIterator_IdKey
+{
+    uint256 id;
+
+    CIterator_IdKey(const uint256& id = uint256())      : id(id) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(id);
+    }
+};
+
+struct CIterator_IdAddressKey
+{
+    uint256 id;
+    std::string strAddress;
+
+    CIterator_IdAddressKey(const uint256& id = uint256(), const std::string& strAddress = "") : id(id), strAddress(strAddress) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(id);
+        READWRITE(LIMITED_STRING(strAddress, MAX_ADDRESS_SIZE));
+    }
+};
+
+struct CAssetId_AssetInfo_IndexValue
+{
+    std::string strAdminAddress;
+    CAssetData assetData;
+    int nHeight;
+
+    CAssetId_AssetInfo_IndexValue(const std::string& strAdminAddress = "", const CAssetData& assetData = CAssetData(), const int& nHeight = 0)
+        : strAdminAddress(strAdminAddress), assetData(assetData), nHeight(nHeight) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(LIMITED_STRING(strAdminAddress, MAX_ADDRESS_SIZE));
+        READWRITE(assetData);
+        READWRITE(nHeight);
+    }
+};
+
+struct CAssetTx_IndexKey
+{
+    uint256 assetId;
+    std::string strAddress;
+    uint8_t nTxClass;
+    COutPoint out;
+
+    CAssetTx_IndexKey(const uint256& assetId = uint256(), const std::string& strAddress = "", const uint8_t& nTxClass = 0, const COutPoint& out = COutPoint())
+        : assetId(assetId), strAddress(strAddress), nTxClass(nTxClass), out(out) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(assetId);
+        READWRITE(LIMITED_STRING(strAddress, MAX_ADDRESS_SIZE));
+        READWRITE(nTxClass);
+        READWRITE(out);
+    }
+
+    friend bool operator==(const CAssetTx_IndexKey& a, const CAssetTx_IndexKey& b)
+    {
+        return (a.assetId == b.assetId && a.strAddress == b.strAddress && a.nTxClass == b.nTxClass && a.out == b.out);
+    }
+};
+
+struct CCandyInfo
+{
+    CAmount nAmount;
+    uint16_t nExpired;
+
+    CCandyInfo(const CAmount& nAmount = 0, const uint16_t& nExpired = 0) : nAmount(nAmount), nExpired(nExpired) {
+    }
+
+    CCandyInfo& operator=(const CCandyInfo& data)
+    {
+        if(this == &data)
+            return *this;
+
+        nAmount = data.nAmount;
+        nExpired = data.nExpired;
+        return *this;
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nAmount);
+        READWRITE(nExpired);
+    }
+
+    friend bool operator==(const CCandyInfo& a, const CCandyInfo& b)
+    {
+        return (a.nAmount == b.nAmount && a.nExpired == b.nExpired);
+    }
+
+    friend bool operator<(const CCandyInfo& a, const CCandyInfo& b)
+    {
+        if(a.nAmount == b.nAmount)
+            return a.nExpired < b.nExpired;
+        return a.nAmount < b.nAmount;
+    }
+};
+
+struct CPutCandy_IndexKey
+{
+    uint256 assetId;
+    COutPoint out;
+    CCandyInfo candyInfo;
+
+    CPutCandy_IndexKey(const uint256& assetId = uint256(), const COutPoint& out = COutPoint(), const CCandyInfo& candyInfo = CCandyInfo()) : assetId(assetId), out(out), candyInfo(candyInfo) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(assetId);
+        READWRITE(out);
+        READWRITE(candyInfo);
+    }
+
+    friend bool operator==(const CPutCandy_IndexKey& a, const CPutCandy_IndexKey& b)
+    {
+        return (a.assetId == b.assetId && a.out == b.out && a.candyInfo == b.candyInfo);
+    }
+
+    friend bool operator<(const CPutCandy_IndexKey& a, const CPutCandy_IndexKey& b)
+    {
+        if(a.assetId == b.assetId)
+        {
+            if(a.out == b.out)
+                return a.candyInfo < b.candyInfo;
+            return a.out < b.out;
+        }
+        return a.assetId < b.assetId;
+    }
+};
+
+struct CPutCandy_IndexValue
+{
+    int nHeight;
+    uint256 blockHash;
+    int nTxIndex;
+
+    CPutCandy_IndexValue(const       int& nHeight = 0, const uint256& blockHash = uint256(), const int& nTxIndex = 0) : nHeight(nHeight), blockHash(blockHash), nTxIndex(nTxIndex) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nHeight);
+        READWRITE(blockHash);
+        READWRITE(nTxIndex);
+    }
+
+    friend bool operator==(const CPutCandy_IndexValue& a, const CPutCandy_IndexValue& b)
+    {
+        return (a.nHeight == b.nHeight && a.blockHash == b.blockHash && a.nTxIndex == b.nTxIndex);
+    }
+};
+
+struct CIterator_IdOutKey
+{
+    uint256 assetId;
+    COutPoint out;
+
+    CIterator_IdOutKey(const uint256& assetId = uint256(), const COutPoint& out = COutPoint()) : assetId(assetId), out(out) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(assetId);
+        READWRITE(out);
+    }
+};
+
+struct CGetCandy_IndexKey
+{
+    uint256 assetId;
+    COutPoint out;
+    std::string strAddress;
+
+    CGetCandy_IndexKey(const uint256& assetId = uint256(), const COutPoint& out = COutPoint(), const std::string strAddress = "")
+        : assetId(assetId), out(out), strAddress(strAddress) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(assetId);
+        READWRITE(out);
+        READWRITE(LIMITED_STRING(strAddress, MAX_ADDRESS_SIZE));
+    }
+
+    friend bool operator==(const CGetCandy_IndexKey& a, const CGetCandy_IndexKey& b)
+    {
+        return (a.assetId == b.assetId && a.out == b.out && a.strAddress == b.strAddress);
+    }
+};
+
+struct CGetCandy_IndexValue
+{
+    CAmount nAmount;
+    int nHeight;
+    uint256 blockHash;
+    int nTxIndex;
+
+    CGetCandy_IndexValue(const CAmount& nAmount = 0, const int& nHeight = 0, const uint256& blockHash = uint256(), const int& nTxIndex = 0)
+        : nAmount(nAmount), nHeight(nHeight), blockHash(blockHash), nTxIndex(nTxIndex) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nAmount);
+        READWRITE(nHeight);
+        READWRITE(blockHash);
+        READWRITE(nTxIndex);
+    }
+};
+
+struct CHeight_IndexKey
+{
+    int nHeight;
+
+    CHeight_IndexKey(const int &nHeight = 0) : nHeight(nHeight) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nHeight);
+    }
+};
+
+struct CCandy_BlockTime_Info
+{
+    uint256 assetId;
+    CAssetData assetData;
+    CCandyInfo candyinfo;
+    COutPoint outpoint;
+    int64_t blocktime;
+    int nHeight;
+
+    CCandy_BlockTime_Info(const uint256& assetIdIn, const CAssetData& assetDataIn, const CCandyInfo& candyinfoIn, const COutPoint& outpointIn, const int64_t& blocktimeIn,int height)
+    {
+        assetId = assetIdIn;
+        assetData = assetDataIn;
+        candyinfo = candyinfoIn;
+        outpoint = outpointIn;
+        blocktime = blocktimeIn;
+        nHeight = height;
+    }
+
+    CCandy_BlockTime_Info& operator=(const CCandy_BlockTime_Info& info)
+    {
+        if(this == &info)
+            return *this;
+
+        assetId = info.assetId;
+        assetData = info.assetData;
+        candyinfo = info.candyinfo;
+        outpoint = info.outpoint;
+        blocktime = info.blocktime;
+        nHeight = info.nHeight;
+        return *this;
+    }
+};
+
+struct CCandy_BlockTime_InfoVec
+{
+    std::vector<CCandy_BlockTime_Info> vallcandyinfovec;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////
+struct CChangeInfo
+{
+    int nHeight;
+    int nLastCandyHeight;
+    CAmount nReward;
+    bool fCandy;
+    std::map<std::string, CAmount> mapAddressAmount;
+
+    CChangeInfo(const int& nHeight = 0, const int& nLastCandyHeight = 0, const CAmount& nReward = 0, const bool fCandy = false, const std::map<std::string, CAmount>& mapAddressAmount = std::map<std::string, CAmount>())
+        : nHeight(nHeight), nLastCandyHeight(nLastCandyHeight), nReward(nReward), fCandy(fCandy), mapAddressAmount(mapAddressAmount) {
+    }
+
+    CChangeInfo& operator=(const CChangeInfo& data)
+    {
+        if(this == &data)
+            return *this;
+
+        nHeight = data.nHeight;
+        nLastCandyHeight = data.nLastCandyHeight;
+        nReward = data.nReward;
+        fCandy = data.fCandy;
+        mapAddressAmount = data.mapAddressAmount;
+
+        return *this;
+    }
+
+    friend bool operator==(const CChangeInfo& a, const CChangeInfo& b)
+    {
+        return a.nHeight == b.nHeight;
+    }
+
+    friend bool operator<=(const CChangeInfo& a, const CChangeInfo& b)
+    {
+        return a.nHeight <= b.nHeight;
+    }
+};
+
+struct CBlockDetail
+{
+    int nHeight;
+    int nLastCandyHeight;
+    CAmount nReward;
+    CAmount nFilterAmount;
+    bool fCandy;
+
+    CBlockDetail(const int& nHeight = 0, const int& nLastCandyHeight = 0, const CAmount& nReward = 0, const CAmount& nFilterAmount = 0, const bool fCandy = false)
+        : nHeight(nHeight), nLastCandyHeight(nLastCandyHeight), nReward(nReward), nFilterAmount(nFilterAmount), fCandy(fCandy) {
+    }
+
+    std::string ToString()
+    {
+        return strprintf("%d: %d, %lld, %lld, %s", nHeight, nLastCandyHeight, nReward, nFilterAmount, fCandy ? "candy" : "non-candy");
+    }
+
+    friend bool operator>(const CBlockDetail& a, const CBlockDetail& b)
+    {
+        return a.nHeight > b.nHeight;
+    }
+
+    friend bool operator<(const CBlockDetail& a, const CBlockDetail& b)
+    {
+        return a.nHeight < b.nHeight;
+    }
+
+    friend bool operator==(const CBlockDetail& a, const CBlockDetail& b)
+    {
+        return a.nHeight == b.nHeight;
+    }
+};
+
+struct CAddressAmount
+{
+    char szAddress[36];
+    CAmount nAmount;
+
+    CAddressAmount()
+    {
+        memset(szAddress, 0x00, sizeof(szAddress));
+        nAmount = 0;
+    }
+
+    CAddressAmount(const char* szAddressIn, const CAmount& nAmountIn)
+    {
+        memset(szAddress, 0x00, sizeof(szAddress));
+        strncpy(szAddress, szAddressIn, sizeof(szAddress) - 1);
+        nAmount = nAmountIn;
+    }
+
+    CAddressAmount(const std::string& strAddressIn, const CAmount& nAmountIn)
+    {
+        memset(szAddress, 0x00, sizeof(szAddress));
+        strncpy(szAddress, strAddressIn.data(), sizeof(szAddress) - 1);
+        nAmount = nAmountIn;
+    }
+
+    CAddressAmount& operator=(const CAddressAmount& data)
+    {
+        if(this == &data)
+            return *this;
+
+        memset(szAddress, 0x00, sizeof(szAddress));
+        strncpy(szAddress, data.szAddress, sizeof(szAddress) - 1);
+        nAmount = data.nAmount;
+
+        return *this;
+    }
+
+    friend bool operator>(const CAddressAmount& a, const CAddressAmount& b)
+    {
+        return strcmp(a.szAddress, b.szAddress) > 0;
+    }
+
+    friend bool operator<(const CAddressAmount& a, const CAddressAmount& b)
+    {
+        return strcmp(a.szAddress, b.szAddress) < 0;
+    }
+
+    friend bool operator==(const CAddressAmount& a, const CAddressAmount& b)
+    {
+        return strcmp(a.szAddress, b.szAddress) == 0;
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////
 struct CTimestampIndexIteratorKey {
     unsigned int timestamp;
 
@@ -610,7 +1147,7 @@ struct CDiskTxPos : public CDiskBlockPos
 };
 
 
-/** 
+/**
  * Count ECDSA signature operations the old-fashioned (pre-0.6) way
  * @return number of sigops this transaction's outputs will produce when spent
  * @see CTransaction::FetchInputs
@@ -619,7 +1156,7 @@ unsigned int GetLegacySigOpCount(const CTransaction& tx);
 
 /**
  * Count ECDSA signature operations in pay-to-script-hash inputs.
- * 
+ *
  * @param[in] mapInputs Map of previous transactions that have outputs we're spending
  * @return maximum number of sigops required to validate this transaction's inputs
  * @see CTransaction::FetchInputs
@@ -638,8 +1175,13 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
 /** Apply the effects of this transaction on the UTXO set represented by view */
 void UpdateCoins(const CTransaction& tx, CValidationState &state, CCoinsViewCache &inputs, int nHeight);
 
+enum CTxSrcType{
+    FROM_BLOCK,
+    FROM_WALLET,
+    FROM_NEW
+};
 /** Context-independent validity checks */
-bool CheckTransaction(const CTransaction& tx, CValidationState& state, bool bCheckCoinbaseVer = false);
+bool CheckTransaction(const CTransaction& tx, CValidationState& state, const enum CTxSrcType& nType, const int& nHeight = -1);
 
 /**
  * Check if transaction is final and can be included in a block with the
@@ -682,7 +1224,7 @@ bool CheckSequenceLocks(const CTransaction &tx, int flags, LockPoints* lp = NULL
 
 /**
  * Closure representing one script verification
- * Note that this stores references to the spending transaction 
+ * Note that this stores references to the spending transaction
  */
 class CScriptCheck
 {
@@ -744,7 +1286,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
 /** Context-independent validity checks */
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW = true);
-bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
+bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
 /** Context-dependent validity checks */
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex *pindexPrev);
@@ -753,6 +1295,9 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
 /** Check a block is completely valid from start to finish (only works on top of our current best block, with cs_main held) */
 bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams, const CBlock& block, CBlockIndex* pindexPrev, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
+/**Get a map of the amount corresponding to the address according to the height*/
+bool GetAddressAmountByHeight(const int& nHeight, const std::string& strAddress, CAmount& nAmount);
+bool GetTotalAmountByHeight(const int& nHeight, CAmount& nTotalAmount);
 
 class CBlockFileInfo
 {
@@ -865,5 +1410,49 @@ static const unsigned int REJECT_HIGHFEE = 0x100;
 static const unsigned int REJECT_ALREADY_KNOWN = 0x101;
 /** Transaction conflicts with a transaction already known */
 static const unsigned int REJECT_CONFLICT = 0x102;
+
+bool GetAppInfoByAppId(const uint256& appId, CAppId_AppInfo_IndexValue& appInfo, const bool fWithMempool = true);
+bool GetAppIdByAppName(const std::string& strAppName, uint256& appId, const bool fWithMempool = true);
+bool GetTxInfoByAppId(const uint256& appId, std::vector<COutPoint>& vOut, const bool fWithMempool = true);
+bool GetTxInfoByAppIdAddress(const uint256& appId, const std::string& strAddress, std::vector<COutPoint>& vOut, const bool fWithMempool = true);
+bool GetAppListInfo(std::vector<uint256> &vappid, const bool fWithMempool = true);
+bool GetAppIDListByAddress(const std::string &strAddress, std::vector<uint256> &appIdlist, const bool fWithMempool = true);
+bool GetExtendDataByTxId(const uint256& txId, std::vector<std::pair<uint256, std::string> > &vExtendData);
+bool GetAuthByAppIdAddress(const uint256& appId, const std::string& strAddress, std::map<uint32_t, int>& mapAuth);
+bool GetAuthByAppIdAddressFromMempool(const uint256& appId, const std::string& strAddress, std::vector<uint32_t>& vAuth);
+bool GetAssetInfoByAssetId(const uint256& assetId, CAssetId_AssetInfo_IndexValue& assetInfo, const bool fWithMempool = true);
+bool GetAssetIdByShortName(const std::string& strShortName, uint256& assetId, const bool fWithMempool = true);
+bool GetAssetIdByAssetName(const std::string& strAssetName, uint256& assetId, const bool fWithMempool = true);
+bool GetTxInfoByAssetIdTxClass(const uint256& assetId, const uint8_t& nTxClass, std::vector<COutPoint>& vOut, const bool fWithMempool = true);
+bool GetTxInfoByAssetIdAddressTxClass(const uint256& assetId, const std::string& strAddress, const uint8_t& nTxClass, std::vector<COutPoint>& vOut, const bool fWithMempool = true);
+bool GetAssetIdByAddress(const std::string & strAddress, std::vector<uint256> &assetIdlist, const bool fWithMempool = true);
+bool GetAssetIdCandyInfo(const uint256& assetId, std::map<COutPoint, CCandyInfo>& mapCandyInfo);
+bool GetAssetIdCandyInfo(const uint256& assetId, const COutPoint& out, CCandyInfo& candyInfo);
+bool GetGetCandyAmount(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& amount, const bool fWithMempool = true);
+bool GetAssetListInfo(std::vector<uint256> &vAssetId, const bool fWithMempool = true);
+bool GetIssueAssetInfo(std::map<uint256, CAssetData> &mapissueassetinfo);
+CAmount GetAddedAmountByAssetId(const uint256& assetId, const bool fWithMempool = true);
+
+void ThreadGetAllCandyInfo();
+void ThreadWriteChangeInfo();
+void ThreadCalculateAddressAmount();
+bool VerifyDetailFile();
+bool LoadChangeInfoToList();
+bool LoadCandyHeightToList();
+
+bool GetCOutPointAddress(const uint256& assetId, std::map<COutPoint, std::vector<std::string>> &moutpointaddress);
+bool GetCOutPointList(const uint256& assetId, const std::string& strAddress, std::vector<COutPoint> &vcoutpoint);
+
+bool GetAssetIdCandyInfoList(std::map<CPutCandy_IndexKey, CPutCandy_IndexValue>& mapCandy);
+
+std::string getNumString(int* num);
+void resetNumA(std::string numAStr);
+void resetNumB(std::string numBStr);
+int compareFloatString(const std::string& numAStr,const std::string& numBStr,bool fOnlyCompareInt=true);
+int comparestring(std::string numAStr,std::string numBStr);
+std::string plusstring(std::string numAStr, std::string numBStr);
+std::string minusstring(std::string numAStr, std::string numBStr);
+std::string mulstring(std::string numAStr, std::string numBStr);
+std::string numtofloatstring(std::string numstr, int32_t Decimals);
 
 #endif // BITCOIN_VALIDATION_H

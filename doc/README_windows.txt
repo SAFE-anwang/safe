@@ -1,4 +1,4 @@
-Safe Core 1.0.1
+Safe Core 2.0.0
 =====================
 
 Intro

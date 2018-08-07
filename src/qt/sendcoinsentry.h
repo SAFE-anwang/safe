@@ -26,15 +26,16 @@ class SendCoinsEntry : public QStackedWidget
     Q_OBJECT
 
 public:
-    explicit SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *parent = 0);
+    explicit SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *parent = 0,bool showLocked=false);
     ~SendCoinsEntry();
 
     void setModel(WalletModel *model);
     bool validate();
-    SendCoinsRecipient getValue();
+    SendCoinsRecipient getValue(bool fAssets);
 
     /** Return whether the entry is still empty and unedited */
     bool isClear();
+    bool isShowLocked();
 
     void setValue(const SendCoinsRecipient &value);
     void setAddress(const QString &address);
@@ -43,6 +44,7 @@ public:
      *  (issue https://bugreports.qt-project.org/browse/QTBUG-10907).
      */
     QWidget *setupTabChain(QWidget *prev);
+    void updateAssetUnit(const QString& unitName,bool fAssets,int decimal);
 
     void setFocus();
 
@@ -60,12 +62,17 @@ private Q_SLOTS:
     void on_addressBookButton_clicked();
     void on_pasteButton_clicked();
     void updateDisplayUnit();
+    void on_lockedMonthCheckBox_clicked();
+    void on_memo_textChanged(const QString &address);
+    void on_addLabel_textChanged(const QString &address);
 
 private:
     SendCoinsRecipient recipient;
     Ui::SendCoinsEntry *ui;
     WalletModel *model;
     const PlatformStyle *platformStyle;
+    bool fAssets;
+    int nAssetDecimals;
 
     bool updateLabel(const QString &address);
 };

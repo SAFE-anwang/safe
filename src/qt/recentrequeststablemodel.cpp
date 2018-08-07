@@ -85,15 +85,33 @@ QVariant RecentRequestsTableModel::data(const QModelIndex &index, int role) cons
             if (rec->recipient.amount == 0 && role == Qt::DisplayRole)
                 return tr("(no amount)");
             else if (role == Qt::EditRole)
-                return BitcoinUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), rec->recipient.amount, false, BitcoinUnits::separatorNever);
+            {
+                if(rec->recipient.fAsset){
+                    return BitcoinUnits::formatWithUnit(rec->recipient.assetDecimal,rec->recipient.amount,false,BitcoinUnits::separatorNever,true,rec->recipient.strAssetUnit);
+                }else{
+                    return BitcoinUnits::formatWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), rec->recipient.amount, false, BitcoinUnits::separatorNever);
+                }
+            }
             else
-                return BitcoinUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), rec->recipient.amount);
+            {
+                if(rec->recipient.fAsset){
+                    return BitcoinUnits::formatWithUnit(rec->recipient.assetDecimal,rec->recipient.amount,false,BitcoinUnits::separatorNever,true,rec->recipient.strAssetUnit);
+                }else{
+                    return BitcoinUnits::formatWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), rec->recipient.amount);
+                }
+            }
         }
     }
     else if (role == Qt::TextAlignmentRole)
     {
         if (index.column() == Amount)
             return (int)(Qt::AlignRight|Qt::AlignVCenter);
+    }
+    else if (role == Qt::FontRole)
+    {
+        QFont font;
+        font.setPixelSize(12);
+        return font;
     }
     return QVariant();
 }
@@ -126,10 +144,10 @@ void RecentRequestsTableModel::updateAmountColumnTitle()
 QString RecentRequestsTableModel::getAmountTitle()
 {
     QString amountTitle = tr("Amount");
-    if (this->walletModel->getOptionsModel() != NULL)
-    {
-        amountTitle += " ("+BitcoinUnits::name(this->walletModel->getOptionsModel()->getDisplayUnit()) + ")";
-    }
+//    if (this->walletModel->getOptionsModel() != NULL)
+//    {
+//        amountTitle += " ("+BitcoinUnits::name(this->walletModel->getOptionsModel()->getDisplayUnit()) + ")";
+//    }
     return amountTitle;
 }
 

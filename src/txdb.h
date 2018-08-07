@@ -8,6 +8,7 @@
 
 #include "coins.h"
 #include "dbwrapper.h"
+#include "validation.h"
 
 #include <map>
 #include <string>
@@ -27,6 +28,17 @@ struct CTimestampIndexIteratorKey;
 struct CSpentIndexKey;
 struct CSpentIndexValue;
 class uint256;
+
+struct CName_Id_IndexValue;
+struct CAppId_AppInfo_IndexValue;
+struct CAuth_IndexKey;
+struct CAppTx_IndexKey;
+struct CAssetId_AssetInfo_IndexValue;
+struct CAssetTx_IndexKey;
+struct CPutCandy_IndexKey;
+struct CPutCandy_IndexValue;
+struct CGetCandy_IndexKey;
+struct CGetCandy_IndexValue;
 
 //! -dbcache default (MiB)
 static const int64_t nDefaultDbCache = 100;
@@ -81,6 +93,62 @@ public:
     bool WriteFlag(const std::string &name, bool fValue);
     bool ReadFlag(const std::string &name, bool &fValue);
     bool LoadBlockIndexGuts();
+
+    bool Write_AppId_AppInfo_Index(const std::vector<std::pair<uint256, CAppId_AppInfo_IndexValue> > &vect);
+    bool Erase_AppId_AppInfo_Index(const std::vector<std::pair<uint256, CAppId_AppInfo_IndexValue> > &vect);
+    bool Read_AppId_AppInfo_Index(const uint256& appId, CAppId_AppInfo_IndexValue& appInfo);
+    bool Read_AppList_Index(std::vector<uint256>& vAppId);
+
+    bool Write_AppName_AppId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect);
+    bool Erase_AppName_AppId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect);
+    bool Read_AppName_AppId_Index(const std::string& strAppName, CName_Id_IndexValue& value);
+
+    bool Write_AppTx_Index(const std::vector<std::pair<CAppTx_IndexKey, int> > &vect);
+    bool Erase_AppTx_Index(const std::vector<std::pair<CAppTx_IndexKey, int> > &vect);
+    bool Read_AppTx_Index(const uint256& appId, std::vector<COutPoint>& vOut);
+    bool Read_AppTx_Index(const uint256& appId, const std::string& strAddress, std::vector<COutPoint>& vOut);
+    bool Read_AppList_Index(const std::string& strAddress, std::vector<uint256>& vAppId);
+
+    bool Update_Auth_Index(const std::vector<std::pair<CAuth_IndexKey, int> > &vect);
+    bool Read_Auth_Index(const uint256& appId, const std::string& strAddress, std::map<uint32_t, int>& mapAuth);
+
+    bool Write_AssetId_AssetInfo_Index(const std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> > &vect);
+    bool Erase_AssetId_AssetInfo_Index(const std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> > &vect);
+    bool Read_AssetId_AssetInfo_Index(const uint256& assetId, CAssetId_AssetInfo_IndexValue& assetInfo);
+    bool Read_AssetList_Index(std::vector<uint256>& vAssetId);
+
+    bool Write_ShortName_AssetId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect);
+    bool Erase_ShortName_AssetId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect);
+    bool Read_ShortName_AssetId_Index(const std::string& strShortName, CName_Id_IndexValue& value);
+
+    bool Write_AssetName_AssetId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect);
+    bool Erase_AssetName_AssetId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect);
+    bool Read_AssetName_AssetId_Index(const std::string& strAssetName, CName_Id_IndexValue& value);
+
+    bool Write_AssetTx_Index(const std::vector<std::pair<CAssetTx_IndexKey, int> > &vect);
+    bool Erase_AssetTx_Index(const std::vector<std::pair<CAssetTx_IndexKey, int> > &vect);
+    bool Read_AssetTx_Index(const uint256& assetId, const uint8_t& nTxClass, std::vector<COutPoint>& vOut);
+    bool Read_AssetTx_Index(const uint256& assetId, const std::string& strAddress, const uint8_t& nTxClass, std::vector<COutPoint>& vOut);
+    bool Read_AssetList_Index(const std::string& strAddress, std::vector<uint256>& vAssetId);
+
+    bool Write_PutCandy_Index(const std::vector<std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue> > &vect);
+    bool Erase_PutCandy_Index(const std::vector<std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue> > &vect);
+    bool Read_PutCandy_Index(const uint256& assetId, std::map<COutPoint, CCandyInfo>& mapCandyInfo);
+    bool Read_PutCandy_Index(const uint256& assetId, const COutPoint& out, CCandyInfo& candyInfo);
+    bool Read_PutCandy_Index(std::map<CPutCandy_IndexKey, CPutCandy_IndexValue>& mapCandy);
+
+    bool Write_GetCandy_Index(const std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> >& vect);
+    bool Erase_GetCandy_Index(const std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> >& vect);
+    bool Read_GetCandy_Index(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& amount);
+    bool Read_GetCandy_Index(const uint256& assetId, std::map<COutPoint, std::vector<std::string> > &mapOutAddress);
+    bool Read_GetCandy_Index(const uint256& assetId, const std::string& straddress, std::vector<COutPoint>& vOut);
+
+    bool Write_CandyHeight_TotalAmount_Index(const int& nHeight, const CAmount& nAmount);
+    bool Read_CandyHeight_TotalAmount_Index(const int& nHeight, CAmount& nAmount);
+    bool Read_CandyHeight_TotalAmount_Index(std::vector<int>& vHeight);
+
+    bool Write_CandyHeight_Index(const int& nHeight);
+    bool Read_CandyHeight_Index(std::vector<int>& vHeight);
 };
 
 #endif // BITCOIN_TXDB_H

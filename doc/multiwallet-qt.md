@@ -17,7 +17,7 @@ Finally, two new headers and source files will have to be added to bitcoin-qt.pr
 Changes to class BitcoinGUI
 ---------------------------
 The principal change to the BitcoinGUI class concerns the QStackedWidget instance called centralWidget.
-This widget owns five page views: overviewPage, transactionsPage, addressBookPage, receiveCoinsPage, and sendCoinsPage.
+This widget owns five page views: overviewPage, transactionsPage, lockedTransactionsPage, addressBookPage, receiveCoinsPage, and sendCoinsPage.
 
 A new class called *WalletView* inheriting from QStackedWidget has been written to handle all renderings and updates of
 these page views. In addition to owning these five page views, a WalletView also has a pointer to a WalletModel instance.

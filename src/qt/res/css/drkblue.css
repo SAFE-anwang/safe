@@ -1420,7 +1420,7 @@ padding-right:10px;
 min-height:25px;
 }
 
-QDialog#CoinControlDialog .QFrame#frame .QPushButton#pushButtonToggleLock { /* Toggle lock state button */
+QDialog#CoinControlDialog .QFrame#frame .QPushButton#pushButtonToggleFreeze { /* Toggle freeze state button */
 padding-left:10px;
 padding-right:10px;
 min-height:25px;
@@ -1616,6 +1616,15 @@ font-weight:bold;
 }
  
 QLabel#transactionSum { /* Example of setObjectName for widgets without name */
+color:#333333;
+}
+
+QLabel#lockTedransactionSumLabel { /* Example of setObjectName for widgets without name */
+color:#333333;
+font-weight:bold;
+}
+
+QLabel#lockedTransactionSum { /* Example of setObjectName for widgets without name */
 color:#333333;
 }
 

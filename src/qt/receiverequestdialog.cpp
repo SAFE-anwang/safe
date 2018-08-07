@@ -102,6 +102,9 @@ ReceiveRequestDialog::ReceiveRequestDialog(QWidget *parent) :
 #endif
 
     connect(ui->btnSaveAs, SIGNAL(clicked()), ui->lblQRCode, SLOT(saveImage()));
+    ui->buttonBox->button(QDialogButtonBox::Close)->setText(tr("Close"));
+    ui->buttonBox->button(QDialogButtonBox::Close)->setFixedWidth(110);
+    ui->outUri->setStyleSheet("QTextEdit{font-size:12px;}");
 }
 
 ReceiveRequestDialog::~ReceiveRequestDialog()
@@ -144,12 +147,19 @@ void ReceiveRequestDialog::update()
     html += "<a href=\""+uri+"\">" + GUIUtil::HtmlEscape(uri) + "</a><br>";
     html += "<b>"+tr("Address")+"</b>: " + GUIUtil::HtmlEscape(info.address) + "<br>";
     if(info.amount)
-        html += "<b>"+tr("Amount")+"</b>: " + BitcoinUnits::formatHtmlWithUnit(model->getDisplayUnit(), info.amount) + "<br>";
+    {
+        if(info.fAsset)
+            html += "<b>"+tr("Amount")+"</b>: " + BitcoinUnits::formatHtmlWithUnit(info.assetDecimal,info.amount,false,BitcoinUnits::separatorNever,true,info.strAssetUnit) + "<br>";
+        else
+            html += "<b>"+tr("Amount")+"</b>: " + BitcoinUnits::formatHtmlWithUnit(model->getDisplayUnit(), info.amount) + "<br>";
+    }
+
     if(!info.label.isEmpty())
         html += "<b>"+tr("Label")+"</b>: " + GUIUtil::HtmlEscape(info.label) + "<br>";
     if(!info.message.isEmpty())
         html += "<b>"+tr("Message")+"</b>: " + GUIUtil::HtmlEscape(info.message) + "<br>";
-    html += "<b>"+tr("InstantSend")+"</b>: " + (info.fUseInstantSend ? tr("Yes") : tr("No")) + "<br>";
+    if(!info.fAsset)
+        html += "<b>"+tr("InstantSend")+"</b>: " + (info.fUseInstantSend ? tr("Yes") : tr("No")) + "<br>";
     ui->outUri->setText(html);
 
 #ifdef USE_QRCODE

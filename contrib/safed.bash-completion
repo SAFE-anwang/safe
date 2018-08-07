@@ -86,7 +86,7 @@ _safed() {
             _filedir
             return 0
             ;;
-        getmempool|lockunspent|setgenerate)
+        getmempool|freezeunspent|setgenerate)
             COMPREPLY=( $( compgen -W "true false" -- "$cur" ) )
             return 0
             ;;

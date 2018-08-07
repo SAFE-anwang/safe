@@ -23,6 +23,7 @@ public:
     const QPixmap &getSplashImage() const { return splashImage; }
     const QIcon &getTrayAndWindowIcon() const { return trayAndWindowIcon; }
     const QString &getTitleAddText() const { return titleAddText; }
+    const QPixmap &getAppImage() const {return appIconPixmap;}
 
 private:
     NetworkStyle(const QString &appName, const int iconColorHueShift, const int iconColorSaturationReduction, const char *titleAddText);
@@ -31,6 +32,7 @@ private:
     QIcon appIcon;
     QPixmap splashImage;
     QIcon trayAndWindowIcon;
+    QPixmap appIconPixmap;
     QString titleAddText;
 
     void rotateColors(QImage& img, const int iconColorHueShift, const int iconColorSaturationReduction);

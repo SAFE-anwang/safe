@@ -17,6 +17,7 @@
 #include "util.h"
 #include "spork.h"
 #include "utilstrencodings.h"
+#include "main.h"
 #ifdef ENABLE_WALLET
 #include "masternode-sync.h"
 #include "wallet/wallet.h"
@@ -57,6 +58,7 @@ UniValue getinfo(const UniValue& params, bool fHelp)
             "  \"protocolversion\": xxxxx,   (numeric) the protocol version\n"
             "  \"walletversion\": xxxxx,     (numeric) the wallet version\n"
             "  \"balance\": xxxxxxx,         (numeric) the total safe balance of the wallet\n"
+            "  \"locked_balance\": xxxxxxx,  (numeric) the total locked safe balance of the wallet\n"
             "  \"privatesend_balance\": xxxxxx, (numeric) the anonymized safe balance of the wallet\n"
             "  \"blocks\": xxxxxx,           (numeric) the current number of blocks processed in the server\n"
             "  \"timeoffset\": xxxxx,        (numeric) the time offset\n"
@@ -92,6 +94,7 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     if (pwalletMain) {
         obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
         obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
+        obj.push_back(Pair("locked_balance",       ValueFromAmount(pwalletMain->GetLockedBalance())));
         if(!fLiteMode)
             obj.push_back(Pair("privatesend_balance",       ValueFromAmount(pwalletMain->GetAnonymizedBalance())));
     }
@@ -823,8 +826,9 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
             "}\n"
             "\nResult:\n"
             "{\n"
-            "  \"balance\"  (string) The current balance in duffs\n"
-            "  \"received\"  (string) The total number of duffs received (including change)\n"
+            "  \"balance\":xxxxx  (numeric) The current balance in duffs\n"
+            "  \"received\":xxxxx  (numeric) The total number of duffs received (including change)\n"
+            "  \"lockamount\":xxxxx (numeric) The lock balance in duffs\n"
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getaddressbalance", "'{\"addresses\": [\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\"]}'")
@@ -847,17 +851,48 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
 
     CAmount balance = 0;
     CAmount received = 0;
+    CAmount lockamount = 0;
 
     for (std::vector<std::pair<CAddressIndexKey, CAmount> >::const_iterator it=addressIndex.begin(); it!=addressIndex.end(); it++) {
         if (it->second > 0) {
             received += it->second;
         }
         balance += it->second;
+
+        CTransaction tx;
+        uint256 hashBlock = uint256();
+        if (GetTransaction(it->first.txhash, tx, Params().GetConsensus(), hashBlock, true))
+        {
+            if (it->first.index >= tx.vout.size())
+                continue;
+
+            const CTxOut& temptxout = tx.vout[it->first.index];
+            if(temptxout.nUnlockedHeight <= 0)
+                continue;
+
+            if(temptxout.nUnlockedHeight <= g_nChainHeight)
+                continue;
+
+            int nTxHeight = g_nChainHeight + 1;
+            if(!hashBlock.IsNull())
+            {
+                BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
+                if(mi != mapBlockIndex.end() && (*mi).second)
+                    nTxHeight = (*mi).second->nHeight;
+            }
+
+            int64_t nOffset = temptxout.nUnlockedHeight - nTxHeight;
+            if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
+                continue;
+
+            lockamount += it->second;
+        }
     }
 
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("balance", balance));
     result.push_back(Pair("received", received));
+    result.push_back(Pair("lockamount", lockamount));
 
     return result;
 

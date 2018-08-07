@@ -78,12 +78,19 @@ void WalletModelTransaction::reassignAmounts(int nChangePosRet)
     }
 }
 
-CAmount WalletModelTransaction::getTotalTransactionAmount()
+CAmount WalletModelTransaction::getTotalTransactionAmount(bool fAssets, int nAssetDecimal)
 {
     CAmount totalTransactionAmount = 0;
     Q_FOREACH(const SendCoinsRecipient &rcp, recipients)
     {
-        totalTransactionAmount += rcp.amount;
+        if(fAssets)
+        {
+            CAmount amount;
+            ParseFixedPoint(rcp.strAssetAmount.toStdString(), nAssetDecimal, &amount);
+            totalTransactionAmount += amount;
+        }else{
+            totalTransactionAmount += rcp.amount;
+        }
     }
     return totalTransactionAmount;
 }

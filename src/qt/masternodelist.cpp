@@ -72,6 +72,9 @@ MasternodeList::MasternodeList(const PlatformStyle *platformStyle, QWidget *pare
     fFilterUpdated = false;
     nTimeFilterUpdated = GetTime();
     updateNodeList();
+    ui->tableWidgetMasternodes->setMouseTracking(true);
+    ui->tableWidgetMyMasternodes->setMouseTracking(true);
+    setMouseTracking(true);
 }
 
 MasternodeList::~MasternodeList()
@@ -101,8 +104,7 @@ void MasternodeList::showContextMenu(const QPoint &point)
 
 void MasternodeList::StartAlias(std::string strAlias)
 {
-    std::string strStatusHtml;
-    strStatusHtml += "<center>Alias: " + strAlias;
+    QString strStatusHtml = "<center>Alias: " + QString::fromStdString(strAlias);
 
     BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
         if(mne.getAlias() == strAlias) {
@@ -112,12 +114,12 @@ void MasternodeList::StartAlias(std::string strAlias)
             bool fSuccess = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
 
             if(fSuccess) {
-                strStatusHtml += "<br>Successfully started masternode.";
+                strStatusHtml = strStatusHtml + "<br>"+tr("Successfully started masternode.");
                 mnodeman.UpdateMasternodeList(mnb, *g_connman);
                 mnb.Relay(*g_connman);
                 mnodeman.NotifyMasternodeUpdates(*g_connman);
             } else {
-                strStatusHtml += "<br>Failed to start masternode.<br>Error: " + strError;
+                strStatusHtml = strStatusHtml + "<br>"+tr("Failed to start masternode.") + "<br>" + tr("Error:") + QString::fromStdString(strError);
             }
             break;
         }
@@ -125,7 +127,7 @@ void MasternodeList::StartAlias(std::string strAlias)
     strStatusHtml += "</center>";
 
     QMessageBox msg;
-    msg.setText(QString::fromStdString(strStatusHtml));
+    msg.setText(strStatusHtml);
     msg.exec();
 
     updateMyNodeList(true);
@@ -135,7 +137,7 @@ void MasternodeList::StartAll(std::string strCommand)
 {
     int nCountSuccessful = 0;
     int nCountFailed = 0;
-    std::string strFailedHtml;
+    QString strFailedHtml;
 
     BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
         std::string strError;
@@ -159,20 +161,17 @@ void MasternodeList::StartAll(std::string strCommand)
             mnodeman.NotifyMasternodeUpdates(*g_connman);
         } else {
             nCountFailed++;
-            strFailedHtml += "\nFailed to start " + mne.getAlias() + ". Error: " + strError;
+            strFailedHtml += "\nFailed to start " + QString::fromStdString(mne.getAlias()) + ". Error: " + QString::fromStdString(strError);
         }
     }
     pwalletMain->Lock();
 
-    std::string returnObj;
-    returnObj = strprintf("Successfully started %d masternodes, failed to start %d, total %d", nCountSuccessful, nCountFailed, nCountFailed + nCountSuccessful);
+    QString returnObj = tr("Successfully started %1 masternodes, failed to start %2, total %3").arg(nCountSuccessful).arg(nCountFailed).arg(nCountFailed + nCountSuccessful);
     if (nCountFailed > 0) {
         returnObj += strFailedHtml;
     }
 
-    QMessageBox msg;
-    msg.setText(QString::fromStdString(returnObj));
-    msg.exec();
+    QMessageBox::information(this, tr("masternodes"),returnObj,tr("Ok"));
 
     updateMyNodeList(true);
 }
@@ -337,12 +336,12 @@ void MasternodeList::on_startButton_clicked()
     }
 
     // Display message box
-    QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Confirm masternode start"),
-        tr("Are you sure you want to start masternode %1?").arg(QString::fromStdString(strAlias)),
-        QMessageBox::Yes | QMessageBox::Cancel,
-        QMessageBox::Cancel);
-
-    if(retval != QMessageBox::Yes) return;
+    QMessageBox box(QMessageBox::Question,  tr("Confirm masternode start"), tr("Are you sure you want to start masternode %1?").arg(QString::fromStdString(strAlias)));
+    QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
+    box.addButton(tr("Cancel"),QMessageBox::NoRole);
+    box.exec();
+    if ((QPushButton*)box.clickedButton() != okButton)
+        return;
 
     WalletModel::EncryptionStatus encStatus = walletModel->getEncryptionStatus();
 
@@ -361,12 +360,12 @@ void MasternodeList::on_startButton_clicked()
 void MasternodeList::on_startAllButton_clicked()
 {
     // Display message box
-    QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Confirm all masternodes start"),
-        tr("Are you sure you want to start ALL masternodes?"),
-        QMessageBox::Yes | QMessageBox::Cancel,
-        QMessageBox::Cancel);
-
-    if(retval != QMessageBox::Yes) return;
+    QMessageBox box(QMessageBox::Question,   tr("Confirm all masternodes start"), tr("Are you sure you want to start ALL masternodes?"));
+    QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
+    box.addButton(tr("Cancel"),QMessageBox::NoRole);
+    box.exec();
+    if ((QPushButton*)box.clickedButton() != okButton)
+        return;
 
     WalletModel::EncryptionStatus encStatus = walletModel->getEncryptionStatus();
 
@@ -387,18 +386,17 @@ void MasternodeList::on_startMissingButton_clicked()
 
     if(!masternodeSync.IsMasternodeListSynced()) {
         QMessageBox::critical(this, tr("Command is not available right now"),
-            tr("You can't use this command until masternode list is synced"));
+                              tr("You can't use this command until masternode list is synced"),tr("Yes"));
         return;
     }
 
     // Display message box
-    QMessageBox::StandardButton retval = QMessageBox::question(this,
-        tr("Confirm missing masternodes start"),
-        tr("Are you sure you want to start MISSING masternodes?"),
-        QMessageBox::Yes | QMessageBox::Cancel,
-        QMessageBox::Cancel);
-
-    if(retval != QMessageBox::Yes) return;
+    QMessageBox box(QMessageBox::Question,   tr("Confirm missing masternodes start"), tr("Are you sure you want to start MISSING masternodes?"));
+    QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
+    box.addButton(tr("Cancel"),QMessageBox::NoRole);
+    box.exec();
+    if ((QPushButton*)box.clickedButton() != okButton)
+        return;
 
     WalletModel::EncryptionStatus encStatus = walletModel->getEncryptionStatus();
 

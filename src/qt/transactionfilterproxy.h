@@ -38,12 +38,16 @@ public:
 
     void setDateRange(const QDateTime &from, const QDateTime &to);
     void setAddressPrefix(const QString &addrPrefix);
+    void setAssetsNamePrefix(const QString &assetsNamePrefix);
+    void setApplicationsIdPrefix(const QString &applicationsIdPrefix);
     /**
       @note Type filter takes a bit field created with TYPE() or ALL_TYPES
      */
     void setTypeFilter(quint32 modes);
-    void setMinAmount(const CAmount& minimum);
+    void setMinAmount(const CAmount& minimum,const QString& assetsAmountStr="");
+    void setMinAssetsAmountStr(const QString& assetsAmountStr);
     void setWatchOnlyFilter(WatchOnlyFilter filter);
+    void setFilterType(bool filterType);
 
     /** Set maximum number of rows returned, -1 if unlimited. */
     void setLimit(int limit);
@@ -60,11 +64,15 @@ private:
     QDateTime dateFrom;
     QDateTime dateTo;
     QString addrPrefix;
+    QString assetsNamePrefix;
+    QString applicationsIdPrefix;
     quint32 typeFilter;
     WatchOnlyFilter watchOnlyFilter;
     CAmount minAmount;
+    QString minAssetsMountStr;
     int limitRows;
     bool showInactive;
+    bool bFilterType;
 };
 
 #endif // BITCOIN_QT_TRANSACTIONFILTERPROXY_H

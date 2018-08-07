@@ -14,24 +14,34 @@
 #include "receiverequestdialog.h"
 #include "recentrequeststablemodel.h"
 #include "walletmodel.h"
+#include "transactiontablemodel.h"
+#include "validation.h"
+#include "init.h"
+#include "clientmodel.h"
 
+#include <string>
 #include <QAction>
 #include <QCursor>
 #include <QItemSelection>
 #include <QMessageBox>
 #include <QScrollBar>
 #include <QTextDocument>
+#include <QCompleter>
+#include <boost/foreach.hpp>
+using std::string;
+extern QString gStrSafe;
 
 ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::ReceiveCoinsDialog),
     columnResizingFixer(0),
+    clientModel(0),
     model(0),
     platformStyle(platformStyle)
 {
     ui->setupUi(this);
     QString theme = GUIUtil::getThemeName();
-    
+
     if (!platformStyle->getImagesOnButtons()) {
         ui->clearButton->setIcon(QIcon());
         ui->receiveButton->setIcon(QIcon());
@@ -56,6 +66,7 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     contextMenu->addAction(copyLabelAction);
     contextMenu->addAction(copyMessageAction);
     contextMenu->addAction(copyAmountAction);
+    contextMenu->setStyleSheet("font-size:12px;");
 
     // context menu signals
     connect(ui->recentRequestsView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
@@ -64,7 +75,130 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     connect(copyMessageAction, SIGNAL(triggered()), this, SLOT(copyMessage()));
     connect(copyAmountAction, SIGNAL(triggered()), this, SLOT(copyAmount()));
 
+    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
     connect(ui->clearButton, SIGNAL(clicked()), this, SLOT(clear()));
+    connect(ui->reqLabel, SIGNAL(textChanged(QString)), this, SLOT(on_reqLabel_textChanged(QString)));
+    connect(ui->reqMessage, SIGNAL(textChanged(QString)), this, SLOT(on_reqMessage_textChanged(QString)));
+    fAssets = false;
+    assetDecimal = 0;
+    strAssetUnit = "";
+
+    completer = new QCompleter;
+    stringListModel = new QStringListModel;
+    completer->setCaseSensitivity(Qt::CaseInsensitive);
+    completer->setCompletionMode(QCompleter::PopupCompletion);
+    completer->setModel(stringListModel);
+    completer->popup()->setStyleSheet("font: 12px;");
+    ui->assetsComboBox->setCompleter(completer);
+    ui->assetsComboBox->setEditable(true);
+    ui->assetsComboBox->setStyleSheet("QComboBox{background-color:#FFFFFF;border:1px solid #82C3E6;font-size:12px;}");
+    ui->assetsComboBox->addItem(gStrSafe);
+    setMouseTracking(true);
+    ui->frame->setMouseTracking(true);
+    ui->frame2->setMouseTracking(true);
+
+    QRegExp regExpReqLabelEdit;
+    regExpReqLabelEdit.setPattern("^[\u4e00-\u9fa5a-zA-Z0-9]+$");
+    ui->reqLabel->setValidator (new QRegExpValidator(regExpReqLabelEdit, this));
+    QRegExp regExpReqMessageEdit;
+    regExpReqMessageEdit.setPattern("^((?! {2,}).)+$");
+    //No two consecutive spaces are prohibited
+    ui->reqMessage->setValidator (new QRegExpValidator(regExpReqMessageEdit, this));
+    initWidget();
+}
+
+void ReceiveCoinsDialog::initWidget()
+{
+#if QT_VERSION >= 0x040700
+    ui->reqLabel->setPlaceholderText(tr("Maximum 30 characters"));
+    ui->reqMessage->setPlaceholderText(tr("Maximum 150 characters"));
+#endif
+}
+
+ReceiveCoinsDialog::~ReceiveCoinsDialog()
+{
+    delete ui;
+}
+
+void ReceiveCoinsDialog::updateCurrentAsset(const QString &currText)
+{
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    if(currText==gStrSafe)
+    {
+        fAssets = false;
+    }
+    else
+    {
+        fAssets = true;
+        if(!assetDataMap.contains(currText))
+            return;
+    }
+    ui->checkUseInstantSend->setVisible(!fAssets);
+    if(fAssets)
+    {
+        if(assetDataMap.contains(currText))
+        {
+            CAssetData& assetData = assetDataMap[currText];
+            assetDecimal = assetData.nDecimals;
+            strAssetUnit = QString::fromStdString(assetData.strAssetUnit);
+        }
+    }
+    ui->reqAmount->updateAssetUnit(strAssetUnit,fAssets,assetDecimal);
+}
+
+void ReceiveCoinsDialog::updateAssetsFound(const QString &assetName)
+{
+    updateAssetsInfo(assetName);
+}
+
+void ReceiveCoinsDialog::updateAssetsInfo(const QString &assetName)
+{
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    bool addOneAsset = !assetName.isEmpty();
+    std::vector<uint256>  assetIdVec;
+    if(addOneAsset)
+    {
+        uint256 assetId;
+        if(!GetAssetIdByAssetName(assetName.toStdString(),assetId))
+            return;
+        assetIdVec.push_back(assetId);
+    }else
+    {
+        if (!GetAssetListInfo(assetIdVec))
+            return;
+    }
+
+    BOOST_FOREACH(const uint256& assetId,assetIdVec)
+    {
+        if(assetId.IsNull()){
+            continue;
+        }
+        CAssetId_AssetInfo_IndexValue assetInfo;
+        if(!GetAssetInfoByAssetId(assetId, assetInfo)){
+            return;
+        }
+        QString assetName = QString::fromStdString(assetInfo.assetData.strAssetName);
+        if(!assetDataMap.contains(assetName))
+            assetDataMap[assetName] = assetInfo.assetData;
+    }
+
+    disconnect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
+    QString currText = ui->assetsComboBox->currentText();
+    ui->assetsComboBox->clear();
+    QStringList stringList;
+    stringList.append(gStrSafe);
+    //QMap<QString,QString>& assetNamesUnits = model->getAssetsNamesUnits();
+    stringList.append(assetDataMap.keys());
+
+    stringListModel->setStringList(stringList);
+    completer->setModel(stringListModel);
+    completer->popup()->setStyleSheet("font: 12px;");
+    ui->assetsComboBox->addItems(stringList);
+    ui->assetsComboBox->setCompleter(completer);
+
+    if(assetDataMap.contains(currText))
+        ui->assetsComboBox->setCurrentText(currText);
+    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
 }
 
 void ReceiveCoinsDialog::setModel(WalletModel *model)
@@ -96,9 +230,12 @@ void ReceiveCoinsDialog::setModel(WalletModel *model)
     }
 }
 
-ReceiveCoinsDialog::~ReceiveCoinsDialog()
+void ReceiveCoinsDialog::setClientModel(ClientModel *clientModel)
 {
-    delete ui;
+    this->clientModel = clientModel;
+    if(clientModel){
+        connect(clientModel,SIGNAL(assetFound(QString)),this,SLOT(updateAssetsFound(QString)));
+    }
 }
 
 void ReceiveCoinsDialog::clear()
@@ -128,10 +265,49 @@ void ReceiveCoinsDialog::updateDisplayUnit()
     }
 }
 
+void ReceiveCoinsDialog::on_reqLabel_textChanged(const QString &address)
+{
+    while(ui->reqLabel->text().trimmed().toStdString().size() > 30)
+        ui->reqLabel->setText(ui->reqLabel->text().left(ui->reqLabel->text().trimmed().length()-1));
+}
+
+void ReceiveCoinsDialog::on_reqMessage_textChanged(const QString &address)
+{
+    while(ui->reqMessage->text().trimmed().toStdString().size() > 150)
+        ui->reqMessage->setText(ui->reqMessage->text().left(ui->reqMessage->text().trimmed().length()-1));
+}
+
 void ReceiveCoinsDialog::on_receiveButton_clicked()
 {
     if(!model || !model->getOptionsModel() || !model->getAddressTableModel() || !model->getRecentRequestsTableModel())
         return;
+
+    string strreqLabel =ui->reqLabel->text().trimmed().toStdString();
+    if(strreqLabel.size() > 30)
+    {
+        QMessageBox::warning(this, tr("Receive"),tr("Label input too long"),tr("Ok"));
+        return;
+    }
+
+    string strreqMessage =ui->reqMessage->text().trimmed().toStdString();
+    if(strreqMessage.size() > 150)
+    {
+        QMessageBox::warning(this, tr("Receive"),tr("Message input too long"),tr("Ok"));
+        return;
+    }
+
+    QString currText = ui->assetsComboBox->currentText().trimmed();
+    if(currText.isEmpty())
+    {
+        QMessageBox::warning(this, tr("Receive"),tr("Please select asset"),tr("Ok"));
+        return;
+    }
+    int index = ui->assetsComboBox->findText(currText);
+    if(index<0)
+    {
+        QMessageBox::warning(this,tr("Receive"),tr("Invalid asset name"),tr("Ok"));
+        return;
+    }
 
     QString address;
     QString label = ui->reqLabel->text();
@@ -154,9 +330,12 @@ void ReceiveCoinsDialog::on_receiveButton_clicked()
         /* Generate new receiving address */
         address = model->getAddressTableModel()->addRow(AddressTableModel::Receive, label, "");
     }
-    SendCoinsRecipient info(address, label,
-        ui->reqAmount->value(), ui->reqMessage->text());
-    info.fUseInstantSend = ui->checkUseInstantSend->isChecked();
+    SendCoinsRecipient info(address, label,ui->reqAmount->value(), 0, ui->reqMessage->text(),"",fAssets,ui->assetsComboBox->currentText().trimmed(),assetDecimal,strAssetUnit);
+    if(fAssets)
+        info.fUseInstantSend = false;
+    else
+        info.fUseInstantSend = ui->checkUseInstantSend->isChecked();
+    info.fAsset = fAssets;
     ReceiveRequestDialog *dialog = new ReceiveRequestDialog(this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->setModel(model->getOptionsModel());

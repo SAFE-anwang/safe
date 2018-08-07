@@ -1,0 +1,73 @@
+package App;
+option java_package = "org.safe.App";
+option java_outer_classname = "App";
+
+message RegisterData {
+    required bytes version = 1;         // uint16_t
+    required bytes adminAddress = 2;    // string
+    required bytes appName = 3;         // string
+    required bytes appDesc = 4;         // string
+    required bytes devType = 5;         // uint8_t
+    required bytes devName = 6;         // string
+    required bytes webUrl = 7;          // string
+    required bytes logoUrl = 8;         // string
+    required bytes coverUrl = 9;        // string
+}
+
+message AuthData {
+    required bytes version = 1;         // uint16_t
+    required bytes setType = 2;         // uint8_t
+    required bytes adminAddress = 3;    // string
+    required bytes userAddress = 4;     // string
+    required uint32 auth = 5;           // uint32_t
+}
+
+message ExtendData {
+    required bytes version = 1;         // uint16_t
+    required uint32 auth = 2;           // uint32_t
+    required bytes extendData = 3;      // string
+}
+
+message IssueData {
+    required bytes version = 1;             // uint16_t
+    required bytes shortName = 2;           // string
+    required bytes assetName = 3;           // string
+    required bytes assetDesc = 4;           // string
+    required bytes assetUnit = 5;           // string
+    required int64 totalAmount = 6;         // int64_t
+    required int64 firstIssueAmount = 7;    // int64_t
+    required int64 firstActualAmount = 8;   // int64_t
+    required bytes decimals = 9;            // uint8_t
+    required bool destory = 10;             // bool
+    required bool payCandy = 11;            // bool
+    required int64 candyAmount = 12;        // int64_t
+    required bytes candyExpired = 13;       // uint16_t
+    required bytes remarks = 14;            // string
+}
+
+message CommonData { // for add issue, transfer, destory
+    required bytes version = 1;             // uint16_t
+    required bytes assetId = 2;             // uint256
+    required int64 amount = 3;              // int64_t
+    required bytes remarks = 4;             // string
+}
+
+message PutCandyData {
+    required bytes version = 1;             // uint16_t
+    required bytes assetId = 2;             // uint256
+    required int64 amount = 3;              // int64_t
+    required bytes expired = 4;             // uint16_t
+    required bytes remarks = 5;             // string
+}
+
+message GetCandyData {
+    required bytes version = 1;             // uint16_t
+    required bytes assetId = 2;             // uint256
+    required int64 amount = 3;              // int64_t
+    required bytes remarks = 4;             // string
+}
+
+message TransferSafeData {
+    required bytes version = 1;             // uint16_t
+    required bytes remarks = 2;             // string
+}

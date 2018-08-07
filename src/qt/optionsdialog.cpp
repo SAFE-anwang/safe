@@ -91,10 +91,6 @@ OptionsDialog::OptionsDialog(QWidget *parent, bool enableWallet) :
     
     /* Theme selector */
     ui->theme->addItem(QString("SAFE-light"), QVariant("light"));
-    ui->theme->addItem(QString("SAFE-light-hires"), QVariant("light-hires"));
-    ui->theme->addItem(QString("SAFE-blue"), QVariant("drkblue"));
-    ui->theme->addItem(QString("SAFE-Crownium"), QVariant("crownium"));
-    ui->theme->addItem(QString("SAFE-traditional"), QVariant("trad"));
     
     /* Language selector */
     QDir translations(":translations");
@@ -143,6 +139,8 @@ OptionsDialog::OptionsDialog(QWidget *parent, bool enableWallet) :
     connect(ui->proxyIpTor, SIGNAL(validationDidChange(QValidatedLineEdit *)), this, SLOT(updateProxyValidationState()));
     connect(ui->proxyPort, SIGNAL(textChanged(const QString&)), this, SLOT(updateProxyValidationState()));
     connect(ui->proxyPortTor, SIGNAL(textChanged(const QString&)), this, SLOT(updateProxyValidationState()));
+    ui->themeLabel->setVisible(false);
+    ui->theme->setVisible(false);
 }
 
 OptionsDialog::~OptionsDialog()
@@ -246,11 +244,12 @@ void OptionsDialog::on_resetButton_clicked()
     if(model)
     {
         // confirmation dialog
-        QMessageBox::StandardButton btnRetVal = QMessageBox::question(this, tr("Confirm options reset"),
-            tr("Client restart required to activate changes.") + "<br><br>" + tr("Client will be shut down. Do you want to proceed?"),
-            QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
-
-        if(btnRetVal == QMessageBox::Cancel)
+        QMessageBox box(QMessageBox::Question,  tr("Confirm options reset"), tr("Client restart required to activate changes.") + "<br><br>" + tr("Client will be shut down. Do you want to proceed?"));
+        QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
+        box.addButton(tr("Cancel"),QMessageBox::NoRole);
+        box.setStyleSheet("QLabel{font-size:12px;} QPushButton{font-size:12px;}");
+        box.exec();
+        if ((QPushButton*)box.clickedButton() != okButton)
             return;
 
         /* reset all options and close GUI */
@@ -278,11 +277,22 @@ void OptionsDialog::on_hideTrayIcon_stateChanged(int fState)
     if(fState)
     {
         ui->minimizeToTray->setChecked(false);
-        ui->minimizeToTray->setEnabled(false);
     }
     else
     {
         ui->minimizeToTray->setEnabled(true);
+    }
+}
+
+void OptionsDialog::on_minimizeToTray_stateChanged(int fState)
+{
+    if(fState)
+    {
+        ui->hideTrayIcon->setChecked(false);
+    }
+    else
+    {
+        ui->hideTrayIcon->setEnabled(true);
     }
 }
 

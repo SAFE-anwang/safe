@@ -20,6 +20,8 @@ OpenURIDialog::OpenURIDialog(QWidget *parent) :
 #if QT_VERSION >= 0x040700
     ui->uriEdit->setPlaceholderText("safe:");
 #endif
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Ok"));
+    ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("Cancel"));
 }
 
 OpenURIDialog::~OpenURIDialog()

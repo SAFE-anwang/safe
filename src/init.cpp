@@ -63,6 +63,7 @@
 #include "privatesend-client.h"
 #include "privatesend-server.h"
 #include "spork.h"
+#include "main.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -90,6 +91,7 @@
 using namespace std;
 
 extern void ThreadSendAlert(CConnman& connman);
+extern bool fHaveGUI;
 
 #ifdef ENABLE_WALLET
 CWallet* pwalletMain = NULL;
@@ -942,8 +944,9 @@ void InitLogging()
 /** Initialize Safe Core.
  *  @pre Parameters should be parsed and config file should be read.
  */
-bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
+bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool haveGUI)
 {
+    fHaveGUI = haveGUI;
     // ********************************************************* Step 1: setup
 #ifdef _MSC_VER
     // Turn off Microsoft heap dump noise
@@ -1551,6 +1554,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
                     //If we're reindexing in prune mode, wipe away unusable block files and all undo data files
                     if (fPruneMode)
                         CleanupBlockRevFiles();
+                    boost::filesystem::remove_all(GetDataDir() / "height");
                 }
 
                 if (!LoadBlockIndex()) {
@@ -1632,6 +1636,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             }
         }
     }
+
+    if(!VerifyDetailFile())
+        return error("Verify detail.dat failed. Exiting");
+    if(!LoadChangeInfoToList())
+        return error("Load change info failed. Exiting.");
+    if(!LoadCandyHeightToList())
+        return error("Load candy height failed. Exiting.");
 
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
@@ -1908,10 +1919,10 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             COutPoint outpoint = COutPoint(mnTxHash, outputIndex);
             // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
             if(pwalletMain->IsMine(CTxIn(outpoint)) != ISMINE_SPENDABLE) {
-                LogPrintf("  %s %s - IS NOT SPENDABLE, was not locked\n", mne.getTxHash(), mne.getOutputIndex());
+                LogPrintf("  %s %s - IS NOT SPENDABLE, was not frozen\n", mne.getTxHash(), mne.getOutputIndex());
                 continue;
             }
-            pwalletMain->LockCoin(outpoint);
+            pwalletMain->FreezeCoin(outpoint);
             LogPrintf("  %s %s - locked successfully\n", mne.getTxHash(), mne.getOutputIndex());
         }
     }
@@ -2072,10 +2083,15 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
         // Run a thread to flush wallet periodically
         threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
+
+        if(fHaveGUI)
+            threadGroup.create_thread(boost::bind(&ThreadGetAllCandyInfo));
     }
 #endif
 
     threadGroup.create_thread(boost::bind(&ThreadSendAlert, boost::ref(connman)));
+    threadGroup.create_thread(boost::bind(&ThreadWriteChangeInfo));
+    threadGroup.create_thread(boost::bind(&ThreadCalculateAddressAmount));
 
     return !fRequestShutdown;
 }

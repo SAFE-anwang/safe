@@ -6,6 +6,7 @@
 #define BITCOIN_QT_RECEIVECOINSDIALOG_H
 
 #include "guiutil.h"
+#include "app/app.h"
 
 #include <QDialog>
 #include <QHeaderView>
@@ -14,10 +15,14 @@
 #include <QMenu>
 #include <QPoint>
 #include <QVariant>
+#include <QTimer>
+#include <QCompleter>
+#include <QStringListModel>
 
 class OptionsModel;
 class PlatformStyle;
 class WalletModel;
+class ClientModel;
 
 namespace Ui {
     class ReceiveCoinsDialog;
@@ -44,11 +49,17 @@ public:
     ~ReceiveCoinsDialog();
 
     void setModel(WalletModel *model);
+    void setClientModel(ClientModel* clientModel);
 
 public Q_SLOTS:
     void clear();
     void reject();
     void accept();
+    void updateAssetsInfo(const QString&assetName = "");
+    void updateAssetsFound(const QString& assetName);
+
+    void on_reqLabel_textChanged(const QString &address);
+    void on_reqMessage_textChanged(const QString &address);
 
 protected:
     virtual void keyPressEvent(QKeyEvent *event);
@@ -56,13 +67,21 @@ protected:
 private:
     Ui::ReceiveCoinsDialog *ui;
     GUIUtil::TableViewLastColumnResizingFixer *columnResizingFixer;
+    ClientModel *clientModel;
     WalletModel *model;
     QMenu *contextMenu;
     const PlatformStyle *platformStyle;
+    QMap<QString,CAssetData> assetDataMap;
+    bool fAssets;
+    int assetDecimal;
+    QString strAssetUnit;
+    QCompleter* completer;
+    QStringListModel* stringListModel;
 
     QModelIndex selectedRow();
     void copyColumnToClipboard(int column);
     virtual void resizeEvent(QResizeEvent *event);
+    void initWidget();
 
 private Q_SLOTS:
     void on_receiveButton_clicked();
@@ -75,7 +94,9 @@ private Q_SLOTS:
     void copyURI();
     void copyLabel();
     void copyMessage();
-    void copyAmount();
+    void copyAmount();    
+    void updateCurrentAsset(const QString&);
+
 };
 
 #endif // BITCOIN_QT_RECEIVECOINSDIALOG_H

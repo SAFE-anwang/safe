@@ -82,11 +82,86 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
             o.push_back(Pair("hex", HexStr(txin.scriptSig.begin(), txin.scriptSig.end())));
             in.push_back(Pair("scriptSig", o));
 
+            bool fAsset = false;
+            uint8_t nDecimals = 8;
+
+            CTransaction txTmp;
+            uint256 hashBlock = uint256();
+            if (GetTransaction(txin.prevout.hash, txTmp, Params().GetConsensus(), hashBlock, true) && hashBlock != uint256())
+            {
+                const CTxOut& temptxout = txTmp.vout[txin.prevout.n];
+                if (temptxout.IsAsset())
+                {
+                    fAsset = true;
+
+                    CAppHeader header;
+                    vector<unsigned char> vData;
+                    if (ParseReserve(temptxout.vReserve, header, vData))
+                    {
+                        CTxDestination dest;
+                        if (!ExtractDestination(temptxout.scriptPubKey, dest))
+                            continue;
+
+                        if (header.nAppCmd == ISSUE_ASSET_CMD)
+                        {
+                            CAssetData assetData;
+                            if (ParseIssueData(vData, assetData))
+                            {
+                                nDecimals = assetData.nDecimals;
+                            }
+                        }
+                        else if (header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD ||
+                                 header.nAppCmd == DESTORY_ASSET_CMD ||header.nAppCmd == CHANGE_ASSET_CMD)
+                        {
+                            CCommonData commonData;
+                            if (ParseCommonData(vData, commonData))
+                            {
+                                CAssetId_AssetInfo_IndexValue assetInfo;
+                                if (commonData.assetId.IsNull() || !GetAssetInfoByAssetId(commonData.assetId, assetInfo))
+                                    continue;
+
+                                nDecimals = assetInfo.assetData.nDecimals;
+                            }
+                        }
+                        else if (header.nAppCmd == PUT_CANDY_CMD)
+                        {
+                            CPutCandyData candyData;
+                            if (ParsePutCandyData(vData, candyData))
+                            {
+                                CAssetId_AssetInfo_IndexValue assetInfo;
+                                if (candyData.assetId.IsNull() || !GetAssetInfoByAssetId(candyData.assetId, assetInfo))
+                                    continue;
+
+                                nDecimals = assetInfo.assetData.nDecimals;
+                            }
+                        }
+                        else if (header.nAppCmd == GET_CANDY_CMD)
+                        {
+                            CGetCandyData candyData;
+                            if (ParseGetCandyData(vData, candyData))
+                            {
+                                CAssetId_AssetInfo_IndexValue assetInfo;
+                                if (candyData.assetId.IsNull() || !GetAssetInfoByAssetId(candyData.assetId, assetInfo))
+                                    continue;
+
+                                nDecimals = assetInfo.assetData.nDecimals;
+                            }
+                        }
+                    }
+                }
+            }
+
+            in.push_back(Pair("is_asset", fAsset));
+
             // Add address and value info if spentindex enabled
             CSpentIndexValue spentInfo;
             CSpentIndexKey spentKey(txin.prevout.hash, txin.prevout.n);
-            if (GetSpentIndex(spentKey, spentInfo)) {
-                in.push_back(Pair("value", ValueFromAmount(spentInfo.satoshis)));
+            if (GetSpentIndex(spentKey, spentInfo))
+            {
+                if (fAsset)
+                    in.push_back(Pair("value", StrValueFromAmount(spentInfo.satoshis, nDecimals)));
+                else
+                    in.push_back(Pair("value", ValueFromAmount(spentInfo.satoshis)));
                 in.push_back(Pair("valueSat", spentInfo.satoshis));
                 if (spentInfo.addressType == 1) {
                     in.push_back(Pair("address", CBitcoinAddress(CKeyID(spentInfo.addressHash)).ToString()));
@@ -101,20 +176,150 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
     }
     entry.push_back(Pair("vin", vin));
     UniValue vout(UniValue::VARR);
-    for (unsigned int i = 0; i < tx.vout.size(); i++) {
+    for (unsigned int i = 0; i < tx.vout.size(); i++)
+    {
         const CTxOut& txout = tx.vout[i];
         UniValue out(UniValue::VOBJ);
-        out.push_back(Pair("value", ValueFromAmount(txout.nValue)));
+
+        int itxType = 1;
+        uint256 assetId;
+        uint256 appId;
+
+        if (txout.IsSafeOnly())
+        {
+            out.push_back(Pair("value", ValueFromAmount(txout.nValue)));
+            itxType = 1;
+        }
+        else if (txout.IsAsset())
+        {
+            itxType = 2;
+            CAppHeader header;
+            vector<unsigned char> vData;
+            if (ParseReserve(txout.vReserve, header, vData))
+            {
+                CTxDestination dest;
+                if(!ExtractDestination(txout.scriptPubKey, dest))
+                    continue;
+
+                string strAddress = CBitcoinAddress(dest).ToString();
+                if (header.nAppCmd == ISSUE_ASSET_CMD)
+                {
+                    CAssetData assetData;
+                    if(ParseIssueData(vData, assetData))
+                    {
+                        assetId = assetData.GetHash();
+                        out.push_back(Pair("value", StrValueFromAmount(txout.nValue, assetData.nDecimals)));
+                    }
+                }
+                else if (header.nAppCmd == ADD_ASSET_CMD)
+                {
+                    CCommonData commonData;
+                    if (ParseCommonData(vData, commonData))
+                    {
+                        CAssetId_AssetInfo_IndexValue assetInfo;
+                        if (commonData.assetId.IsNull() || !GetAssetInfoByAssetId(commonData.assetId, assetInfo))
+                            continue;
+
+                        assetId = commonData.assetId;
+                        out.push_back(Pair("value", StrValueFromAmount(txout.nValue, assetInfo.assetData.nDecimals)));
+                    }
+                }
+                else if (header.nAppCmd == TRANSFER_ASSET_CMD)
+                {
+                    CCommonData commonData;
+                    if (ParseCommonData(vData, commonData))
+                    {
+                        CAssetId_AssetInfo_IndexValue assetInfo;
+                        if (commonData.assetId.IsNull() || !GetAssetInfoByAssetId(commonData.assetId, assetInfo))
+                            continue;
+
+                        assetId = commonData.assetId;
+                        out.push_back(Pair("value", StrValueFromAmount(txout.nValue, assetInfo.assetData.nDecimals)));
+                    }
+                }
+                else if (header.nAppCmd == DESTORY_ASSET_CMD)
+                {
+                    CCommonData commonData;
+                    if(ParseCommonData(vData, commonData))
+                    {
+                        CAssetId_AssetInfo_IndexValue assetInfo;
+                        if(commonData.assetId.IsNull() || !GetAssetInfoByAssetId(commonData.assetId, assetInfo))
+                            continue;
+
+                        assetId = commonData.assetId;
+                        out.push_back(Pair("value", StrValueFromAmount(txout.nValue, assetInfo.assetData.nDecimals)));
+                    }
+                }
+                else if (header.nAppCmd == CHANGE_ASSET_CMD)
+                {
+                    CCommonData commonData;
+                    if (ParseCommonData(vData, commonData))
+                    {
+                        CAssetId_AssetInfo_IndexValue assetInfo;
+                        if(commonData.assetId.IsNull() || !GetAssetInfoByAssetId(commonData.assetId, assetInfo))
+                            continue;
+
+                        assetId = commonData.assetId;
+                        out.push_back(Pair("value", StrValueFromAmount(txout.nValue, assetInfo.assetData.nDecimals)));
+                    }
+                }
+                else if (header.nAppCmd == PUT_CANDY_CMD)
+                {
+                    CPutCandyData candyData;
+                    if (ParsePutCandyData(vData, candyData))
+                    {
+                        CAssetId_AssetInfo_IndexValue assetInfo;
+                        if (candyData.assetId.IsNull() || !GetAssetInfoByAssetId(candyData.assetId, assetInfo))
+                            continue;
+
+                        assetId = candyData.assetId;
+                        out.push_back(Pair("value", StrValueFromAmount(txout.nValue, assetInfo.assetData.nDecimals)));
+                    }
+                }
+                else if (header.nAppCmd == GET_CANDY_CMD)
+                {
+                    CGetCandyData candyData;
+                    if (ParseGetCandyData(vData, candyData))
+                    {
+                        CAssetId_AssetInfo_IndexValue assetInfo;
+                        if (candyData.assetId.IsNull() || !GetAssetInfoByAssetId(candyData.assetId, assetInfo))
+                            continue;
+
+                        assetId = candyData.assetId;
+                        out.push_back(Pair("value", StrValueFromAmount(txout.nValue, assetInfo.assetData.nDecimals)));
+                    }
+                }
+            }
+        }
+        else if (txout.IsApp())
+        {
+            itxType = 3;
+            CAppHeader header;
+            vector<unsigned char> vData;
+            if(!ParseReserve(txout.vReserve, header, vData))
+                continue;
+
+            appId = header.appId;
+            out.push_back(Pair("value", ValueFromAmount(txout.nValue)));
+        }
+
         out.push_back(Pair("valueSat", txout.nValue));
         out.push_back(Pair("n", (int64_t)i));
         UniValue o(UniValue::VOBJ);
         ScriptPubKeyToJSON(txout.scriptPubKey, o, true);
         out.push_back(Pair("scriptPubKey", o));
-        if(tx.nVersion >= SAFE_TX_VERSION)
+        if(tx.nVersion >= SAFE_TX_VERSION_1)
         {
-            out.push_back(Pair("unlockHeight", txout.nUnlockHeight));
+            out.push_back(Pair("unlockedHeight", txout.nUnlockedHeight));
             out.push_back(Pair("reserve", HexStr(txout.vReserve)));
         }
+
+        out.push_back(Pair("txType", itxType));
+
+        if (itxType == 2)
+            out.push_back(Pair("assetId", assetId.GetHex()));
+        else if (itxType == 3)
+            out.push_back(Pair("appId", appId.GetHex()));
 
         // Add spent information if spentindex is enabled
         CSpentIndexValue spentInfo;
@@ -188,6 +393,7 @@ UniValue getrawtransaction(const UniValue& params, bool fHelp)
             "  \"vout\" : [              (array of json objects)\n"
             "     {\n"
             "       \"value\" : x.xxx,            (numeric) The value in " + CURRENCY_UNIT + "\n"
+            "       \"valueSat\" : x.xxx,         (numeric) The valueSat \n"
             "       \"n\" : n,                    (numeric) index\n"
             "       \"scriptPubKey\" : {          (json object)\n"
             "         \"asm\" : \"asm\",          (string) the asm\n"
@@ -199,6 +405,11 @@ UniValue getrawtransaction(const UniValue& params, bool fHelp)
             "           ,...\n"
             "         ]\n"
             "       }\n"
+            "       \"unlockedHeight\" : xxxxx,     (numeric) The value unlockedHeight \n"
+            "       \"reserve\" : \"xxxxx\",        (string) The value reserve field \n"
+            "       \"txType\" : xxxxx,             (numeric) The tx Type \n"
+            "       \"assetId\" : \"xxxxx\",        (string optional) The assetId,if txType = 2,then assetId required \n"
+            "       \"appId\" : \"xxxxx\",          (string optional) The appId,if txType = 3,then appId required \n"
             "     }\n"
             "     ,...\n"
             "  ],\n"

@@ -51,6 +51,7 @@ private Q_SLOTS:
     void on_cancelButton_clicked();
     
     void on_hideTrayIcon_stateChanged(int fState);
+    void on_minimizeToTray_stateChanged(int fState);
 
     void showRestartWarning(bool fPersistent = false);
     void clearStatusLabel();

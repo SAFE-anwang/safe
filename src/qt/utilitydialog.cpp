@@ -126,6 +126,7 @@ HelpMessageDialog::HelpMessageDialog(QWidget *parent, HelpMode helpMode) :
         }
 
         ui->helpMessage->moveCursor(QTextCursor::Start);
+        ui->helpMessage->setStyleSheet("QTextEdit {font-size:12px;}");
         ui->scrollArea->setVisible(false);
         ui->aboutLogo->setVisible(false);
     } else if (helpMode == pshelp) {
@@ -202,8 +203,8 @@ ShutdownWindow::ShutdownWindow(QWidget *parent, Qt::WindowFlags f):
 {
     QVBoxLayout *layout = new QVBoxLayout();
     layout->addWidget(new QLabel(
-        tr("Safe Core is shutting down...") + "<br /><br />" +
-        tr("Do not shut down the computer until this window disappears.")));
+        "<font size='12px'>" + tr("Safe Core is shutting down...") + "<br /><br />" +
+        tr("Do not shut down the computer until this window disappears.") + "</font>"));
     setLayout(layout);
 }
 

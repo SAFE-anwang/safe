@@ -185,9 +185,9 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
         UniValue o(UniValue::VOBJ);
         ScriptPubKeyToUniv(txout.scriptPubKey, o, true);
         out.pushKV("scriptPubKey", o);
-        if(tx.nVersion >= SAFE_TX_VERSION)
+        if(tx.nVersion >= SAFE_TX_VERSION_1)
         {
-            out.pushKV("unlockHeight", txout.nUnlockHeight);
+            out.pushKV("unlockedHeight", txout.nUnlockedHeight);
             out.pushKV("reserve", HexStr(txout.vReserve));
         }
         vout.push_back(out);

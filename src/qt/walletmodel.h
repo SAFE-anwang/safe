@@ -13,6 +13,7 @@
 
 #include <map>
 #include <vector>
+#include <QMap>
 
 #include <QObject>
 
@@ -22,6 +23,8 @@ class PlatformStyle;
 class RecentRequestsTableModel;
 class TransactionTableModel;
 class WalletModelTransaction;
+class AssetsDisplayInfo;
+class UpdateConfirmWorker;
 
 class CCoinControl;
 class CKeyID;
@@ -38,9 +41,10 @@ QT_END_NAMESPACE
 class SendCoinsRecipient
 {
 public:
-    explicit SendCoinsRecipient() : amount(0), fSubtractFeeFromAmount(false), nVersion(SendCoinsRecipient::CURRENT_VERSION) { }
-    explicit SendCoinsRecipient(const QString &addr, const QString &label, const CAmount& amount, const QString &message):
-        address(addr), label(label), amount(amount), message(message), fSubtractFeeFromAmount(false), nVersion(SendCoinsRecipient::CURRENT_VERSION) {}
+    explicit SendCoinsRecipient() : amount(0), strAssetAmount(""),nLockedMonth(0), message(""), strMemo(""),fAsset(false),assetDecimal(0),strAssetUnit(""),strAssetName(""),fSubtractFeeFromAmount(false), nVersion(SendCoinsRecipient::CURRENT_VERSION) { }
+    explicit SendCoinsRecipient(const QString &addr, const QString &label, const CAmount& amount, const int nLockedMonth, const QString &message,const QString &memo,bool fAsset,const QString& assetName,int assetDecimal,const QString& assetUnit):
+        address(addr), label(label), amount(amount), strAssetAmount(""), nLockedMonth(nLockedMonth), message(message), strMemo(memo),fAsset(fAsset),assetDecimal(assetDecimal),strAssetUnit(assetUnit),strAssetName(assetName),
+        fSubtractFeeFromAmount(false), nVersion(SendCoinsRecipient::CURRENT_VERSION) {}
 
     // If from an unauthenticated payment request, this is used for storing
     // the addresses, e.g. address-A<br />address-B<br />address-C.
@@ -52,8 +56,14 @@ public:
     AvailableCoinsType inputType;
     bool fUseInstantSend;
     CAmount amount;
-    // If from a payment request, this is used for storing the memo
+    QString strAssetAmount;
+    int nLockedMonth;
     QString message;
+    QString strMemo;
+    bool fAsset;
+    int assetDecimal;
+    QString strAssetUnit;
+    QString strAssetName;
 
     // If from a payment request, paymentRequest.IsInitialized() will be true
     PaymentRequestPlus paymentRequest;
@@ -72,6 +82,9 @@ public:
         std::string sAddress = address.toStdString();
         std::string sLabel = label.toStdString();
         std::string sMessage = message.toStdString();
+        std::string sDecimal = QString::number(assetDecimal).toStdString();
+        std::string sAssetUnit = strAssetUnit.toStdString();
+        std::string sAssetName = strAssetName.toStdString();
         std::string sPaymentRequest;
         if (!ser_action.ForRead() && paymentRequest.IsInitialized())
             paymentRequest.SerializeToString(&sPaymentRequest);
@@ -82,15 +95,24 @@ public:
         READWRITE(sAddress);
         READWRITE(sLabel);
         READWRITE(amount);
+        READWRITE(nLockedMonth);
         READWRITE(sMessage);
+        READWRITE(sDecimal);
+        READWRITE(sAssetUnit);
+        READWRITE(sAssetName);
+        READWRITE(fAsset);
         READWRITE(sPaymentRequest);
         READWRITE(sAuthenticatedMerchant);
+        READWRITE(fUseInstantSend);
 
         if (ser_action.ForRead())
         {
             address = QString::fromStdString(sAddress);
             label = QString::fromStdString(sLabel);
             message = QString::fromStdString(sMessage);
+            assetDecimal = QString::fromStdString(sDecimal).toInt();
+            strAssetUnit = QString::fromStdString(sAssetUnit);
+            strAssetName = QString::fromStdString(sAssetName);
             if (!sPaymentRequest.empty())
                 paymentRequest.parse(QByteArray::fromRawData(sPaymentRequest.data(), sPaymentRequest.size()));
             authenticatedMerchant = QString::fromStdString(sAuthenticatedMerchant);
@@ -110,6 +132,7 @@ public:
     enum StatusCode // Returned by sendCoins
     {
         OK,
+        None,
         InvalidAmount,
         InvalidAddress,
         AmountExceedsBalance,
@@ -118,7 +141,22 @@ public:
         TransactionCreationFailed, // Error returned when wallet is still locked
         TransactionCommitFailed,
         AbsurdFee,
-        PaymentRequestExpired
+        PaymentRequestExpired,
+        WalletUnavailable,
+        InvalidAssetRecvAddress,
+        AssetIdFail,
+        InvalidAssetId,
+        NonExistAssetId,
+        AmountOutOfRange,
+        InvalidAssetAmount,
+        InvalidLockedMonth,
+        InvalidRemarks,
+        WalletLocked,
+        P2PMissed,
+        InsufficientSafeFunds,
+        InsufficientAssetFunds,
+        CreateAssetTransactionFail,
+        CommitTransactionFail
     };
 
     enum EncryptionStatus
@@ -132,17 +170,28 @@ public:
     OptionsModel *getOptionsModel();
     AddressTableModel *getAddressTableModel();
     TransactionTableModel *getTransactionTableModel();
+    TransactionTableModel *getLockedTransactionTableModel();
+    TransactionTableModel *getCandyTableModel();
+    TransactionTableModel *getAssetsDistributeTableModel();
+    TransactionTableModel *getAssetsRegistTableModel();
     RecentRequestsTableModel *getRecentRequestsTableModel();
 
-    CAmount getBalance(const CCoinControl *coinControl = NULL) const;
-    CAmount getUnconfirmedBalance() const;
-    CAmount getImmatureBalance() const;
+    CAmount getBalance(const CCoinControl *coinControl = NULL,const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
+    CAmount getUnconfirmedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
+    CAmount getImmatureBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
+    CAmount getLockedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
     CAmount getAnonymizedBalance() const;
     bool haveWatchOnly() const;
-    CAmount getWatchBalance() const;
-    CAmount getWatchUnconfirmedBalance() const;
-    CAmount getWatchImmatureBalance() const;
+    CAmount getWatchBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
+    CAmount getWatchUnconfirmedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
+    CAmount getWatchImmatureBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
+    CAmount getWatchLockedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
     EncryptionStatus getEncryptionStatus() const;
+
+    void getAssetsNames(bool needInMainChain,QStringList& lst);
+
+    //assets name
+    QMap<QString,AssetsDisplayInfo>& getAssetsNamesUnits();
 
     // Check address for validity
     bool validateAddress(const QString &address);
@@ -156,7 +205,10 @@ public:
     };
 
     // prepare transaction for getting txfee before sending coins
-    SendCoinsReturn prepareTransaction(WalletModelTransaction &transaction, const CCoinControl *coinControl = NULL);
+    SendCoinsReturn prepareTransaction(WalletModelTransaction &transaction, const CCoinControl *coinControl = NULL,bool fAssets=false,const QString& assetsName="");
+
+    // Send assets to a list of recipients
+    SendCoinsReturn sendAssets(WalletModelTransaction &transaction);
 
     // Send coins to a list of recipients
     SendCoinsReturn sendCoins(WalletModelTransaction &transaction);
@@ -199,10 +251,10 @@ public:
     bool isSpent(const COutPoint& outpoint) const;
     void listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const;
 
-    bool isLockedCoin(uint256 hash, unsigned int n) const;
-    void lockCoin(COutPoint& output);
-    void unlockCoin(COutPoint& output);
-    void listLockedCoins(std::vector<COutPoint>& vOutpts);
+    bool isFrozenCoin(uint256 hash, unsigned int n) const;
+    void freezeCoin(COutPoint& output);
+    void unfreezeCoin(COutPoint& output);
+    void listFrozenCoins(std::vector<COutPoint>& vOutpts);
 
     void loadReceiveRequests(std::vector<std::string>& vReceiveRequests);
     bool saveReceiveRequest(const std::string &sAddress, const int64_t nId, const std::string &sRequest);
@@ -221,22 +273,34 @@ private:
     // (transaction fee, for example)
     OptionsModel *optionsModel;
 
+    //assets name
+    QMap<QString,AssetsDisplayInfo> assetsNamesInfo;
+
     AddressTableModel *addressTableModel;
     TransactionTableModel *transactionTableModel;
+    TransactionTableModel *lockedTransactionTableModel;
+    TransactionTableModel *candyTableModel;
+    TransactionTableModel *assetsDistributeTableModel;
+    TransactionTableModel *applicationsRegistTableModel;
     RecentRequestsTableModel *recentRequestsTableModel;
 
     // Cache some values to be able to detect changes
     CAmount cachedBalance;
     CAmount cachedUnconfirmedBalance;
     CAmount cachedImmatureBalance;
+    CAmount cachedLockedBalance;
     CAmount cachedAnonymizedBalance;
     CAmount cachedWatchOnlyBalance;
     CAmount cachedWatchUnconfBalance;
     CAmount cachedWatchImmatureBalance;
+    CAmount cachedWatchLockedBalance;
     EncryptionStatus cachedEncryptionStatus;
     int cachedNumBlocks;
     int cachedTxLocks;
     int cachedPrivateSendRounds;
+    QThread* updateConfirmThread;
+    UpdateConfirmWorker* updateConfirmWorker;
+
 
     QTimer *pollTimer;
 
@@ -246,8 +310,8 @@ private:
 
 Q_SIGNALS:
     // Signal that balance in wallet changed
-    void balanceChanged(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& anonymizedBalance,
-                        const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
+    void balanceChanged(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& lockedBalance, const CAmount& anonymizedBalance,
+                        const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance);
 
     // Encryption status of wallet changed
     void encryptionStatusChanged(int status);
@@ -269,6 +333,8 @@ Q_SIGNALS:
     // Watch-only address added
     void notifyWatchonlyChanged(bool fHaveWatchonly);
 
+    void updateConfirm();
+
 public Q_SLOTS:
     /* Wallet status might have changed */
     void updateStatus();
@@ -280,6 +346,39 @@ public Q_SLOTS:
     void updateWatchOnlyFlag(bool fHaveWatchonly);
     /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
     void pollBalanceChanged();
+    void updateBalanceChanged();
+};
+
+class EncryptWorker: public QObject {
+    Q_OBJECT
+public:
+    EncryptWorker(QObject* parent, WalletModel *m, const SecureString &ph) {model = m; passphrase = ph;}
+
+Q_SIGNALS:
+    void resultReady(const bool result);
+    void updateChange();
+
+public Q_SLOTS:
+    void doEncrypt();
+
+private:
+    WalletModel *model;
+    SecureString passphrase;
+};
+
+class UpdateConfirmWorker: public QObject {
+    Q_OBJECT
+public:
+    UpdateConfirmWorker(WalletModel *m) {model = m; }
+
+Q_SIGNALS:
+    void updateChange();
+
+public Q_SLOTS:
+    void updateConfirmChanged();
+
+private:
+    WalletModel *model;
 };
 
 #endif // BITCOIN_QT_WALLETMODEL_H

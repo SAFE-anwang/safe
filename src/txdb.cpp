@@ -11,6 +11,8 @@
 #include "validation.h"
 #include "pow.h"
 #include "uint256.h"
+#include "main.h"
+#include "app/app.h"
 
 #include <stdint.h>
 
@@ -32,8 +34,20 @@ static const char DB_FLAG = 'F';
 static const char DB_REINDEX_FLAG = 'R';
 static const char DB_LAST_BLOCK = 'l';
 
+static const string DB_APPID_APPINFO_INDEX = "appid_appinfo";
+static const string DB_APPNAME_APPID_INDEX = "appname_appid";
+static const string DB_APPTX_INDEX = "apptx";
+static const string DB_AUTH_INDEX = "auth";
+static const string DB_ASSETID_ASSETINFO_INDEX = "assetid_assetinfo";
+static const string DB_SHORTNAME_ASSETID_INDEX = "shortname_assetid";
+static const string DB_ASSETNAME_ASSETID_INDEX = "assetname_assetid";
+static const string DB_ASSETTX_INDEX = "assettx";
+static const string DB_PUTCANDY_INDEX = "putcandy";
+static const string DB_GETCANDY_INDEX = "getcandy";
+static const string DB_CANDYHEIGHT_TOTALAMOUNT_INDEX = "candyheight_totalamount";
+static const string DB_CANDYHEIGHT_INDEX = "candyheight";
 
-CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true) 
+CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {
 }
 
@@ -358,4 +372,702 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
     }
 
     return true;
+}
+
+bool CBlockTreeDB::Write_AppId_AppInfo_Index(const std::vector<std::pair<uint256, CAppId_AppInfo_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<uint256, CAppId_AppInfo_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Write(make_pair(DB_APPID_APPINFO_INDEX, it->first), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_AppId_AppInfo_Index(const std::vector<std::pair<uint256, CAppId_AppInfo_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<uint256, CAppId_AppInfo_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Erase(make_pair(DB_APPID_APPINFO_INDEX, it->first));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_AppId_AppInfo_Index(const uint256& appId, CAppId_AppInfo_IndexValue& appInfo)
+{
+    return Read(make_pair(DB_APPID_APPINFO_INDEX, appId), appInfo);
+}
+
+bool CBlockTreeDB::Read_AppList_Index(std::vector<uint256>& vAppId)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_APPID_APPINFO_INDEX, uint256()));
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, uint256> key;
+        if (pcursor->GetKey(key) && key.first == DB_APPID_APPINFO_INDEX)
+        {
+            vAppId.push_back(key.second);
+            pcursor->Next();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return vAppId.size();
+}
+
+bool CBlockTreeDB::Write_AppName_AppId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Write(make_pair(DB_APPNAME_APPID_INDEX, ToLower(it->first)), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_AppName_AppId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Erase(make_pair(DB_APPNAME_APPID_INDEX, ToLower(it->first)));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_AppName_AppId_Index(const std::string& strAppName, CName_Id_IndexValue& value)
+{
+    return Read(make_pair(DB_APPNAME_APPID_INDEX, ToLower(strAppName)), value);
+}
+
+bool CBlockTreeDB::Write_AppTx_Index(const std::vector<std::pair<CAppTx_IndexKey, int> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for(std::vector<std::pair<CAppTx_IndexKey, int> >::const_iterator it = vect.begin(); it != vect.end(); it++)
+        batch.Write(make_pair(DB_APPTX_INDEX, it->first), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_AppTx_Index(const std::vector<std::pair<CAppTx_IndexKey, int> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for(std::vector<std::pair<CAppTx_IndexKey, int> >::const_iterator it = vect.begin(); it != vect.end(); it++)
+        batch.Erase(make_pair(DB_APPTX_INDEX, it->first));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_AppTx_Index(const uint256& appId, std::vector<COutPoint>& vOut)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_APPTX_INDEX, CIterator_IdKey(appId)));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CAppTx_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_APPTX_INDEX && key.second.appId == appId)
+        {
+            vOut.push_back(key.second.out);
+            pcursor->Next();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return vOut.size();
+}
+
+bool CBlockTreeDB::Read_AppTx_Index(const uint256& appId, const std::string& strAddress, std::vector<COutPoint>& vOut)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_APPTX_INDEX, CIterator_IdAddressKey(appId, strAddress)));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CAppTx_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_APPTX_INDEX && key.second.appId == appId && key.second.strAddress == strAddress)
+        {
+            vOut.push_back(key.second.out);
+            pcursor->Next();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return vOut.size();
+}
+
+bool CBlockTreeDB::Read_AppList_Index(const std::string& strAddress, std::vector<uint256>& vAppId)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_APPTX_INDEX, CIterator_IdAddressKey()));
+
+    std::map<uint256, char> mapAppId;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CAppTx_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_APPTX_INDEX)
+        {
+            if (key.second.strAddress == strAddress)
+                mapAppId[key.second.appId] = 1;
+            pcursor->Next();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    for(std::map<uint256, char>::const_iterator it = mapAppId.begin(); it != mapAppId.end(); it++)
+        vAppId.push_back(it->first);
+
+    return vAppId.size();
+}
+
+bool CBlockTreeDB::Update_Auth_Index(const std::vector<std::pair<CAuth_IndexKey, int> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for(std::vector<std::pair<CAuth_IndexKey, int> >::const_iterator it = vect.begin(); it != vect.end(); it++)
+    {
+        if(it->second <= 0)
+            batch.Erase(make_pair(DB_AUTH_INDEX, it->first));
+        else
+            batch.Write(make_pair(DB_AUTH_INDEX, it->first), it->second);
+    }
+    return WriteBatch(batch);
+}
+bool CBlockTreeDB::Read_Auth_Index(const uint256& appId, const std::string& strAddress, std::map<uint32_t, int>& mapAuth)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_AUTH_INDEX, CIterator_IdAddressKey(appId, strAddress)));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CAuth_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_AUTH_INDEX && key.second.appId == appId && key.second.strAddress == strAddress)
+        {
+            int nHeight;
+            if(pcursor->GetValue(nHeight))
+            {
+                mapAuth.insert(make_pair(key.second.nAuth, nHeight));
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get auth index value");
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return mapAuth.size();
+}
+
+bool CBlockTreeDB::Write_AssetId_AssetInfo_Index(const std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Write(make_pair(DB_ASSETID_ASSETINFO_INDEX, it->first), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_AssetId_AssetInfo_Index(const std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Erase(make_pair(DB_ASSETID_ASSETINFO_INDEX, it->first));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_AssetId_AssetInfo_Index(const uint256& assetId, CAssetId_AssetInfo_IndexValue& assetInfo)
+{
+    return Read(make_pair(DB_ASSETID_ASSETINFO_INDEX, assetId), assetInfo);
+}
+
+bool CBlockTreeDB::Read_AssetList_Index(std::vector<uint256>& vAssetId)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_ASSETID_ASSETINFO_INDEX, uint256()));
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, uint256> key;
+        if (pcursor->GetKey(key) && key.first == DB_ASSETID_ASSETINFO_INDEX)
+        {
+            vAssetId.push_back(key.second);
+            pcursor->Next();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return vAssetId.size();
+}
+
+bool CBlockTreeDB::Write_ShortName_AssetId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Write(make_pair(DB_SHORTNAME_ASSETID_INDEX, ToLower(it->first)), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_ShortName_AssetId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Erase(make_pair(DB_SHORTNAME_ASSETID_INDEX, ToLower(it->first)));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_ShortName_AssetId_Index(const std::string& strShortName, CName_Id_IndexValue& value)
+{
+    return Read(make_pair(DB_SHORTNAME_ASSETID_INDEX, ToLower(strShortName)), value);
+}
+
+bool CBlockTreeDB::Write_AssetName_AssetId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Write(make_pair(DB_ASSETNAME_ASSETID_INDEX, ToLower(it->first)), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_AssetName_AssetId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Erase(make_pair(DB_ASSETNAME_ASSETID_INDEX, ToLower(it->first)));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_AssetName_AssetId_Index(const std::string& strAssetName, CName_Id_IndexValue& value)
+{
+    return Read(make_pair(DB_ASSETNAME_ASSETID_INDEX, ToLower(strAssetName)), value);
+}
+
+bool CBlockTreeDB::Write_AssetTx_Index(const std::vector<std::pair<CAssetTx_IndexKey, int> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for(std::vector<std::pair<CAssetTx_IndexKey, int> >::const_iterator it = vect.begin(); it != vect.end(); it++)
+        batch.Write(make_pair(DB_ASSETTX_INDEX, it->first), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_AssetTx_Index(const std::vector<std::pair<CAssetTx_IndexKey, int> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for(std::vector<std::pair<CAssetTx_IndexKey, int> >::const_iterator it = vect.begin(); it != vect.end(); it++)
+        batch.Erase(make_pair(DB_ASSETTX_INDEX, it->first));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_AssetTx_Index(const uint256& assetId, const uint8_t& nTxClass, std::vector<COutPoint>& vOut)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_ASSETTX_INDEX, CIterator_IdKey(assetId)));
+
+    multimap<int, COutPoint> tmpMap;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CAssetTx_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_ASSETTX_INDEX && key.second.assetId == assetId)
+        {
+            int nHeight;
+            if(pcursor->GetValue(nHeight))
+            {
+                if(nTxClass == ALL_TXOUT)
+                {
+                    tmpMap.insert(make_pair(nHeight, key.second.out));
+                }
+                else if(nTxClass == UNLOCKED_TXOUT)
+                {
+                    if(key.second.nTxClass != LOCKED_TXOUT)
+                        tmpMap.insert(make_pair(nHeight, key.second.out));
+                }
+                else if(key.second.nTxClass == nTxClass)
+                {
+                     tmpMap.insert(make_pair(nHeight, key.second.out));
+                }
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get asset tx value");
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    for(multimap<int, COutPoint>::iterator iter = tmpMap.begin(); iter != tmpMap.end(); ++iter)
+        vOut.push_back(iter->second);
+
+    multimap<int, COutPoint>().swap(tmpMap);
+
+    return vOut.size();
+}
+
+bool CBlockTreeDB::Read_AssetTx_Index(const uint256& assetId, const std::string& strAddress, const uint8_t& nTxClass, std::vector<COutPoint>& vOut)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_ASSETTX_INDEX, CIterator_IdAddressKey(assetId, strAddress)));
+
+    multimap<int, COutPoint> tmpMap;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CAssetTx_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_ASSETTX_INDEX && key.second.assetId == assetId && key.second.strAddress == strAddress)
+        {
+            int nHeight;
+            if(pcursor->GetValue(nHeight))
+            {
+                if(nTxClass == ALL_TXOUT)
+                {
+                    tmpMap.insert(make_pair(nHeight, key.second.out));
+                }
+                else if(nTxClass == UNLOCKED_TXOUT)
+                {
+                    if(key.second.nTxClass != LOCKED_TXOUT)
+                        tmpMap.insert(make_pair(nHeight, key.second.out));
+                }
+                else if(key.second.nTxClass == nTxClass)
+                {
+                     tmpMap.insert(make_pair(nHeight, key.second.out));
+                }
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get asset tx value");
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    for(multimap<int, COutPoint>::iterator iter = tmpMap.begin();iter != tmpMap.end();++iter)
+        vOut.push_back(iter->second);
+
+    multimap<int, COutPoint>().swap(tmpMap);
+
+    return vOut.size();
+}
+
+bool CBlockTreeDB::Read_AssetList_Index(const std::string& strAddress, std::vector<uint256>& vAssetId)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_ASSETTX_INDEX, CIterator_IdAddressKey()));
+
+    std::map<uint256, char> mapAssetId;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CAssetTx_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_ASSETTX_INDEX)
+        {
+            if (key.second.strAddress == strAddress)
+                mapAssetId[key.second.assetId] = 1;
+            pcursor->Next();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    for(std::map<uint256, char>::iterator it = mapAssetId.begin(); it != mapAssetId.end(); it++)
+        vAssetId.push_back(it->first);
+
+    return vAssetId.size();
+}
+
+bool CBlockTreeDB::Write_PutCandy_Index(const std::vector<std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for(std::vector<std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue> >::const_iterator it = vect.begin(); it != vect.end(); it++)
+        batch.Write(make_pair(DB_PUTCANDY_INDEX, it->first), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_PutCandy_Index(const std::vector<std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for(std::vector<std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue> >::const_iterator it = vect.begin(); it != vect.end(); it++)
+        batch.Erase(make_pair(DB_PUTCANDY_INDEX, it->first));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_PutCandy_Index(const uint256& assetId, std::map<COutPoint, CCandyInfo>& mapCandyInfo)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_PUTCANDY_INDEX, CIterator_IdKey(assetId)));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CPutCandy_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_PUTCANDY_INDEX && key.second.assetId == assetId)
+        {
+            mapCandyInfo[key.second.out] = key.second.candyInfo;
+            pcursor->Next();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return mapCandyInfo.size();
+}
+
+bool CBlockTreeDB::Read_PutCandy_Index(const uint256& assetId, const COutPoint& out, CCandyInfo& candyInfo)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_PUTCANDY_INDEX, CIterator_IdOutKey(assetId, out)));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CPutCandy_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_PUTCANDY_INDEX && key.second.assetId == assetId && key.second.out == out)
+        {
+            candyInfo = key.second.candyInfo;
+            return true;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return false;
+}
+
+bool CBlockTreeDB::Read_PutCandy_Index(std::map<CPutCandy_IndexKey, CPutCandy_IndexValue>& mapCandy)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_PUTCANDY_INDEX, CIterator_IdKey()));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CPutCandy_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_PUTCANDY_INDEX)
+        {
+            CPutCandy_IndexValue value;
+            if(pcursor->GetValue(value))
+            {
+                mapCandy.insert(make_pair(key.second, value));
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get putcandy index value");
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return mapCandy.size();
+}
+
+bool CBlockTreeDB::Write_GetCandy_Index(const std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> >& vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for(std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> >::const_iterator it = vect.begin(); it != vect.end(); it++)
+        batch.Write(make_pair(DB_GETCANDY_INDEX, it->first), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_GetCandy_Index(const std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> >& vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for(std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> >::const_iterator it = vect.begin(); it != vect.end(); it++)
+        batch.Erase(make_pair(DB_GETCANDY_INDEX, it->first));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_GetCandy_Index(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& nAmount)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_GETCANDY_INDEX, CGetCandy_IndexKey(assetId, out, strAddress)));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CGetCandy_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_GETCANDY_INDEX && key.second.assetId == assetId && key.second.out == out && key.second.strAddress == strAddress)
+        {
+            CGetCandy_IndexValue value;
+            if(pcursor->GetValue(value))
+            {
+                nAmount = value.nAmount;
+                return true;
+            }
+            else
+            {
+                return error("failed to get getcandy index value");
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return false;
+}
+
+bool CBlockTreeDB::Read_GetCandy_Index(const uint256& assetId, std::map<COutPoint, std::vector<std::string> > &mapOutAddress)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_GETCANDY_INDEX, CIterator_IdKey(assetId)));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CGetCandy_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_GETCANDY_INDEX && key.second.assetId == assetId)
+        {
+            if (mapOutAddress.end() == mapOutAddress.find(key.second.out))
+            {
+                std::vector<std::string> vAddress;
+                vAddress.push_back(key.second.strAddress);
+                mapOutAddress[key.second.out] = vAddress;
+            }
+            else
+            {
+                if (mapOutAddress[key.second.out].end() == find(mapOutAddress[key.second.out].begin(), mapOutAddress[key.second.out].end(), key.second.strAddress))
+                    mapOutAddress[key.second.out].push_back(key.second.strAddress);
+            }
+            pcursor->Next();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return mapOutAddress.size();
+}
+
+bool CBlockTreeDB::Read_GetCandy_Index(const uint256& assetId, const std::string& straddress, std::vector<COutPoint>& vOut)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_GETCANDY_INDEX, CIterator_IdKey(assetId)));
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CGetCandy_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_GETCANDY_INDEX && key.second.assetId == assetId)
+        {
+            if (key.second.strAddress == straddress)
+                vOut.push_back(key.second.out);
+            pcursor->Next();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return vOut.size();
+}
+
+bool CBlockTreeDB::Write_CandyHeight_TotalAmount_Index(const int& nHeight, const CAmount& nAmount)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Write(make_pair(DB_CANDYHEIGHT_TOTALAMOUNT_INDEX, nHeight), nAmount);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_CandyHeight_TotalAmount_Index(const int& nHeight, CAmount& nAmount)
+{
+    return Read(make_pair(DB_CANDYHEIGHT_TOTALAMOUNT_INDEX, nHeight), nAmount);
+}
+
+bool CBlockTreeDB::Read_CandyHeight_TotalAmount_Index(std::vector<int>& vHeight)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_CANDYHEIGHT_TOTALAMOUNT_INDEX, CHeight_IndexKey()));
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, int> key;
+        if (pcursor->GetKey(key) && key.first == DB_CANDYHEIGHT_TOTALAMOUNT_INDEX)
+        {
+            vHeight.push_back(key.second);
+            pcursor->Next();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return vHeight.size();
+}
+
+bool CBlockTreeDB::Write_CandyHeight_Index(const int& nHeight)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Write(make_pair(DB_CANDYHEIGHT_INDEX, nHeight), 0);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_CandyHeight_Index(std::vector<int> &vHeight)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_CANDYHEIGHT_INDEX, CHeight_IndexKey()));
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, int> key;
+        if (pcursor->GetKey(key) && key.first == DB_CANDYHEIGHT_INDEX)
+        {
+            vHeight.push_back(key.second);
+            pcursor->Next();
+        }
+        else
+            break;
+    }
+
+    return vHeight.size();
 }

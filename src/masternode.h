@@ -150,7 +150,8 @@ public:
     enum CollateralStatus {
         COLLATERAL_OK,
         COLLATERAL_UTXO_NOT_FOUND,
-        COLLATERAL_INVALID_AMOUNT
+        COLLATERAL_INVALID_AMOUNT,
+        COLLATERAL_INVALID_LOCKED_MONTH
     };
 
 

@@ -12,6 +12,7 @@
 #include "masternodeman.h"
 #include "messagesigner.h"
 #include "util.h"
+#include "main.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -129,9 +130,17 @@ CMasternode::CollateralStatus CMasternode::CheckCollateral(const COutPoint& outp
         return COLLATERAL_UTXO_NOT_FOUND;
     }
 
+    const CTxOut& in_txout = coins.vout[outpoint.n];
+    if(!in_txout.IsSafeOnly()) {
+        return COLLATERAL_UTXO_NOT_FOUND;
+    }
+
     if(coins.vout[outpoint.n].nValue != 1000 * COIN) {
         return COLLATERAL_INVALID_AMOUNT;
     }
+
+    if(GetLockedMonth(outpoint.hash, in_txout) < MIN_MN_LOCKED_MONTH)
+        return COLLATERAL_INVALID_LOCKED_MONTH;
 
     nHeightRet = coins.nHeight;
     return COLLATERAL_OK;
@@ -265,7 +274,7 @@ bool CMasternode::IsInputAssociatedWithPubkey()
     uint256 hash;
     if(GetTransaction(vin.prevout.hash, tx, Params().GetConsensus(), hash, true)) {
         BOOST_FOREACH(CTxOut out, tx.vout)
-            if(out.nValue == 1000*COIN && out.scriptPubKey == payee) return true;
+            if(out.nValue == 1000*COIN && GetLockedMonth(tx.GetHash(), out) >= MIN_MN_LOCKED_MONTH && out.scriptPubKey == payee) return true;
     }
 
     return false;
@@ -572,6 +581,11 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
 
         if (err == COLLATERAL_INVALID_AMOUNT) {
             LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO should have 1000 SAFE, masternode=%s\n", vin.prevout.ToStringShort());
+            return false;
+        }
+
+        if (err == COLLATERAL_INVALID_LOCKED_MONTH) {
+            LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO should be locked 6 months at least, masternode=%s\n", vin.prevout.ToStringShort());
             return false;
         }
 

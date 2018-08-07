@@ -12,6 +12,7 @@
 
 #include <QDataWidgetMapper>
 #include <QMessageBox>
+#include <QPushButton>
 
 EditAddressDialog::EditAddressDialog(Mode mode, QWidget *parent) :
     QDialog(parent),
@@ -44,6 +45,8 @@ EditAddressDialog::EditAddressDialog(Mode mode, QWidget *parent) :
 
     mapper = new QDataWidgetMapper(this);
     mapper->setSubmitPolicy(QDataWidgetMapper::ManualSubmit);
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Ok"));
+    ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("Cancel"));
 }
 
 EditAddressDialog::~EditAddressDialog()
@@ -110,22 +113,22 @@ void EditAddressDialog::accept()
         case AddressTableModel::INVALID_ADDRESS:
             QMessageBox::warning(this, windowTitle(),
                 tr("The entered address \"%1\" is not a valid Safe address.").arg(ui->addressEdit->text()),
-                QMessageBox::Ok, QMessageBox::Ok);
+                tr("Ok"));
             break;
         case AddressTableModel::DUPLICATE_ADDRESS:
             QMessageBox::warning(this, windowTitle(),
                 tr("The entered address \"%1\" is already in the address book.").arg(ui->addressEdit->text()),
-                QMessageBox::Ok, QMessageBox::Ok);
+                tr("Ok"));
             break;
         case AddressTableModel::WALLET_UNLOCK_FAILURE:
             QMessageBox::critical(this, windowTitle(),
                 tr("Could not unlock wallet."),
-                QMessageBox::Ok, QMessageBox::Ok);
+                tr("Ok"));
             break;
         case AddressTableModel::KEY_GENERATION_FAILURE:
             QMessageBox::critical(this, windowTitle(),
                 tr("New key generation failed."),
-                QMessageBox::Ok, QMessageBox::Ok);
+                tr("Ok"));
             break;
 
         }

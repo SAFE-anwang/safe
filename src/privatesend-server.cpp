@@ -196,7 +196,9 @@ void CPrivateSendServer::ProcessMessage(CNode* pfrom, std::string& strCommand, C
 
                 CCoins coins;
                 if(GetUTXOCoins(txin.prevout, coins)) {
-                    nValueIn += coins.vout[txin.prevout.n].nValue;
+                    const CTxOut& in_txout = coins.vout[txin.prevout.n];
+                    if(in_txout.IsSafeOnly() || in_txout.IsApp())
+                        nValueIn += in_txout.nValue;
                 } else {
                     LogPrintf("DSVIN -- missing input! tx=%s", tx.ToString());
                     PushStatus(pfrom, STATUS_REJECTED, ERR_MISSING_TX, connman);

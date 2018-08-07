@@ -577,9 +577,9 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
             UniValue o(UniValue::VOBJ);
             ScriptPubKeyToJSON(coin.out.scriptPubKey, o, true);
             utxo.push_back(Pair("scriptPubKey", o));
-            if(coin.nTxVer >= SAFE_TX_VERSION)
+            if(coin.nTxVer >= SAFE_TX_VERSION_1)
             {
-                utxo.push_back(Pair("unlockHeight", coin.out.nUnlockHeight));
+                utxo.push_back(Pair("unlockedHeight", coin.out.nUnlockedHeight));
                 utxo.push_back(Pair("reserve", HexStr(coin.out.vReserve)));
             }
             utxos.push_back(utxo);

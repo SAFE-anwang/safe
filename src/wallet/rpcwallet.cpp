@@ -21,6 +21,8 @@
 #include "wallet.h"
 #include "walletdb.h"
 #include "keepass.h"
+#include "main.h"
+#include "masternode-sync.h"
 
 #include <stdint.h>
 
@@ -155,6 +157,7 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
 
 CBitcoinAddress GetAccountAddress(string strAccount, bool bForceNew=false)
 {
+    LOCK(pwalletMain->cs_wallet);
     CWalletDB walletdb(pwalletMain->strWalletFile);
 
     CAccount account;
@@ -395,7 +398,7 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
     std::string strError;
     vector<CRecipient> vecSend;
     int nChangePosRet = -1;
-    CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount};
+    CRecipient recipient = {scriptPubKey, nValue, 0, fSubtractFeeFromAmount};
     vecSend.push_back(recipient);
     if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet,
                                          strError, NULL, true, fUsePrivateSend ? ONLY_DENOMINATED : ALL_COINS, fUseInstantSend)) {
@@ -439,6 +442,9 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    if(!masternodeSync.IsBlockchainSynced())
+        throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
     CBitcoinAddress address(params[0].get_str());
     if (!address.IsValid())
@@ -486,7 +492,7 @@ UniValue instantsendtoaddress(const UniValue& params, bool fHelp)
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
             "1. \"safeaddress\"  (string, required) The safe address to send to.\n"
-            "2. \"amount\"      (numeric, required) The amount in btc to send. eg 0.1\n"
+            "2. \"amount\"      (numeric, required) The amount in safe to send. eg 0.1\n"
             "3. \"comment\"     (string, optional) A comment used to store what the transaction is for. \n"
             "                             This is not part of the transaction, just kept in your wallet.\n"
             "4. \"comment-to\"  (string, optional) A comment to store the name of the person or organization \n"
@@ -758,10 +764,11 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
 }
 
 
-CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminefilter& filter, bool fAddLockConf)
+CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminefilter& filter, bool fAddLockConf,bool fSleep=false)
 {
     CAmount nBalance = 0;
 
+    int count = 0;
     // Tally wallet transactions
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
     {
@@ -775,6 +782,11 @@ CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMi
         if (nReceived != 0 && wtx.GetDepthInMainChain(fAddLockConf) >= nMinDepth)
             nBalance += nReceived;
         nBalance -= nSent + nFee;
+        if(fSleep&&count++>=100)
+        {
+            MilliSleep(60);
+            count = 0;
+        }
     }
 
     // Tally internal accounting entries
@@ -783,10 +795,11 @@ CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMi
     return nBalance;
 }
 
-CAmount GetAccountBalance(const string& strAccount, int nMinDepth, const isminefilter& filter, bool fAddLockConf)
+CAmount GetAccountBalance(const string& strAccount, int nMinDepth, const isminefilter& filter, bool fAddLockConf,bool fSleep=false)
 {
+    LOCK(pwalletMain->cs_wallet);
     CWalletDB walletdb(pwalletMain->strWalletFile);
-    return GetAccountBalance(walletdb, strAccount, nMinDepth, filter, fAddLockConf);
+    return GetAccountBalance(walletdb, strAccount, nMinDepth, filter, fAddLockConf,fSleep);
 }
 
 
@@ -990,6 +1003,9 @@ UniValue sendfrom(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
+    if(!masternodeSync.IsBlockchainSynced())
+        throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
     string strAccount = AccountFromValue(params[0]);
     CBitcoinAddress address(params[1].get_str());
     if (!address.IsValid())
@@ -1066,6 +1082,9 @@ UniValue sendmany(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
+    if(!masternodeSync.IsBlockchainSynced())
+        throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
@@ -1113,14 +1132,14 @@ UniValue sendmany(const UniValue& params, bool fHelp)
                 fSubtractFeeFromAmount = true;
         }
 
-        CRecipient recipient = {scriptPubKey, nAmount, fSubtractFeeFromAmount};
+        CRecipient recipient = {scriptPubKey, nAmount, 0, fSubtractFeeFromAmount};
         vecSend.push_back(recipient);
     }
 
     EnsureWalletIsUnlocked();
 
     // Check funds
-    CAmount nBalance = GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE, fAddLockConf);
+    CAmount nBalance = GetAccountBalance(strAccount, nMinDepth, ISMINE_SPENDABLE, fAddLockConf,true);
     if (totalAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
@@ -2214,22 +2233,22 @@ UniValue encryptwallet(const UniValue& params, bool fHelp)
     return "Wallet encrypted; Safe Core server stopping, restart to run with encrypted wallet. The keypool has been flushed and a new HD seed was generated (if you are using HD). You need to make a new backup.";
 }
 
-UniValue lockunspent(const UniValue& params, bool fHelp)
+UniValue freezeunspent(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "lockunspent unlock [{\"txid\":\"txid\",\"vout\":n},...]\n"
+            "freezeunspent unfreeze [{\"txid\":\"txid\",\"vout\":n},...]\n"
             "\nUpdates list of temporarily unspendable outputs.\n"
-            "Temporarily lock (unlock=false) or unlock (unlock=true) specified transaction outputs.\n"
-            "A locked transaction output will not be chosen by automatic coin selection, when spending safes.\n"
-            "Locks are stored in memory only. Nodes start with zero locked outputs, and the locked output list\n"
+            "Temporarily freeze (unfreeze=false) or unfreeze (unfreeze=true) specified transaction outputs.\n"
+            "A frozen transaction output will not be chosen by automatic coin selection, when spending safes.\n"
+            "Freezes are stored in memory only. Nodes start with zero frozen outputs, and the frozen output list\n"
             "is always cleared (by virtue of process exit) when a node stops or fails.\n"
             "Also see the listunspent call\n"
             "\nArguments:\n"
-            "1. unlock            (boolean, required) Whether to unlock (true) or lock (false) the specified transactions\n"
+            "1. unfreeze          (boolean, required) Whether to unfreeze (true) or freeze (false) the specified transactions\n"
             "2. \"transactions\"  (string, required) A json array of objects. Each object the txid (string) vout (numeric)\n"
             "     [           (json array of json objects)\n"
             "       {\n"
@@ -2245,14 +2264,14 @@ UniValue lockunspent(const UniValue& params, bool fHelp)
             "\nExamples:\n"
             "\nList the unspent transactions\n"
             + HelpExampleCli("listunspent", "") +
-            "\nLock an unspent transaction\n"
-            + HelpExampleCli("lockunspent", "false \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
-            "\nList the locked transactions\n"
-            + HelpExampleCli("listlockunspent", "") +
-            "\nUnlock the transaction again\n"
-            + HelpExampleCli("lockunspent", "true \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
+            "\nFreeze an unspent transaction\n"
+            + HelpExampleCli("freezeunspent", "false \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
+            "\nList the frozen transactions\n"
+            + HelpExampleCli("listfrozenunspent", "") +
+            "\nUnfreeze the transaction again\n"
+            + HelpExampleCli("freezeunspent", "true \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("lockunspent", "false, \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"")
+            + HelpExampleRpc("freezeunspent", "false, \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -2262,11 +2281,11 @@ UniValue lockunspent(const UniValue& params, bool fHelp)
     else
         RPCTypeCheck(params, boost::assign::list_of(UniValue::VBOOL)(UniValue::VARR));
 
-    bool fUnlock = params[0].get_bool();
+    bool fUnfreeze = params[0].get_bool();
 
     if (params.size() == 1) {
-        if (fUnlock)
-            pwalletMain->UnlockAllCoins();
+        if (fUnfreeze)
+            pwalletMain->UnfreezeAllCoins();
         return true;
     }
 
@@ -2289,29 +2308,29 @@ UniValue lockunspent(const UniValue& params, bool fHelp)
 
         COutPoint outpt(uint256S(txid), nOutput);
 
-        if (fUnlock)
-            pwalletMain->UnlockCoin(outpt);
+        if (fUnfreeze)
+            pwalletMain->UnfreezeCoin(outpt);
         else
-            pwalletMain->LockCoin(outpt);
+            pwalletMain->FreezeCoin(outpt);
     }
 
     return true;
 }
 
-UniValue listlockunspent(const UniValue& params, bool fHelp)
+UniValue listfrozenunspent(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
     if (fHelp || params.size() > 0)
         throw runtime_error(
-            "listlockunspent\n"
+            "listfrozenunspent\n"
             "\nReturns list of temporarily unspendable outputs.\n"
-            "See the lockunspent call to lock and unlock transactions for spending.\n"
+            "See the freezeunspent call to freeze and unfreeze transactions for spending.\n"
             "\nResult:\n"
             "[\n"
             "  {\n"
-            "    \"txid\" : \"transactionid\",     (string) The transaction id locked\n"
+            "    \"txid\" : \"transactionid\",     (string) The transaction id frozen\n"
             "    \"vout\" : n                      (numeric) The vout value\n"
             "  }\n"
             "  ,...\n"
@@ -2319,20 +2338,20 @@ UniValue listlockunspent(const UniValue& params, bool fHelp)
             "\nExamples:\n"
             "\nList the unspent transactions\n"
             + HelpExampleCli("listunspent", "") +
-            "\nLock an unspent transaction\n"
-            + HelpExampleCli("lockunspent", "false \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
-            "\nList the locked transactions\n"
-            + HelpExampleCli("listlockunspent", "") +
-            "\nUnlock the transaction again\n"
-            + HelpExampleCli("lockunspent", "true \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
+            "\nFreeze an unspent transaction\n"
+            + HelpExampleCli("freezeunspent", "false \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
+            "\nList the frozen transactions\n"
+            + HelpExampleCli("listfrozenunspent", "") +
+            "\nUnfreeze the transaction again\n"
+            + HelpExampleCli("freezeunspent", "true \"[{\\\"txid\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"vout\\\":1}]\"") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("listlockunspent", "")
+            + HelpExampleRpc("listfrozenunspent", "")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     vector<COutPoint> vOutpts;
-    pwalletMain->ListLockedCoins(vOutpts);
+    pwalletMain->ListFrozenCoins(vOutpts);
 
     UniValue ret(UniValue::VARR);
 
@@ -2374,6 +2393,88 @@ UniValue settxfee(const UniValue& params, bool fHelp)
     return true;
 }
 
+UniValue getlockedtxinfo(const UniValue & params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() != 2)
+        throw runtime_error(
+            "getlockedtxinfo <txid> <safeaddress>\n"
+            "get locked information of safeaddress from txid.");
+
+    uint256 hash;
+    hash.SetHex(params[0].get_str());
+
+    CBitcoinAddress address(params[1].get_str());
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Safe address");
+    string strAddress = address.ToString();
+
+    bool bExist = false;
+    bool bLocked = false;
+    int nIndex = -1;
+    int64_t nUnlockedHeight = 0;
+    if(pwalletMain->mapWallet.count(hash))
+    {
+        const CWalletTx& wtx = pwalletMain->mapWallet[hash];
+        int i = -1;
+        BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+        {
+            i++;
+            CTxDestination addr;
+            if(!ExtractDestination(txout.scriptPubKey, addr))
+                continue;
+            if(strAddress.compare(CBitcoinAddress(addr).ToString()) != 0)
+                continue;
+            bExist = true;
+            nIndex = i;
+            if(IsLockedTxOut(hash, txout))
+            {
+                bLocked = true;
+                nUnlockedHeight = txout.nUnlockedHeight;
+                break;
+            }
+        }
+    }
+    else
+    {
+        CTransaction tx;
+        uint256 hashBlock = uint256();
+        if(GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
+        {
+            int i = -1;
+            BOOST_FOREACH(const CTxOut& txout, tx.vout)
+            {
+                i++;
+                CTxDestination addr;
+                if(!ExtractDestination(txout.scriptPubKey, addr))
+                    continue;
+                if(strAddress.compare(CBitcoinAddress(addr).ToString()) != 0)
+                    continue;
+                bExist = true;
+                nIndex = i;
+                if(IsLockedTxOut(hash, txout))
+                {
+                    bLocked = true;
+                    nUnlockedHeight = txout.nUnlockedHeight;
+                    break;
+                }
+            }
+        }
+    }
+
+    UniValue result(UniValue::VOBJ);
+    result.push_back(Pair("txid", hash.GetHex()));
+    result.push_back(Pair("address", strAddress));
+    result.push_back(Pair("exist", bExist ? 1 : 0));
+    result.push_back(Pair("n", nIndex));
+    result.push_back(Pair("locked", bLocked ? 1 : 0));
+    result.push_back(Pair("unlockedHeight", nUnlockedHeight));
+
+    return result;
+}
+
 UniValue getwalletinfo(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
@@ -2389,6 +2490,7 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
             "  \"balance\": xxxxxxx,         (numeric) the total confirmed balance of the wallet in " + CURRENCY_UNIT + "\n"
             "  \"unconfirmed_balance\": xxx, (numeric) the total unconfirmed balance of the wallet in " + CURRENCY_UNIT + "\n"
             "  \"immature_balance\": xxxxxx, (numeric) the total immature balance of the wallet in " + CURRENCY_UNIT + "\n"
+            "  \"locked_balance\": xxxxxx,   (numeric) the total locked balance of the wallet in " + CURRENCY_UNIT + "\n"
             "  \"txcount\": xxxxxxx,         (numeric) the total number of transactions in the wallet\n"
             "  \"keypoololdest\": xxxxxx,    (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool\n"
             "  \"keypoolsize\": xxxx,        (numeric) how many new keys are pre-generated (only counts external keys)\n"
@@ -2421,6 +2523,7 @@ UniValue getwalletinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
     obj.push_back(Pair("unconfirmed_balance", ValueFromAmount(pwalletMain->GetUnconfirmedBalance())));
     obj.push_back(Pair("immature_balance",    ValueFromAmount(pwalletMain->GetImmatureBalance())));
+    obj.push_back(Pair("locked_balance", ValueFromAmount(pwalletMain->GetLockedBalance())));
     obj.push_back(Pair("txcount",       (int)pwalletMain->mapWallet.size()));
     obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize",   (int64_t)pwalletMain->KeypoolCountExternalKeys()));

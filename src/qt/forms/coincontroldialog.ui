@@ -340,7 +340,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="pushButtonToggleLock">
+         <widget class="QPushButton" name="pushButtonToggleFreeze">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -348,7 +348,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>toggle lock state</string>
+           <string>toggle freeze state</string>
           </property>
           <property name="autoDefault">
            <bool>false</bool>
@@ -385,9 +385,9 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="labelLocked">
+         <widget class="QLabel" name="labelFrozen">
           <property name="text">
-           <string>(1 locked)</string>
+           <string>(1 frozen)</string>
           </property>
          </widget>
         </item>

@@ -17,6 +17,9 @@
 #include "utilmoneystr.h"
 #include "utiltime.h"
 #include "version.h"
+#include "base58.h"
+#include "main.h"
+#include "app/app.h"
 
 using namespace std;
 
@@ -280,7 +283,7 @@ void CTxMemPool::UpdateForRemoveFromMempool(const setEntries &entriesToRemove)
         // should be a bit faster.
         // However, if we happen to be in the middle of processing a reorg, then
         // the mempool can be in an inconsistent state.  In this case, the set
-        // of ancestors reachable via mapLinks will be the same as the set of 
+        // of ancestors reachable via mapLinks will be the same as the set of
         // ancestors whose packages include this transaction, because when we
         // add a new transaction to the mempool in addUnchecked(), we assume it
         // has no children, and in the case of a reorg where that assumption is
@@ -369,7 +372,7 @@ void CTxMemPool::AddTransactionsUpdated(unsigned int n)
     nTransactionsUpdated += n;
 }
 
-bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, setEntries &setAncestors, bool fCurrentEstimate)
+bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, const CCoinsViewCache &view, setEntries &setAncestors, bool fCurrentEstimate)
 {
     // Add to memory pool without checking anything.
     // Used by main.cpp AcceptToMemoryPool(), which DOES do
@@ -397,8 +400,25 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
     const CTransaction& tx = newit->GetTx();
     std::set<uint256> setParentTransactions;
     for (unsigned int i = 0; i < tx.vin.size(); i++) {
-        mapNextTx[tx.vin[i].prevout] = CInPoint(&tx, i);
-        setParentTransactions.insert(tx.vin[i].prevout.hash);
+        const CTxIn& txin = tx.vin[i];
+        CCoins coins;
+        if(view.GetCoins(txin.prevout.hash, coins))
+        {
+            const CTxOut& in_txout = coins.vout[txin.prevout.n];
+            uint32_t nAppCmd = 0;
+            if(in_txout.IsAsset(&nAppCmd) && nAppCmd == PUT_CANDY_CMD && txin.scriptSig.empty())
+            {
+                CTxDestination dest;
+                if(ExtractDestination(in_txout.scriptPubKey, dest))
+                {
+                    CBitcoinAddress address(dest);
+                    if(address.IsValid() && address.ToString() == g_strPutCandyAddress)
+                        continue;
+                }
+            }
+        }
+        mapNextTx[txin.prevout] = CInPoint(&tx, i);
+        setParentTransactions.insert(txin.prevout.hash);
     }
     // Don't bother worrying about child transactions of this one.
     // Normal case of a new transaction arriving is that there can't be any
@@ -433,6 +453,8 @@ void CTxMemPool::addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewC
     for (unsigned int j = 0; j < tx.vin.size(); j++) {
         const CTxIn input = tx.vin[j];
         const CTxOut &prevout = view.GetOutputFor(input);
+        if(prevout.IsAsset())
+            continue;
         if (prevout.scriptPubKey.IsPayToScriptHash()) {
             vector<unsigned char> hashBytes(prevout.scriptPubKey.begin()+2, prevout.scriptPubKey.begin()+22);
             CMempoolAddressDeltaKey key(2, uint160(hashBytes), txhash, j, 1);
@@ -445,11 +467,19 @@ void CTxMemPool::addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewC
             CMempoolAddressDelta delta(entry.GetTime(), prevout.nValue * -1, input.prevout.hash, input.prevout.n);
             mapAddress.insert(make_pair(key, delta));
             inserted.push_back(key);
+        } else if (prevout.scriptPubKey.IsPayToPublicKey()) {
+            uint160 hashBytes(Hash160(prevout.scriptPubKey.begin()+1, prevout.scriptPubKey.end()-1));
+            CMempoolAddressDeltaKey key(1, hashBytes, txhash, j, 1);
+            CMempoolAddressDelta delta(entry.GetTime(), prevout.nValue * -1, input.prevout.hash, input.prevout.n);
+            mapAddress.insert(make_pair(key, delta));
+            inserted.push_back(key);
         }
     }
 
     for (unsigned int k = 0; k < tx.vout.size(); k++) {
         const CTxOut &out = tx.vout[k];
+        if(out.IsAsset())
+            continue;
         if (out.scriptPubKey.IsPayToScriptHash()) {
             vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.begin()+22);
             CMempoolAddressDeltaKey key(2, uint160(hashBytes), txhash, k, 0);
@@ -457,8 +487,12 @@ void CTxMemPool::addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewC
             inserted.push_back(key);
         } else if (out.scriptPubKey.IsPayToPublicKeyHash()) {
             vector<unsigned char> hashBytes(out.scriptPubKey.begin()+3, out.scriptPubKey.begin()+23);
-            std::pair<addressDeltaMap::iterator,bool> ret;
             CMempoolAddressDeltaKey key(1, uint160(hashBytes), txhash, k, 0);
+            mapAddress.insert(make_pair(key, CMempoolAddressDelta(entry.GetTime(), out.nValue)));
+            inserted.push_back(key);
+        } else if (out.scriptPubKey.IsPayToPublicKey()) {
+            uint160 hashBytes(Hash160(out.scriptPubKey.begin()+1, out.scriptPubKey.end()-1));
+            CMempoolAddressDeltaKey key(1, hashBytes, txhash, k, 0);
             mapAddress.insert(make_pair(key, CMempoolAddressDelta(entry.GetTime(), out.nValue)));
             inserted.push_back(key);
         }
@@ -517,6 +551,9 @@ void CTxMemPool::addSpentIndex(const CTxMemPoolEntry &entry, const CCoinsViewCac
         } else if (prevout.scriptPubKey.IsPayToPublicKeyHash()) {
             addressHash = uint160(vector<unsigned char> (prevout.scriptPubKey.begin()+3, prevout.scriptPubKey.begin()+23));
             addressType = 1;
+        } else if (prevout.scriptPubKey.IsPayToPublicKey()) {
+            addressHash = Hash160(prevout.scriptPubKey.begin()+1, prevout.scriptPubKey.end()-1);
+            addressType = 1;
         } else {
             addressHash.SetNull();
             addressType = 0;
@@ -562,6 +599,715 @@ bool CTxMemPool::removeSpentIndex(const uint256 txhash)
     return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+void CTxMemPool::addAppInfoIndex(const CTxMemPoolEntry& entry, const CCoinsViewCache& view)
+{
+    LOCK(cs);
+    const CTransaction& tx = entry.GetTx();
+    std::vector<uint256> appId_inserted;
+    std::vector<std::string> appName_inserted;
+
+    uint256 txhash = tx.GetHash();
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CAppHeader header;
+        std::vector<unsigned char> vData;
+        if(ParseReserve(txout.vReserve, header, vData))
+        {
+            CTxDestination dest;
+            if(!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+
+            if(header.nAppCmd == REGISTER_APP_CMD)
+            {
+                CAppData appData;
+                if(ParseRegisterData(vData, appData))
+                {
+                    mapAppId_AppInfo.insert(make_pair(header.appId, CAppId_AppInfo_IndexValue(CBitcoinAddress(dest).ToString(), appData)));
+                    appId_inserted.push_back(header.appId);
+
+                    mapAppName_AppId.insert(make_pair(ToLower(appData.strAppName), CName_Id_IndexValue(header.appId)));
+                    appName_inserted.push_back(ToLower(appData.strAppName));
+                }
+            }
+        }
+    }
+
+    mapAppId_AppInfo_Inserted.insert(make_pair(txhash, appId_inserted));
+    mapAppName_AppId_Inserted.insert(make_pair(txhash, appName_inserted));
+}
+
+bool CTxMemPool::getAppInfoByAppId(const uint256& appId, CAppId_AppInfo_IndexValue& appInfo)
+{
+    LOCK(cs);
+    mapAppId_AppInfo_Index::iterator it = mapAppId_AppInfo.find(appId);
+    if(it == mapAppId_AppInfo.end())
+        return false;
+
+    appInfo = it->second;
+    return true;
+}
+
+bool CTxMemPool::getAppIdByAppName(const std::string& strAppName, CName_Id_IndexValue& value)
+{
+    LOCK(cs);
+    mapAppName_AppId_Index::iterator it = mapAppName_AppId.find(ToLower(strAppName));
+    if(it == mapAppName_AppId.end())
+        return false;
+
+    value = it->second;
+    return true;
+}
+
+bool CTxMemPool::getAppList(std::vector<uint256>& vAppId)
+{
+    LOCK(cs);
+    for(mapAppId_AppInfo_Index::iterator it = mapAppId_AppInfo.begin(); it != mapAppId_AppInfo.end(); it++)
+        vAppId.push_back(it->first);
+    return vAppId.size();
+}
+
+bool CTxMemPool::removeAppInfoIndex(const uint256& txhash)
+{
+    LOCK(cs);
+    mapAppId_AppInfo_IndexInserted::iterator it = mapAppId_AppInfo_Inserted.find(txhash);
+    if(it != mapAppId_AppInfo_Inserted.end())
+    {
+        std::vector<uint256> keys = (*it).second;
+        for(std::vector<uint256>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapAppId_AppInfo.find(*mit) != mapAppId_AppInfo.end())
+                mapAppId_AppInfo.erase(*mit);
+        }
+        mapAppId_AppInfo_Inserted.erase(it);
+    }
+
+    mapAppName_AppId_IndexInserted::iterator it2 = mapAppName_AppId_Inserted.find(txhash);
+    if(it2 != mapAppName_AppId_Inserted.end())
+    {
+        std::vector<std::string> keys = (*it2).second;
+        for(std::vector<std::string>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapAppName_AppId.find(*mit) != mapAppName_AppId.end())
+                mapAppName_AppId.erase(*mit);
+        }
+        mapAppName_AppId_Inserted.erase(it2);
+    }
+
+    return true;
+}
+
+bool CAppTx_IndexKeyCompare::operator()(const CAppTx_IndexKey& a, const CAppTx_IndexKey& b) const
+{
+    if(a.appId == b.appId)
+    {
+        if(a.strAddress == b.strAddress)
+        {
+            if(a.nTxClass == b.nTxClass)
+                return a.out < b.out;
+            return a.nTxClass < b.nTxClass;
+        }
+        return a.strAddress < b.strAddress;
+    }
+    return a.appId < b.appId;
+}
+
+void CTxMemPool::add_AppTx_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view)
+{
+    LOCK(cs);
+    const CTransaction& tx = entry.GetTx();
+    std::vector<CAppTx_IndexKey> inserted;
+
+    uint256 txhash = tx.GetHash();
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CAppHeader header;
+        std::vector<unsigned char> vData;
+        if(ParseReserve(txout.vReserve, header, vData))
+        {
+            CTxDestination dest;
+            if(!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+
+            uint8_t nTxClass = 0;
+            if(header.nAppCmd == REGISTER_APP_CMD)
+                nTxClass = REGISTER_TXOUT;
+            else if(header.nAppCmd == ADD_AUTH_CMD)
+                nTxClass = ADD_AUTH_TXOUT;
+            else if(header.nAppCmd == DELETE_AUTH_CMD)
+                nTxClass = DELETE_AUTH_TXOUT;
+            else if(header.nAppCmd == CREATE_EXTEND_TX_CMD)
+                nTxClass = CREATE_EXTENDDATA_TXOUT;
+            else
+                continue;
+
+            CAppTx_IndexKey key(header.appId, CBitcoinAddress(dest).ToString(), nTxClass, COutPoint(txhash, i));
+            mapAppTx.insert(make_pair(key, -1));
+            inserted.push_back(key);
+        }
+    }
+
+    mapAppTx_Inserted.insert(make_pair(txhash, inserted));
+}
+
+bool CTxMemPool::get_AppTx_Index(const uint256& appId, std::vector<COutPoint>& vOut)
+{
+    LOCK(cs);
+    for(mapAppTx_Index::const_iterator it = mapAppTx.begin(); it != mapAppTx.end(); it++)
+    {
+        if(it->first.appId == appId)
+            vOut.push_back(it->first.out);
+    }
+    return vOut.size();
+}
+
+bool CTxMemPool::get_AppTx_Index(const uint256& appId, const std::string& strAddress, std::vector<COutPoint>& vOut)
+{
+    LOCK(cs);
+    for(mapAppTx_Index::const_iterator it = mapAppTx.begin(); it != mapAppTx.end(); it++)
+    {
+        if(it->first.appId == appId && it->first.strAddress == strAddress)
+            vOut.push_back(it->first.out);
+    }
+    return vOut.size();
+}
+
+bool CTxMemPool::getAppList(const std::string& strAddress, std::vector<uint256>& vAppId)
+{
+    LOCK(cs);
+    for(mapAppTx_Index::const_iterator it = mapAppTx.begin(); it != mapAppTx.end(); it++)
+    {
+        if(it->first.strAddress == strAddress)
+            vAppId.push_back(it->first.appId);
+    }
+    return vAppId.size();
+}
+
+bool CTxMemPool::remove_AppTx_Index(const uint256& txhash)
+{
+    LOCK(cs);
+    mapAppTx_IndexInserted::iterator it = mapAppTx_Inserted.find(txhash);
+    if(it != mapAppTx_Inserted.end())
+    {
+        std::vector<CAppTx_IndexKey> keys = (*it).second;
+        for(std::vector<CAppTx_IndexKey>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapAppTx.find(*mit) != mapAppTx.end())
+                mapAppTx.erase(*mit);
+        }
+        mapAppTx_Inserted.erase(it);
+    }
+    return true;
+}
+
+bool CAuth_IndexKeyCompare::operator()(const CAuth_IndexKey& a, const CAuth_IndexKey& b) const
+{
+    if(a.appId == b.appId)
+    {
+        if(a.strAddress == b.strAddress)
+            return a.nAuth < b.nAuth;
+        return a.strAddress < b.strAddress;
+    }
+    return a.appId < b.appId;
+}
+
+void CTxMemPool::add_Auth_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view)
+{
+    LOCK(cs);
+    const CTransaction& tx = entry.GetTx();
+    std::vector<CAuth_IndexKey> inserted;
+
+    uint256 txhash = tx.GetHash();
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CAppHeader header;
+        std::vector<unsigned char> vData;
+        if(ParseReserve(txout.vReserve, header, vData))
+        {
+            if(header.nAppCmd == ADD_AUTH_CMD || header.nAppCmd == DELETE_AUTH_CMD)
+            {
+                CAuthData authData;
+                if(ParseAuthData(vData, authData))
+                {
+                    CAuth_IndexKey key(header.appId, authData.strUserAddress, authData.nAuth);
+                    mapAuth.insert(make_pair(key, -1));
+                    inserted.push_back(key);
+                }
+            }
+        }
+    }
+
+    mapAuth_Inserted.insert(make_pair(txhash, inserted));
+}
+
+bool CTxMemPool::get_Auth_Index(const uint256& appId, const std::string& strAddress, std::vector<uint32_t>& vAuth)
+{
+    LOCK(cs);
+    for(mapAuth_Index::const_iterator it = mapAuth.begin(); it != mapAuth.end(); it++)
+    {
+        if(it->first.appId == appId && it->first.strAddress == strAddress)
+            vAuth.push_back(it->first.nAuth);
+    }
+
+    return vAuth.size();
+}
+
+bool CTxMemPool::remove_Auth_Index(const uint256& txhash)
+{
+    LOCK(cs);
+    mapAuth_IndexInserted::iterator it = mapAuth_Inserted.find(txhash);
+    if(it != mapAuth_Inserted.end())
+    {
+        std::vector<CAuth_IndexKey> keys = (*it).second;
+        for(std::vector<CAuth_IndexKey>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapAuth.find(*mit) != mapAuth.end())
+                mapAuth.erase(*mit);
+        }
+        mapAuth_Inserted.erase(it);
+    }
+    return true;
+}
+
+void CTxMemPool::addAssetInfoIndex(const CTxMemPoolEntry& entry, const CCoinsViewCache& view)
+{
+    LOCK(cs);
+    const CTransaction& tx = entry.GetTx();
+    std::vector<uint256> assetId_inserted;
+    std::vector<std::string> shortName_inserted;
+    std::vector<std::string> assetName_inserted;
+
+    uint256 txhash = tx.GetHash();
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CAppHeader header;
+        std::vector<unsigned char> vData;
+        if(ParseReserve(txout.vReserve, header, vData))
+        {
+            CTxDestination dest;
+            if(!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+
+            if(header.nAppCmd == ISSUE_ASSET_CMD)
+            {
+                CAssetData assetData;
+                if(ParseIssueData(vData, assetData))
+                {
+                    uint256 assetId = assetData.GetHash();
+
+                    mapAssetId_AssetInfo.insert(make_pair(assetId, CAssetId_AssetInfo_IndexValue(CBitcoinAddress(dest).ToString(), assetData, -1)));
+                    assetId_inserted.push_back(assetId);
+
+                    mapShortName_AssetId.insert(make_pair(ToLower(assetData.strShortName), assetId));
+                    shortName_inserted.push_back(ToLower(assetData.strShortName));
+
+                    mapAssetName_AssetId.insert(make_pair(ToLower(assetData.strAssetName), assetId));
+                    assetName_inserted.push_back(ToLower(assetData.strAssetName));
+                }
+            }
+        }
+    }
+
+    mapAssetId_AssetInfo_Inserted.insert(make_pair(txhash, assetId_inserted));
+    mapShortName_AssetId_Inserted.insert(make_pair(txhash, shortName_inserted));
+    mapAssetName_AssetId_Inserted.insert(make_pair(txhash, assetName_inserted));
+}
+
+bool CTxMemPool::getAssetInfoByAssetId(const uint256& assetId, CAssetId_AssetInfo_IndexValue& assetInfo)
+{
+    LOCK(cs);
+    mapAssetId_AssetInfo_Index::iterator it = mapAssetId_AssetInfo.find(assetId);
+    if(it == mapAssetId_AssetInfo.end())
+        return false;
+
+    assetInfo = it->second;
+    return true;
+}
+
+bool CTxMemPool::getAssetList(std::vector<uint256>& vAssetId)
+{
+    LOCK(cs);
+    for (mapAssetId_AssetInfo_Index::iterator it = mapAssetId_AssetInfo.begin(); it != mapAssetId_AssetInfo.end(); it++)
+        vAssetId.push_back(it->first);
+    return vAssetId.size();
+}
+
+bool CTxMemPool::getAssetIdByShortName(const std::string& strShortName, CName_Id_IndexValue& value)
+{
+    LOCK(cs);
+    mapShortName_AssetId_Index::iterator it = mapShortName_AssetId.find(ToLower(strShortName));
+    if(it == mapShortName_AssetId.end())
+        return false;
+
+    value = it->second;
+    return true;
+}
+
+bool CTxMemPool::getAssetIdByAssetName(const std::string& strAssetName, CName_Id_IndexValue& value)
+{
+    LOCK(cs);
+    mapAssetName_AssetId_Index::iterator it = mapAssetName_AssetId.find(ToLower(strAssetName));
+    if(it == mapAssetName_AssetId.end())
+        return false;
+
+    value = it->second;
+    return true;
+}
+
+bool CTxMemPool::removeAssetInfoIndex(const uint256& txhash)
+{
+    LOCK(cs);
+    mapAssetId_AssetInfo_IndexInserted::iterator it = mapAssetId_AssetInfo_Inserted.find(txhash);
+    if(it != mapAssetId_AssetInfo_Inserted.end())
+    {
+        std::vector<uint256> keys = (*it).second;
+        for(std::vector<uint256>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapAssetId_AssetInfo.find(*mit) != mapAssetId_AssetInfo.end())
+                mapAssetId_AssetInfo.erase(*mit);
+        }
+        mapAssetId_AssetInfo_Inserted.erase(it);
+    }
+
+    mapShortName_AssetId_IndexInserted::iterator it2 = mapShortName_AssetId_Inserted.find(txhash);
+    if(it2 != mapShortName_AssetId_Inserted.end())
+    {
+        std::vector<std::string> keys = (*it2).second;
+        for(std::vector<std::string>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapShortName_AssetId.find(*mit) != mapShortName_AssetId.end())
+                mapShortName_AssetId.erase(*mit);
+        }
+        mapShortName_AssetId_Inserted.erase(it2);
+    }
+
+    mapAssetName_AssetId_IndexInserted::iterator it3 = mapAssetName_AssetId_Inserted.find(txhash);
+    if(it3 != mapAssetName_AssetId_Inserted.end())
+    {
+        std::vector<std::string> keys = (*it3).second;
+        for(std::vector<std::string>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapAssetName_AssetId.find(*mit) != mapAssetName_AssetId.end())
+                mapAssetName_AssetId.erase(*mit);
+        }
+        mapAssetName_AssetId_Inserted.erase(it3);
+    }
+
+    return true;
+}
+
+bool CAssetTx_IndexKeyCompare::operator()(const CAssetTx_IndexKey& a, const CAssetTx_IndexKey& b) const
+{
+    if(a.assetId == b.assetId)
+    {
+        if(a.strAddress == b.strAddress)
+        {
+            if(a.nTxClass == b.nTxClass)
+                return a.out < b.out;
+            return a.nTxClass < b.nTxClass;
+        }
+        return a.strAddress < b.strAddress;
+    }
+    return a.assetId < b.assetId;
+}
+
+void CTxMemPool::add_AssetTx_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view)
+{
+    LOCK(cs);
+    const CTransaction& tx = entry.GetTx();
+    std::vector<CAssetTx_IndexKey> inserted;
+
+    uint256 txhash = tx.GetHash();
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CAppHeader header;
+        std::vector<unsigned char> vData;
+        if(ParseReserve(txout.vReserve, header, vData))
+        {
+            CTxDestination dest;
+            if(!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+
+            if(header.nAppCmd == ISSUE_ASSET_CMD)
+            {
+                CAssetData assetData;
+                if(ParseIssueData(vData, assetData))
+                {
+                    CAssetTx_IndexKey key(assetData.GetHash(), CBitcoinAddress(dest).ToString(), ISSUE_TXOUT, COutPoint(txhash, i));
+                    mapAssetTx.insert(make_pair(key, -1));
+                    inserted.push_back(key);
+                }
+            }
+            else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD)
+            {
+                CCommonData commonData;
+                if(ParseCommonData(vData, commonData))
+                {
+                    if (header.nAppCmd == ADD_ASSET_CMD)
+                    {
+                        CAssetTx_IndexKey key(commonData.assetId, CBitcoinAddress(dest).ToString(), ADD_ISSUE_TXOUT, COutPoint(txhash, i));
+                        mapAssetTx.insert(make_pair(key, -1));
+                        inserted.push_back(key);
+                    }
+                    else if (header.nAppCmd == DESTORY_ASSET_CMD)
+                    {
+                        CAssetTx_IndexKey key(commonData.assetId, CBitcoinAddress(dest).ToString(), DESTORY_TXOUT, COutPoint(txhash, i));
+                        mapAssetTx.insert(make_pair(key, -1));
+                        inserted.push_back(key);
+                    }
+                    else if(header.nAppCmd == TRANSFER_ASSET_CMD)
+                    {
+                        if(txout.nUnlockedHeight > 0)
+                        {
+                            CAssetTx_IndexKey key(commonData.assetId, CBitcoinAddress(dest).ToString(), LOCKED_TXOUT, COutPoint(txhash, i));
+                            mapAssetTx.insert(make_pair(key, -1));
+                            inserted.push_back(key);
+                        }
+                        else
+                        {
+                            CAssetTx_IndexKey key(commonData.assetId, CBitcoinAddress(dest).ToString(), TRANSFER_TXOUT, COutPoint(txhash, i));
+                            mapAssetTx.insert(make_pair(key, -1));
+                            inserted.push_back(key);
+                        }
+                    }
+                }
+            }
+            else if(header.nAppCmd == PUT_CANDY_CMD)
+            {
+                CPutCandyData candyData;
+                if(ParsePutCandyData(vData, candyData))
+                {
+                    CAssetTx_IndexKey key(candyData.assetId, CBitcoinAddress(dest).ToString(), PUT_CANDY_TXOUT, COutPoint(txhash, i));
+                    mapAssetTx.insert(make_pair(key, -1));
+                    inserted.push_back(key);
+                }
+            }
+            else if(header.nAppCmd == GET_CANDY_CMD)
+            {
+                CGetCandyData candyData;
+                if(ParseGetCandyData(vData, candyData))
+                {
+                    CAssetTx_IndexKey key(candyData.assetId, CBitcoinAddress(dest).ToString(), GET_CANDY_TXOUT, COutPoint(txhash, i));
+                    mapAssetTx.insert(make_pair(key, -1));
+                    inserted.push_back(key);
+                }
+            }
+        }
+    }
+
+    mapAssetTx_Inserted.insert(make_pair(txhash, inserted));
+}
+
+bool CTxMemPool::get_AssetTx_Index(const uint256& assetId, const uint8_t& nTxClass, std::vector<COutPoint>& vOut)
+{
+    LOCK(cs);
+    multimap<int, COutPoint> tmpMap;
+    for(mapAssetTx_Index::const_iterator it = mapAssetTx.begin(); it != mapAssetTx.end(); it++)
+    {
+        if(it->first.assetId != assetId)
+            continue;
+        if(nTxClass == ALL_TXOUT)
+        {
+            tmpMap.insert(make_pair(it->second, it->first.out));
+        }
+        else if(nTxClass == UNLOCKED_TXOUT)
+        {
+            if(it->first.nTxClass == LOCKED_TXOUT)
+                continue;
+            tmpMap.insert(make_pair(it->second, it->first.out));
+        }
+        else if(it->first.nTxClass == nTxClass)
+        {
+            tmpMap.insert(make_pair(it->second, it->first.out));
+        }
+    }
+
+    for(multimap<int, COutPoint>::iterator iter = tmpMap.begin(); iter != tmpMap.end(); ++iter)
+        vOut.push_back(iter->second);
+
+    multimap<int,COutPoint>().swap(tmpMap);
+
+    return vOut.size();
+}
+
+bool CTxMemPool::get_AssetTx_Index(const uint256& assetId, const std::string& strAddress, const uint8_t& nTxClass, std::vector<COutPoint>& vOut)
+{
+    LOCK(cs);
+    multimap<int, COutPoint> tmpMap;
+    for(mapAssetTx_Index::const_iterator it = mapAssetTx.begin(); it != mapAssetTx.end(); it++)
+    {
+        if(it->first.assetId != assetId || it->first.strAddress != strAddress)
+            continue;
+
+        if(nTxClass == ALL_TXOUT)
+        {
+            tmpMap.insert(make_pair(it->second, it->first.out));
+        }
+        else if(nTxClass == UNLOCKED_TXOUT)
+        {
+            if(it->first.nTxClass == LOCKED_TXOUT)
+                continue;
+            tmpMap.insert(make_pair(it->second, it->first.out));
+        }
+        else if(it->first.nTxClass == nTxClass)
+        {
+            tmpMap.insert(make_pair(it->second, it->first.out));
+        }
+    }
+
+    for(multimap<int, COutPoint>::iterator iter = tmpMap.begin(); iter != tmpMap.end(); ++iter){
+        vOut.push_back(iter->second);
+    }
+
+    multimap<int, COutPoint>().swap(tmpMap);
+
+    return vOut.size();
+}
+
+bool CTxMemPool::getAssetList(const std::string& strAddress, std::vector<uint256>& vAssetId)
+{
+    LOCK(cs);
+    for(mapAssetTx_Index::const_iterator it = mapAssetTx.begin(); it != mapAssetTx.end(); it++)
+    {
+        if (it->first.strAddress == strAddress)
+            vAssetId.push_back(it->first.assetId);
+    }
+    return vAssetId.size();
+}
+
+bool CTxMemPool::remove_AssetTx_Index(const uint256& txhash)
+{
+    LOCK(cs);
+    mapAssetTx_IndexInserted::iterator it = mapAssetTx_Inserted.find(txhash);
+    if(it != mapAssetTx_Inserted.end())
+    {
+        std::vector<CAssetTx_IndexKey> keys = (*it).second;
+        for(std::vector<CAssetTx_IndexKey>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapAssetTx.find(*mit) != mapAssetTx.end())
+                mapAssetTx.erase(*mit);
+        }
+        mapAssetTx_Inserted.erase(it);
+    }
+    return true;
+}
+
+int CTxMemPool::get_PutCandy_count(const uint256 &assetId)
+{
+    LOCK(cs);
+    int nCount = 0;
+    for(mapAssetTx_Index::const_iterator it = mapAssetTx.begin(); it != mapAssetTx.end(); it++)
+    {
+        if(it->first.assetId != assetId || it->first.strAddress != g_strPutCandyAddress || it->first.nTxClass != PUT_CANDY_TXOUT)
+            continue;
+        nCount++;
+    }
+    return nCount;
+}
+
+bool CGetCandy_IndexKeyCompare::operator()(const CGetCandy_IndexKey& a, const CGetCandy_IndexKey& b) const
+{
+    if(a.assetId == b.assetId)
+    {
+        if(a.out == b.out)
+        {
+            return a.strAddress < b.strAddress;
+        }
+        return a.out < b.out;
+    }
+    return a.assetId < b.assetId;
+}
+
+void CTxMemPool::add_GetCandy_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view)
+{
+    LOCK(cs);
+    const CTransaction& tx = entry.GetTx();
+    std::vector<CGetCandy_IndexKey> getCandy_inserted;
+
+    uint256 txhash = tx.GetHash();
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CAppHeader header;
+        std::vector<unsigned char> vData;
+        if(ParseReserve(txout.vReserve, header, vData))
+        {
+            CTxDestination dest;
+            if(!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+            if(header.nAppCmd == GET_CANDY_CMD)
+            {
+                CGetCandyData candyData;
+                if(ParseGetCandyData(vData, candyData))
+                {
+                    for(unsigned int m = 0; m < tx.vin.size(); m++)
+                    {
+                        const CTxIn& txin = tx.vin[m];
+                        const CTxOut& in_txout = view.GetOutputFor(txin);
+                        CTxDestination in_dest;
+                        if(!ExtractDestination(in_txout.scriptPubKey, in_dest))
+                            continue;
+                        if(CBitcoinAddress(in_dest).ToString() == g_strPutCandyAddress)
+                        {
+                            CGetCandy_IndexKey key(candyData.assetId, txin.prevout, CBitcoinAddress(dest).ToString());
+                            mapGetCandy.insert(make_pair(key, CGetCandy_IndexValue(candyData.nAmount)));
+                            getCandy_inserted.push_back(key);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    mapGetCandy_Inserted.insert(make_pair(txhash, getCandy_inserted));
+}
+
+bool CTxMemPool::get_GetCandy_Index(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& nAmount)
+{
+    LOCK(cs);
+    for(mapGetCandy_Index::const_iterator it = mapGetCandy.begin(); it != mapGetCandy.end(); it++)
+    {
+        const CGetCandy_IndexKey& key = it->first;
+        if(key.assetId == assetId && key.out == out && key.strAddress == strAddress)
+        {
+            nAmount = it->second.nAmount;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool CTxMemPool::remove_GetCandy_Index(const uint256& txhash)
+{
+    LOCK(cs);
+    mapGetCandy_IndexInserted::iterator it = mapGetCandy_Inserted.find(txhash);
+
+    if(it != mapGetCandy_Inserted.end())
+    {
+        std::vector<CGetCandy_IndexKey> keys = (*it).second;
+        for(std::vector<CGetCandy_IndexKey>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapGetCandy.find(*mit) != mapGetCandy.end())
+                mapGetCandy.erase(*mit);
+        }
+        mapGetCandy_Inserted.erase(it);
+    }
+
+    return true;
+}
+
 void CTxMemPool::removeUnchecked(txiter it)
 {
     const uint256 hash = it->GetTx().GetHash();
@@ -577,8 +1323,15 @@ void CTxMemPool::removeUnchecked(txiter it)
     minerPolicyEstimator->removeTx(hash);
     removeAddressIndex(hash);
     removeSpentIndex(hash);
+    removeAppInfoIndex(hash);
+    remove_AppTx_Index(hash);
+    remove_Auth_Index(hash);
+    removeAssetInfoIndex(hash);
+    remove_AssetTx_Index(hash);
+    remove_GetCandy_Index(hash);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
 // Calculates descendants of entry that are not already in setDescendants, and adds to
 // setDescendants. Assumes entryit is already a tx in the mempool and setMemPoolChildren
 // is correct for tx and all descendants.
@@ -1027,14 +1780,14 @@ int CTxMemPool::Expire(int64_t time) {
     return stage.size();
 }
 
-bool CTxMemPool::addUnchecked(const uint256&hash, const CTxMemPoolEntry &entry, bool fCurrentEstimate)
+bool CTxMemPool::addUnchecked(const uint256&hash, const CTxMemPoolEntry &entry, const CCoinsViewCache &view, bool fCurrentEstimate)
 {
     LOCK(cs);
     setEntries setAncestors;
     uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
     std::string dummy;
     CalculateMemPoolAncestors(entry, setAncestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy);
-    return addUnchecked(hash, entry, setAncestors, fCurrentEstimate);
+    return addUnchecked(hash, entry, view, setAncestors, fCurrentEstimate);
 }
 
 void CTxMemPool::UpdateChild(txiter entry, txiter child, bool add)

@@ -85,6 +85,7 @@ class CReserveKey;
 class CScript;
 class CTxMemPool;
 class CWalletTx;
+class CAppHeader;
 
 /** (client) version numbers for particular wallet features */
 enum WalletFeature
@@ -175,7 +176,20 @@ struct CRecipient
 {
     CScript scriptPubKey;
     CAmount nAmount;
+    int nLockedMonth;
     bool fSubtractFeeFromAmount;
+    bool fAsset;
+    std::string strMemo;
+
+    CRecipient(const CScript& scriptPubKeyIn, const CAmount& nAmountIn, const int& nLockedMonthIn, const bool fSubtractFeeFromAmountIn, const bool fAssetIn = false, const std::string& strMemoIn = "")
+    {
+        scriptPubKey = scriptPubKeyIn;
+        nAmount = nAmountIn;
+        nLockedMonth = nLockedMonthIn;
+        fSubtractFeeFromAmount = fSubtractFeeFromAmountIn;
+        fAsset = fAssetIn;
+        strMemo = strMemoIn;
+    }
 };
 
 typedef std::map<std::string, std::string> mapValue_t;
@@ -439,13 +453,15 @@ public:
     }
 
     //! filter decides which addresses will count towards the debit
-    CAmount GetDebit(const isminefilter& filter) const;
-    CAmount GetCredit(const isminefilter& filter) const;
-    CAmount GetImmatureCredit(bool fUseCache=true) const;
-    CAmount GetAvailableCredit(bool fUseCache=true) const;
-    CAmount GetImmatureWatchOnlyCredit(const bool& fUseCache=true) const;
-    CAmount GetAvailableWatchOnlyCredit(const bool& fUseCache=true) const;
-    CAmount GetChange() const;
+    CAmount GetDebit(const isminefilter& filter, const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetCredit(const isminefilter& filter, const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetLockedCredit(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetImmatureCredit(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL, bool fUseCache=true) const;
+    CAmount GetAvailableCredit(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL, bool fUseCache=true) const;
+    CAmount GetLockedWatchOnlyCredit(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetImmatureWatchOnlyCredit(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL, const bool& fUseCache=true) const;
+    CAmount GetAvailableWatchOnlyCredit(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL, const bool& fUseCache=true) const;
+    CAmount GetChange(const bool fAsset = false) const;
 
     CAmount GetAnonymizedCredit(bool fUseCache=true) const;
     CAmount GetDenominatedCredit(bool unconfirmed, bool fUseCache=true) const;
@@ -623,7 +639,7 @@ private:
      * all coins from coinControl are selected; Never select unconfirmed coins
      * if they are not ours
      */
-    bool SelectCoins(const CAmount& nTargetValue, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet, const CCoinControl *coinControl = NULL, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend = true) const;
+    bool SelectCoins(const CAmount& nTargetValue, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet, const CCoinControl *coinControl = NULL, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend = true, const CBitcoinAddress* pFixedSrcAddress = NULL, const bool fAsset = false, const uint256* pAssetId = NULL) const;
 
     CWalletDB *pwalletdbEncryption;
 
@@ -750,7 +766,7 @@ public:
 
     CPubKey vchDefaultKey;
 
-    std::set<COutPoint> setLockedCoins;
+    std::set<COutPoint> setFrozenCoins;
 
     int64_t nTimeFirstKey;
     int64_t nKeysLeftSinceAutoBackup;
@@ -765,7 +781,7 @@ public:
     /**
      * populate vCoins with vector of available COutputs.
      */
-    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl = NULL, bool fIncludeZeroValue=false, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend = false) const;
+    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true, const CCoinControl *coinControl = NULL, bool fIncludeZeroValue=false, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend = false, bool fContainLockedTxOut = false, const CBitcoinAddress* pFixedSrcAddress = NULL, const bool fAsset = false, const uint256* pAssetId = NULL) const;
 
     /**
      * Shuffle and select coins until nTargetValue is reached while avoiding
@@ -799,11 +815,11 @@ public:
 
     bool IsSpent(const uint256& hash, unsigned int n) const;
 
-    bool IsLockedCoin(uint256 hash, unsigned int n) const;
-    void LockCoin(COutPoint& output);
-    void UnlockCoin(COutPoint& output);
-    void UnlockAllCoins();
-    void ListLockedCoins(std::vector<COutPoint>& vOutpts);
+    bool IsFrozenCoin(uint256 hash, unsigned int n) const;
+    void FreezeCoin(COutPoint& output);
+    void UnfreezeCoin(COutPoint& output);
+    void UnfreezeAllCoins();
+    void ListFrozenCoins(std::vector<COutPoint>& vOutpts);
 
     /**
      * keystore implementation
@@ -871,12 +887,14 @@ public:
     void ReacceptWalletTransactions();
     void ResendWalletTransactions(int64_t nBestBlockTime, CConnman* connman);
     std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime, CConnman* connman);
-    CAmount GetBalance() const;
-    CAmount GetUnconfirmedBalance() const;
-    CAmount GetImmatureBalance() const;
-    CAmount GetWatchOnlyBalance() const;
-    CAmount GetUnconfirmedWatchOnlyBalance() const;
-    CAmount GetImmatureWatchOnlyBalance() const;
+    CAmount GetBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetUnconfirmedBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetImmatureBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetLockedBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetUnconfirmedWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetImmatureWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetLockedWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
 
     CAmount GetAnonymizableBalance(bool fSkipDenominated = false, bool fSkipUnconfirmed = true) const;
     CAmount GetAnonymizedBalance() const;
@@ -900,6 +918,10 @@ public:
      */
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,
                            std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend=false);
+    bool CreateAppTransaction(const CAppHeader* pHeader, const void* pBody, const std::vector<CRecipient>& vecSend, const CBitcoinAddress* pSafeAddress, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,
+                           std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend=false);
+    bool CreateAssetTransaction(const CAppHeader* pHeader, const void* pBody, const std::vector<CRecipient>& vecSend, const CBitcoinAddress* pSafeAddress, const CBitcoinAddress* pAssetAddress, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,
+                           std::string& strFailReason, const CCoinControl* coinControl = NULL, bool sign = true, AvailableCoinsType nCoinType=ALL_COINS);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, std::string strCommand="tx");
 
     bool CreateCollateralTransaction(CMutableTransaction& txCollateral, std::string& strReason);
@@ -937,17 +959,17 @@ public:
     std::set<CTxDestination> GetAccountAddresses(const std::string& strAccount) const;
 
     isminetype IsMine(const CTxIn& txin) const;
-    CAmount GetDebit(const CTxIn& txin, const isminefilter& filter) const;
+    CAmount GetDebit(const CTxIn& txin, const isminefilter& filter, const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
     isminetype IsMine(const CTxOut& txout) const;
-    CAmount GetCredit(const CTxOut& txout, const isminefilter& filter) const;
+    CAmount GetCredit(const CTxOut& txout, const isminefilter& filter, const bool fAsset = false) const;
     bool IsChange(const CTxOut& txout) const;
-    CAmount GetChange(const CTxOut& txout) const;
+    CAmount GetChange(const CTxOut& txout, const bool fAsste = false) const;
     bool IsMine(const CTransaction& tx) const;
     /** should probably be renamed to IsRelevantToMe */
     bool IsFromMe(const CTransaction& tx) const;
-    CAmount GetDebit(const CTransaction& tx, const isminefilter& filter) const;
-    CAmount GetCredit(const CTransaction& tx, const isminefilter& filter) const;
-    CAmount GetChange(const CTransaction& tx) const;
+    CAmount GetDebit(const CTransaction& tx, const isminefilter& filter, const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetCredit(const CTransaction& tx, const isminefilter& filter, const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetChange(const CTransaction& tx, const bool fAsset = false) const;
     void SetBestChain(const CBlockLocator& loc);
 
     DBErrors LoadWallet(bool& fFirstRunRet);

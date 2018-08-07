@@ -36,6 +36,14 @@
 #include "utilstrencodings.h"
 #include "validationinterface.h"
 #include "versionbits.h"
+#include "base58.h"
+#include "main.h"
+#include "rpc/server.h"
+#include "masternode-sync.h"
+
+#ifdef ENABLE_WALLET
+#include "wallet/wallet.h"
+#endif
 
 #include "instantx.h"
 #include "masternodeman.h"
@@ -55,6 +63,9 @@ using namespace std;
 #if defined(NDEBUG)
 # error "Safe Core cannot be compiled without assertions."
 #endif
+
+#define BATCH_COUNT         10000
+#define HANDLE_COUNT        20000
 
 /**
  * Global state
@@ -78,6 +89,7 @@ bool fHavePruned = false;
 bool fPruneMode = false;
 bool fIsBareMultisigStd = DEFAULT_PERMIT_BAREMULTISIG;
 bool fRequireStandard = true;
+bool fHaveGUI = false;
 unsigned int nBytesPerSigOp = DEFAULT_BYTES_PER_SIGOP;
 bool fCheckBlockIndex = false;
 bool fCheckpointsEnabled = DEFAULT_CHECKPOINTS_ENABLED;
@@ -85,9 +97,28 @@ size_t nCoinCacheUsage = 5000 * 300;
 uint64_t nPruneTarget = 0;
 bool fAlerts = DEFAULT_ALERTS;
 bool fEnableReplacement = DEFAULT_ENABLE_REPLACEMENT;
+bool fGetCandyInfoStart = false;
+std::mutex g_mutexAllCandyInfo;
+std::vector<CCandy_BlockTime_Info> gAllCandyInfoVec;
+std::mutex g_mutexTmpAllCandyInfo;
+std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
+bool fUpdateAllCandyInfoFinished = false;
+unsigned int nCandyPageCount = 20;//display 20 candy info per page
+
+const static int M = 2000; //Maximum number of digits
+int numA[M];
+int numB[M];
 
 std::atomic<bool> fDIP0001WasLockedIn{false};
 std::atomic<bool> fDIP0001ActiveAtTip{false};
+
+struct CompareCandyInfo
+{
+    bool operator()(const std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue>& l, const std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue>& r)
+    {
+        return l.second.nHeight < r.second.nHeight;
+    }
+};
 
 uint256 hashAssumeValid;
 
@@ -108,6 +139,24 @@ static void CheckBlockIndex(const Consensus::Params& consensusParams);
 CScript COINBASE_FLAGS;
 
 const string strMessageMagic = "DarkCoin Signed Message:\n";
+
+std::mutex g_mutexChangeFile;
+
+std::mutex g_mutexChangeInfo;
+static std::list<CChangeInfo> g_listChangeInfo;
+static int g_nListChangeInfoLimited = 20;
+int GetChangeInfoListSize()
+{
+    std::lock_guard<std::mutex> lock(g_mutexChangeInfo);
+    return int(g_listChangeInfo.size());
+}
+bool CompareChangeInfo(const CChangeInfo& a1, const CChangeInfo& a2)
+{
+    return a1.nHeight < a2.nHeight;
+}
+
+std::mutex g_mutexCandyHeight;
+static std::list<int> listCandyHeight;
 
 // Internal stuff
 namespace {
@@ -467,9 +516,32 @@ int GetUTXOConfirmations(const COutPoint& outpoint)
     return (nPrevoutHeight > -1 && chainActive.Tip()) ? chainActive.Height() - nPrevoutHeight + 1 : -1;
 }
 
-
-bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool bCheckCoinbaseVer)
+bool GetTxOutAddress(const CTxOut& txout, string* pAddress)
 {
+    CTxDestination dest;
+    if(!ExtractDestination(txout.scriptPubKey, dest))
+        return false;
+
+    CBitcoinAddress address(dest);
+    if(!address.IsValid())
+        return false;
+
+    string strAddress = address.ToString();
+    if(pAddress)
+        *pAddress = strAddress;
+
+    return true;
+}
+
+bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enum CTxSrcType& nType, const int& nHeight)
+{
+    int nTxHeight = 0;
+    uint256 blockHash;
+    if(nType == FROM_BLOCK)
+        nTxHeight = nHeight;
+    else
+        nTxHeight = GetTxHeight(tx.GetHash(), &blockHash);
+
     // Basic checks that don't depend on any context
     if (tx.vin.empty())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vin-empty");
@@ -479,36 +551,127 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool bChe
     if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > MAX_LEGACY_BLOCK_SIZE)
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
 
-    // Check for negative or overflow output values
-    CAmount nValueOut = 0;
-    BOOST_FOREACH(const CTxOut& txout, tx.vout)
+    // Check tx version
+    if(nType == FROM_BLOCK) // tx comes from old block or new block
     {
+        if(IsProtocolV0(nTxHeight)) // tx.nVersion = 1 or 2 or 101
+        {
+            if(tx.nVersion > SAFE_TX_VERSION_1)
+                return state.DoS(50, false, REJECT_INVALID, "block_tx: bad tx version in protocol v0");
+        }
+        else // tx.nVersion = 101 or 102
+        {
+            if(tx.nVersion < SAFE_TX_VERSION_1)
+                return state.DoS(50, false, REJECT_INVALID, "block_tx: bad tx version in protocol v1");
+        }
+    }
+    else if(nType == FROM_WALLET)
+    {
+        if(!blockHash.IsNull())
+        {
+            if(IsProtocolV0(nTxHeight)) // tx.nVersion = 1 or 2 or 101
+            {
+                if(tx.nVersion > SAFE_TX_VERSION_1)
+                    return state.DoS(50, false, REJECT_INVALID, "wallet_tx: bad tx version in protocol v0");
+            }
+            else // tx.nVersion = 101 or 102
+            {
+                if(tx.nVersion < SAFE_TX_VERSION_1)
+                    return state.DoS(50, false, REJECT_INVALID, "wallet_tx: bad tx version in protocol v1");
+            }
+        }
+    }
+    else if(nType == FROM_NEW) // tx from new tx
+    {
+        if(tx.nVersion < SAFE_TX_VERSION_2) // all new tx must be 102
+            return state.DoS(50, false, REJECT_INVALID, "new_tx: bad tx version");
+    }
+
+    // Check for negative or overflow output values
+    // Check unlocked height and reserve
+    CAmount nValueOut = 0;
+    CAmount nAssetValueOut = 0;
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
         if (txout.nValue < 0)
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-negative");
-        if (txout.nValue > MAX_MONEY)
-            return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-toolarge");
-        nValueOut += txout.nValue;
-        if (!MoneyRange(nValueOut))
-            return state.DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge");
 
-        if(tx.IsCoinBase() && g_nChainHeight + 1 < 809220)
-            continue;
-
-        if(tx.nVersion >= SAFE_TX_VERSION)
+        if(txout.IsAsset())
         {
-            const std::vector<unsigned char>& vReserve = txout.vReserve;
-            if(g_nChainHeight + 1 < 817480)
+            if (txout.nValue > MAX_ASSETS)
+                return state.DoS(100, false, REJECT_INVALID, "asset_txout: value is too large");
+            nAssetValueOut += txout.nValue;
+            if (!AssetsRange(nAssetValueOut))
+                return state.DoS(100, false, REJECT_INVALID, "asset_txout: total value is too large");
+        }
+        else
+        {
+            if (txout.nValue > MAX_MONEY)
+                return state.DoS(100, false, REJECT_INVALID, "safe_txout: value is too large");
+            nValueOut += txout.nValue;
+            if (!MoneyRange(nValueOut))
+                return state.DoS(100, false, REJECT_INVALID, "safe_txout: total value is too large");
+        }
+
+        if(txout.nUnlockedHeight > 0)
+        {
+            if(nType == FROM_BLOCK)
             {
-                if(vReserve.size() < TXOUT_RESERVE_MIN_SIZE || vReserve.size() > TXOUT_RESERVE_MAX_SIZE ||
-                   vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
-                    return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-reserve");
+                int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
+                if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                    return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height");
+            }
+            else if(nType == FROM_WALLET)
+            {
+                if(!blockHash.IsNull())
+                {
+                    int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
+                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                        return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height");
+                }
             }
             else
             {
-                if(txout.nUnlockHeight != 0 ||
+                if(masternodeSync.IsBlockchainSynced())
+                {
+                    int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
+                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                        return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
+                }
+            }
+        }
+
+        const std::vector<unsigned char>& vReserve = txout.vReserve;
+        if(tx.IsCoinBase())
+        {
+            if(IsProtocolV0(nTxHeight))
+                continue;
+            if(tx.nVersion >= SAFE_TX_VERSION_1)
+            {
+                if(txout.nUnlockedHeight != 0 ||
                    vReserve.size() != TXOUT_RESERVE_MIN_SIZE ||
                    vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
-                    return state.DoS(50, false, REJECT_INVALID, "bad-txns-vout-reserve");
+                    return state.DoS(50, false, REJECT_INVALID, "coinsbase: invalid txout reserve");
+            }
+        }
+        else
+        {
+            if(tx.nVersion == SAFE_TX_VERSION_1)
+            {
+                if(txout.nUnlockedHeight != 0 ||
+                   vReserve.size() != TXOUT_RESERVE_MIN_SIZE ||
+                   vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
+                    return state.DoS(50, false, REJECT_INVALID, "tx: invalid txout reserve in protocol v1");
+            }
+            else if(tx.nVersion >= SAFE_TX_VERSION_2)
+            {
+                const std::vector<unsigned char>& vReserve = txout.vReserve;
+                if(txout.nUnlockedHeight < 0 ||
+                   vReserve.size() < TXOUT_RESERVE_MIN_SIZE || vReserve.size() > TXOUT_RESERVE_MAX_SIZE ||
+                   vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
+                    return state.DoS(50, false, REJECT_INVALID, "tx: invalid txout reserve in protocol v2");
             }
         }
     }
@@ -524,9 +687,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool bChe
 
     if (tx.IsCoinBase())
     {
-        if(bCheckCoinbaseVer && g_nChainHeight + 1 >= 809220 && tx.nVersion < SAFE_TX_VERSION)
-            return state.DoS(10, false, REJECT_INVALID, "old-coinbase-version");
-
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-length");
     }
@@ -535,6 +695,1270 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool bChe
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
             if (txin.prevout.IsNull())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
+    }
+
+    return true;
+}
+
+bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view, const bool fWithMempool)
+{
+    if(tx.IsCoinBase())
+        return true;
+
+    // check vout
+    map<uint256, int> mapAppId;
+    map<uint256, int> mapAssetId;
+    uint256 appId;
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+        CAppHeader header;
+        vector<unsigned char> vData;
+        if(!ParseReserve(txout.vReserve, header, vData))
+            continue;
+
+        if(header.appId.IsNull())
+            return state.DoS(50, false, REJECT_INVALID, "app_tx/asset_tx: app id is null");
+        appId = header.appId;
+        mapAppId[appId]++;
+
+        if(header.nAppCmd == ISSUE_ASSET_CMD)
+        {
+            CAssetData assetData;
+            if(!ParseIssueData(vData, assetData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse issue txout reserve failed");
+            uint256 assetId = assetData.GetHash();
+            if(assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "issue_asset: asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapAssetId[assetId]++;
+        }
+        else if(header.nAppCmd == ADD_ASSET_CMD)
+        {
+            CCommonData addData;
+            if(!ParseCommonData(vData, addData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse add txout reserve failed");
+            if(addData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "add_asset: asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapAssetId[addData.assetId]++;
+        }
+        else if(header.nAppCmd == TRANSFER_ASSET_CMD)
+        {
+            CCommonData transferData;
+            if(!ParseCommonData(vData, transferData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse transfer txout reserve failed");
+            if(transferData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "transfer_asset: asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapAssetId[transferData.assetId]++;
+        }
+        else if(header.nAppCmd == DESTORY_ASSET_CMD)
+        {
+            CCommonData destoryData;
+            if(!ParseCommonData(vData, destoryData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse destory txout reserve failed");
+            if(destoryData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "destory_asset: asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapAssetId[destoryData.assetId]++;
+        }
+        else if(header.nAppCmd == CHANGE_ASSET_CMD)
+        {
+            CCommonData changeData;
+            if(!ParseCommonData(vData, changeData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse change txout reserve failed");
+            if(changeData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "change_asset: asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapAssetId[changeData.assetId]++;
+        }
+        else if(header.nAppCmd == PUT_CANDY_CMD)
+        {
+            CPutCandyData putData;
+            if(!ParsePutCandyData(vData, putData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse putcandy txout reserve failed");
+            if(putData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "put_candy: asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapAssetId[putData.assetId]++;
+        }
+        else if(header.nAppCmd == GET_CANDY_CMD)
+        {
+            CGetCandyData getData;
+            if(!ParseGetCandyData(vData, getData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse getcandy txout reserve failed");
+            if(getData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "get_candy: asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapAssetId[getData.assetId]++;
+        }
+    }
+
+    if(mapAppId.size() == 0 || appId.IsNull()) // safe tx(without safe-pay tx)
+        return true;
+    if(mapAppId.size() != 1)
+        return state.DoS(50, false, REJECT_INVALID, "tx contain different app id");
+    if(mapAssetId.size() > 1)
+        return state.DoS(50, false, REJECT_INVALID, "tx contain different asset id");
+    if(appId.GetHex() == g_strSafeAssetId) // safe-asset tx
+    {
+        if(mapAssetId.size() != 1)
+            return state.DoS(50, false, REJECT_INVALID, "asset_tx: need 1 asset at least");
+    }
+    else
+    {
+        if(mapAssetId.size() != 0)
+            return state.DoS(50, false, REJECT_INVALID, "app_tx: cannot contain asset txout");
+    }
+    if(mapAssetId.size() == 1)
+    {
+        if(appId.GetHex() != g_strSafeAssetId)
+            return state.DoS(50, false, REJECT_INVALID, "asset_tx: invalid safe-asset app id");
+    }
+
+    // check fees
+    CAmount nFees = view.GetValueIn(tx) - tx.GetValueOut();
+    unsigned int nBytes = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+    CAmount nMinRelayFee = ::minRelayTxFee.GetFee(nBytes);
+    if(appId.GetHex() == g_strSafePayId)
+    {
+        if(nFees == 0 && nBytes > MAX_FREE_TRANSACTION_CREATE_SIZE)
+            return state.DoS(50, false, REJECT_INVALID, "safepay_tx: must have fees in the tx");
+
+        if(nFees > 0)
+        {
+            CAmount nAdditionalFee = GetTxAdditionalFee(tx);
+            if(nFees < nMinRelayFee + nAdditionalFee)
+                return state.DoS(50, false, REJECT_INVALID, strprintf("safepay_tx: invalid tx(size: %u) fee, need additional fee, %ld < %ld + %ld", nBytes, nFees, nMinRelayFee, nAdditionalFee));
+        }
+
+        return true;
+    }
+
+    // check additional fees
+    CAmount nAdditionalFee = GetTxAdditionalFee(tx);
+    if(nFees < nMinRelayFee + nAdditionalFee)
+        return state.DoS(50, false, REJECT_INVALID, strprintf("app_tx/asset_tx: invalid tx(size: %u) fee, need additional fee, %ld < %ld + %ld", nBytes, nFees, nMinRelayFee, nAdditionalFee));
+
+    // check vin
+    map<uint256, int> mapInAssetId; // all asset id which beyond destory-asset and put-candy txout in vin
+    map<uint256, int> mapInAssetId2; // all asset id which comes from put-candy txout in vin
+    for(unsigned int i = 0; i < tx.vin.size(); i++)
+    {
+        const CTxIn& txin = tx.vin[i];
+        const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+        if(!coins || !coins->IsAvailable(txin.prevout.n))
+            return state.Invalid(false, REJECT_DUPLICATE, "3-bad-txns-inputs-spent");
+        const CTxOut& txout = coins->vout[txin.prevout.n];
+
+        if(!txout.IsAsset())
+            continue;
+
+        CAppHeader header;
+        vector<unsigned char> vData;
+        if(!ParseReserve(txout.vReserve, header, vData))
+            continue;
+
+        if(header.appId.GetHex() != g_strSafeAssetId)
+            return state.DoS(50, false, REJECT_INVALID, "asset_tx: invalid safe-asset app id in header, " + header.appId.GetHex());
+
+        if(header.nAppCmd == ISSUE_ASSET_CMD)
+        {
+            CAssetData assetData;
+            if(!ParseIssueData(vData, assetData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse txin reserve failed");
+            const uint256 assetId = assetData.GetHash();
+            if(assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: txin asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapInAssetId[assetId]++;
+        }
+        else if(header.nAppCmd == ADD_ASSET_CMD)
+        {
+            CCommonData addData;
+            if(!ParseCommonData(vData, addData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse add txin reserve failed");
+            if(addData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: txin asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapInAssetId[addData.assetId]++;
+        }
+        else if(header.nAppCmd == TRANSFER_ASSET_CMD)
+        {
+            CCommonData transferData;
+            if(!ParseCommonData(vData, transferData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse transfer txin reserve failed");
+            if(transferData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: txin asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapInAssetId[transferData.assetId]++;
+        }
+        else if(header.nAppCmd == DESTORY_ASSET_CMD)
+        {
+            return state.DoS(50, false, REJECT_INVALID, "asset_tx: destoried asset cannot be a txin");
+        }
+        else if(header.nAppCmd == CHANGE_ASSET_CMD)
+        {
+            CCommonData changeData;
+            if(!ParseCommonData(vData, changeData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse change txin reserve failed");
+            if(changeData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: txin asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapInAssetId[changeData.assetId]++;
+        }
+        else if(header.nAppCmd == PUT_CANDY_CMD)
+        {
+            CPutCandyData putData;
+            if(!ParsePutCandyData(vData, putData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse putcandy txin reserve failed");
+            if(putData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: txin asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapInAssetId2[putData.assetId]++;
+        }
+        else if(header.nAppCmd == GET_CANDY_CMD)
+        {
+            CGetCandyData getData;
+            if(!ParseGetCandyData(vData, getData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse getcandy txin reserve failed");
+            if(getData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: txin asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapInAssetId[getData.assetId]++;
+        }
+    }
+    if(mapInAssetId.size() > 1 || mapInAssetId2.size() > 1)
+        return state.DoS(50, false, REJECT_INVALID, "asset_tx: vin can contain 1 asset only, " + tx.GetHash().GetHex());
+
+    int nTxHeight = GetTxHeight(tx.GetHash());
+
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut txout = tx.vout[i];
+        CAppHeader header;
+        vector<unsigned char> vData;
+        if(!ParseReserve(txout.vReserve, header, vData)) // safe txout
+            continue;
+
+        string strAddress = "";
+        if(!GetTxOutAddress(txout, &strAddress))
+            return state.DoS(10, false, REJECT_INVALID, "invalid txout address, " + txout.ToString());
+
+        if(header.nAppCmd == REGISTER_APP_CMD)
+        {
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "register_app: conflict with locked txout");
+
+            if(txout.nValue != APP_OUT_VALUE)
+                return state.DoS(50, false, REJECT_INVALID, "register_app: invalid txout value");
+
+            CAppData appData;
+            string strAdminAddress = "";
+            if(!ParseRegisterData(vData, appData, &strAdminAddress))
+                return state.DoS(50, false, REJECT_INVALID, "register_app: parse reserve failed");
+            if(strAddress != strAdminAddress)
+                return state.DoS(50, false, REJECT_INVALID, "register_app: txout address is different from admin address, " + strAddress + " != " + strAdminAddress);
+
+            const CTxIn& txin = tx.vin[0];
+            const CTxOut& in_txout = view.GetOutputFor(txin);
+            string strInAddress = "";
+            if(!GetTxOutAddress(in_txout, &strInAddress))
+                return state.DoS(50, false, REJECT_INVALID, "register_app: invalid txin address: " + txin.ToString());
+            if(strInAddress != strAdminAddress)
+                return state.DoS(50, false, REJECT_INVALID, "register_app: txin address is different from admin address, " + strInAddress + " != " + strAdminAddress);
+
+            if(header.appId != appData.GetHash())
+                return state.DoS(50, false, REJECT_INVALID, "register_app: app id is conflicted with app data");
+            if(ExistAppId(header.appId, fWithMempool))
+                return state.DoS(10, false, REJECT_INVALID, "register_app: existent app, " + header.appId.GetHex());
+
+            if(appData.strAppName.empty() || appData.strAppName.size() > MAX_APPNAME_SIZE || IsKeyWord(appData.strAppName))
+                return state.DoS(10, false, REJECT_INVALID, "register_app: invalid app name or contain keyword, " + appData.strAppName);
+            if(ExistAppName(appData.strAppName, fWithMempool))
+                return state.DoS(10, false, REJECT_INVALID, "register_app: existent app name, " + appData.strAppName);
+
+            if(appData.strAppDesc.empty() || appData.strAppDesc.size() > MAX_APPDESC_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "register_app: invalid app desc");
+
+            if(appData.nDevType < MIN_DEVTYPE_VALUE || appData.nDevType > sporkManager.GetSporkValue(SPORK_101_DEV_TYPE_MAX_VALUE))
+                return state.DoS(10, false, REJECT_INVALID, "register_app: invalid developer type, " + appData.nDevType);
+
+            if(appData.strDevName.empty() || appData.strDevName.size() > MAX_DEVNAME_SIZE || IsKeyWord(appData.strDevName))
+                return state.DoS(10, false, REJECT_INVALID, "register_app: invalid developer name or contain keyword, " + appData.strDevName);
+
+            if(appData.nDevType == 1) // company
+            {
+                if(appData.strWebUrl.empty() || appData.strWebUrl.size() > MAX_WEBURL_SIZE || !IsValidUrl(appData.strWebUrl))
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: invalid web url, " + appData.strWebUrl);
+
+                if(appData.strLogoUrl.empty() || appData.strLogoUrl.size() > MAX_LOGOURL_SIZE || !IsValidUrl(appData.strLogoUrl))
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: invalid app logo url, " + appData.strLogoUrl);
+
+                if(appData.strCoverUrl.empty() || appData.strCoverUrl.size() > MAX_COVERURL_SIZE || !IsValidUrl(appData.strCoverUrl))
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: invalid app cover url, " + appData.strCoverUrl);
+            }
+            else
+            {
+                if(!appData.strWebUrl.empty())
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: personal web url must be empty, " + appData.strWebUrl);
+
+                if(!appData.strLogoUrl.empty())
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: personal app logo url, " + appData.strLogoUrl);
+
+                if(!appData.strCoverUrl.empty())
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: personal app cover url, " + appData.strCoverUrl);
+            }
+
+            // check other txout and cancelled txout
+            CAmount nCancelledAmount = 0;
+            unsigned int nCount = 0;
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                const CTxOut& tempTxOut = tx.vout[m];
+                uint32_t nAppCmd = 0;
+                if(!(tempTxOut.IsSafeOnly(&nAppCmd) && nAppCmd != TRANSFER_SAFE_CMD)) // non-simple-safe txout
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: tx can contain register txout and simple safe txout only, " + txout.ToString());
+
+                string strTempAddress = "";
+                if(!GetTxOutAddress(tempTxOut, &strTempAddress))
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: cannot parse txout address, " + txout.ToString());
+                if(strTempAddress != g_strCancelledSafeAddress)
+                    continue;
+                if(++nCount > 1)
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: cancel safe repeatedly");
+                nCancelledAmount = tempTxOut.nValue;
+            }
+            if(nCount == 0)
+                return state.DoS(50, false, REJECT_INVALID, "register_app: need cancel safe");
+            if(!IsCancelledRange(nCancelledAmount) || (masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
+                return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
+
+            // check vin
+            for(unsigned int m = 0; m < tx.vin.size(); m++)
+            {
+                const CTxIn& txin = tx.vin[m];
+                const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                if (!coins)
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: missing txin, " + txin.ToString());
+
+                const CTxOut& in_txout = coins->vout[txin.prevout.n];
+                if(in_txout.IsAsset()) // forbid asset txin
+                    return state.DoS(50, false, REJECT_INVALID, "register_app: txin cannot be asset txout, " + txin.ToString());
+            }
+        }
+        else if(header.nAppCmd == ADD_AUTH_CMD || header.nAppCmd == DELETE_AUTH_CMD)
+        {
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "set_auth: conflict with locked txout");
+
+            if(txout.nValue != APP_OUT_VALUE)
+                return state.DoS(50, false, REJECT_INVALID, "set_auth: invalid safe amount");
+
+            CAppId_AppInfo_IndexValue appInfo;
+            if(!GetAppInfoByAppId(header.appId, appInfo, false))
+                return state.DoS(10, false, REJECT_INVALID, "set_auth: non-existent app");
+            string strAdminAddress = appInfo.strAdminAddress;
+            if(strAddress != strAdminAddress)
+                return state.DoS(50, false, REJECT_INVALID, "set_auth: txout address is different from admin address" + strAddress + " != " + strAdminAddress);
+
+            CAuthData authData;
+            if(!ParseAuthData(vData, authData))
+                return state.DoS(50, false, REJECT_INVALID, "set_auth: parse reserve failed");
+
+            if(authData.nSetType < MIN_SETTYPE_VALUE || authData.nSetType > sporkManager.GetSporkValue(SPORK_102_SET_TYPE_MAX_VALUE))
+                return state.DoS(10, false, REJECT_INVALID, "set_auth: invalid set type");
+            if((authData.nSetType == 1 && header.nAppCmd != ADD_AUTH_CMD) || (authData.nSetType == 2 && header.nAppCmd != DELETE_AUTH_CMD))
+                return state.DoS(10, false, REJECT_INVALID, "set_auth: set type is conflicted with app cmd");
+
+            if(authData.strUserAddress != "ALL_USER" && !CBitcoinAddress(authData.strUserAddress).IsValid())
+                return state.DoS(10, false, REJECT_INVALID, "set_auth: invalid user address");
+            if(authData.strUserAddress == strAdminAddress)
+                return state.DoS(10, false, REJECT_INVALID, "set_auth: admin don't need to set auth");
+
+            if(fWithMempool)
+            {
+                vector<uint32_t> vMempoolAuth;
+                if(GetAuthByAppIdAddressFromMempool(header.appId, authData.strUserAddress, vMempoolAuth))
+                {
+                    if(authData.nAuth == 0 || authData.nAuth == 1)
+                    {
+                        if(vMempoolAuth.end() != find(vMempoolAuth.begin(), vMempoolAuth.end(), 0) || vMempoolAuth.end() != find(vMempoolAuth.begin(), vMempoolAuth.end(), 1))
+                            return state.DoS(10, false, REJECT_INVALID, "set_auth: don't set auth(0 or 1) repeatedlly util next block is comming");
+                    }
+                    else
+                    {
+                        if(vMempoolAuth.end() != find(vMempoolAuth.begin(), vMempoolAuth.end(), authData.nAuth))
+                            return state.DoS(10, false, REJECT_INVALID, "set_auth: don't set auth repeatedlly util next block is comming");
+                    }
+                }
+            }
+
+            map<uint32_t, int> mapAuth;
+            GetAuthByAppIdAddress(header.appId, authData.strUserAddress, mapAuth);
+
+            bool fExist = false;
+            if(!fWithMempool)
+            {
+                for(map<uint32_t, int>::iterator it = mapAuth.begin(); it != mapAuth.end(); it++)
+                {
+                    if(it->second > g_nChainHeight)
+                    {
+                        fExist = true;
+                        break;
+                    }
+                }
+            }
+            if(!fExist)
+            {
+                if(header.nAppCmd == ADD_AUTH_CMD && mapAuth.count(authData.nAuth) != 0)
+                    return state.DoS(10, false, REJECT_INVALID, "set_auth: existent auth, don't need to add it");
+                if(header.nAppCmd == DELETE_AUTH_CMD && mapAuth.count(authData.nAuth) == 0)
+                    return state.DoS(10, false, REJECT_INVALID, "set_auth: non-existent auth, cann't delete it");
+            }
+
+            // check other txout
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                uint32_t nAppCmd = 0;
+                if(!(tx.vout[m].IsSafeOnly(&nAppCmd) && nAppCmd != TRANSFER_SAFE_CMD)) // non-simple-safe txout
+                    return state.DoS(10, false, REJECT_INVALID, "set_auth: tx can contain set_auth txout and simple safe txout only, " + txout.ToString());
+            }
+
+            // check vin
+            for(unsigned int m = 0; m < tx.vin.size(); m++)
+            {
+                const CTxIn& txin = tx.vin[m];
+                const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                if (!coins)
+                    return state.DoS(10, false, REJECT_INVALID, "set_auth: missing txin, " + txin.ToString());
+
+                const CTxOut& in_txout = coins->vout[txin.prevout.n];
+                if(in_txout.IsAsset()) // forbid asset txin
+                    return state.DoS(50, false, REJECT_INVALID, "set_auth: txin cannot be asset txout, " + txin.ToString());
+
+                string strInAddress = "";
+                if(!GetTxOutAddress(in_txout, &strInAddress))
+                    return state.DoS(10, false, REJECT_INVALID, "set_auth: cannot parse txin address");
+                if(strInAddress != strAdminAddress)
+                    return state.DoS(10, false, REJECT_INVALID, "set_auth: txin address is different from admin address, " + strInAddress + " != " + strAdminAddress);
+            }
+        }
+        else if(header.nAppCmd == CREATE_EXTEND_TX_CMD)
+        {
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "extenddata: conflict with locked txout");
+
+            if(txout.nValue != APP_OUT_VALUE)
+                return state.DoS(50, false, REJECT_INVALID, "extenddata: invalid safe amount");
+
+            CAppId_AppInfo_IndexValue appInfo;
+            if(!GetAppInfoByAppId(header.appId, appInfo, false))
+                return state.DoS(10, false, REJECT_INVALID, "extenddata: non-existent app");
+
+            CExtendData extendData;
+            if(!ParseExtendData(vData, extendData))
+                return state.DoS(50, false, REJECT_INVALID, "extenddata: parse reserve failed");
+
+            if(extendData.nAuth < MIN_AUTH_VALUE)
+                return state.DoS(10, false, REJECT_INVALID, "extenddata: invalid auth");
+
+            if(strAddress != appInfo.strAdminAddress) // non-admin need check auth
+            {
+                if(fWithMempool)
+                {
+                    vector<uint32_t> vMempoolAllUserAuth;
+                    if(GetAuthByAppIdAddressFromMempool(header.appId, "ALL_USER", vMempoolAllUserAuth))
+                    {
+                        if(find(vMempoolAllUserAuth.begin(), vMempoolAllUserAuth.end(), 0) != vMempoolAllUserAuth.end())
+                            return state.DoS(10, false, REJECT_INVALID, "extenddata: all users's permission (0) are unconfirmed in memory pool");
+                        if(find(vMempoolAllUserAuth.begin(), vMempoolAllUserAuth.end(), 1) != vMempoolAllUserAuth.end())
+                            return state.DoS(10, false, REJECT_INVALID, "extenddata: all users's permission (1) are unconfirmed in memory pool");
+                        if(find(vMempoolAllUserAuth.begin(), vMempoolAllUserAuth.end(), extendData.nAuth) != vMempoolAllUserAuth.end())
+                            return state.DoS(10, false, REJECT_INVALID, strprintf("extenddata: all users's permission (%u) are unconfirmed in memory pool", extendData.nAuth));
+                    }
+                    vector<uint32_t> vMempoolUserAuth;
+                    if(GetAuthByAppIdAddressFromMempool(header.appId, strAddress, vMempoolUserAuth))
+                    {
+                        if(find(vMempoolUserAuth.begin(), vMempoolUserAuth.end(), 0) != vMempoolUserAuth.end())
+                            return state.DoS(10, false, REJECT_INVALID, "extenddata: current user's permission (0) are unconfirmed in memory pool");
+                        if(find(vMempoolUserAuth.begin(), vMempoolUserAuth.end(), 1) != vMempoolUserAuth.end())
+                            return state.DoS(10, false, REJECT_INVALID, "extenddata: current user's permission (1) are unconfirmed in memory pool");
+                        if(find(vMempoolUserAuth.begin(), vMempoolUserAuth.end(), extendData.nAuth) != vMempoolUserAuth.end())
+                            return state.DoS(10, false, REJECT_INVALID, strprintf("extenddata: current user's permission (%u) are unconfirmed in memory pool", extendData.nAuth));
+                    }
+                }
+
+                map<uint32_t, int> mapAllUserAuth;
+                GetAuthByAppIdAddress(header.appId, "ALL_USER", mapAllUserAuth);
+
+                map<uint32_t, int> mapUserAuth;
+                GetAuthByAppIdAddress(header.appId, strAddress, mapUserAuth);
+
+                bool fExist = false;
+                if(!fWithMempool)
+                {
+                    for(map<uint32_t, int>::iterator it = mapAllUserAuth.begin(); it != mapAllUserAuth.end(); it++)
+                    {
+                        if(it->second > g_nChainHeight)
+                        {
+                            fExist = true;
+                            break;
+                        }
+                    }
+
+                    if(!fExist)
+                    {
+                        for(map<uint32_t, int>::iterator it = mapUserAuth.begin(); it != mapUserAuth.end(); it++)
+                        {
+                            if(it->second > g_nChainHeight)
+                            {
+                                fExist = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if(!fExist)
+                {
+                    if(mapAllUserAuth.count(0) != 0)
+                        return state.DoS(10, false, REJECT_INVALID, "extenddata: all users's all permissions are denied");
+                    else
+                    {
+                        if(mapAllUserAuth.count(1) == 0)
+                        {
+                            if(mapUserAuth.count(0) != 0)
+                                return state.DoS(10, false, REJECT_INVALID, "extenddata: current user's all permissions are denied");
+                            else
+                            {
+                                if(mapUserAuth.count(1) == 0)
+                                {
+                                    if(mapAllUserAuth.count(extendData.nAuth) == 0)
+                                    {
+                                        if(mapUserAuth.count(extendData.nAuth) == 0)
+                                            return state.DoS(10, false, REJECT_INVALID, "extenddata: current user's permission is denied");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(extendData.strExtendData.empty() || extendData.strExtendData.size() > MAX_EXTENDDATAT_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "extenddata: invalid extend data");
+
+            // check other txout
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                uint32_t nAppCmd = 0;
+                if(!(tx.vout[m].IsSafeOnly(&nAppCmd) && nAppCmd != TRANSFER_SAFE_CMD)) // non-simple-safe txout
+                    return state.DoS(10, false, REJECT_INVALID, "extenddata: tx can contain extenddata txout and simple safe txout only, " + txout.ToString());
+            }
+
+            // check vin
+            for(unsigned int m = 0; m < tx.vin.size(); m++)
+            {
+                const CTxIn& txin = tx.vin[m];
+                const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                if (!coins)
+                    return state.DoS(10, false, REJECT_INVALID, "extenddata: missing txin, " + txin.ToString());
+
+                const CTxOut& in_txout = coins->vout[txin.prevout.n];
+                if(in_txout.IsAsset()) // forbid asset txin
+                    return state.DoS(50, false, REJECT_INVALID, "extenddata: txin cannot be asset txout, " + txin.ToString());
+
+                string strInAddress = "";
+                if(!GetTxOutAddress(in_txout, &strInAddress))
+                    return state.DoS(10, false, REJECT_INVALID, "extenddata: cannot parse txin address");
+                if(strInAddress != strAddress)
+                    return state.DoS(10, false, REJECT_INVALID, "extenddata: txin address is different from txout address, " + strInAddress + " != " + strAddress);
+            }
+        }
+        else if(header.nAppCmd == ISSUE_ASSET_CMD)
+        {
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "issue_asset: conflict with locked txout");
+
+            if(header.appId.GetHex() != g_strSafeAssetId)
+                return state.DoS(50, false, REJECT_INVALID, "issue_asset: invalid safe-asset app id in header, " + header.appId.GetHex());
+
+            const CTxIn& txin = tx.vin[0];
+            const CTxOut& in_txout = view.GetOutputFor(txin);
+            string strInAddress = "";
+            if(!GetTxOutAddress(in_txout, &strInAddress))
+                return state.DoS(50, false, REJECT_INVALID, "issue_asset: cannot parse txin address, " + txin.ToString());
+            if(strInAddress != strAddress)
+                return state.DoS(50, false, REJECT_INVALID, "issue_asset: txin address is different from txout address, " + strInAddress + " != " + strAddress);
+
+            CAssetData assetData;
+            if(!ParseIssueData(vData, assetData))
+                return state.DoS(50, false, REJECT_INVALID, "issue_asset: parse reserve failed");
+
+            uint256 assetId = assetData.GetHash();
+            if(ExistAssetId(assetId, fWithMempool))
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: existent asset");
+
+            if(assetData.strShortName.empty() || assetData.strShortName.size() > MAX_SHORTNAME_SIZE || IsKeyWord(assetData.strShortName) || IsContainSpace(assetData.strShortName))
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid asset short name");
+            if(ExistShortName(assetData.strShortName, fWithMempool))
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: existent asset short name");
+
+            if(assetData.strAssetName.empty() || assetData.strAssetName.size() > MAX_ASSETNAME_SIZE || IsKeyWord(assetData.strAssetName))
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid asset name");
+            if(ExistAssetName(assetData.strAssetName, fWithMempool))
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: existent asset name");
+
+            if(assetData.strAssetDesc.empty() || assetData.strAssetDesc.size() > MAX_ASSETDESC_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid asset description");
+
+            if(assetData.strAssetUnit.empty() || assetData.strAssetUnit.size() > MAX_ASSETUNIT_SIZE || IsKeyWord(assetData.strAssetUnit))
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid asset unit");
+
+            if(assetData.nTotalAmount > MAX_ASSETS)
+                return state.DoS(10, false, REJECT_INVALID, strprintf("issue_asset: invalid asset total amount (min: 100, max: %lld)", MAX_ASSETS / pow(10, assetData.nDecimals)));
+
+            if(assetData.nFirstIssueAmount <= 0 || assetData.nFirstIssueAmount > assetData.nTotalAmount)
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid asset first issue amount");
+
+            if(assetData.nFirstActualAmount < AmountFromValue("100", assetData.nDecimals, true) || assetData.nFirstActualAmount > assetData.nFirstIssueAmount)
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid asset first actual amount (min: 100)");
+
+            if(assetData.nDecimals < MIN_ASSETDECIMALS_VALUE || assetData.nDecimals > MAX_ASSETDECIMALS_VALUE)
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid asset decimals");
+
+            if(assetData.bPayCandy)
+            {
+                char totalAmountStr[64] = "",candyAmountStr[64]="";
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",assetData.nCandyAmount);
+                string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
+                string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
+                if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: candy amount out of range (min: 0.001 * total, max: 0.1 * total)");
+                if(assetData.nCandyAmount >= assetData.nFirstIssueAmount)
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: candy amount exceed first issue amount");
+                if(assetData.nCandyAmount != assetData.nFirstIssueAmount - assetData.nFirstActualAmount)
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: candy amount is conflicted with first issue amount and first actual amount");
+                if(assetData.nCandyExpired < MIN_CANDYEXPIRED_VALUE || assetData.nCandyExpired > MAX_CANDYEXPIRED_VALUE)
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid candy expired (min: 1, max: 6)");
+            }
+            else
+            {
+                if(assetData.nCandyAmount != 0)
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: candy is disabled, don't need candy amount");
+                if(assetData.nCandyExpired != 0)
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: candy is disabled, don't need candy expired");
+            }
+
+            if(assetData.strRemarks.size() > MAX_REMARKS_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid remarks");
+
+            if(view.GetValueIn(tx, true) != 0)
+                return state.DoS(50, false, REJECT_INVALID, "issue_asset: vin asset amount must be 0");
+
+            // check other txout and cancelled txout
+            CAmount nCancelledAmount = 0;
+            unsigned int nCancelledCount = 0;
+            unsigned int nCandyCount = 0;
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                const CTxOut& tempTxOut = tx.vout[m];
+                uint32_t nAppCmd = 0;
+                if(!tempTxOut.IsSafeOnly(&nAppCmd)) // non-safe txout
+                {
+                    if(nAppCmd == PUT_CANDY_CMD) // put candy txout
+                    {
+                        if(assetData.bPayCandy)
+                        {
+                            if(++nCandyCount > 1)
+                                return state.DoS(10, false, REJECT_INVALID, "issue_asset: put candy txout repeatedly");
+                            if(assetData.nCandyAmount != tempTxOut.nValue)
+                                return state.DoS(10, false, REJECT_INVALID, "issue_asset: candy amount is different put candy txout value");
+                        }
+                    }
+                    else
+                        return state.DoS(10, false, REJECT_INVALID, "issue_asset: tx can contain issue txout, put candy txout and simple safe txout only, " + txout.ToString());
+                }
+                else
+                {
+                    if(nAppCmd == TRANSFER_SAFE_CMD) // complex-safe txout
+                        return state.DoS(10, false, REJECT_INVALID, "issue_asset: tx cannot contain complex safe txout, " + txout.ToString());
+
+                    string strTempAddress = "";
+                    if(!GetTxOutAddress(tempTxOut, &strTempAddress))
+                        return state.DoS(10, false, REJECT_INVALID, "issue_asset: cannot parse txout address, " + txout.ToString());
+                    if(strTempAddress != g_strCancelledSafeAddress)
+                        continue;
+                    if(++nCancelledCount > 1)
+                        return state.DoS(10, false, REJECT_INVALID, "issue_asset: cancel safe repeatedly");
+                    nCancelledAmount = tempTxOut.nValue;
+                }
+            }
+            if(nCancelledCount == 0)
+                return state.DoS(50, false, REJECT_INVALID, "issue_asset: need cancel safe");
+            if(!IsCancelledRange(nCancelledAmount) || (masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid safe cancelld amount");
+            if(assetData.bPayCandy && nCandyCount == 0)
+                return state.DoS(10, false, REJECT_INVALID, "issue_asset: tx need put candy txout when paycandy is opened");
+
+            // check vin
+            for(unsigned int m = 0; m < tx.vin.size(); m++)
+            {
+                const CTxIn& txin = tx.vin[m];
+                const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                if (!coins)
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: missing txin, " + txin.ToString());
+
+                const CTxOut& in_txout = coins->vout[txin.prevout.n];
+                if(in_txout.IsAsset()) // forbid asset txin
+                    return state.DoS(50, false, REJECT_INVALID, "issue_asset: txin cannot be asset txout, " + txin.ToString());
+            }
+        }
+        else if(header.nAppCmd == ADD_ASSET_CMD)
+        {
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "add_asset: conflict with locked txout");
+
+            if(header.appId.GetHex() != g_strSafeAssetId)
+                return state.DoS(50, false, REJECT_INVALID, "add_asset: invalid safe-asset app id in header, " + header.appId.GetHex());
+
+            CCommonData addData;
+            if(!ParseCommonData(vData, addData))
+                return state.DoS(50, false, REJECT_INVALID, "add_asset: parse reserve failed");
+
+            CAssetId_AssetInfo_IndexValue assetInfo;
+            if(!GetAssetInfoByAssetId(addData.assetId, assetInfo, false))
+                return state.DoS(10, false, REJECT_INVALID, "add_asset: non-existent asset");
+            string strAdminAddress = assetInfo.strAdminAddress;
+            if(strAddress != strAdminAddress)
+                return state.DoS(10, false, REJECT_INVALID, "add_asset: txout address is different from admin address, " + strAddress + " != " + strAdminAddress);
+
+            if(addData.nAmount <= 0 || addData.nAmount > MAX_ASSETS)
+                return state.DoS(10, false, REJECT_INVALID, "add_asset: invalid add amount");
+            if(assetInfo.assetData.nTotalAmount - assetInfo.assetData.nFirstIssueAmount < addData.nAmount + GetAddedAmountByAssetId(addData.assetId, fWithMempool))
+                return state.DoS(10, false, REJECT_INVALID, "add_asset: added amount exceed total amount");
+
+            if(addData.strRemarks.size() > MAX_REMARKS_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "add_asset: invalid remarks");
+
+            if(view.GetValueIn(tx, true) != 0)
+                return state.DoS(50, false, REJECT_INVALID, "add_asset: vin asset amount must be 0");
+
+            // check other txout
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                uint32_t nAppCmd = 0;
+                if(!(tx.vout[m].IsSafeOnly(&nAppCmd) && nAppCmd != TRANSFER_SAFE_CMD)) // non-simple-safe txout
+                    return state.DoS(10, false, REJECT_INVALID, "add_asset: tx can contain add txout and simple safe txout only, " + txout.ToString());
+            }
+
+            // check vin
+            for(unsigned int m = 0; m < tx.vin.size(); m++)
+            {
+                const CTxIn& txin = tx.vin[m];
+                const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                if (!coins)
+                    return state.DoS(10, false, REJECT_INVALID, "add_asset: missing txin, " + txin.ToString());
+
+                const CTxOut& in_txout = coins->vout[txin.prevout.n];
+                if(in_txout.IsAsset()) // forbid asset txin
+                    return state.DoS(50, false, REJECT_INVALID, "add_asset: txin cannot be asset txout, " + txin.ToString());
+
+                string strInAddress = "";
+                if(!GetTxOutAddress(in_txout, &strInAddress))
+                    return state.DoS(10, false, REJECT_INVALID, "add_asset: cannot parse txin address");
+                if(strInAddress != strAdminAddress)
+                    return state.DoS(10, false, REJECT_INVALID, "add_asset: txin address is different from admin address, " + strInAddress + " != " + strAdminAddress);
+            }
+        }
+        else if(header.nAppCmd == TRANSFER_ASSET_CMD)
+        {
+            if(header.appId.GetHex() != g_strSafeAssetId)
+                return state.DoS(50, false, REJECT_INVALID, "transfer_asset: invalid safe-asset app id in header, " + header.appId.GetHex());
+
+            CCommonData transferData;
+            if(!ParseCommonData(vData, transferData))
+                return state.DoS(50, false, REJECT_INVALID, "transfer_asset: parse reserve failed");
+
+            CAssetId_AssetInfo_IndexValue assetInfo;
+            if(!GetAssetInfoByAssetId(transferData.assetId, assetInfo, false))
+                return state.DoS(10, false, REJECT_INVALID, "transfer_asset: non-existent asset");
+
+            if(transferData.nAmount <= 0 || transferData.nAmount > MAX_ASSETS)
+                return state.DoS(10, false, REJECT_INVALID, "transfer_asset: invalid transfer amount");
+
+            if(transferData.strRemarks.size() > MAX_REMARKS_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "transfer_asset: invalid remarks");
+
+            if(view.GetValueIn(tx, true) != tx.GetValueOut(true))
+                return state.DoS(50, false, REJECT_INVALID, "transfer_asset: vin amount is different from vout amount");
+
+            // check other txout
+            unsigned int nChangeCount = 0;
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                const CTxOut& tempTxOut = tx.vout[m];
+                uint32_t nAppCmd = 0;
+                if(!tempTxOut.IsSafeOnly(&nAppCmd)) // non-safe txout
+                {
+                    if(nAppCmd == CHANGE_ASSET_CMD) // change asset txout
+                    {
+                        if(++nChangeCount > 1)
+                            return state.DoS(10, false, REJECT_INVALID, "transfer_asset: change txout repeatedly");
+                    }
+                    else if(nAppCmd != TRANSFER_ASSET_CMD)
+                        return state.DoS(10, false, REJECT_INVALID, "transfer_asset: tx can contain transfer txout, change asset and simple safe txout only, " + txout.ToString());
+                }
+                else
+                {
+                    if(nAppCmd == TRANSFER_SAFE_CMD) // complex-safe txout
+                        return state.DoS(10, false, REJECT_INVALID, "transfer_asset: tx cannot contain complex safe txout, " + txout.ToString());
+                }
+            }
+
+            // check vin
+            if(mapInAssetId.size() != 1 || mapInAssetId.begin()->first != mapAssetId.begin()->first)
+                return state.DoS(50, false, REJECT_INVALID, "transfer_asset: asset id must be same between vin and vout");
+            if(!mapInAssetId2.empty())
+                return state.DoS(50, false, REJECT_INVALID, "transfer_asset: vin cannot be destory-asset and put-candy txout");
+        }
+        else if(header.nAppCmd == DESTORY_ASSET_CMD)
+        {
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "destory_asset: conflict with locked txout");
+
+            if(header.appId.GetHex() != g_strSafeAssetId)
+                return state.DoS(50, false, REJECT_INVALID, "destory_asset: invalid safe-asset app id in header, " + header.appId.GetHex());
+
+            if(strAddress != g_strCancelledAssetAddress)
+                return state.DoS(50, false, REJECT_INVALID, "destory_asset: invalid asset cancelled address");
+
+            CCommonData destoryData;
+            if(!ParseCommonData(vData, destoryData))
+                return state.DoS(50, false, REJECT_INVALID, "destory_asset: parse reserve failed");
+
+            CAssetId_AssetInfo_IndexValue assetInfo;
+            if(!GetAssetInfoByAssetId(destoryData.assetId, assetInfo, false))
+                return state.DoS(10, false, REJECT_INVALID, "destory_asset: non-existent asset");
+
+            if(!assetInfo.assetData.bDestory)
+                return state.DoS(10, false, REJECT_INVALID, "destory_asset: disable to destory asset");
+
+            if(destoryData.nAmount <= 0 || destoryData.nAmount > MAX_ASSETS)
+                return state.DoS(10, false, REJECT_INVALID, "destory_asset: invalid destory amount");
+
+            if(destoryData.strRemarks.size() > MAX_REMARKS_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "destory_asset: invalid remarks");
+
+            if(view.GetValueIn(tx, true) != tx.GetValueOut(true))
+                return state.DoS(50, false, REJECT_INVALID, "destory_asset: vin amount is different from vout amount");
+
+            // check other txout
+            unsigned int nChangeCount = 0;
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                const CTxOut& tempTxOut = tx.vout[m];
+                uint32_t nAppCmd = 0;
+                if(!tempTxOut.IsSafeOnly(&nAppCmd)) // non-safe txout
+                {
+                    if(nAppCmd == CHANGE_ASSET_CMD) // change asset txout
+                    {
+                        if(++nChangeCount > 1)
+                            return state.DoS(10, false, REJECT_INVALID, "destory_asset: change txout repeatedly");
+                    }
+                    else
+                        return state.DoS(10, false, REJECT_INVALID, "destory_asset: tx can contain destory txout, change txout and simple safe txout only, " + txout.ToString());
+                }
+                else
+                {
+                    if(nAppCmd == TRANSFER_SAFE_CMD) // complex-safe txout
+                        return state.DoS(10, false, REJECT_INVALID, "destory_asset: tx cannot contain complex safe txout, " + txout.ToString());
+                }
+            }
+
+            // check vin
+            if(mapInAssetId.size() != 1 || mapInAssetId.begin()->first != mapAssetId.begin()->first)
+                return state.DoS(50, false, REJECT_INVALID, "destory_asset: asset id must be same between vin and vout");
+            if(!mapInAssetId2.empty())
+                return state.DoS(50, false, REJECT_INVALID, "destory_asset: vin cannot be destory-asset and put-candy txout");
+        }
+        else if(header.nAppCmd == CHANGE_ASSET_CMD)
+        {
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "change_asset: conflict with locked txout");
+
+            if(header.appId.GetHex() != g_strSafeAssetId)
+                return state.DoS(50, false, REJECT_INVALID, "change_asset: invalid safe-asset app id in header, " + header.appId.GetHex());
+
+            CCommonData changeData;
+            if(!ParseCommonData(vData, changeData))
+                return state.DoS(50, false, REJECT_INVALID, "change_asset: parse reserve failed");
+
+            CAssetId_AssetInfo_IndexValue assetInfo;
+            if(!GetAssetInfoByAssetId(changeData.assetId, assetInfo, false))
+                return state.DoS(10, false, REJECT_INVALID, "change_asset: non-existent asset");
+
+            if(changeData.nAmount <= 0 || changeData.nAmount > MAX_ASSETS)
+                return state.DoS(10, false, REJECT_INVALID, "change_asset: invalid destory amount");
+
+            if(changeData.strRemarks.size() > MAX_REMARKS_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "change_asset: invalid remarks");
+
+            if(view.GetValueIn(tx, true) != tx.GetValueOut(true))
+                return state.DoS(50, false, REJECT_INVALID, "change_asset: vin amount is different from vout amount");
+
+            // check other txout
+            unsigned int nCount = 0;
+            unsigned int nTransferCount = 0;
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                const CTxOut& tempTxOut = tx.vout[m];
+                uint32_t nAppCmd = 0;
+                if(!tempTxOut.IsSafeOnly(&nAppCmd)) // non-safe txout
+                {
+                    if(nAppCmd == DESTORY_ASSET_CMD || nAppCmd == PUT_CANDY_CMD) // destory txout or put candy txout
+                    {
+                        if(++nCount > 1)
+                            return state.DoS(10, false, REJECT_INVALID, "change_asset: invalid other txouts");
+                    }
+                    else if(nAppCmd == TRANSFER_ASSET_CMD)
+                    {
+                        nTransferCount++;
+                    }
+                    else
+                        return state.DoS(10, false, REJECT_INVALID, "change_asset: tx can contain change txout, transfer/destory/putcandy txout and simple safe txout only, " + txout.ToString());
+                }
+                else
+                {
+                    if(nAppCmd == TRANSFER_SAFE_CMD) // complex-safe txout
+                        return state.DoS(10, false, REJECT_INVALID, "change_asset: tx cannot contain complex safe txout, " + txout.ToString());
+                }
+            }
+            if(nCount == 0 && nTransferCount == 0)
+                return state.DoS(50, false, REJECT_INVALID, "change_asset: tx must contain transfer/destory/putcandy txout at least, " + txout.ToString());
+            else if(nCount != 0 && nTransferCount != 0)
+                return state.DoS(50, false, REJECT_INVALID, "change_asset: tx contain change txout, transfer txout and destory/putcandy txout in same time");
+
+            // check vin
+            if(mapInAssetId.size() != 1 || mapInAssetId.begin()->first != mapAssetId.begin()->first)
+                return state.DoS(50, false, REJECT_INVALID, "change_asset: asset id must be same between vin and vout");
+            if(!mapInAssetId2.empty())
+                return state.DoS(50, false, REJECT_INVALID, "change_asset: vin cannot be destory-asset and put-candy txout");
+        }
+        else if(header.nAppCmd == PUT_CANDY_CMD)
+        {
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "put_candy: conflict with locked txout");
+
+            if(header.appId.GetHex() != g_strSafeAssetId)
+                return state.DoS(50, false, REJECT_INVALID, "put_candy: invalid safe-asset app id in header, " + header.appId.GetHex());
+
+            if(strAddress != g_strPutCandyAddress)
+                return state.DoS(10, false, REJECT_INVALID, "put_candy: invalid candy put address, " + strAddress);
+
+            CPutCandyData candyData;
+            if(!ParsePutCandyData(vData, candyData))
+                return state.DoS(50, false, REJECT_INVALID, "put_candy: parse reserve failed");
+
+            if(candyData.nExpired < MIN_CANDYEXPIRED_VALUE || candyData.nExpired > MAX_CANDYEXPIRED_VALUE)
+                return state.DoS(10, false, REJECT_INVALID, "put_candy: invalid candy expired");
+
+            if(candyData.strRemarks.size() > MAX_REMARKS_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "put_candy: invalid remarks");
+
+            int dbPutCandyCount = 0;
+            map<COutPoint, CCandyInfo> mapCandyInfo;
+            if(GetAssetIdCandyInfo(candyData.assetId, mapCandyInfo))
+                dbPutCandyCount = mapCandyInfo.size();
+            int putCandyCount = dbPutCandyCount;
+            if(fWithMempool)
+                putCandyCount += mempool.get_PutCandy_count(candyData.assetId);
+            if(putCandyCount>=MAX_PUTCANDY_VALUE)
+                return state.DoS(10, false, REJECT_INVALID, "put_candy: put candy times used up");
+
+            // check other txout
+            bool fWithIssue = false;
+            CAssetData assetData;
+            string strAdminAddress = "";
+            unsigned int nCount = 0;
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                const CTxOut& tempTxOut = tx.vout[m];
+                uint32_t nAppCmd = 0;
+                if(!tempTxOut.IsSafeOnly(&nAppCmd)) // non-safe txout
+                {
+                    if(nAppCmd == ISSUE_ASSET_CMD)
+                    {
+                        CAppHeader tempHeader;
+                        vector<unsigned char> vTempData;
+                        if(!ParseReserve(tempTxOut.vReserve, tempHeader, vTempData))
+                            return state.DoS(50, false, REJECT_INVALID, "put_candy: parse issue txout failed");
+                        if(tempHeader.nAppCmd != nAppCmd)
+                            return state.DoS(50, false, REJECT_INVALID, "put_candy: app cmd is conflicted");
+                        if(!ParseIssueData(vTempData, assetData))
+                            return state.DoS(50, false, REJECT_INVALID, "put_candy: parse issue reserve failed");
+                        fWithIssue = true;
+                        if(++nCount > 1)
+                            return state.DoS(10, false, REJECT_INVALID, "put_candy: repeated issue txout or change txout");
+                        if(!GetTxOutAddress(tempTxOut, &strAdminAddress))
+                            return state.DoS(10, false, REJECT_INVALID, "put_candy: cannot parse issue txout address");
+                    }
+                    else if(nAppCmd == CHANGE_ASSET_CMD)
+                    {
+                        if(++nCount > 1)
+                            return state.DoS(10, false, REJECT_INVALID, "put_candy: repeated change txout or issue txout");
+                    }
+                    else
+                        return state.DoS(10, false, REJECT_INVALID, "put_candy: tx can contain put candy txout, issue/change txout and simple safe txout only, " + txout.ToString());
+                }
+                else
+                {
+                    if(nAppCmd == TRANSFER_SAFE_CMD) // complex-safe txout
+                        return state.DoS(10, false, REJECT_INVALID, "put_candy: tx cannot contain complex safe txout, " + txout.ToString());
+                }
+            }
+
+            if(fWithIssue)
+            {
+                if(!assetData.bPayCandy)
+                    return state.DoS(10, false, REJECT_INVALID, "put_candy: put candy is closed when issue asset");
+
+                if(candyData.nAmount != assetData.nCandyAmount)
+                    return state.DoS(10, false, REJECT_INVALID, "put_candy: candy amount is different from candy amount of asset data");
+
+                char totalAmountStr[64] = "",candyAmountStr[64]="";
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",assetData.nCandyAmount);
+                string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
+                string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
+                if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
+                    return state.DoS(10, false, REJECT_INVALID, "put_candy: candy amount out of range (min: 0.001 * total, max: 0.1 * total)");
+
+                if(candyData.nAmount != assetData.nFirstIssueAmount - assetData.nFirstActualAmount)
+                    return state.DoS(10, false, REJECT_INVALID, "put_candy: candy amount is conflicted with first issue amount and first actual amount");
+
+                if(candyData.nExpired != assetData.nCandyExpired)
+                    return state.DoS(10, false, REJECT_INVALID, "put_candy: candy expired is different from candy expired of asset data");
+            }
+            else
+            {
+                CAssetId_AssetInfo_IndexValue assetInfo;
+                if(!GetAssetInfoByAssetId(candyData.assetId, assetInfo, false))
+                    return state.DoS(10, false, REJECT_INVALID, "put_candy: non-existent asset");
+
+                char totalAmountStr[64] = "",candyAmountStr[64]="";
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetInfo.assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",candyData.nAmount);
+                string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
+                string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
+                if(compareFloatString(candyAmountStr,candyMinStr)<0||compareFloatString(candyAmountStr,candyMaxStr)>0)
+                    return state.DoS(10, false, REJECT_INVALID, "put_candy: candy amount out of range (min: 0.001 * total, max: 0.1 * total)");
+
+                strAdminAddress = assetInfo.strAdminAddress;
+
+                if(view.GetValueIn(tx, true) != tx.GetValueOut(true))
+                    return state.DoS(50, false, REJECT_INVALID, "put_candy: vin amount is different from vout amount");
+            }
+
+            // check vin
+            if(!fWithIssue && (mapInAssetId.size() != 1 || mapInAssetId.begin()->first != mapAssetId.begin()->first))
+                return state.DoS(50, false, REJECT_INVALID, "put_candy: asset id must be same between vin and vout");
+            for(unsigned int m = 0; m < tx.vin.size(); m++)
+            {
+                const CTxIn& txin = tx.vin[m];
+                const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                if (!coins)
+                    return state.DoS(10, false, REJECT_INVALID, "put_candy: missing txin, " + txin.ToString());
+
+                const CTxOut& in_txout = coins->vout[txin.prevout.n];
+                uint32_t nAppCmd = 0;
+                if(in_txout.IsAsset(&nAppCmd)) // forbid invalid asset txin
+                {
+                    if(fWithIssue)
+                        return state.DoS(10, false, REJECT_INVALID, "put_candy: txin must be safe txout when tx is an issue record, " + txin.ToString());
+
+                    if(nAppCmd == DESTORY_ASSET_CMD || nAppCmd == PUT_CANDY_CMD) // invalid asset txin
+                        return state.DoS(50, false, REJECT_INVALID, "put_candy: txin cannot be destory-asset and put-candy txout, " + txin.ToString());
+
+                    string strInAddress = "";
+                    if(!GetTxOutAddress(in_txout, &strInAddress))
+                        return state.DoS(10, false, REJECT_INVALID, "put_candy: cannot parse txin address");
+                    if(strInAddress != strAdminAddress)
+                        return state.DoS(10, false, REJECT_INVALID, "put_candy: txin address is different from admin address, " + strInAddress + " != " + strAdminAddress);
+                }
+            }
+        }
+        else if(header.nAppCmd == GET_CANDY_CMD)
+        {
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "get_candy: conflict with locked txout");
+
+            if(header.appId.GetHex() != g_strSafeAssetId)
+                return state.DoS(50, false, REJECT_INVALID, "get_candy: invalid safe-asset app id in header, " + header.appId.GetHex());
+
+            const CTxIn& txin = tx.vin[tx.vin.size() - 1];
+            const CTxOut& in_txout = view.GetOutputFor(txin);
+            string strInAddress = "";
+            if(!GetTxOutAddress(in_txout, &strInAddress))
+                return state.DoS(50, false, REJECT_INVALID, "get_candy: cannot parse last txin address, " + txin.ToString());
+            if(strInAddress != g_strPutCandyAddress)
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy put address, " + strInAddress);
+
+            CGetCandyData candyData;
+            if(!ParseGetCandyData(vData, candyData))
+                return state.DoS(50, false, REJECT_INVALID, "get_candy: parse reserve failed");
+
+            CAssetId_AssetInfo_IndexValue assetInfo;
+            if(!GetAssetInfoByAssetId(candyData.assetId, assetInfo, false))
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: non-existent asset");
+
+            if(candyData.nAmount <= 0 || candyData.nAmount > MAX_ASSETS)
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy amount");
+            if(candyData.nAmount != txout.nValue)
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: candy amount is different from txout value");
+
+            const COutPoint& out = tx.vin[tx.vin.size() - 1].prevout;
+            CCandyInfo candyInfo;
+            if(!GetAssetIdCandyInfo(candyData.assetId, out, candyInfo))
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: non-existent candy, out: %s" + out.ToString());
+
+            CAmount nAmount = 0;
+            if(GetGetCandyAmount(candyData.assetId, out, strAddress, nAmount, fWithMempool))
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: current user got candy already, " + out.ToString());
+
+            int nPrevTxHeight = GetTxHeight(out.hash);
+            if(nPrevTxHeight >= nTxHeight)
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy txin");
+
+            if(nPrevTxHeight+BLOCKS_PER_DAY>nTxHeight)
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+
+            if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+
+            CAmount nSafe = 0;
+            if(!GetAddressAmountByHeight(nPrevTxHeight, strAddress, nSafe))
+            {
+                LogPrint("asset", "check-getcandy: cannot get safe amount of address[%s] at %d\n", strAddress, nPrevTxHeight);
+                return state.DoS(10, false, REJECT_INVALID, strprintf("get_candy: cannot get safe amount of address[%s] at %d", strAddress, nPrevTxHeight));
+            }
+            if(nSafe <= 0 || nSafe > MAX_MONEY)
+            {
+                LogPrint("asset", "check-getcandy: invalid safe amount of address[%s] at %d", strAddress, nPrevTxHeight);
+                return state.DoS(10, false, REJECT_INVALID, strprintf("get_candy: invalid safe amount of address[%s] at %d", strAddress, nPrevTxHeight));
+            }
+
+            CAmount nTotalSafe = 0;
+            if(!GetTotalAmountByHeight(nPrevTxHeight, nTotalSafe))
+            {
+                LogPrint("asset", "check-getcandy: get total safe amount failed at %d\n", nPrevTxHeight);
+                return state.DoS(10, false, REJECT_INVALID, strprintf("get_candy: get total safe amount failed at %d\n", nPrevTxHeight));
+            }
+            if(nTotalSafe <= 0 || nTotalSafe > MAX_MONEY)
+            {
+                LogPrint("asset", "check-getcandy: invalid total safe amount at %d", nPrevTxHeight);
+                return state.DoS(10, false, REJECT_INVALID, strprintf("get_candy: invalid total safe amount at %d", nPrevTxHeight));
+            }
+            if(nTotalSafe < nSafe)
+            {
+                LogPrint("asset", "check-getcandy: safe amount of address[%s] is more than total safe amount at %d\n", strAddress, nPrevTxHeight);
+                return state.DoS(10, false, REJECT_INVALID, strprintf("get_candy: safe amount of address[%s] is more than total safe amount at %d\n", strAddress, nPrevTxHeight));
+            }
+
+            CAmount nCandyAmount = (CAmount)(1.0 * nSafe / nTotalSafe * candyInfo.nAmount);
+            if(nCandyAmount < AmountFromValue("0.0001", assetInfo.assetData.nDecimals, true))
+            {
+                LogPrint("asset", "check-getcandy: candy-height: %d, address: %s, total_safe: %lld, user_safe: %lld, total_candy_amount: %lld, can_get_candy_amount: %lld, out: %s\n", nPrevTxHeight, strAddress, nTotalSafe, nSafe, candyInfo.nAmount, nCandyAmount, out.ToString());
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: candy amount which can be gotten is too little");
+            }
+            if(txout.nValue != nCandyAmount)
+            {
+                LogPrint("asset", "check-getcandy: candy-height: %d, address: %s, total_safe: %lld, user_safe: %lld, total_candy_amount: %lld, can_get_candy_amount: %lld, out: %s\n", nPrevTxHeight, strAddress, nTotalSafe, nSafe, candyInfo.nAmount, nCandyAmount, out.ToString());
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: candy amount which can get is different from txout value");
+            }
+
+            if(candyData.strRemarks.size() > MAX_REMARKS_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid remarks");
+
+            if(view.GetValueIn(tx, true) < tx.GetValueOut(true))
+                return state.DoS(100, false, REJECT_INVALID, "get_candy: invalid get candy tx");
+
+            // check other txout
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                const CTxOut& tempTxOut = tx.vout[m];
+                uint32_t nAppCmd = 0;
+                if(!tempTxOut.IsSafeOnly(&nAppCmd)) // non-safe txout
+                {
+                    if(nAppCmd != GET_CANDY_CMD) // non-get-candy txout
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: tx can contain get candy txout and simple safe txout only, " + txout.ToString());
+                }
+                else
+                {
+                    if(nAppCmd == TRANSFER_SAFE_CMD) // complex-safe txout
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: tx cannot contain complex safe txout, " + txout.ToString());
+                }
+            }
+
+            // check vin
+            unsigned int nIndex = 0;
+            int nCount = 0;
+            for(unsigned int m = 0; m < tx.vin.size(); m++)
+            {
+                const CTxIn& txin = tx.vin[m];
+                const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                if (!coins)
+                    return state.DoS(10, false, REJECT_INVALID, "get_candy: missing txin, " + txin.ToString());
+
+                const CTxOut& in_txout = coins->vout[txin.prevout.n];
+                if(in_txout.IsAsset()) // forbid invalid asset txin
+                {
+                    CAppHeader in_header;
+                    vector<unsigned char> in_vData;
+                    if(!ParseReserve(in_txout.vReserve, in_header, in_vData))
+                        return state.DoS(50, false, REJECT_INVALID, "get_candy: parse txin reserve failed, " + txin.ToString());
+                    if(in_header.nAppCmd != PUT_CANDY_CMD)
+                        return state.DoS(50, false, REJECT_INVALID, "get_candy: txin must be put-candy, " + txin.ToString());
+                    CPutCandyData putData;
+                    if(!ParsePutCandyData(in_vData, putData))
+                        return state.DoS(50, false, REJECT_INVALID, "get_candy: parse put-candy txin failed, " + txin.ToString());
+                    if(putData.assetId != candyData.assetId)
+                        return state.DoS(50, false, REJECT_INVALID, "get_candy: asset id must be same between vin and vout, " + txin.ToString());
+                    if(++nCount > 1)
+                        return state.DoS(50, false, REJECT_INVALID, "get_candy: txin contain put candy repeatedlly");
+                    string strInAddress = "";
+                    if(!GetTxOutAddress(in_txout, &strInAddress))
+                        return state.DoS(50, false, REJECT_INVALID, "get_candy: cannot parse txin address");
+                    if(strInAddress != g_strPutCandyAddress)
+                        return state.DoS(50, false, REJECT_INVALID, "get_candy: txin address is different from put candy address, " + strInAddress + " != " + g_strPutCandyAddress);
+                    nIndex = m;
+                }
+            }
+            if(nCount == 0)
+                return state.DoS(50, false, REJECT_INVALID, "get_candy: missing put candy txin");
+            if(nIndex != tx.vin.size() - 1)
+                return state.DoS(50, false, REJECT_INVALID, "get_candy: index of put candy in vin is error");
+        }
     }
 
     return true;
@@ -579,10 +2003,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
     if (pfMissingInputs)
         *pfMissingInputs = false;
 
-    if(tx.nVersion < SAFE_TX_VERSION)
-        return state.DoS(10, false, REJECT_NONSTANDARD, "old-tx-version");
-
-    if (!CheckTransaction(tx, state) || !ContextualCheckTransaction(tx, state, chainActive.Tip()))
+    if (!CheckTransaction(tx, state, FROM_NEW) || !ContextualCheckTransaction(tx, state, chainActive.Tip()))
         return false;
 
     // Coinbase is only valid in a block, not as a loose transaction
@@ -598,7 +2019,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
     // sure that such transactions will be mined (unless we're on
     // -testnet/-regtest).
     const CChainParams& chainparams = Params();
-    if (fRequireStandard && tx.nVersion >= 2 && tx.nVersion < SAFE_TX_VERSION && VersionBitsTipState(chainparams.GetConsensus(), Consensus::DEPLOYMENT_CSV) != THRESHOLD_ACTIVE) {
+    if (fRequireStandard && tx.nVersion >= 2 && tx.nVersion < SAFE_TX_VERSION_2 && VersionBitsTipState(chainparams.GetConsensus(), Consensus::DEPLOYMENT_CSV) != THRESHOLD_ACTIVE) {
         return state.DoS(0, false, REJECT_NONSTANDARD, "premature-version2-tx");
     }
 
@@ -739,7 +2160,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
 
         // Check for non-standard pay-to-script-hash in inputs
         if (fRequireStandard && !AreInputsStandard(tx, view))
-            return state.Invalid(false, REJECT_NONSTANDARD, "bad-txns-nonstandard-inputs");
+            return state.Invalid(false, REJECT_NONSTANDARD, "1-bad-txns-nonstandard-inputs");
 
         unsigned int nSigOps = GetLegacySigOpCount(tx);
         nSigOps += GetP2SHSigOpCount(tx, view);
@@ -764,6 +2185,30 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
                 break;
             }
         }
+
+        // Check previous tx is locked or not
+        BOOST_FOREACH(const CTxIn &txin, tx.vin)
+        {
+            const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+            if(!coins || !coins->IsAvailable(txin.prevout.n))
+                return state.Invalid(false, REJECT_DUPLICATE, "2-bad-txns-inputs-spent");
+
+            const CTxOut& txout = coins->vout[txin.prevout.n];
+            if(txout.nUnlockedHeight <= 0)
+                continue;
+
+            if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
+                continue;
+
+            int64_t nOffset = txout.nUnlockedHeight - coins->nHeight;
+            if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                continue;
+
+            return state.DoS(100, false, REJECT_NONSTANDARD, "invalid-txin-locked");
+        }
+
+        if(!CheckAppTransaction(tx, state, view, true))
+            return false;
 
         CTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, chainActive.Height(), pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOps, lp);
         unsigned int nSize = entry.GetTxSize();
@@ -1004,7 +2449,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         // Remove conflicting transactions from the mempool
         BOOST_FOREACH(const CTxMemPool::txiter it, allConflicting)
         {
-            LogPrint("mempool", "replacing tx %s with %s for %s BTC additional fees, %d delta bytes\n",
+            LogPrint("mempool", "replacing tx %s with %s for %s SAFE additional fees, %d delta bytes\n",
                     it->GetTx().GetHash().ToString(),
                     hash.ToString(),
                     FormatMoney(nModifiedFees - nConflictingFees),
@@ -1013,7 +2458,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         pool.RemoveStaged(allConflicting);
 
         // Store transaction in memory
-        pool.addUnchecked(hash, entry, setAncestors, !IsInitialBlockDownload());
+        pool.addUnchecked(hash, entry, view, setAncestors, !IsInitialBlockDownload());
 
         // Add memory address index
         if (fAddressIndex) {
@@ -1024,6 +2469,13 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         if (fSpentIndex) {
             pool.addSpentIndex(entry, view);
         }
+
+        pool.addAppInfoIndex(entry, view);
+        pool.add_AppTx_Index(entry, view);
+        pool.add_Auth_Index(entry, view);
+        pool.addAssetInfoIndex(entry, view);
+        pool.add_AssetTx_Index(entry, view);
+        pool.add_GetCandy_Index(entry, view);
 
         // trim mempool and check if tx was trimmed
         if (!fOverrideMempoolLimit) {
@@ -1257,6 +2709,8 @@ NOTE:   unlike bitcoin we are using PREVIOUS block height here,
 */
 CAmount GetBlockSubsidy(int nPrevBits, int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
 {
+    if(IsCriticalHeight(nPrevHeight + 1))
+        return g_nCriticalReward;
     double dDiff;
     CAmount nSubsidyBase;
 
@@ -1473,6 +2927,15 @@ void UpdateCoins(const CTransaction& tx, CValidationState &state, CCoinsViewCach
 
             if (nPos >= coins->vout.size() || coins->vout[nPos].IsNull())
                 assert(false);
+
+            uint32_t nAppCmd = 0;
+            if(coins->vout[nPos].IsAsset(&nAppCmd) && nAppCmd == PUT_CANDY_CMD && txin.scriptSig.empty())
+            {
+                string strAddress = "";
+                if(GetTxOutAddress(coins->vout[nPos], &strAddress) && strAddress == g_strPutCandyAddress)
+                    continue;
+            }
+
             // mark an outpoint spent, and construct undo information
             txundo.vprevout.push_back(CTxInUndo(coins->vout[nPos]));
             coins->Spend(nPos);
@@ -1541,11 +3004,31 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
                         strprintf("tried to spend coinbase at depth %d", nSpendHeight - coins->nHeight));
             }
 
-            // Check for negative or overflow input values
-            nValueIn += coins->vout[prevout.n].nValue;
-            if (!MoneyRange(coins->vout[prevout.n].nValue) || !MoneyRange(nValueIn))
-                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+            const CTxOut& in_txout = coins->vout[prevout.n];
+            CAppHeader header;
+            vector<unsigned char> vData;
+            if(ParseReserve(in_txout.vReserve, header, vData))
+            {
+                if(header.nAppCmd == REGISTER_APP_CMD || header.nAppCmd == ADD_AUTH_CMD || header.nAppCmd == DELETE_AUTH_CMD || header.nAppCmd == CREATE_EXTEND_TX_CMD || header.nAppCmd == TRANSFER_SAFE_CMD)
+                {
+                    nValueIn += in_txout.nValue;
+                    if (!MoneyRange(in_txout.nValue) || !MoneyRange(nValueIn))
+                        return state.DoS(100, false, REJECT_INVALID, "app_txout: bad-txns-inputvalues-outofrange");
+                }
 
+                if(header.nAppCmd == REGISTER_APP_CMD || header.nAppCmd == ADD_AUTH_CMD || header.nAppCmd == DELETE_AUTH_CMD || header.nAppCmd == ISSUE_ASSET_CMD || header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == PUT_CANDY_CMD || header.nAppCmd == GET_CANDY_CMD)
+                {
+                    if(coins->nHeight <= 0)
+                        return state.DoS(10, false, REJECT_INVALID, "app_tx/asset_tx: txin need 1 confirmation at least, " + prevout.ToString());
+                }
+            }
+            else
+            {
+                // Check for negative or overflow input values
+                nValueIn += in_txout.nValue;
+                if (!MoneyRange(in_txout.nValue) || !MoneyRange(nValueIn))
+                    return state.DoS(100, false, REJECT_INVALID, "safe_txout: bad-txns-inputvalues-outofrange");
+            }
         }
 
         if (nValueIn < tx.GetValueOut())
@@ -1587,6 +3070,86 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                 const COutPoint &prevout = tx.vin[i].prevout;
                 const CCoins* coins = inputs.AccessCoins(prevout.hash);
                 assert(coins);
+
+                {
+                    CAppHeader in_header;
+                    vector<unsigned char> vInData;
+                    const CTxOut& in_txout = coins->vout[prevout.n];
+                    uint256 in_assetId;
+                    if(ParseReserve(in_txout.vReserve, in_header, vInData))
+                    {
+                        if(in_header.nAppCmd == PUT_CANDY_CMD && in_header.appId.GetHex() == g_strSafeAssetId)
+                        {
+                            string strAddress = "";
+                            if(GetTxOutAddress(in_txout, &strAddress) && strAddress == g_strPutCandyAddress)
+                            {
+                                CPutCandyData candyData;
+                                if(ParsePutCandyData(vInData, candyData))
+                                    in_assetId = candyData.assetId;
+                            }
+                        }
+                    }
+
+                    if(!in_assetId.IsNull())
+                    {
+                        int nCount = 0;
+                        bool fPass = true;
+                        for(unsigned int m = 0; m < tx.vout.size(); m++)
+                        {
+                            const CTxOut& txout = tx.vout[m];
+                            uint32_t nAppCmd = 0;
+                            if(txout.IsSafeOnly(&nAppCmd))
+                            {
+                                if(nAppCmd == TRANSFER_SAFE_CMD)
+                                {
+                                    fPass = false;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                if(nAppCmd != GET_CANDY_CMD)
+                                {
+                                    fPass = false;
+                                    break;
+                                }
+                                else
+                                {
+                                    CAppHeader header;
+                                    vector<unsigned char> vData;
+                                    if(!ParseReserve(txout.vReserve, header, vData))
+                                    {
+                                        fPass = false;
+                                        break;
+                                    }
+
+                                    if(header.nAppCmd != GET_CANDY_CMD)
+                                    {
+                                        fPass = false;
+                                        break;
+                                    }
+
+                                    CGetCandyData candyData;
+                                    if(!ParseGetCandyData(vData, candyData))
+                                    {
+                                        fPass = false;
+                                        break;
+                                    }
+
+                                    if(candyData.assetId != in_assetId)
+                                    {
+                                        fPass = false;
+                                        break;
+                                    }
+                                    nCount++;
+                                }
+                            }
+                        }
+
+                        if(nCount != 0 && fPass) // candy input pass sign check
+                            continue;
+                    }
+                }
 
                 // Verify signature
                 CScriptCheck check(*coins, tx, i, flags, cacheStore);
@@ -1751,8 +3314,17 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         return error("DisconnectBlock(): block and undo data inconsistent");
 
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
-    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
     std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
+    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
+    std::vector<std::pair<uint256, CAppId_AppInfo_IndexValue> > appId_appInfo_index;
+    std::vector<std::pair<std::string, CName_Id_IndexValue> > appName_appId_index;
+    std::vector<std::pair<CAppTx_IndexKey, int> > appTx_index;
+    std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> > assetId_assetInfo_index;
+    std::vector<std::pair<std::string, CName_Id_IndexValue> > shortName_assetId_index;
+    std::vector<std::pair<std::string, CName_Id_IndexValue> > assetName_assetId_index;
+    std::vector<std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue> > putCandy_index;
+    std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> > getCandy_index;
+    std::vector<std::pair<CAssetTx_IndexKey, int> > assetTx_index;
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
@@ -1763,6 +3335,9 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
             for (unsigned int k = tx.vout.size(); k-- > 0;) {
                 const CTxOut &out = tx.vout[k];
+
+                if(out.IsAsset())
+                    continue;
 
                 if (out.scriptPubKey.IsPayToScriptHash()) {
                     vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.begin()+22);
@@ -1782,6 +3357,14 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                     // undo unspent index
                     addressUnspentIndex.push_back(make_pair(CAddressUnspentKey(1, uint160(hashBytes), hash, k), CAddressUnspentValue()));
 
+                } else if (out.scriptPubKey.IsPayToPublicKey()) {
+                    uint160 hashBytes(Hash160(out.scriptPubKey.begin()+1, out.scriptPubKey.end()-1));
+
+                    // undo receiving activity
+                    addressIndex.push_back(make_pair(CAddressIndexKey(1, hashBytes, pindex->nHeight, i, hash, k, false), out.nValue));
+
+                    // undo unspent index
+                    addressUnspentIndex.push_back(make_pair(CAddressUnspentKey(1, hashBytes, hash, k), CAddressUnspentValue()));
                 } else {
                     continue;
                 }
@@ -1813,22 +3396,67 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         if (i > 0) { // not coinbases
             const CTxUndo &txundo = blockUndo.vtxundo[i-1];
             if (txundo.vprevout.size() != tx.vin.size())
-                return error("DisconnectBlock(): transaction and undo data inconsistent");
+            {
+                bool fPutCandy = false;
+                int nPutCandyTxInCount = 0;
+                for(unsigned int j = tx.vin.size(); j-- > 0;)
+                {
+                    const CTxIn& input = tx.vin[j];
+                    const COutPoint& out = input.prevout;
+                    CCoins coins;
+                    if(!GetUTXOCoins(out, coins))
+                        continue;
+
+                    uint32_t nAppCmd = 0;
+                    if(coins.vout[out.n].IsAsset(&nAppCmd) && nAppCmd == PUT_CANDY_CMD && input.scriptSig.empty())
+                    {
+                        string strAddress = "";
+                        if(GetTxOutAddress(coins.vout[out.n], &strAddress) && strAddress == g_strPutCandyAddress)
+                        {
+                            if(++nPutCandyTxInCount > 1)
+                            {
+                                fPutCandy = false;
+                                break;
+                            }
+
+                            fPutCandy = true;
+                            continue;
+                        }
+                    }
+                }
+                if(!fPutCandy)
+                    return error("DisconnectBlock(): transaction and undo data inconsistent");
+            }
             for (unsigned int j = tx.vin.size(); j-- > 0;) {
-                const COutPoint &out = tx.vin[j].prevout;
+                const CTxIn& input = tx.vin[j];
+                const COutPoint &out = input.prevout;
+
+                CCoins coins;
+                if(GetUTXOCoins(out, coins))
+                {
+                    uint32_t nAppCmd = 0;
+                    if(coins.vout[out.n].IsAsset(&nAppCmd) && nAppCmd == PUT_CANDY_CMD && input.scriptSig.empty())
+                    {
+                        string strAddress = "";
+                        if(GetTxOutAddress(coins.vout[out.n], &strAddress) && strAddress == g_strPutCandyAddress)
+                            continue;
+                    }
+                }
+
                 const CTxInUndo &undo = txundo.vprevout[j];
                 if (!ApplyTxInUndo(undo, view, out))
                     fClean = false;
 
-                const CTxIn input = tx.vin[j];
-
                 if (fSpentIndex) {
                     // undo and delete the spent index
-                    spentIndex.push_back(make_pair(CSpentIndexKey(input.prevout.hash, input.prevout.n), CSpentIndexValue()));
+                    spentIndex.push_back(std::make_pair(CSpentIndexKey(input.prevout.hash, input.prevout.n), CSpentIndexValue()));
                 }
 
+                const CTxOut &prevout = view.GetOutputFor(input);
+                if(prevout.IsAsset())
+                    continue;
+
                 if (fAddressIndex) {
-                    const CTxOut &prevout = view.GetOutputFor(tx.vin[j]);
                     if (prevout.scriptPubKey.IsPayToScriptHash()) {
                         vector<unsigned char> hashBytes(prevout.scriptPubKey.begin()+2, prevout.scriptPubKey.begin()+22);
 
@@ -1848,15 +3476,140 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                         // restore unspent index
                         addressUnspentIndex.push_back(make_pair(CAddressUnspentKey(1, uint160(hashBytes), input.prevout.hash, input.prevout.n), CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, undo.nHeight)));
 
+                    } else if (prevout.scriptPubKey.IsPayToPublicKey()) {
+                        uint160 hashBytes(Hash160(prevout.scriptPubKey.begin()+1, prevout.scriptPubKey.end()-1));
+
+                        // undo spending activity
+                        addressIndex.push_back(make_pair(CAddressIndexKey(1, hashBytes, pindex->nHeight, i, hash, j, true), prevout.nValue * -1));
+
+                        // restore unspent index
+                        addressUnspentIndex.push_back(make_pair(CAddressUnspentKey(1, hashBytes, input.prevout.hash, input.prevout.n), CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, undo.nHeight)));
                     } else {
                         continue;
                     }
                 }
+            }
+        }
 
+        for(unsigned int m = tx.vout.size(); m-- > 0;)
+        {
+            const CTxOut& txout = tx.vout[m];
+
+            CAppHeader header;
+            std::vector<unsigned char> vData;
+            if(ParseReserve(txout.vReserve, header, vData))
+            {
+                CTxDestination dest;
+                if(!ExtractDestination(txout.scriptPubKey, dest))
+                    continue;
+
+                std::string strAddress = CBitcoinAddress(dest).ToString();
+
+                if(header.nAppCmd == REGISTER_APP_CMD)
+                {
+                    CAppData appData;
+                    if(ParseRegisterData(vData, appData))
+                    {
+                        appId_appInfo_index.push_back(make_pair(header.appId, CAppId_AppInfo_IndexValue()));
+                        appName_appId_index.push_back(make_pair(appData.strAppName, CName_Id_IndexValue()));
+                        appTx_index.push_back(make_pair(CAppTx_IndexKey(header.appId, strAddress, REGISTER_TXOUT, COutPoint(hash, m)), -1));
+                    }
+                }
+                else if(header.nAppCmd == ADD_AUTH_CMD || header.nAppCmd == DELETE_AUTH_CMD)
+                {
+                    CAuthData authData;
+                    if(ParseAuthData(vData, authData))
+                        appTx_index.push_back(make_pair(CAppTx_IndexKey(header.appId, strAddress, header.nAppCmd == ADD_AUTH_CMD ? ADD_AUTH_TXOUT : DELETE_AUTH_TXOUT, COutPoint(hash, m)), -1));
+                }
+                else if(header.nAppCmd == CREATE_EXTEND_TX_CMD)
+                {
+                    appTx_index.push_back(make_pair(CAppTx_IndexKey(header.appId, strAddress, CREATE_EXTENDDATA_TXOUT, COutPoint(hash, m)), -1));
+                }
+                else if(header.nAppCmd == ISSUE_ASSET_CMD)
+                {
+                    CAssetData assetData;
+                    if(ParseIssueData(vData, assetData))
+                    {
+                        uint256 assetId = assetData.GetHash();
+                        assetId_assetInfo_index.push_back(make_pair(assetId, CAssetId_AssetInfo_IndexValue()));
+                        shortName_assetId_index.push_back(make_pair(assetData.strShortName, CName_Id_IndexValue()));
+                        assetName_assetId_index.push_back(make_pair(assetData.strAssetName, CName_Id_IndexValue()));
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(assetId, strAddress, ISSUE_TXOUT, COutPoint(hash, m)), -1));
+                    }
+                }
+                else if(header.nAppCmd == ADD_ASSET_CMD)
+                {
+                    CCommonData addData;
+                    if(ParseCommonData(vData, addData))
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(addData.assetId, strAddress, ADD_ISSUE_TXOUT, COutPoint(hash, m)), -1));
+                }
+                else if(header.nAppCmd == TRANSFER_ASSET_CMD)
+                {
+                    CCommonData transferData;
+                    if(ParseCommonData(vData, transferData))
+                    {
+                        if(txout.nUnlockedHeight > 0)
+                            assetTx_index.push_back(make_pair(CAssetTx_IndexKey(transferData.assetId, strAddress, LOCKED_TXOUT, COutPoint(hash, m)), -1));
+                        else
+                            assetTx_index.push_back(make_pair(CAssetTx_IndexKey(transferData.assetId, strAddress, TRANSFER_TXOUT, COutPoint(hash, m)), -1));
+
+                        for(unsigned int x = 0; x < tx.vin.size(); x++)
+                        {
+                            const CTxIn& txin = tx.vin[x];
+                            const CTxOut& in_txout = view.GetOutputFor(txin);
+                            if(!in_txout.IsAsset())
+                                continue;
+                            std::string strInAddress = "";
+                            if(!GetTxOutAddress(in_txout, &strInAddress))
+                                continue;
+                            assetTx_index.push_back(make_pair(CAssetTx_IndexKey(transferData.assetId, strInAddress, TRANSFER_TXOUT, COutPoint(hash, -1)), -1));
+                        }
+                    }
+                }
+                else if(header.nAppCmd == DESTORY_ASSET_CMD)
+                {
+                    CCommonData destoryData;
+                    if(ParseCommonData(vData, destoryData))
+                    {
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(destoryData.assetId, strAddress, DESTORY_TXOUT, COutPoint(hash, m)), -1));
+                        for(unsigned int x = 0; x < tx.vin.size(); x++)
+                        {
+                            const CTxIn& txin = tx.vin[x];
+                            const CTxOut& in_txout = view.GetOutputFor(txin);
+                            if(!in_txout.IsAsset())
+                                continue;
+                            std::string strInAddress = "";
+                            if(!GetTxOutAddress(in_txout, &strInAddress))
+                                continue;
+                            assetTx_index.push_back(make_pair(CAssetTx_IndexKey(destoryData.assetId, strInAddress, DESTORY_TXOUT, COutPoint(hash, -1)), -1));
+                        }
+                    }
+                }
+                else if(header.nAppCmd == PUT_CANDY_CMD)
+                {
+                    CPutCandyData candyData;
+                    if(ParsePutCandyData(vData, candyData))
+                    {
+                        putCandy_index.push_back(make_pair(CPutCandy_IndexKey(candyData.assetId, COutPoint(hash, m), CCandyInfo(candyData.nAmount, candyData.nExpired)), CPutCandy_IndexValue()));
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, PUT_CANDY_TXOUT, COutPoint(hash, m)), -1));
+
+                        CAssetId_AssetInfo_IndexValue assetInfo;
+                        if(GetAssetInfoByAssetId(candyData.assetId, assetInfo))
+                            assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, assetInfo.strAdminAddress, PUT_CANDY_TXOUT, COutPoint(hash, -1)), -1));
+                    }
+                }
+                else if(header.nAppCmd == GET_CANDY_CMD)
+                {
+                    CGetCandyData candyData;
+                    if(ParseGetCandyData(vData, candyData))
+                    {
+                        getCandy_index.push_back(make_pair(CGetCandy_IndexKey(candyData.assetId, tx.vin.back().prevout, strAddress), CGetCandy_IndexValue()));
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, GET_CANDY_TXOUT, COutPoint(hash, m)), -1));
+                    }
+                }
             }
         }
     }
-
 
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
@@ -1874,6 +3627,37 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
             return AbortNode(state, "Failed to write address unspent index");
         }
     }
+
+    if (fSpentIndex)
+        if (!pblocktree->UpdateSpentIndex(spentIndex))
+            return AbortNode(state, "Failed to delete spent index");
+
+    if(appId_appInfo_index.size() && !pblocktree->Erase_AppId_AppInfo_Index(appId_appInfo_index))
+        return AbortNode(state, "Failed to delete appId_appInfo index");
+
+    if(appName_appId_index.size() && !pblocktree->Erase_AppName_AppId_Index(appName_appId_index))
+        return AbortNode(state, "Failed to delete appName_appId index");
+
+    if(appTx_index.size() && !pblocktree->Erase_AppTx_Index(appTx_index))
+        return AbortNode(state, "Failed to delete appTx index");
+
+    if(assetId_assetInfo_index.size() && !pblocktree->Erase_AssetId_AssetInfo_Index(assetId_assetInfo_index))
+        return AbortNode(state, "Failed to delete assetId_assetInfo index");
+
+    if(shortName_assetId_index.size() && !pblocktree->Erase_ShortName_AssetId_Index(shortName_assetId_index))
+        return AbortNode(state, "Failed to delete shortName_assetId index");
+
+    if(assetName_assetId_index.size() && !pblocktree->Erase_AssetName_AssetId_Index(assetName_assetId_index))
+        return AbortNode(state, "Failed to delete assetName_assetId index");
+
+    if(putCandy_index.size() && !pblocktree->Erase_PutCandy_Index(putCandy_index))
+        return AbortNode(state, "Failed to delete putcandy index");
+
+    if(getCandy_index.size() && !pblocktree->Erase_GetCandy_Index(getCandy_index))
+        return AbortNode(state, "Failed to delete getCandy index");
+
+    if(assetTx_index.size() && !pblocktree->Erase_AssetTx_Index(assetTx_index))
+        return AbortNode(state, "Failed to delete assetTx index");
 
     return fClean;
 }
@@ -1990,7 +3774,7 @@ static int64_t nTimeConnect = 0;
 static int64_t nTimeIndex = 0;
 static int64_t nTimeCallbacks = 0;
 static int64_t nTimeTotal = 0;
-
+static bool PutChangeInfoToList(const int& nHeight, const CAmount& nReward, const bool fCandy, const map<string, CAmount>& mapAddressAmount);
 bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pindex, CCoinsViewCache& view, bool fJustCheck)
 {
     const CChainParams& chainparams = Params();
@@ -1999,16 +3783,18 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTimeStart = GetTimeMicros();
 
     // Check it again in case a previous version let a bad block in
-    if (!CheckBlock(block, state, !fJustCheck, !fJustCheck))
+    if (!CheckBlock(block, pindex->nHeight, state, !fJustCheck, !fJustCheck))
         return false;
 
     // verify that the view's current state corresponds to the previous block
     uint256 hashPrevBlock = pindex->pprev == NULL ? uint256() : pindex->pprev->GetBlockHash();
     assert(hashPrevBlock == view.GetBestBlock());
 
+    uint256 blockHash = block.GetHash();
+
     // Special case for the genesis block, skipping connection of its transactions
     // (its coinbase is unspendable)
-    if (block.GetHash() == chainparams.GetConsensus().hashGenesisBlock) {
+    if (blockHash == chainparams.GetConsensus().hashGenesisBlock) {
         if (!fJustCheck)
             view.SetBestBlock(pindex->GetBlockHash());
         return true;
@@ -2121,13 +3907,28 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::vector<std::pair<CAddressIndexKey, CAmount> > addressIndex;
     std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > addressUnspentIndex;
     std::vector<std::pair<CSpentIndexKey, CSpentIndexValue> > spentIndex;
+    std::vector<std::pair<uint256, CAppId_AppInfo_IndexValue> > appId_appInfo_index;
+    std::vector<std::pair<std::string, CName_Id_IndexValue> > appName_appId_index;
+    std::vector<std::pair<CAuth_IndexKey, int> > auth_index;
+    std::vector<std::pair<CAppTx_IndexKey, int> > appTx_index;
+    std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> > assetId_assetInfo_index;
+    std::vector<std::pair<std::string, CName_Id_IndexValue> > shortName_assetId_index;
+    std::vector<std::pair<std::string, CName_Id_IndexValue> > assetName_assetId_index;
+    std::vector<std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue> > putCandy_index;
+    std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> > getCandy_index;
+    std::vector<std::pair<CAssetTx_IndexKey, int> > assetTx_index;
+
+    map<string, CAmount> mapAddressAmount;
 
     bool fDIP0001Active_context = (VersionBitsState(pindex->pprev, chainparams.GetConsensus(), Consensus::DEPLOYMENT_DIP0001, versionbitscache) == THRESHOLD_ACTIVE);
 
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
-        const CTransaction &tx = block.vtx[i];
-        const uint256 txhash = tx.GetHash();
+        const CTransaction& tx = block.vtx[i];
+        const uint256& txhash = tx.GetHash();
+
+        if(!fJustCheck && !CheckAppTransaction(tx, state, view, false))
+            return error("ConnectBlock(): CheckAppTransaction on %s failed with %s", txhash.ToString(), FormatStateMessage(state));
 
         nInputs += tx.vin.size();
         nSigOps += GetLegacySigOpCount(tx);
@@ -2154,12 +3955,28 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                                  REJECT_INVALID, "bad-txns-nonfinal");
             }
 
-            if (fAddressIndex || fSpentIndex)
-            {
-                for (size_t j = 0; j < tx.vin.size(); j++) {
+            for (size_t j = 0; j < tx.vin.size(); j++) {
+                const CTxIn& input = tx.vin[j];
+                const CTxOut& prevout = view.GetOutputFor(input);
 
-                    const CTxIn input = tx.vin[j];
-                    const CTxOut &prevout = view.GetOutputFor(tx.vin[j]);
+                string strAddress = "";
+                if(!GetTxOutAddress(prevout, &strAddress))
+                    continue;
+
+                if(!prevout.IsAsset())
+                {
+                    if(mapAddressAmount.count(strAddress))
+                    {
+                        mapAddressAmount[strAddress] += -prevout.nValue;
+                        if(mapAddressAmount[strAddress] == 0)
+                            mapAddressAmount.erase(strAddress);
+                    }
+                    else
+                        mapAddressAmount[strAddress] = -prevout.nValue;
+                }
+
+                if (fAddressIndex || fSpentIndex)
+                {
                     uint160 hashBytes;
                     int addressType;
 
@@ -2169,12 +3986,15 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     } else if (prevout.scriptPubKey.IsPayToPublicKeyHash()) {
                         hashBytes = uint160(vector <unsigned char>(prevout.scriptPubKey.begin()+3, prevout.scriptPubKey.begin()+23));
                         addressType = 1;
+                    } else if (prevout.scriptPubKey.IsPayToPublicKey()) {
+                        hashBytes = Hash160(prevout.scriptPubKey.begin()+1, prevout.scriptPubKey.end()-1);
+                        addressType = 1;
                     } else {
                         hashBytes.SetNull();
                         addressType = 0;
                     }
 
-                    if (fAddressIndex && addressType > 0) {
+                    if (!prevout.IsAsset() && fAddressIndex && addressType > 0) {
                         // record spending activity
                         addressIndex.push_back(make_pair(CAddressIndexKey(addressType, hashBytes, pindex->nHeight, i, txhash, j, true), prevout.nValue * -1));
 
@@ -2188,7 +4008,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                         spentIndex.push_back(make_pair(CSpentIndexKey(input.prevout.hash, input.prevout.n), CSpentIndexValue(txhash, j, pindex->nHeight, prevout.nValue, addressType, hashBytes)));
                     }
                 }
-
             }
 
             if (fStrictPayToScriptHash)
@@ -2208,14 +4027,27 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             bool fCacheResults = fJustCheck; /* Don't cache results if we're actually connecting blocks (still consult the cache, though) */
             if (!CheckInputs(tx, state, view, fScriptChecks, flags, fCacheResults, nScriptCheckThreads ? &vChecks : NULL))
                 return error("ConnectBlock(): CheckInputs on %s failed with %s",
-                    tx.GetHash().ToString(), FormatStateMessage(state));
+                    txhash.ToString(), FormatStateMessage(state));
             control.Add(vChecks);
         }
 
-        if (fAddressIndex) {
-            for (unsigned int k = 0; k < tx.vout.size(); k++) {
-                const CTxOut &out = tx.vout[k];
+        for (unsigned int k = 0; k < tx.vout.size(); k++) {
+            const CTxOut &out = tx.vout[k];
 
+            string strAddress = "";
+            if (out.IsAsset() || !GetTxOutAddress(out, &strAddress))
+                continue;
+
+            if(mapAddressAmount.count(strAddress))
+            {
+                mapAddressAmount[strAddress] += out.nValue;
+                if(mapAddressAmount[strAddress] == 0)
+                    mapAddressAmount.erase(strAddress);
+            }
+            else
+                mapAddressAmount[strAddress] = out.nValue;
+
+            if (fAddressIndex) {
                 if (out.scriptPubKey.IsPayToScriptHash()) {
                     vector<unsigned char> hashBytes(out.scriptPubKey.begin()+2, out.scriptPubKey.begin()+22);
 
@@ -2234,10 +4066,171 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     // record unspent output
                     addressUnspentIndex.push_back(make_pair(CAddressUnspentKey(1, uint160(hashBytes), txhash, k), CAddressUnspentValue(out.nValue, out.scriptPubKey, pindex->nHeight)));
 
+                } else if (out.scriptPubKey.IsPayToPublicKey()) {
+                    uint160 hashBytes(Hash160(out.scriptPubKey.begin()+1, out.scriptPubKey.end()-1));
+
+                    // record receiving activity
+                    addressIndex.push_back(make_pair(CAddressIndexKey(1, hashBytes, pindex->nHeight, i, txhash, k, false), out.nValue));
+
+                    // record unspent output
+                    addressUnspentIndex.push_back(make_pair(CAddressUnspentKey(1, hashBytes, txhash, k), CAddressUnspentValue(out.nValue, out.scriptPubKey, pindex->nHeight)));
                 } else {
                     continue;
                 }
+            }
+        }
 
+
+        for(unsigned int m = 0; m < tx.vout.size(); m++)
+        {
+            const CTxOut& txout = tx.vout[m];
+
+            CAppHeader header;
+            std::vector<unsigned char> vData;
+            if(ParseReserve(txout.vReserve, header, vData))
+            {
+                CTxDestination dest;
+                if(!ExtractDestination(txout.scriptPubKey, dest))
+                    continue;
+
+                std::string strAddress = CBitcoinAddress(dest).ToString();
+
+                if(header.nAppCmd == REGISTER_APP_CMD)
+                {
+                    CAppData appData;
+                    if(ParseRegisterData(vData, appData))
+                    {
+                        appId_appInfo_index.push_back(make_pair(header.appId, CAppId_AppInfo_IndexValue(strAddress, appData, pindex->nHeight)));
+                        appName_appId_index.push_back(make_pair(appData.strAppName, CName_Id_IndexValue(header.appId, pindex->nHeight)));
+                        appTx_index.push_back(make_pair(CAppTx_IndexKey(header.appId, strAddress, REGISTER_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+                    }
+                }
+                else if(header.nAppCmd == ADD_AUTH_CMD)
+                {
+                    CAuthData authData;
+                    if(ParseAuthData(vData, authData))
+                    {
+                        appTx_index.push_back(make_pair(CAppTx_IndexKey(header.appId, strAddress, ADD_AUTH_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+
+                        std::map<uint32_t, int> mapAuth;
+                        GetAuthByAppIdAddress(header.appId, authData.strUserAddress, mapAuth);
+                        if(authData.nAuth == 0)
+                        {
+                            if(mapAuth.count(1) != 0)
+                                auth_index.push_back(make_pair(CAuth_IndexKey(header.appId, authData.strUserAddress, 1), -1));
+                            auth_index.push_back(make_pair(CAuth_IndexKey(header.appId, authData.strUserAddress, 0), pindex->nHeight));
+                        }
+                        else if(authData.nAuth == 1)
+                        {
+                            if(mapAuth.count(0) != 0)
+                                auth_index.push_back(make_pair(CAuth_IndexKey(header.appId, authData.strUserAddress, 0), -1));
+                            auth_index.push_back(make_pair(CAuth_IndexKey(header.appId, authData.strUserAddress, 1), pindex->nHeight));
+                        }
+                        else
+                        {
+                            auth_index.push_back(make_pair(CAuth_IndexKey(header.appId, authData.strUserAddress, authData.nAuth), pindex->nHeight));
+                        }
+                    }
+                }
+                else if(header.nAppCmd == DELETE_AUTH_CMD)
+                {
+                    CAuthData authData;
+                    if(ParseAuthData(vData, authData))
+                    {
+                        appTx_index.push_back(make_pair(CAppTx_IndexKey(header.appId, strAddress, DELETE_AUTH_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+
+                        std::map<uint32_t, int> mapAuth;
+                        GetAuthByAppIdAddress(header.appId, authData.strUserAddress, mapAuth);
+                        if(mapAuth.count(authData.nAuth) != 0)
+                            auth_index.push_back(make_pair(CAuth_IndexKey(header.appId, authData.strUserAddress, authData.nAuth), -1));
+                    }
+                }
+                else if(header.nAppCmd == CREATE_EXTEND_TX_CMD)
+                {
+                    appTx_index.push_back(make_pair(CAppTx_IndexKey(header.appId, strAddress, CREATE_EXTENDDATA_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+                }
+                else if(header.nAppCmd == ISSUE_ASSET_CMD)
+                {
+                    CAssetData assetData;
+                    if(ParseIssueData(vData, assetData))
+                    {
+                        uint256 assetId = assetData.GetHash();
+                        assetId_assetInfo_index.push_back(make_pair(assetId, CAssetId_AssetInfo_IndexValue(strAddress, assetData, pindex->nHeight)));
+                        shortName_assetId_index.push_back(make_pair(assetData.strShortName, CName_Id_IndexValue(assetId, pindex->nHeight)));
+                        assetName_assetId_index.push_back(make_pair(assetData.strAssetName, CName_Id_IndexValue(assetId, pindex->nHeight)));
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(assetId, strAddress, ISSUE_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+                    }
+                }
+                else if(header.nAppCmd == ADD_ASSET_CMD)
+                {
+                    CCommonData addData;
+                    if(ParseCommonData(vData, addData))
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(addData.assetId, strAddress, ADD_ISSUE_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+                }
+                else if(header.nAppCmd == TRANSFER_ASSET_CMD)
+                {
+                    CCommonData transferData;
+                    if(ParseCommonData(vData, transferData))
+                    {
+                        if(txout.nUnlockedHeight > 0)
+                            assetTx_index.push_back(make_pair(CAssetTx_IndexKey(transferData.assetId, strAddress, LOCKED_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+                        else
+                            assetTx_index.push_back(make_pair(CAssetTx_IndexKey(transferData.assetId, strAddress, TRANSFER_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+
+                        for(unsigned int x = 0; x < tx.vin.size(); x++)
+                        {
+                            const CTxIn& txin = tx.vin[x];
+                            const CTxOut& in_txout = view.GetOutputFor(txin);
+                            if(!in_txout.IsAsset())
+                                continue;
+                            std::string strInAddress = "";
+                            if(!GetTxOutAddress(in_txout, &strInAddress))
+                                continue;
+                            assetTx_index.push_back(make_pair(CAssetTx_IndexKey(transferData.assetId, strInAddress, TRANSFER_TXOUT, COutPoint(txhash, -1)), pindex->nHeight));
+                        }
+                    }
+                }
+                else if(header.nAppCmd == DESTORY_ASSET_CMD)
+                {
+                    CCommonData destoryData;
+                    if(ParseCommonData(vData, destoryData))
+                    {
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(destoryData.assetId, strAddress, DESTORY_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+                        for(unsigned int x = 0; x < tx.vin.size(); x++)
+                        {
+                            const CTxIn& txin = tx.vin[x];
+                            const CTxOut& in_txout = view.GetOutputFor(txin);
+                            if(!in_txout.IsAsset())
+                                continue;
+                            std::string strInAddress = "";
+                            if(!GetTxOutAddress(in_txout, &strInAddress))
+                                continue;
+                            assetTx_index.push_back(make_pair(CAssetTx_IndexKey(destoryData.assetId, strInAddress, DESTORY_TXOUT, COutPoint(txhash, -1)), pindex->nHeight));
+                        }
+                    }
+                }
+                else if(header.nAppCmd == PUT_CANDY_CMD)
+                {
+                    CPutCandyData candyData;
+                    if(ParsePutCandyData(vData, candyData))
+                    {
+                        putCandy_index.push_back(make_pair(CPutCandy_IndexKey(candyData.assetId, COutPoint(txhash, m), CCandyInfo(candyData.nAmount, candyData.nExpired)), CPutCandy_IndexValue(pindex->nHeight, blockHash, i)));
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, PUT_CANDY_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+
+                        CAssetId_AssetInfo_IndexValue assetInfo;
+                        if(GetAssetInfoByAssetId(candyData.assetId, assetInfo))
+                            assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, assetInfo.strAdminAddress, PUT_CANDY_TXOUT, COutPoint(txhash, -1)), pindex->nHeight));
+                    }
+                }
+                else if(header.nAppCmd == GET_CANDY_CMD)
+                {
+                    CGetCandyData candyData;
+                    if(ParseGetCandyData(vData, candyData))
+                    {
+                        getCandy_index.push_back(make_pair(CGetCandy_IndexKey(candyData.assetId, tx.vin.back().prevout, strAddress), CGetCandy_IndexValue(candyData.nAmount, pindex->nHeight, blockHash, i)));
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, GET_CANDY_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+                    }
+                }
             }
         }
 
@@ -2247,7 +4240,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
         UpdateCoins(tx, state, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight);
 
-        vPos.push_back(std::make_pair(tx.GetHash(), pos));
+        vPos.push_back(std::make_pair(txhash, pos));
         pos.nTxOffset += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
     }
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
@@ -2263,7 +4256,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     // TODO: resync data (both ways?) and try to reprocess this block later.
     CAmount blockReward = 0;
     if(CheckCriticalBlock(block))
-        blockReward = MAX_MONEY;
+        blockReward = nFees + g_nCriticalReward;
     else
         blockReward = nFees + GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, chainparams.GetConsensus());
     std::string strError = "";
@@ -2272,7 +4265,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
 
     if (!IsBlockPayeeValid(block.vtx[0], pindex->nHeight, blockReward)) {
-        mapRejectedBlocks.insert(make_pair(block.GetHash(), GetTime()));
+        mapRejectedBlocks.insert(make_pair(blockHash, GetTime()));
         return state.DoS(0, error("ConnectBlock(SAFE): couldn't find masternode or superblock payments"),
                                 REJECT_INVALID, "bad-cb-payee");
     }
@@ -2327,8 +4320,53 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         if (!pblocktree->WriteTimestampIndex(CTimestampIndexKey(pindex->nTime, pindex->GetBlockHash())))
             return AbortNode(state, "Failed to write timestamp index");
 
+    if(appId_appInfo_index.size() && !pblocktree->Write_AppId_AppInfo_Index(appId_appInfo_index))
+        return AbortNode(state, "Failed to write appId_appInfo index");
+
+    if(appName_appId_index.size() && !pblocktree->Write_AppName_AppId_Index(appName_appId_index))
+        return AbortNode(state, "Failed to write appName_appId index");
+
+    if(auth_index.size() && !pblocktree->Update_Auth_Index(auth_index))
+        return AbortNode(state, "Failed to update auth index");
+
+    if(appTx_index.size() && !pblocktree->Write_AppTx_Index(appTx_index))
+        return AbortNode(state, "Failed to write appTx index");
+
+    if(assetId_assetInfo_index.size() && !pblocktree->Write_AssetId_AssetInfo_Index(assetId_assetInfo_index))
+        return AbortNode(state, "Failed to write assetId_assetInfo index");
+
+    if(shortName_assetId_index.size() && !pblocktree->Write_ShortName_AssetId_Index(shortName_assetId_index))
+        return AbortNode(state, "Failed to write shortName_assetId index");
+
+    if(assetName_assetId_index.size() && !pblocktree->Write_AssetName_AssetId_Index(assetName_assetId_index))
+        return AbortNode(state, "Failed to write assetName_assetId index");
+
+    if(putCandy_index.size() && !pblocktree->Write_PutCandy_Index(putCandy_index))
+        return AbortNode(state, "Failed to write putcandy index");
+
+    if(getCandy_index.size() && !pblocktree->Write_GetCandy_Index(getCandy_index))
+        return AbortNode(state, "Failed to write getCandy index");
+
+    if(assetTx_index.size() && !pblocktree->Write_AssetTx_Index(assetTx_index))
+        return AbortNode(state, "Failed to write assetTx index");
+
+    while(GetChangeInfoListSize() >= g_nListChangeInfoLimited)
+    {
+        boost::this_thread::interruption_point();
+        if(ShutdownRequested())
+            break;
+    }
+    if(!PutChangeInfoToList(pindex->nHeight, blockReward - nFees, !putCandy_index.empty(), mapAddressAmount))
+        return AbortNode(state, "Failed to write change info");
+
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
+
+    if(masternodeSync.IsBlockchainSynced())
+    {
+        for(std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it = assetName_assetId_index.begin(); it != assetName_assetId_index.end(); it++)
+            uiInterface.AssetFound(it->first);
+    }
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint("bench", "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime5 - nTime4), nTimeIndex * 0.000001);
@@ -2480,8 +4518,6 @@ void static UpdateTip(CBlockIndex *pindexNew) {
     {
         int nUpgraded = 0;
         const CBlockIndex* pindex = chainActive.Tip();
-        if(!IsCriticalHeight(pindex->nHeight))
-        {
         for (int bit = 0; bit < VERSIONBITS_NUM_BITS; bit++) {
             WarningBitsConditionChecker checker(bit);
             ThresholdState state = checker.GetStateFor(pindex, chainParams.GetConsensus(), warningcache[bit]);
@@ -2496,7 +4532,6 @@ void static UpdateTip(CBlockIndex *pindexNew) {
                     LogPrintf("%s: unknown new rules are about to activate (versionbit %i)\n", __func__, bit);
                 }
             }
-        }
         }
         for (int i = 0; i < 100 && pindex != NULL; i++)
         {
@@ -3165,7 +5200,7 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
     return true;
 }
 
-bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot)
+bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot)
 {
     // These are checks that are independent of context.
 
@@ -3243,7 +5278,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
 
     // Check transactions
     BOOST_FOREACH(const CTransaction& tx, block.vtx)
-        if (!CheckTransaction(tx, state, true))
+        if (!CheckTransaction(tx, state, FROM_BLOCK, nHeight))
             return error("CheckBlock(): CheckTransaction of %s failed with %s",
                 tx.GetHash().ToString(),
                 FormatStateMessage(state));
@@ -3484,7 +5519,7 @@ static bool AcceptBlock(const CBlock& block, CValidationState& state, const CCha
     }
     if (fNewBlock) *fNewBlock = true;
 
-    if ((!CheckBlock(block, state)) || !ContextualCheckBlock(block, state, pindex->pprev)) {
+    if ((!CheckBlock(block, pindex->nHeight, state)) || !ContextualCheckBlock(block, state, pindex->pprev)) {
         if (state.IsInvalid() && !state.CorruptionPossible()) {
             pindex->nStatus |= BLOCK_FAILED_VALID;
             setDirtyBlockIndex.insert(pindex);
@@ -3572,7 +5607,7 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!ContextualCheckBlockHeader(block, state, pindexPrev))
         return false;
-    if (!CheckBlock(block, state, fCheckPOW, fCheckMerkleRoot))
+    if (!CheckBlock(block, indexDummy.nHeight, state, fCheckPOW, fCheckMerkleRoot))
         return false;
     if (!ContextualCheckBlock(block, state, pindexPrev))
         return false;
@@ -3917,7 +5952,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
             return error("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 1: verify block validity
-        if (nCheckLevel >= 1 && !CheckBlock(block, state))
+        if (nCheckLevel >= 1 && !CheckBlock(block, pindex->nHeight, state))
             return error("VerifyDB(): *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex) {
@@ -4003,7 +6038,7 @@ bool LoadBlockIndex()
     return true;
 }
 
-bool InitBlockIndex(const CChainParams& chainparams) 
+bool InitBlockIndex(const CChainParams& chainparams)
 {
     LOCK(cs_main);
 
@@ -4440,3 +6475,1952 @@ public:
         mapBlockIndex.clear();
     }
 } instance_of_cmaincleanup;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool GetAppInfoByAppId(const uint256& appId, CAppId_AppInfo_IndexValue& appInfo, const bool fWithMempool)
+{
+    if(pblocktree->Read_AppId_AppInfo_Index(appId, appInfo) && g_nChainHeight >= appInfo.nHeight)
+        return true;
+    return fWithMempool && mempool.getAppInfoByAppId(appId, appInfo);
+}
+
+bool GetAppIdByAppName(const string& strAppName, uint256& appId, const bool fWithMempool)
+{
+    CName_Id_IndexValue value;
+    if(pblocktree->Read_AppName_AppId_Index(strAppName, value) && g_nChainHeight >= value.nHeight)
+    {
+        appId = value.id;
+        return true;
+    }
+
+    if(fWithMempool && mempool.getAppIdByAppName(strAppName, value))
+    {
+        appId = value.id;
+        return true;
+    }
+
+    return false;
+}
+
+bool GetTxInfoByAppId(const uint256& appId, vector<COutPoint>& vOut, const bool fWithMempool)
+{
+    if(!fWithMempool)
+        return pblocktree->Read_AppTx_Index(appId, vOut);
+
+    vector<COutPoint> vMempoolOut;
+    mempool.get_AppTx_Index(appId, vMempoolOut);
+    pblocktree->Read_AppTx_Index(appId, vOut);
+    BOOST_FOREACH(const COutPoint& out, vMempoolOut)
+    {
+        if(find(vOut.begin(), vOut.end(), out) == vOut.end())
+            vOut.push_back(out);
+    }
+
+    return vOut.size();
+}
+
+bool GetTxInfoByAppIdAddress(const uint256& appId, const string& strAddress, vector<COutPoint>& vOut, const bool fWithMempool)
+{
+    if(!fWithMempool)
+        return pblocktree->Read_AppTx_Index(appId, strAddress, vOut);
+
+    vector<COutPoint> vMempoolOut;
+    mempool.get_AppTx_Index(appId, strAddress, vMempoolOut);
+    pblocktree->Read_AppTx_Index(appId, strAddress, vOut);
+    BOOST_FOREACH(const COutPoint& out, vMempoolOut)
+    {
+        if(find(vOut.begin(), vOut.end(), out) == vOut.end())
+            vOut.push_back(out);
+    }
+
+    return vOut.size();
+}
+
+bool GetAppListInfo(std::vector<uint256>& vAppId, const bool fWithMempool)
+{
+    if(!fWithMempool)
+        return pblocktree->Read_AppList_Index(vAppId);
+
+    std::vector<uint256> vMempoolAppId;
+    mempool.getAppList(vMempoolAppId);
+    pblocktree->Read_AppList_Index(vAppId);
+    BOOST_FOREACH(const uint256& appId, vMempoolAppId)
+        if (find(vAppId.begin(), vAppId.end(), appId) == vAppId.end())
+           vAppId.push_back(appId);
+
+    return vAppId.size();
+}
+
+bool GetAppIDListByAddress(const std::string& strAddress, std::vector<uint256>& vAppId, const bool fWithMempool)
+{
+    if (!fWithMempool)
+        return pblocktree->Read_AppList_Index(strAddress, vAppId);
+
+    vector<uint256> vMempoolAppId;
+    mempool.getAppList(strAddress, vMempoolAppId);
+    pblocktree->Read_AppList_Index(strAddress, vAppId);
+
+    BOOST_FOREACH(const uint256& appId, vMempoolAppId)
+        if(find(vAppId.begin(), vAppId.end(), appId) == vAppId.end())
+            vAppId.push_back(appId);
+
+    return vAppId.size();
+}
+
+bool GetExtendDataByTxId(const uint256& txId, vector<pair<uint256, string> > &vExtendData)
+{
+    CTransaction tx;
+    uint256 hashBlock;
+    if(!GetTransaction(txId, tx, Params().GetConsensus(), hashBlock, true))
+        return false;
+
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CAppHeader header;
+        vector<unsigned char> vData;
+        if(!ParseReserve(txout.vReserve, header, vData))
+            continue;
+
+        if(header.nAppCmd != CREATE_EXTEND_TX_CMD)
+            continue;
+
+        CExtendData extendData;
+        if(ParseExtendData(vData, extendData))
+            vExtendData.push_back(make_pair(header.appId, extendData.strExtendData));
+    }
+
+    return true;
+}
+
+bool GetAuthByAppIdAddress(const uint256& appId, const string& strAddress, map<uint32_t, int> &mapAuth)
+{
+    return pblocktree->Read_Auth_Index(appId, strAddress, mapAuth);
+}
+
+bool GetAuthByAppIdAddressFromMempool(const uint256& appId, const string& strAddress, vector<uint32_t>& vAuth)
+{
+    return mempool.get_Auth_Index(appId, strAddress, vAuth);
+}
+
+bool GetAssetInfoByAssetId(const uint256& assetId, CAssetId_AssetInfo_IndexValue& assetInfo, const bool fWithMempool)
+{
+    if(pblocktree->Read_AssetId_AssetInfo_Index(assetId, assetInfo) && g_nChainHeight >= assetInfo.nHeight)
+        return true;
+    return fWithMempool && mempool.getAssetInfoByAssetId(assetId, assetInfo);
+}
+
+bool GetAssetIdByShortName(const string& strShortName, uint256& assetId, const bool fWithMempool)
+{
+    CName_Id_IndexValue value;
+    if(pblocktree->Read_ShortName_AssetId_Index(strShortName, value) && g_nChainHeight >= value.nHeight)
+    {
+        assetId = value.id;
+        return true;
+    }
+
+    if(fWithMempool && mempool.getAssetIdByShortName(strShortName, value))
+    {
+        assetId = value.id;
+        return true;
+    }
+
+    return false;
+}
+
+bool GetAssetIdByAssetName(const string& strAssetName, uint256& assetId, const bool fWithMempool)
+{
+    CName_Id_IndexValue value;
+    if(pblocktree->Read_AssetName_AssetId_Index(strAssetName, value) && g_nChainHeight >= value.nHeight)
+    {
+        assetId = value.id;
+        return true;
+    }
+
+    if(fWithMempool && mempool.getAssetIdByAssetName(strAssetName, value))
+    {
+        assetId = value.id;
+        return true;
+    }
+
+    return false;
+}
+
+bool GetTxInfoByAssetIdTxClass(const uint256& assetId, const uint8_t& nTxClass, vector<COutPoint>& vOut, const bool fWithMempool)
+{
+    if(!fWithMempool)
+        return pblocktree->Read_AssetTx_Index(assetId, nTxClass, vOut);
+
+    vector<COutPoint> vMempoolOut;
+    mempool.get_AssetTx_Index(assetId, nTxClass, vMempoolOut);
+    pblocktree->Read_AssetTx_Index(assetId, nTxClass, vOut);
+    BOOST_FOREACH(const COutPoint& out, vMempoolOut)
+    {
+        if(find(vOut.begin(), vOut.end(), out) == vOut.end())
+            vOut.push_back(out);
+    }
+
+    return vOut.size();
+}
+
+bool GetTxInfoByAssetIdAddressTxClass(const uint256& assetId, const string& strAddress, const uint8_t& nTxClass, vector<COutPoint>& vOut, const bool fWithMempool)
+{
+    if(!fWithMempool)
+        return pblocktree->Read_AssetTx_Index(assetId, strAddress, nTxClass, vOut);
+
+    vector<COutPoint> vMempoolOut;
+    mempool.get_AssetTx_Index(assetId, strAddress, nTxClass, vMempoolOut);
+    pblocktree->Read_AssetTx_Index(assetId, strAddress, nTxClass, vOut);
+    BOOST_FOREACH(const COutPoint& out, vMempoolOut)
+    {
+        if(find(vOut.begin(), vOut.end(), out) == vOut.end())
+            vOut.push_back(out);
+    }
+
+    return vOut.size();
+}
+
+bool GetAssetIdCandyInfo(const uint256& assetId, map<COutPoint, CCandyInfo>& mapCandyInfo)
+{
+    return pblocktree->Read_PutCandy_Index(assetId, mapCandyInfo);
+}
+
+bool GetAssetIdCandyInfo(const uint256& assetId, const COutPoint& out, CCandyInfo& candyInfo)
+{
+    return pblocktree->Read_PutCandy_Index(assetId, out, candyInfo);
+}
+
+bool GetAssetIdCandyInfoList(std::map<CPutCandy_IndexKey, CPutCandy_IndexValue>& mapCandy)
+{
+    return pblocktree->Read_PutCandy_Index(mapCandy);
+}
+
+bool GetAssetIdByAddress(const std::string & strAddress, std::vector<uint256> &assetIdlist, const bool fWithMempool)
+{
+    if(!fWithMempool)
+        return pblocktree->Read_AssetList_Index(strAddress, assetIdlist);
+
+    vector<uint256> vMemassetIdlist;
+    mempool.getAssetList(strAddress, vMemassetIdlist);
+    pblocktree->Read_AssetList_Index(strAddress, assetIdlist);
+
+    BOOST_FOREACH(const uint256& assetId, vMemassetIdlist)
+    {
+        if(find(assetIdlist.begin(), assetIdlist.end(), assetId) == assetIdlist.end())
+            assetIdlist.push_back(assetId);
+    }
+
+    return assetIdlist.size();
+}
+
+bool GetGetCandyAmount(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& amount, const bool fWithMempool)
+{
+    if(fWithMempool)
+    {
+        if(mempool.get_GetCandy_Index(assetId, out, strAddress, amount))
+            return true;
+    }
+
+    return pblocktree->Read_GetCandy_Index(assetId, out, strAddress, amount);
+}
+
+bool GetAssetListInfo(std::vector<uint256> &vAssetId, const bool fWithMempool)
+{
+    if(!fWithMempool)
+        return pblocktree->Read_AssetList_Index(vAssetId);
+
+    std::vector<uint256> vMempoolAssetId;
+    mempool.getAssetList(vMempoolAssetId);
+    pblocktree->Read_AssetList_Index(vAssetId);
+    BOOST_FOREACH(const uint256& assetId, vMempoolAssetId)
+    {
+        if(find(vAssetId.begin(), vAssetId.end(), assetId) == vAssetId.end())
+        {
+           vAssetId.push_back(assetId);
+        }
+    }
+
+    return vAssetId.size();
+}
+
+CAmount GetAddedAmountByAssetId(const uint256& assetId, const bool fWithMempool)
+{
+    if (assetId.IsNull())
+        return 0;
+
+    CAmount value = 0;
+    vector<COutPoint> tempvOut;
+    GetTxInfoByAssetIdTxClass(assetId, ADD_ISSUE_TXOUT, tempvOut, fWithMempool);
+    if (tempvOut.empty())
+        return 0;
+
+    std::vector<uint256> vTx;
+    BOOST_FOREACH(const COutPoint& out, tempvOut)
+    {
+        if (find(vTx.begin(), vTx.end(), out.hash) == vTx.end())
+            vTx.push_back(out.hash);
+    }
+
+    std::vector<uint256>::iterator it = vTx.begin();
+    for (; it != vTx.end(); it++)
+    {
+        CTransaction txTmp;
+        uint256 hashBlock;
+        if (GetTransaction(*it, txTmp, Params().GetConsensus(), hashBlock, true))
+        {
+            BOOST_FOREACH(const CTxOut& txout, txTmp.vout)
+            {
+                if (!txout.IsAsset())
+                    continue;
+
+                CAppHeader header;
+                vector<unsigned char> vData;
+                if (ParseReserve(txout.vReserve, header, vData))
+                {
+                    if (header.nAppCmd == ADD_ASSET_CMD)
+                    {
+                        CCommonData commonData;
+                        if (ParseCommonData(vData, commonData))
+                        {
+                            if (assetId == commonData.assetId)
+                                value += commonData.nAmount;
+                        }
+                    }
+                }
+           }
+        }
+    }
+
+    return value;
+}
+
+bool GetRangeChangeHeight(const int nCandyHeight, vector<int>& vChangeHeight)
+{
+    vChangeHeight.clear();
+
+    vector<int> vHeight;
+    if(pblocktree->Read_CandyHeight_Index(vHeight))
+        sort(vHeight.begin(), vHeight.end());
+
+    if(vHeight.empty() || find(vHeight.begin(), vHeight.end(), nCandyHeight) == vHeight.end())
+        return false;
+
+    for(unsigned int i = 0; i < vHeight.size(); i++)
+    {
+        if(vHeight[i] < nCandyHeight)
+            continue;
+        vChangeHeight.push_back(vHeight[i]);
+    }
+
+    return true;
+}
+
+static int BinarySearchFromFile(const string& strFile, const string& strAddress, CAmount& nAmount, long* pPos = NULL);
+bool GetAddressAmountByHeight(const int& nHeight, const std::string& strAddress, CAmount& nAmount)
+{
+    std::lock_guard<std::mutex> lock(g_mutexChangeFile);
+
+    uint64_t nDetailFileSize = boost::filesystem::file_size(GetDataDir() / "height/detail.dat");
+    if(nDetailFileSize / sizeof(CBlockDetail) - nHeight > 3 * BLOCKS_PER_MONTH)
+        return error("%s: cannot get address amount out of 3 months", __func__);
+
+    vector<int> vChangeHeight;
+    if(!GetRangeChangeHeight(nHeight, vChangeHeight))
+        return error("%s: get change files failed at %d", __func__, nHeight);
+
+    // 1. search address from all.dat
+    if(BinarySearchFromFile("all.dat", strAddress, nAmount) < 0)
+        return error("%s: search %s from all.dat failed at %d", __func__, strAddress, nHeight);
+
+    // 2. search address from change file
+    string strFile = "";
+    BOOST_FOREACH(const int& nChangeHeight, vChangeHeight)
+    {
+        strFile = itostr(nChangeHeight) + ".change";
+        CAmount nChangeAmount = 0;
+        if(BinarySearchFromFile(strFile, strAddress, nChangeAmount) < 0)
+            return error("%s: search %s from %s failed at %d", __func__, strAddress, strFile, nHeight);
+        nAmount -= nChangeAmount;
+    }
+
+    if(nAmount < 0)
+        return false;
+
+    return true;
+}
+
+bool GetTotalAmountByHeight(const int& nHeight, CAmount& nTotalAmount)
+{
+    return pblocktree->Read_CandyHeight_TotalAmount_Index(nHeight, nTotalAmount);
+}
+
+bool GetCOutPointAddress(const uint256& assetId, std::map<COutPoint, std::vector<std::string>> &moutpointaddress)
+{
+    if (assetId.IsNull())
+        return false;
+
+    return pblocktree->Read_GetCandy_Index(assetId, moutpointaddress);
+}
+
+bool GetCOutPointList(const uint256& assetId, const std::string& strAddress, std::vector<COutPoint> &vcoutpoint)
+{
+    if (assetId.IsNull() || strAddress.empty())
+        return false;
+
+    return pblocktree->Read_GetCandy_Index(assetId, strAddress, vcoutpoint);
+}
+
+bool GetIssueAssetInfo(std::map<uint256, CAssetData>& mapissueassetinfo)
+{
+    if (!pwalletMain)
+        return false;
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin();
+    for (; it != pwalletMain->mapWallet.end(); it++)
+    {
+        const CWalletTx* pcoin = &(*it).second;
+        if (!CheckFinalTx(*pcoin))
+            continue;
+        if(!pcoin->IsInMainChain())
+            continue;
+
+        for (unsigned int i = 0; i < pcoin->vout.size(); i++)
+        {
+            if (!pcoin->vout[i].IsAsset())
+                continue;
+
+            CAppHeader header;
+            std::vector<unsigned char> vData;
+            if(!ParseReserve(pcoin->vout[i].vReserve, header, vData))
+                continue;
+
+            if(header.nAppCmd == ISSUE_ASSET_CMD)
+            {
+                CAssetData assetData;
+                if(!ParseIssueData(vData, assetData))
+                    continue;
+
+                uint256 assetid = assetData.GetHash();
+                if (assetid.IsNull())
+                    continue;
+
+                std::map<uint256, CAssetData>::iterator tempit = mapissueassetinfo.find(assetid);
+                if (tempit != mapissueassetinfo.end())
+                    continue;
+
+                mapissueassetinfo[assetid] = assetData;
+            }
+        }
+    }
+
+    return true;
+}
+
+static bool GetAllCandyInfo()
+{
+    unsigned int icounter = 0;
+
+    bool fRet = false;
+    std::map<CPutCandy_IndexKey, CPutCandy_IndexValue> mapCandy;
+    if (!GetAssetIdCandyInfoList(mapCandy))
+        return fRet;
+
+    if (mapCandy.empty())
+        return fRet;
+
+    vector<pair<CPutCandy_IndexKey, CPutCandy_IndexValue>> vallassetidcandyinfolist(mapCandy.begin(), mapCandy.end());
+    sort(vallassetidcandyinfolist.begin(), vallassetidcandyinfolist.end(), CompareCandyInfo());
+
+    map<CKeyID, int64_t> mapKeyBirth;
+    pwalletMain->GetKeyBirthTimes(mapKeyBirth);
+
+    int keyBirthCount = 0;
+    std::vector<std::string> vaddress;
+    for (map<CKeyID, int64_t>::const_iterator tempit = mapKeyBirth.begin(); tempit != mapKeyBirth.end(); tempit++)
+    {
+        boost::this_thread::interruption_point();
+        if(++keyBirthCount==1000)
+        {
+            keyBirthCount = 0;
+            MilliSleep(10);
+        }
+        std::string saddress = CBitcoinAddress(tempit->first).ToString();
+        vaddress.push_back(saddress);
+    }
+
+    int nCurrentHeight = g_nChainHeight;
+
+    int candyListSize = vallassetidcandyinfolist.size();
+    for (int candyCount = 0; candyCount<candyListSize;candyCount++)
+    {
+        boost::this_thread::interruption_point();
+        if(candyCount%500==0&&candyCount!=0)
+            MilliSleep(10);
+        const CPutCandy_IndexKey& candyInfoIndex = vallassetidcandyinfolist[candyCount].first;
+        CPutCandy_IndexValue& candyInfoValue = vallassetidcandyinfolist[candyCount].second;
+        CAssetId_AssetInfo_IndexValue assetInfo;
+        const uint256& assetId = candyInfoIndex.assetId;
+        if (assetId.IsNull() || !GetAssetInfoByAssetId(assetId, assetInfo, false))
+            continue;
+
+        const COutPoint& out = candyInfoIndex.out;
+        const CCandyInfo& candyInfo = candyInfoIndex.candyInfo;
+
+        if (candyInfo.nAmount <= 0)
+            continue;
+
+        int nTxHeight = candyInfoValue.nHeight;
+        if (nTxHeight > g_nChainHeight)
+            continue;
+
+        BlockMap::iterator mi = mapBlockIndex.find(candyInfoValue.blockHash);
+        if (mi == mapBlockIndex.end())
+            continue;
+
+        int64_t nTimeBegin = mapBlockIndex[candyInfoValue.blockHash]->GetBlockTime();
+
+        if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+            continue;
+
+        CAmount nTotalSafe = 0;
+        if(!GetTotalAmountByHeight(nTxHeight, nTotalSafe))
+            continue;
+
+        if (nTotalSafe <= 0)
+            continue;
+
+        bool relust = false;
+        int addressSize = vaddress.size();
+        for (int addrCount = 0; addrCount<addressSize;addrCount++)
+        {
+            boost::this_thread::interruption_point();
+            if(addrCount%50==0&&addrCount!=0)
+                MilliSleep(10);
+            CAmount nSafe = 0;
+            if(!GetAddressAmountByHeight(nTxHeight, vaddress[addrCount], nSafe))
+                continue;
+            if (nSafe <= 0 || nSafe > nTotalSafe)
+                continue;
+
+            CAmount nTempAmount = 0;
+            CAmount nCandyAmount = (CAmount)(1.0 * nSafe / nTotalSafe * candyInfo.nAmount);
+            if (nCandyAmount >= AmountFromValue("0.0001", assetInfo.assetData.nDecimals, true) && !GetGetCandyAmount(assetId, out, vaddress[addrCount], nTempAmount,false))
+            {
+                relust = true;
+                break;
+            }
+        }
+
+        if (relust)
+        {
+            fRet = true;
+            CCandy_BlockTime_Info tempcandybolcktimeinfo(assetId,assetInfo.assetData,candyInfo,out,nTimeBegin,nTxHeight);
+
+            icounter++;
+            if (icounter == nCandyPageCount)
+                uiInterface.CandyVecPut();
+
+            {
+                std::lock_guard<std::mutex> lock(g_mutexAllCandyInfo);
+                gAllCandyInfoVec.push_back(tempcandybolcktimeinfo);
+            }
+            if(icounter%100==0)
+                MilliSleep(10);
+        }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(g_mutexTmpAllCandyInfo);
+        bool sendToFirstPage = false;
+        unsigned int vecSize = gAllCandyInfoVec.size();
+        if(vecSize>0&&vecSize<nCandyPageCount)
+            sendToFirstPage = true;
+        int64_t lastBlockTime = 0;
+        int lastBlockIndex = vecSize-1;
+        if(vecSize>0)
+        {
+            lastBlockTime = gAllCandyInfoVec[vecSize-1].blocktime;
+            bool foundIndex = false;
+            for(int i = lastBlockIndex;i>=0;i--)
+            {
+                if(lastBlockTime!=gAllCandyInfoVec[i].blocktime)
+                {
+                    foundIndex = true;
+                    lastBlockIndex = i;
+                    break;
+                }
+            }
+            if(!foundIndex)
+                lastBlockIndex = 0;
+        }
+        if(gTmpAllCandyInfoVec.size()>0 && fRet)
+        {
+            for(unsigned int i=0;i<gTmpAllCandyInfoVec.size();i++)
+            {
+                CCandy_BlockTime_Info& tmpInfo = gTmpAllCandyInfoVec[i];
+                if(tmpInfo.blocktime<lastBlockTime)
+                    continue;
+                bool exist = false;
+                if(tmpInfo.blocktime==lastBlockTime)
+                {
+                    //compare exists
+                    for(unsigned int i=lastBlockIndex;i<gAllCandyInfoVec.size();i++)
+                    {
+                        CCandy_BlockTime_Info& info = gAllCandyInfoVec[i];
+                        if(info.assetId==tmpInfo.assetId&&info.outpoint==tmpInfo.outpoint&&info.candyinfo==tmpInfo.candyinfo
+                                &&info.assetData.strAssetName==tmpInfo.assetData.strAssetName)
+                        {
+                            exist = true;
+                            break;
+                        }
+                    }
+                }
+                if(!exist)
+                    gAllCandyInfoVec.push_back(gTmpAllCandyInfoVec[i]);
+            }
+        }
+
+        if(sendToFirstPage)
+            uiInterface.CandyVecPut();
+    }
+
+    return fRet;
+}
+
+void ThreadGetAllCandyInfo()
+{
+    SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
+    RenameThread("safe-get-allcandy");
+
+    static bool fOneThread;
+    if (fOneThread)
+        return;
+    fOneThread = true;
+
+    while(true)
+    {
+        boost::this_thread::interruption_point();
+        if(!fGetCandyInfoStart)
+        {
+            boost::this_thread::interruption_point();
+            MilliSleep(100);
+            continue;
+        }
+        if(GetAllCandyInfo())
+        {
+            fUpdateAllCandyInfoFinished = true;
+            LogPrintf("Message:GetAllCandyInfo finished\n");
+            break;
+        }
+        MilliSleep(1000);
+    }
+}
+
+bool LoadCandyHeightToList()
+{
+    listCandyHeight.clear();
+
+    std::vector<int> vHeight;
+    if(pblocktree->Read_CandyHeight_TotalAmount_Index(vHeight))
+        std::sort(vHeight.begin(), vHeight.end());
+
+    std::vector<int> vCandyHeight;
+    if (pblocktree->Read_CandyHeight_Index(vCandyHeight))
+    {
+        std::sort(vCandyHeight.begin(), vCandyHeight.end());
+        for (std::vector<int>::iterator it = vCandyHeight.begin(); it != vCandyHeight.end(); it++)
+        {
+            boost::this_thread::interruption_point();
+            if (vHeight.size() != 0 && *it <= vHeight.back())
+                continue;
+            listCandyHeight.push_back(*it);
+        }
+    }
+
+    return true;
+}
+
+static bool PutCandyHeightToList(const int& nCandyHeight)
+{
+    std::lock_guard<std::mutex> lock(g_mutexCandyHeight);
+
+    list<int>::iterator it = find(listCandyHeight.begin(), listCandyHeight.end(), nCandyHeight);
+    if(it != listCandyHeight.end())
+        return true;
+
+    listCandyHeight.push_back(nCandyHeight);
+    listCandyHeight.sort();
+    return pblocktree->Write_CandyHeight_Index(nCandyHeight);
+}
+
+static bool GetCandyHeightFromList(int& nCandyHeight)
+{
+    std::lock_guard<std::mutex> lock(g_mutexCandyHeight);
+
+    if (listCandyHeight.empty())
+        return false;
+
+    std::vector<int> vHeight;
+    if(pblocktree->Read_CandyHeight_TotalAmount_Index(vHeight))
+    {
+        std::sort(vHeight.begin(), vHeight.end());
+        for(list<int>::iterator it = listCandyHeight.begin(); it != listCandyHeight.end();)
+        {
+            if (find(vHeight.begin(), vHeight.end(), nCandyHeight) != vHeight.end())
+                it = listCandyHeight.erase(it);
+            else
+                it++;
+        }
+    }
+
+    if(listCandyHeight.empty())
+        return false;
+
+    nCandyHeight = listCandyHeight.front();
+    listCandyHeight.pop_front();
+    return true;
+}
+
+
+static void CloseFiles(vector<FILE**> vFiles)
+{
+    for(vector<FILE**>::iterator it = vFiles.begin(); it != vFiles.end(); it++)
+    {
+        if(**it)
+        {
+            fclose(**it);
+            **it = NULL;
+        }
+    }
+}
+
+static int BinarySearchFromFile(FILE* pFile, const string& strAddress, CAmount& nAmount, long* pPos = NULL);
+static bool MergeFileAndMap(const string& strSrcFile, const map<string, CAmount>& mapAddressAmount, const string& strDestFile)
+{
+    FILE *pSrcFile, *pDestFile;
+    pSrcFile = pDestFile = NULL;
+    vector<FILE**> vFiles;
+    vFiles.push_back(&pSrcFile);
+    vFiles.push_back(&pDestFile);
+
+    if(!(pSrcFile = fopen(strSrcFile.data(), "rb")))
+        return error("%s: open %s failed", __func__, strSrcFile);
+
+    if(!(pDestFile = fopen(strDestFile.data(), "wb")))
+    {
+        CloseFiles(vFiles);
+        return error("%s: open %s failed", __func__, strDestFile);
+    }
+
+    CAmount nAmount = 0;
+    long nPos = 0;
+    long nNextPos = 0;
+    int nRet = 0;
+    CAddressAmount arr[BATCH_COUNT];
+    map<string, CAmount>::const_iterator it = mapAddressAmount.begin();
+    for(; it != mapAddressAmount.end(); it++)
+    {
+        nRet = BinarySearchFromFile(pSrcFile, it->first, nAmount, &nPos);
+        if(nRet == -1)
+        {
+            CloseFiles(vFiles);
+            return error("%s: search %s from %s failed", __func__, it->first, strSrcFile);
+        }
+
+        if(fseek(pSrcFile, nNextPos * sizeof(CAddressAmount), SEEK_SET))
+        {
+            CloseFiles(vFiles);
+            return error("%s: fseek %s failed", __func__, strSrcFile);
+        }
+
+        long nCount = nPos - nNextPos;
+        if(nCount < 0)
+        {
+            CloseFiles(vFiles);
+            return error("%s: unorder data from %s and map", __func__, strSrcFile);
+        }
+
+        for(long i = 0; i < nCount / BATCH_COUNT; i++)
+        {
+            if(fread(arr, sizeof(CAddressAmount), BATCH_COUNT, pSrcFile) != BATCH_COUNT)
+            {
+                CloseFiles(vFiles);
+                return error("%s: 1-read %s failed", __func__, strSrcFile);
+            }
+            if(fwrite(arr, sizeof(CAddressAmount), BATCH_COUNT, pDestFile) != BATCH_COUNT)
+            {
+                CloseFiles(vFiles);
+                return error("%s: 1-write %s failed", __func__, strDestFile);
+            }
+        }
+        size_t nSize = nCount % BATCH_COUNT;
+        if(nSize)
+        {
+            if(fread(arr, sizeof(CAddressAmount), nSize, pSrcFile) != nSize)
+            {
+                CloseFiles(vFiles);
+                return error("%s: 2-read %s failed", __func__, strSrcFile);
+            }
+            if(fwrite(arr, sizeof(CAddressAmount), nSize, pDestFile) != nSize)
+            {
+                CloseFiles(vFiles);
+                return error("%s: 2-write %s failed", __func__, strDestFile);
+            }
+        }
+
+        CAddressAmount temp;
+        if(nRet == 0)
+        {
+            nNextPos = nPos + 1;
+            if(fread(&temp, sizeof(CAddressAmount), 1, pSrcFile) != 1)
+            {
+                CloseFiles(vFiles);
+                return error("%s: 3-read: %s failed", __func__, strSrcFile);
+            }
+            temp.nAmount += it->second;
+            if(temp.nAmount == 0)
+                continue;
+        }
+        else if(nRet == 1)
+        {
+            temp = CAddressAmount(it->first, it->second);
+            nNextPos = nPos;
+        }
+        else
+            break;
+
+        if(fwrite(&temp, sizeof(CAddressAmount), 1, pDestFile) != 1)
+        {
+            CloseFiles(vFiles);
+            return error("%s: 3-write %s failed", __func__, strDestFile);
+        }
+    }
+
+    if(nRet == 2)
+    {
+        for(; it != mapAddressAmount.end(); it++)
+        {
+            CAddressAmount temp(it->first, it->second);
+            if(fwrite(&temp, sizeof(CAddressAmount), 1, pDestFile) != 1)
+            {
+                CloseFiles(vFiles);
+                return error("%s: 5-write %s failed", __func__, strDestFile);
+            }
+        }
+    }
+    else
+    {
+        size_t nSize = 0;
+        while(!feof(pSrcFile))
+        {
+            if((nSize = fread(arr, sizeof(CAddressAmount), BATCH_COUNT, pSrcFile)) == 0)
+            {
+                if(feof(pSrcFile))
+                    break;
+                CloseFiles(vFiles);
+                return error("%s: 6-read from %s failed", __func__, strSrcFile);
+            }
+            if(nSize != fwrite(arr, sizeof(CAddressAmount), nSize, pDestFile))
+            {
+                CloseFiles(vFiles);
+                return error("%s: 6-write to %s failed", __func__, strDestFile);
+            }
+        }
+    }
+
+    CloseFiles(vFiles);
+    return true;
+}
+
+/*
+ * error: < 0
+ * found: = 0
+ * none: > 0 (2: strAdress is more than all of file, 1: strAddress is a median)
+ */
+static int BinarySearchFromFile(const string& strFile, const string& strAddress, CAmount& nAmount, long* pPos)
+{
+    const string strFullName = GetDataDir().string() + "/height/" + strFile;
+    FILE* pFile = fopen(strFullName.data(), "rb");
+    if(!pFile)
+        return error("%s: open %s failed", __func__, strFile);
+
+    int nRet = BinarySearchFromFile(pFile, strAddress, nAmount, pPos);
+    fclose(pFile);
+    return nRet;
+}
+
+static int BinarySearchFromFile(FILE* pFile, const string& strAddress, CAmount& nAmount, long* pPos)
+{
+    if(!pFile) // error
+        return -1;
+
+    if(fseek(pFile, 0L, SEEK_END))
+    {
+        LogPrintf("%s: fseek failed\n", __func__);
+        return -1;
+    }
+
+    long nFileLen = ftell(pFile);
+    if(nFileLen < 0) // error
+    {
+        LogPrintf("%s: ftell failed\n", __func__);
+        return -1;
+    }
+
+    CAddressAmount data;
+
+    long high = nFileLen / sizeof(CAddressAmount);
+    long low = 0;
+    long mid = 0;
+    int nCmp = 0;
+    while(low <= high)
+    {
+        mid = (low + high) / 2;
+
+        if(fseek(pFile, mid * sizeof(CAddressAmount), SEEK_SET))
+        {
+            LogPrintf("%s: fseek failed\n", __func__);
+            return -1;
+        }
+
+        if(1 != fread(&data, sizeof(CAddressAmount), 1, pFile))
+        {
+            if(feof(pFile))
+            {
+                if(pPos) *pPos = high;
+                return 2;
+            }
+
+            LogPrintf("%s: fread failed\n", __func__);
+            return -1;
+        }
+
+        nCmp = strcmp(data.szAddress, strAddress.data());
+        if(nCmp < 0)
+            low = mid + 1;
+        else if(nCmp > 0)
+            high = mid - 1;
+        else // found
+        {
+            nAmount = data.nAmount;
+            if(pPos) *pPos = mid;
+            return 0;
+        }
+    }
+
+    if(pPos) *pPos = low;
+    return 1;
+}
+
+static bool GetChangeFilterAmount(const int& nStartHeight, const int& nEndHeight, CAmount& nChangeAmount, CAmount& nFilterAmount)
+{
+    string strDetailFile = GetDataDir().string() + "/height/detail.dat";
+    FILE* pDetailFile = fopen(strDetailFile.data(), "rb");
+    if(!pDetailFile)
+        return error("%s: open detail.dat failed", __func__);
+
+    if(fseek(pDetailFile, (nStartHeight - 1) * sizeof(CBlockDetail), SEEK_SET))
+    {
+        fclose(pDetailFile);
+        return error("%s: fseek detail.dat to height: %d failed", __func__, nStartHeight);
+    }
+
+    CAmount nTempChangeAmount = 0;
+    CAmount nTempFilterAmount = 0;
+
+    CBlockDetail detail;
+    int nCurHeight = nStartHeight;
+
+    uint32_t nHandleCount = 0;
+    while(fread(&detail, sizeof(CBlockDetail), 1, pDetailFile))
+    {
+        boost::this_thread::interruption_point();
+
+        if(++nHandleCount % HANDLE_COUNT == 0)
+        {
+            nHandleCount = 0;
+            MilliSleep(20);
+        }
+
+        if(nCurHeight > nEndHeight)
+            break;
+
+        if(detail.nHeight != nCurHeight)
+        {
+            fclose(pDetailFile);
+            return error("%s: detail.dat is disordered", __func__);
+        }
+
+        nTempChangeAmount += detail.nReward;
+        nTempFilterAmount += detail.nFilterAmount;
+        nCurHeight++;
+    }
+
+    if(nCurHeight <= nEndHeight)
+    {
+        fclose(pDetailFile);
+        return error("%s: detail.dat miss candy height from %d to %d", __func__, nCurHeight, nEndHeight);
+    }
+
+    fclose(pDetailFile);
+
+    nChangeAmount = nTempChangeAmount;
+    nFilterAmount = nTempFilterAmount;
+    return true;
+}
+
+static bool GetHeightAddressAmount(const int& nCandyHeight)
+{
+    int nLastCandyHeight = 0;
+    vector<int> vHeight;
+    if(pblocktree->Read_CandyHeight_TotalAmount_Index(vHeight))
+    {
+        sort(vHeight.begin(), vHeight.end());
+        nLastCandyHeight = vHeight.back();
+    }
+
+    if(nCandyHeight <= nLastCandyHeight)
+        return true;
+
+    CAmount nLastTotalAmount = 0;
+    if(nLastCandyHeight != 0 && !GetTotalAmountByHeight(nLastCandyHeight, nLastTotalAmount))
+        return error("%s: get total amount from %d failed", __func__, nLastCandyHeight);
+
+    CAmount nChangeTotalAmount = 0;
+    CAmount nFilterAmount = 0;
+    if(!GetChangeFilterAmount(nLastCandyHeight + 1, nCandyHeight, nChangeTotalAmount, nFilterAmount))
+        return error("%s: get change-amount and filter-amount from %d to %d failed", __func__, nLastCandyHeight + 1, nCandyHeight);
+
+    CAmount nTotalAmount = nLastTotalAmount + nChangeTotalAmount - nFilterAmount;
+    if (!pblocktree->Write_CandyHeight_TotalAmount_Index(nCandyHeight, nTotalAmount))
+        return error("%s: write finnal candy height index failed at %d", __func__, nCandyHeight);
+
+    if(!fHaveGUI)
+        return true;
+
+    CBlock candyBlock;
+    while(true)
+    {
+        boost::this_thread::interruption_point();
+
+        if(nCandyHeight > chainActive.Height())
+        {
+            MilliSleep(1000);
+            continue;
+        }
+
+        {
+            LOCK(cs_main);
+            CBlockIndex* pindex = chainActive[nCandyHeight];
+            if (ReadBlockFromDisk(candyBlock, pindex, Params().GetConsensus()))
+                break;
+        }
+        MilliSleep(1000);
+    }
+
+    bool fUpdateUI = false;
+
+    map<CKeyID, int64_t> mapKeyBirth;
+    pwalletMain->GetKeyBirthTimes(mapKeyBirth);
+
+    std::vector<std::string> vaddress;
+    for (map<CKeyID, int64_t>::const_iterator tempit = mapKeyBirth.begin(); tempit != mapKeyBirth.end(); tempit++)
+    {
+        boost::this_thread::interruption_point();
+        std::string saddress = CBitcoinAddress(tempit->first).ToString();
+        vaddress.push_back(saddress);
+    }
+
+    int nCurrentHeight = g_nChainHeight;
+    BOOST_FOREACH(const CTransaction& tx, candyBlock.vtx)
+    {
+        for(unsigned int i = 0; i < tx.vout.size(); i++)
+        {
+            boost::this_thread::interruption_point();
+
+            const CTxOut& txout = tx.vout[i];
+
+            CAppHeader header;
+            std::vector<unsigned char> vData;
+            if(!ParseReserve(txout.vReserve, header, vData) || header.nAppCmd != PUT_CANDY_CMD)
+                continue;
+
+            CPutCandyData candyData;
+            if(!ParsePutCandyData(vData, candyData))
+                continue;
+
+            const uint256& assetId = candyData.assetId;
+            if(assetId.IsNull())
+                continue;
+
+            CAssetId_AssetInfo_IndexValue assetInfo;
+            if(!GetAssetInfoByAssetId(assetId, assetInfo, false))
+                continue;
+
+            COutPoint out(tx.GetHash(), i);
+            CCandy_BlockTime_Info candyblocktimeinfo(assetId, assetInfo.assetData, CCandyInfo(candyData.nAmount, candyData.nExpired),out , candyBlock.nTime, nCandyHeight);
+
+            if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
+                continue;
+
+            if(nCandyHeight > nCurrentHeight)
+                continue;
+
+            bool result = false;
+            for (std::vector<std::string>::iterator addit = vaddress.begin(); addit != vaddress.end(); addit++)
+            {
+                boost::this_thread::interruption_point();
+
+                CAmount nSafe = 0;
+                if(!GetAddressAmountByHeight(nCandyHeight, *addit, nSafe))
+                    continue;
+                if (nSafe <= 0 || nSafe > nTotalAmount)
+                    continue;
+
+                CAmount nTempAmount = 0;
+                CAmount nCandyAmount = (CAmount)(1.0 * nSafe / nTotalAmount * candyData.nAmount);
+                if (nCandyAmount >= AmountFromValue("0.0001", assetInfo.assetData.nDecimals, true) && !GetGetCandyAmount(assetId, out, *addit, nTempAmount,false))
+                {
+                    result = true;
+                    break;
+                }
+            }
+
+            if(!result)
+                continue;
+
+            if(fUpdateAllCandyInfoFinished)
+            {
+                if(gAllCandyInfoVec.size()<nCandyPageCount)
+                    fUpdateUI = true;
+                std::lock_guard<std::mutex> lock(g_mutexAllCandyInfo);
+                gAllCandyInfoVec.push_back(candyblocktimeinfo);
+            }
+            else
+            {
+                std::lock_guard<std::mutex> lock(g_mutexTmpAllCandyInfo);
+                gTmpAllCandyInfoVec.push_back(candyblocktimeinfo);
+            }
+        }
+    }
+    if(fUpdateUI)
+        uiInterface.CandyVecPut();
+
+    return true;
+}
+
+void ThreadCalculateAddressAmount()
+{
+    SetThreadPriority(THREAD_PRIORITY_NORMAL);
+    RenameThread("safe-calculate-amount");
+
+    while (true)
+    {
+        boost::this_thread::interruption_point();
+        int nCandyHeight = 0;
+        if (GetCandyHeightFromList(nCandyHeight))
+        {
+            while(true)
+            {
+                boost::this_thread::interruption_point();
+                if(GetHeightAddressAmount(nCandyHeight))
+                {
+                    MilliSleep(100);
+                    break;
+                }
+                MilliSleep(1000);
+            }
+        }
+        else
+            MilliSleep(1000);
+    }
+}
+
+static bool CheckDetailFile(FILE* pFile, const int& nHeight, int& nLastCandyHeight, bool& fValid)
+{
+    if(!pFile)
+        return false;
+
+    if(fseek(pFile, 0L, SEEK_END))
+        return error("%s: fseek detail.dat failed", __func__);
+
+    long nFileLen = ftell(pFile);
+    if(nFileLen < 0)
+        return error("%s: ftell detail.dat failed", __func__);
+
+    int nLastHeight = nFileLen / sizeof(CBlockDetail);
+
+    if(nLastHeight < nHeight - 1 - g_nListChangeInfoLimited)
+    {
+        fValid = false;
+        return error("%s: missing %d in detail.dat at least", __func__, nHeight - 1 - g_nListChangeInfoLimited);
+    }
+
+    if(nLastHeight >= nHeight)
+    {
+        if(fseek(pFile, (nHeight - 1) * sizeof(CBlockDetail), SEEK_SET))
+            return error("%s: fseek %d from detail.dat failed", __func__, nHeight);
+
+        CBlockDetail detail;
+        if(1 != fread(&detail, sizeof(CBlockDetail), 1, pFile))
+            return error("%s: fread %d from detail.dat failed", __func__, nHeight);
+
+        nLastCandyHeight = detail.nLastCandyHeight;
+    }
+
+    return true;
+}
+
+static bool WriteDetailFile(const string& strFile, const CBlockDetail& detail)
+{
+    FILE* pFile = fopen(strFile.data(), "ab+");
+    if(!pFile)
+        return error("%s: open detail.dat failed", __func__);
+
+    int nLastCandyHeight = -1;
+    bool fValid = true;
+    if(!CheckDetailFile(pFile, detail.nHeight, nLastCandyHeight, fValid))
+    {
+        fclose(pFile);
+        if(!fValid)
+            throw std::runtime_error(strprintf("%s: Corrupt detail.dat, missing block information", __func__));
+        return error("%s: check detail.dat with %d failed", __func__, detail.nHeight);
+    }
+
+    if(nLastCandyHeight >= 0)
+    {
+        if(!TruncateFile(pFile, (detail.nHeight - 1) * sizeof(CBlockDetail)) || fflush(pFile))
+        {
+            fclose(pFile);
+            return error("%s: truncate detail.dat start from %d failed", __func__, detail.nHeight);
+        }
+    }
+
+    if(fseek(pFile, 0L, SEEK_END))
+    {
+        fclose(pFile);
+        return error("%s: fseek detail.dat failed", __func__);
+    }
+
+    bool bRet = (fwrite(&detail, sizeof(CBlockDetail), 1, pFile) == 1);
+    fclose(pFile);
+    return bRet;
+}
+
+static bool WriteChangeFile(const string& strFile, const map<string, CAmount>& mapAddressAmount)
+{
+    string strTempFile = strFile + ".temp";
+    boost::filesystem::remove(strTempFile);
+    if(!MergeFileAndMap(strFile, mapAddressAmount, strTempFile))
+    {
+        boost::filesystem::remove(strTempFile);
+        return error("%s: merge address information to %s failed", __func__, strFile);
+    }
+
+    string strBakFile = strFile + ".bak";
+    boost::filesystem::remove(strBakFile);
+    if(!RenameOver(strFile, strBakFile))
+    {
+        boost::filesystem::remove(strTempFile);
+        return error("%s: backup %s to %s failed", __func__, strFile, strBakFile);
+    }
+
+    if(!RenameOver(strTempFile, strFile))
+    {
+        boost::filesystem::remove(strTempFile);
+        if(!RenameOver(strBakFile, strFile))
+            throw std::runtime_error(strprintf("%s: Restore %s to %s faield, missing address information", __func__, strBakFile, strFile));
+        boost::filesystem::remove(strBakFile);
+        return error("%s: rename %s to %s failed", __func__, strTempFile, strFile);
+    }
+
+    boost::filesystem::remove(strBakFile);
+    return true;
+}
+
+static int g_nLastCandyHeight = 0;
+bool LoadChangeInfoToList()
+{
+    boost::filesystem::path heightDir = GetDataDir() / "height";
+
+    string strAllFile = heightDir.string() + "/all.dat";
+    if(!boost::filesystem::exists(strAllFile))
+    {
+        FILE* pAllFile = fopen(strAllFile.data(), "ab+");
+        if(!pAllFile)
+            return error("%s: create empty all file failed", __func__);
+        fclose(pAllFile);
+    }
+
+    g_listChangeInfo.clear();
+
+    string strFile = heightDir.string() + "/detail.dat";
+    FILE* pFile = fopen(strFile.data(), "ab+");
+    if(!pFile)
+        return error("%s: open detail.dat failed", __func__);
+    if(fseek(pFile, 0L, SEEK_END))
+    {
+        fclose(pFile);
+        return error("%s: fseek detail.dat failed", __func__);
+    }
+    long nLen = ftell(pFile);
+    if(nLen < 0)
+    {
+        fclose(pFile);
+        return error("%s: ftell detail.dat failed", __func__);
+    }
+
+    int nLastHeight = nLen / sizeof(CBlockDetail);
+    if(nLastHeight != 0)
+    {
+        if(fseek(pFile, -1 * sizeof(CBlockDetail), SEEK_END))
+        {
+            fclose(pFile);
+            return error("%s: fseek detail.dat failed at %d", __func__, nLastHeight);
+        }
+
+        CBlockDetail detail;
+        if(fread(&detail, sizeof(CBlockDetail), 1, pFile) != 1)
+        {
+            fclose(pFile);
+            return error("%s: read detail.dat failed at %d", __func__, nLastHeight);
+        }
+
+        if(detail.fCandy)
+            g_nLastCandyHeight = detail.nHeight;
+        else
+            g_nLastCandyHeight = detail.nLastCandyHeight;
+    }
+
+    for(int nHeight = nLastHeight + 1; nHeight <= chainActive.Height(); nHeight++)
+    {
+        CBlockIndex* pindex = chainActive[nHeight];
+
+        CBlock block;
+        if(!ReadBlockFromDisk(block, pindex, Params().GetConsensus()))
+        {
+            fclose(pFile);
+            return error("%s: read block from disk failed at %d, hash=%s", __func__, pindex->nHeight, pindex->GetBlockHash().ToString());
+        }
+
+        map<string, CAmount> mapAddressAmount;
+        string strAddress = "";
+        bool bExistCandy = false;
+
+        for(size_t i = 0; i < block.vtx.size(); i++)
+        {
+            const CTransaction& tx = block.vtx[i];
+
+            // vin
+            if(!tx.IsCoinBase())
+            {
+                for(size_t j = 0; j < tx.vin.size(); j++)
+                {
+                    const CTxIn& txin = tx.vin[j];
+
+                    CTransaction in_tx;
+                    uint256 in_blockHash;
+                    if(!GetTransaction(txin.prevout.hash, in_tx, Params().GetConsensus(), in_blockHash, true))
+                    {
+                        fclose(pFile);
+                        return error("%s: read txin transaction failed, hash=%s", __func__, txin.prevout.hash.ToString());
+                    }
+
+                    const CTxOut& in_txout = in_tx.vout[txin.prevout.n];
+                    if(in_txout.IsAsset())
+                        continue;
+
+                    if(!GetTxOutAddress(in_txout, &strAddress))
+                    {
+                        fclose(pFile);
+                        return error("%s: get txin address failed, hash=%s, n=%d", __func__, txin.prevout.hash.ToString(), txin.prevout.n);
+                    }
+
+                    if(mapAddressAmount.count(strAddress))
+                    {
+                        mapAddressAmount[strAddress] += -in_txout.nValue;
+                        if(mapAddressAmount[strAddress] == 0)
+                            mapAddressAmount.erase(strAddress);
+                    }
+                    else
+                        mapAddressAmount[strAddress] = -in_txout.nValue;
+                }
+            }
+
+            for(size_t j = 0; j < tx.vout.size(); j++)
+            {
+                const CTxOut& txout = tx.vout[j];
+                if(txout.IsAsset())
+                    continue;
+                if(!GetTxOutAddress(txout, &strAddress))
+                {
+                    fclose(pFile);
+                    return error("%s: get txout address failed, hash=%s, n=%d", __func__, tx.GetHash().ToString(), j);
+                }
+
+                if(mapAddressAmount.count(strAddress))
+                {
+                    mapAddressAmount[strAddress] += txout.nValue;
+                    if(mapAddressAmount[strAddress] == 0)
+                        mapAddressAmount.erase(strAddress);
+                }
+                else
+                    mapAddressAmount[strAddress] = txout.nValue;
+            }
+
+            for(size_t j = 0; j < tx.vout.size(); j++)
+            {
+                const CTxOut& txout = tx.vout[j];
+                uint32_t nAppCmd = 0;
+                if(!txout.IsAsset(&nAppCmd))
+                    continue;
+                if(nAppCmd == PUT_CANDY_CMD)
+                {
+                    bExistCandy = true;
+                    break;
+                }
+            }
+        }
+
+        CAmount blockReward = 0;
+        if(CheckCriticalBlock(block))
+            blockReward = g_nCriticalReward;
+        else
+            blockReward = GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, Params().GetConsensus());
+
+        g_listChangeInfo.push_back(CChangeInfo(pindex->nHeight, g_nLastCandyHeight, blockReward, bExistCandy, mapAddressAmount));
+
+        if(bExistCandy)
+            g_nLastCandyHeight = pindex->nHeight;
+    }
+
+    fclose(pFile);
+    return true;
+}
+
+static bool PutChangeInfoToList(const int& nHeight, const CAmount& nReward, const bool fCandy, const map<string, CAmount>& mapAddressAmount)
+{
+    std::lock_guard<std::mutex> lock(g_mutexChangeInfo);
+
+    if(!g_listChangeInfo.empty() && (nHeight < g_listChangeInfo.front().nHeight))
+        return true;
+
+    bool fExist = false;
+    list<CChangeInfo>::iterator it = g_listChangeInfo.begin();
+    for(; it != g_listChangeInfo.end(); it++)
+    {
+        if(it->nHeight == nHeight)
+        {
+            fExist = true;
+            break;
+        }
+    }
+
+    if(fExist)
+    {
+        while(it != g_listChangeInfo.end())
+            it = g_listChangeInfo.erase(it);
+    }
+
+    string strFile = GetDataDir().string() + "/height/detail.dat";
+    FILE* pFile = fopen(strFile.data(), "ab+");
+    if(!pFile)
+        return error("%s: open detail.dat failed", __func__);
+
+    int nLastCandyHeight = -1;
+    bool fValid = true;
+    if(!CheckDetailFile(pFile, nHeight, nLastCandyHeight, fValid))
+    {
+        fclose(pFile);
+        if(!fValid)
+            throw std::runtime_error(strprintf("%s: 1-Corrupt detail.dat, missing block information", __func__));
+        return error("%s: check detail.dat failed at %d", __func__, nHeight);
+    }
+
+    if(nLastCandyHeight < 0)
+    {
+        if(nHeight <= g_nLastCandyHeight) // after invoke invalidateblock, need reset g_nLastCandyHeight
+        {
+            if(nHeight <= 1)
+            {
+                g_nLastCandyHeight = 0;
+            }
+            else
+            {
+                if(fseek(pFile, 0L, SEEK_END))
+                {
+                    fclose(pFile);
+                    return error("%s: fseek detail.dat failed", __func__);
+                }
+                long nLen = ftell(pFile);
+                if(nLen < 0)
+                {
+                    fclose(pFile);
+                    return error("%s: ftell detail.dat failed", __func__);
+                }
+                int nLastHeight = nLen / sizeof(CBlockDetail);
+                if(nLastHeight == 0 || nLastHeight != nHeight - 1)
+                    throw std::runtime_error(strprintf("%s: 2-Corrupt detail.dat, missing block information", __func__));
+                else
+                {
+                    if(fseek(pFile, -1 * sizeof(CBlockDetail), SEEK_END))
+                    {
+                        fclose(pFile);
+                        return error("%s: fseek detail.dat failed at %d", __func__, nLastHeight);
+                    }
+                    CBlockDetail detail;
+                    if(fread(&detail, sizeof(CBlockDetail), 1, pFile) != 1)
+                    {
+                        fclose(pFile);
+                        return error("%s: read detail.dat failed at %d", __func__, nLastHeight);
+                    }
+                    if(detail.fCandy)
+                        g_nLastCandyHeight = detail.nHeight;
+                    else
+                        g_nLastCandyHeight = detail.nLastCandyHeight;
+                }
+            }
+        }
+    }
+    fclose(pFile);
+
+    if(nLastCandyHeight >= 0) // existent, maybe need rebuild candy index again
+    {
+        if(fCandy && !PutCandyHeightToList(nHeight))
+            return error("%s: put candy height %d to list failed", __func__, nHeight);
+        return true;
+    }
+
+    g_listChangeInfo.push_back(CChangeInfo(nHeight, g_nLastCandyHeight, nReward, fCandy, mapAddressAmount));
+
+    if(fCandy)
+        g_nLastCandyHeight = nHeight;
+
+    return true;
+}
+
+static bool GetChangeInfoFromList(CChangeInfo& changeInfo)
+{
+    if(GetChangeInfoListSize() < g_nListChangeInfoLimited)
+        return false;
+
+    std::lock_guard<std::mutex> lock(g_mutexChangeInfo);
+    changeInfo = g_listChangeInfo.front();
+    g_listChangeInfo.pop_front();
+    return true;
+}
+
+static void DeleteFilesToHeight(const int& nHeight)
+{
+    if(nHeight < 0)
+        return;
+
+    boost::filesystem::path heightDir = GetDataDir() / "height";
+    if(!boost::filesystem::exists(heightDir) || !boost::filesystem::is_directory(heightDir))
+        return;
+
+    string strFileName = "";
+    boost::filesystem::directory_iterator end_iter;
+    for(boost::filesystem::directory_iterator iter(heightDir); iter != end_iter; ++iter)
+    {
+        boost::this_thread::interruption_point();
+
+        if(!boost::filesystem::is_regular_file(iter->status()))
+            continue;
+
+        strFileName = iter->path().filename().string();
+
+        int nTempHeight = atoi(strFileName);
+        if(nTempHeight == 0 && (strFileName[0] > '9' || strFileName[0] < '0'))
+            continue;
+
+        if(nTempHeight >= nHeight)
+            continue;
+
+        boost::filesystem::remove(iter->path());
+    }
+}
+
+static bool WriteChangeInfo(const CChangeInfo& changeInfo)
+{
+    std::lock_guard<std::mutex> lock(g_mutexChangeFile);
+
+    boost::filesystem::path heightDir = GetDataDir() / "height";
+
+    static int nStep = 0;
+
+    // 1. write all.dat
+    if(nStep == 0)
+    {
+        string strAllFile = heightDir.string() + "/all.dat";
+        try {
+            if(!WriteChangeFile(strAllFile, changeInfo.mapAddressAmount))
+                return error("%s: write all.dat at %d failed", __func__, changeInfo.nHeight);
+        } catch (const boost::filesystem::filesystem_error& e) {
+            return error("%s: write all.dat at %d throw exception", __func__, changeInfo.nHeight);
+        }
+        nStep = 1;
+    }
+
+    // 2. write change file
+    if(nStep == 1)
+    {
+        if(changeInfo.nLastCandyHeight > 0)
+        {
+            string strChangeFile = heightDir.string() + "/" + itostr(changeInfo.nLastCandyHeight) + ".change";
+            if(changeInfo.nHeight == changeInfo.nLastCandyHeight + 1)
+            {
+                FILE* pChangeFile = fopen(strChangeFile.data(), "ab+");
+                if(!pChangeFile)
+                    return error("%s: create empty change file %s at %d failed", strChangeFile, changeInfo.nHeight);
+                fclose(pChangeFile);
+            }
+            try {
+                if(!WriteChangeFile(strChangeFile, changeInfo.mapAddressAmount))
+                    return error("%s: write changed address amount in block %d to %s failed", __func__, changeInfo.nHeight, strChangeFile);
+            } catch (const boost::filesystem::filesystem_error& e) {
+                return error("%s: write changed address amount in block %d to %s throw exception", __func__, changeInfo.nHeight, strChangeFile);
+            }
+        }
+        nStep = 2;
+    }
+
+    // 3. write detail.dat
+    if(nStep == 2)
+    {
+        string strDetailFile = heightDir.string() + "/detail.dat";
+
+        CAmount nFilterAmount = 0;
+        map<string, CAmount>::const_iterator it1 = changeInfo.mapAddressAmount.find(g_strCancelledMoneroCandyAddress);
+        if(it1 != changeInfo.mapAddressAmount.end())
+            nFilterAmount += it1->second;
+        map<string, CAmount>::const_iterator it2 = changeInfo.mapAddressAmount.find(g_strCancelledSafeAddress);
+        if(it2 != changeInfo.mapAddressAmount.end())
+            nFilterAmount += it2->second;
+        map<string, CAmount>::const_iterator it3 = changeInfo.mapAddressAmount.find(g_strCancelledAssetAddress);
+        if(it3 != changeInfo.mapAddressAmount.end())
+            nFilterAmount += it3->second;
+        map<string, CAmount>::const_iterator it4 = changeInfo.mapAddressAmount.find(g_strPutCandyAddress);
+        if(it4 != changeInfo.mapAddressAmount.end())
+            nFilterAmount += it4->second;
+
+        CBlockDetail detail(changeInfo.nHeight, changeInfo.nLastCandyHeight, changeInfo.nReward, nFilterAmount, changeInfo.fCandy);
+        if(!WriteDetailFile(strDetailFile, detail))
+            return error("%s: write %d to detail.dat failed", __func__, changeInfo.nHeight);
+        nStep = 3;
+    }
+
+    // 4. write candy information
+    if(nStep == 3)
+    {
+        if(changeInfo.fCandy && !PutCandyHeightToList(changeInfo.nHeight))
+            return error("%s: put candy height %d to list failed", __func__, changeInfo.nHeight);
+        nStep = 4;
+    }
+
+    // 5. remove change file before 3 month
+    if(nStep == 4)
+    {
+        int nEndHeight = changeInfo.nHeight - 3 * BLOCKS_PER_MONTH;
+        if(nEndHeight >= changeInfo.nLastCandyHeight)
+            nEndHeight = changeInfo.nLastCandyHeight;
+        DeleteFilesToHeight(nEndHeight);
+    }
+
+    nStep = 0;
+    return true;
+}
+
+void ThreadWriteChangeInfo()
+{
+    SetThreadPriority(THREAD_PRIORITY_NORMAL);
+    RenameThread("safe-change");
+
+    while(true)
+    {
+        boost::this_thread::interruption_point();
+        CChangeInfo changeInfo;
+        if(GetChangeInfoFromList(changeInfo))
+        {
+            while(true)
+            {
+                boost::this_thread::interruption_point();
+                if(WriteChangeInfo(changeInfo))
+                    break;
+                MilliSleep(100);
+            }
+        }
+        else
+            MilliSleep(10);
+    }
+}
+
+void resetNumA(std::string numAStr)
+{
+    memset(numA, 0, M * sizeof(int));
+
+    for (uint32_t i = 0; i < numAStr.length(); i++)
+        numA[i] = numAStr[numAStr.length() - i - 1] - '0';
+}
+
+void resetNumB(std::string numBStr)
+{
+    memset(numB, 0, M * sizeof(int));
+
+    for (uint32_t i = 0; i < numBStr.length(); i++)
+        numB[i] = numBStr[numBStr.length()-i-1] - '0';
+}
+
+std::string getNumString(int* num)
+{
+    std::string numString = "";
+    bool isBegin = false;
+    for (int i = M - 1; i >= 0 ; i--)
+    {
+        if(num[i] != 0)
+            isBegin = true;
+
+        if (isBegin)
+            numString += num[i] + '0';
+    }
+    return numString;
+}
+
+int comparestring(std::string numAStr, std::string numBStr)
+{
+    if (numAStr.length() > numBStr.length())
+        return 1;
+    else if (numAStr.length() < numBStr.length())
+        return -1;
+    else
+    {
+        for (uint32_t i = 0; i < numAStr.length(); i++)
+        {
+            if (numAStr[i]>numBStr[i])
+                return 1;
+
+            if (numAStr[i]<numBStr[i])
+                return -1;
+        }
+
+        return 0;
+    }
+}
+
+int compareFloatString(const std::string& numAStr,const std::string& numBStr,bool fOnlyCompareInt)
+{
+    int posA = numAStr.find('.');
+    int posB = numBStr.find('.');
+
+    string posAIntStr = numAStr;
+    if(posA>0)
+        posAIntStr = numAStr.substr(0,posA);
+
+    string posBIntStr = numBStr;
+    if(posB>0)
+        posBIntStr = numBStr.substr(0,posB);
+
+    if(fOnlyCompareInt)
+        return comparestring(posAIntStr,posBIntStr);
+
+    string posAFloatStr = "0",posBFloatStr="0";
+    if(posA>0)
+    {
+        bool skipFirstZero = true;
+        for(unsigned int i=posA+1;i<numAStr.size();i++)
+        {
+            if(skipFirstZero&&numAStr[i]=='0')
+                continue;
+            if(skipFirstZero)
+            {
+                skipFirstZero = false;
+                posAFloatStr.clear();
+            }
+            posAFloatStr.push_back(numAStr[i]);
+        }
+    }
+    if(posB>0)
+    {
+        bool skipFirstZero = true;
+        for(unsigned int i=posB+1;i<numBStr.size();i++)
+        {
+            if(skipFirstZero&&numBStr[i]=='0')
+                continue;
+            if(skipFirstZero)
+            {
+                skipFirstZero = false;
+                posBFloatStr.clear();
+            }
+            posBFloatStr.push_back(numBStr[i]);
+        }
+    }
+    int aFloatSize = numAStr.size()-posA-1;
+    int bFloatSize = numBStr.size()-posB-1;
+    int size = std::abs(aFloatSize-bFloatSize);
+    for(int i=0;i<size;i++)
+    {
+        if(aFloatSize<bFloatSize)
+            posAFloatStr.push_back('0');
+        else
+            posBFloatStr.push_back('0');
+    }
+    return comparestring(posAFloatStr,posBFloatStr);
+}
+
+std::string plusstring(std::string numAStr, std::string numBStr)
+{
+    resetNumA(numAStr);
+    resetNumB(numBStr);
+
+    for (int i = 0; i < M; i++)
+    {
+        numA[i] += numB[i];
+
+        if(numA[i] > 9)
+        {
+            numA[i] -= 10;
+            numA[i+1]++;
+        }
+    }
+
+    return getNumString(numA);
+}
+
+std::string minusstring(std::string numAStr, std::string numBStr)
+{
+    bool isNegative = false;
+
+    if (comparestring(numAStr,numBStr)==-1)
+    {
+        isNegative = true;
+        string temp = numAStr;
+        numAStr = numBStr;
+        numBStr = temp;
+    }
+    else if (comparestring(numAStr,numBStr)==0)
+        return "0";
+
+    resetNumA(numAStr);
+    resetNumB(numBStr);
+
+    for (int i = 0; i < M; i++)
+    {
+        if (numA[i]<numB[i])
+        {
+            numA[i] = numA[i]+10-numB[i];
+            numA[i+1]--;
+        }
+        else
+            numA[i] -= numB[i];
+    }
+
+    if (isNegative)
+        return "-"+  getNumString(numA);
+    else
+        return getNumString(numA);
+}
+
+std::string mulstring(std::string numAStr, std::string numBStr)
+{
+    resetNumA(numAStr);
+    resetNumB(numBStr);
+
+    vector<string> vnums;
+    for (uint32_t i = 0; i < numBStr.length(); i++)
+    {
+        int tempnum[M];
+        memset(tempnum, 0, M * sizeof(int));
+
+        for (uint32_t j = i; j < numAStr.length() + i; j++)
+        {
+            tempnum[j] += numA[j - i] * numB[i] % 10;
+            tempnum[j + 1] = numA[j - i] * numB[i] /10;
+            if (tempnum[j] > 9)
+            {
+                tempnum[j] -= 10;
+                tempnum[j + 1]++;
+            }
+        }
+
+        vnums.push_back(getNumString(tempnum));
+    }
+
+    string strresult = vnums[0];
+    for (uint32_t i = 1; i < vnums.size(); i++)
+        strresult = plusstring(strresult, vnums[i]);
+
+    return strresult;
+}
+
+std::string numtofloatstring(std::string numstr, int32_t Decimals)
+{
+    if (numstr.empty())
+        return "";
+
+    int32_t istrlength = numstr.length();
+    if (istrlength <= Decimals)
+    {
+        return "";
+    }
+
+    std::string strlastfloat = "";
+    std::string strnumber = numstr.substr(0, numstr.length() - Decimals);
+    std::string strfloat = numstr.substr(numstr.length() - Decimals);
+    strlastfloat = strnumber + "." + strfloat;
+
+    return strlastfloat;
+}
+
+bool VerifyDetailFile()
+{
+    boost::filesystem::path heightDir = GetDataDir() / "height";
+
+    if(!boost::filesystem::exists(heightDir) || !boost::filesystem::is_directory(heightDir))
+    {
+        try {
+            if(!TryCreateDirectory(heightDir))
+                return error("1-specified data directory height cannot be created.");
+        } catch (const boost::filesystem::filesystem_error&) {
+            return error("2-specified data directory height cannot be created.");
+        }
+    }
+
+    string strFile = heightDir.string() + "/detail.dat";
+    FILE* pFile = fopen(strFile.data(), "ab+");
+    if(!pFile)
+        return error("%s: open detail.dat failed", __func__);
+
+    if(fseek(pFile, 0L, SEEK_SET))
+    {
+        fclose(pFile);
+        return error("%s: fseek detail.dat failed", __func__);
+    }
+
+    CBlockDetail detail;
+    int nHeight = 1;
+    while(true)
+    {
+        if(fread(&detail, sizeof(CBlockDetail), 1, pFile) != 1)
+        {
+            if(feof(pFile))
+                break;
+            fclose(pFile);
+            return error("%s: read detail.dat failed", __func__);
+        }
+
+        if(detail.nHeight != nHeight)
+        {
+            fclose(pFile);
+            throw std::runtime_error(strprintf("%s: Corrupt detail.dat, missing block %d", __func__, nHeight));
+            return error("%s: detail.dat is corrupted, missing block %d", __func__, nHeight);
+        }
+
+        nHeight++;
+    }
+
+    fclose(pFile);
+    return true;
+}

@@ -195,7 +195,9 @@ bool CPrivateSend::IsCollateralValid(const CTransaction& txCollateral)
             LogPrint("privatesend", "CPrivateSend::IsCollateralValid -- Unknown inputs in collateral transaction, txCollateral=%s", txCollateral.ToString());
             return false;
         }
-        nValueIn += coins.vout[txin.prevout.n].nValue;
+        const CTxOut& in_txout = coins.vout[txin.prevout.n];
+        if(in_txout.IsSafeOnly() || in_txout.IsApp())
+            nValueIn += in_txout.nValue;
     }
 
     //collateral transactions are required to pay out a small fee to the miners

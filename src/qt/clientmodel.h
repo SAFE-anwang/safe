@@ -20,6 +20,7 @@ class TransactionTableModel;
 
 class CWallet;
 class CBlockIndex;
+struct CCandy_BlockTime_InfoVec;
 
 QT_BEGIN_NAMESPACE
 class QTimer;
@@ -119,6 +120,11 @@ Q_SIGNALS:
     // Show progress dialog e.g. for verifychain
     void showProgress(const QString &title, int nProgress);
 
+    void assetFound(const QString& strAssetName);
+
+    void candyPut(const QString& strAssetId, const QString& strAssetName, const quint8& nAssetDecimals, const qint64& nCandyAmount, const quint16& nCandyExpired, const QString& strTime, const QString& strTxId, const quint32& nIndex);
+    void candyPutVec();
+
 public Q_SLOTS:
     void updateTimer();
     void updateMnTimer();
@@ -126,6 +132,8 @@ public Q_SLOTS:
     void updateNetworkActive(bool networkActive);
     void updateAlert(const QString &hash, int status);
     void updateBanlist();
+    void updateAsset(const QString& strAssetName);
+    void updateCandyPutVec();
 };
 
 #endif // BITCOIN_QT_CLIENTMODEL_H

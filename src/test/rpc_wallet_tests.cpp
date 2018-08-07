@@ -151,9 +151,9 @@ BOOST_AUTO_TEST_CASE(rpc_wallet)
     BOOST_CHECK_THROW(CallRPC("listtransactions " + demoAddress.ToString() + " not_int"), runtime_error);
 
     /*********************************
-     *          listlockunspent
+     *          listfrozenunspent
      *********************************/
-    BOOST_CHECK_NO_THROW(CallRPC("listlockunspent"));
+    BOOST_CHECK_NO_THROW(CallRPC("listfrozenunspent"));
 
     /*********************************
      *          listaccounts

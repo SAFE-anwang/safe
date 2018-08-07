@@ -162,8 +162,10 @@ extern std::vector<unsigned char> ParseHexV(const UniValue& v, std::string strNa
 extern std::vector<unsigned char> ParseHexO(const UniValue& o, std::string strKey);
 
 extern int64_t nWalletUnlockTime;
-extern CAmount AmountFromValue(const UniValue& value);
-extern UniValue ValueFromAmount(const CAmount& amount);
+extern CAmount AmountFromValue(const UniValue& value, const uint8_t& nDecimals = 8, const bool fAsset = false);
+extern UniValue ValueFromAmount(const CAmount& amount, const uint8_t& nDecimals = 8);
+extern UniValue StrValueFromAmount(const CAmount& amount, const uint8_t& nDecimals = 8);
+
 extern double GetDifficulty(const CBlockIndex* blockindex = NULL);
 extern std::string HelpRequiringPassphrase();
 extern std::string HelpExampleCli(const std::string& methodname, const std::string& args);
@@ -248,6 +250,7 @@ extern UniValue encryptwallet(const UniValue& params, bool fHelp);
 extern UniValue validateaddress(const UniValue& params, bool fHelp);
 extern UniValue getinfo(const UniValue& params, bool fHelp);
 extern UniValue debug(const UniValue& params, bool fHelp);
+extern UniValue getlockedtxinfo(const UniValue& params, bool fHelp);
 extern UniValue getwalletinfo(const UniValue& params, bool fHelp);
 extern UniValue getblockchaininfo(const UniValue& params, bool fHelp);
 extern UniValue getnetworkinfo(const UniValue& params, bool fHelp);
@@ -256,8 +259,8 @@ extern UniValue resendwallettransactions(const UniValue& params, bool fHelp);
 
 extern UniValue getrawtransaction(const UniValue& params, bool fHelp); // in rpc/rawtransaction.cpp
 extern UniValue listunspent(const UniValue& params, bool fHelp);
-extern UniValue lockunspent(const UniValue& params, bool fHelp);
-extern UniValue listlockunspent(const UniValue& params, bool fHelp);
+extern UniValue freezeunspent(const UniValue& params, bool fHelp);
+extern UniValue listfrozenunspent(const UniValue& params, bool fHelp);
 extern UniValue createrawtransaction(const UniValue& params, bool fHelp);
 extern UniValue decoderawtransaction(const UniValue& params, bool fHelp);
 extern UniValue decodescript(const UniValue& params, bool fHelp);
@@ -298,6 +301,39 @@ extern UniValue invalidateblock(const UniValue& params, bool fHelp);
 extern UniValue reconsiderblock(const UniValue& params, bool fHelp);
 extern UniValue getspentinfo(const UniValue& params, bool fHelp);
 extern UniValue sentinelping(const UniValue& params, bool fHelp);
+
+// app
+extern UniValue registerapp(const UniValue& params, bool fHelp);
+extern UniValue setappauth(const UniValue& params, bool fHelp);
+extern UniValue createextenddatatx(const UniValue& params, bool fHelp);
+extern UniValue getappinfo(const UniValue& params, bool fHelp);
+extern UniValue getextenddata(const UniValue& params, bool fHelp);
+extern UniValue getapptxids(const UniValue& params, bool fHelp);
+extern UniValue getaddressapptxids(const UniValue& params, bool fHelp);
+extern UniValue getapplist(const UniValue& params, bool fHelp);
+extern UniValue getapplistbyaddress(const UniValue& params, bool fHelp);
+extern UniValue getappdetails(const UniValue& params, bool fHelp);
+extern UniValue getauthlist(const UniValue& params, bool fHelp);
+
+
+// asset
+extern UniValue issueasset(const UniValue& params, bool fHelp);
+extern UniValue addissueasset(const UniValue& params, bool fHelp);
+extern UniValue transferasset(const UniValue& params, bool fHelp);
+extern UniValue destoryasset(const UniValue& params, bool fHelp);
+extern UniValue putcandy(const UniValue& params, bool fHelp);
+extern UniValue getassetinfo(const UniValue& params, bool fHelp);
+extern UniValue getassetidtxids(const UniValue& params, bool fHelp);
+extern UniValue getaddrassettxids(const UniValue& params, bool fHelp);
+extern UniValue getaddrassetbalance(const UniValue& params, bool fHelp);
+extern UniValue getassetdetails(const UniValue& params, bool fHelp);
+extern UniValue getcandy(const UniValue& params, bool fHelp);
+extern UniValue getassetlist(const UniValue& params, bool fHelp);
+extern UniValue getassetlistbyaddress(const UniValue& params, bool fHelp);
+extern UniValue getaddressamountbyheight(const UniValue& params, bool fHelp);
+extern UniValue getallcandyheight(const UniValue& params, bool fHelp);
+extern UniValue getaddresscandylist(const UniValue& params, bool fHelp);
+
 
 bool StartRPC();
 void InterruptRPC();

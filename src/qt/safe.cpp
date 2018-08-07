@@ -55,6 +55,7 @@
 #include <QTimer>
 #include <QTranslator>
 #include <QSslConfiguration>
+#include <QFontDatabase>
 
 #if defined(QT_STATICPLUGIN)
 #include <QtPlugin>
@@ -280,7 +281,7 @@ void BitcoinCore::initialize()
     try
     {
         qDebug() << __func__ << ": Running AppInit2 in thread";
-        int rv = AppInit2(threadGroup, scheduler);
+        int rv = AppInit2(threadGroup, scheduler,true);
         Q_EMIT initializeResult(rv);
     } catch (const std::exception& e) {
         handleRunawayException(&e);
@@ -574,6 +575,8 @@ int main(int argc, char *argv[])
     Q_INIT_RESOURCE(safe_locale);
 
     BitcoinApplication app(argc, argv);
+    app.setFont(QFont(QStringLiteral("Microsoft YaHei"), 12));
+
 #if QT_VERSION > 0x050100
     // Generate high-dpi pixmaps
     QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);

@@ -1,4 +1,4 @@
-Safe Core 1.0.1
+Safe Core 2.0.0
 =====================
 
 This is the official reference wallet for Safe digital currency and comprises the backbone of the Safe peer-to-peer network. You can [download Safe Core](http://www.anwang.com/downloads/) or [build it yourself](#building) using the guides below.

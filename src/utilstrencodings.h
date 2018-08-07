@@ -128,6 +128,6 @@ bool TimingResistantEqual(const T& a, const T& b)
  * @returns true on success, false on error.
  * @note The result must be in the range (-10^18,10^18), otherwise an overflow error will trigger.
  */
-bool ParseFixedPoint(const std::string &val, int decimals, int64_t *amount_out);
+bool ParseFixedPoint(const std::string &val, int decimals, int64_t *amount_out,bool* bOverflow=NULL);
 
 #endif // BITCOIN_UTILSTRENCODINGS_H

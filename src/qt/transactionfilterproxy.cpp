@@ -6,7 +6,9 @@
 
 #include "transactiontablemodel.h"
 #include "transactionrecord.h"
-
+#include "math.h"
+#include "utilstrencodings.h"
+#include <iostream>
 #include <cstdlib>
 
 #include <QDateTime>
@@ -21,11 +23,15 @@ TransactionFilterProxy::TransactionFilterProxy(QObject *parent) :
     dateFrom(MIN_DATE),
     dateTo(MAX_DATE),
     addrPrefix(),
+    assetsNamePrefix(),
+    applicationsIdPrefix(),
     typeFilter(COMMON_TYPES),
     watchOnlyFilter(WatchOnlyFilter_All),
     minAmount(0),
+    minAssetsMountStr(""),
     limitRows(-1),
-    showInactive(true)
+    showInactive(true),
+    bFilterType(true)
 {
 }
 
@@ -33,17 +39,34 @@ bool TransactionFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex &
 {
     QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
 
+    QString assetsName = index.data(TransactionTableModel::AssetsNameRole).toString();
     int type = index.data(TransactionTableModel::TypeRole).toInt();
     QDateTime datetime = index.data(TransactionTableModel::DateRole).toDateTime();
     bool involvesWatchAddress = index.data(TransactionTableModel::WatchonlyRole).toBool();
     QString address = index.data(TransactionTableModel::AddressRole).toString();
+    QString applicationsId = index.data(TransactionTableModel::ApplicationsIdRole).toString();
     QString label = index.data(TransactionTableModel::LabelRole).toString();
     qint64 amount = llabs(index.data(TransactionTableModel::AmountRole).toLongLong());
+    qint64 assetsAmount = llabs(index.data(TransactionTableModel::AssetsAmountRole).toLongLong());
     int status = index.data(TransactionTableModel::StatusRole).toInt();
+    int decimals = index.data(TransactionTableModel::AssetsDecimalsRole).toInt();
+    bool bSAFETransaction = index.data(TransactionTableModel::SAFERole).toBool();
+
+    //input add decimal will over MAX_MONEYS or MAX_ASSETS
+    CAmount minAssetsAmount = 0;
+    if(!bSAFETransaction&&!minAssetsMountStr.isEmpty())
+    {
+        while(decimals>=0)
+        {
+            if(ParseFixedPoint(minAssetsMountStr.toStdString(),decimals,&minAssetsAmount))
+                break;
+            decimals--;
+        }
+    }
 
     if(!showInactive && status == TransactionStatus::Conflicted)
         return false;
-    if(!(TYPE(type) & typeFilter))
+    if(!(TYPE(type) & typeFilter)&&bFilterType)
         return false;
     if (involvesWatchAddress && watchOnlyFilter == WatchOnlyFilter_No)
         return false;
@@ -53,8 +76,19 @@ bool TransactionFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex &
         return false;
     if (!address.contains(addrPrefix, Qt::CaseInsensitive) && !label.contains(addrPrefix, Qt::CaseInsensitive))
         return false;
-    if(amount < minAmount)
+    if (!applicationsId.contains(applicationsIdPrefix, Qt::CaseInsensitive) && !label.contains(applicationsIdPrefix, Qt::CaseInsensitive))
         return false;
+    if (!assetsName.contains(assetsNamePrefix, Qt::CaseInsensitive))
+        return false;
+    if(bSAFETransaction)
+    {
+        if(amount < minAmount)
+            return false;
+    }else
+    {
+        if(assetsAmount < minAssetsAmount)
+            return false;
+    }
 
     return true;
 }
@@ -72,15 +106,34 @@ void TransactionFilterProxy::setAddressPrefix(const QString &addrPrefix)
     invalidateFilter();
 }
 
+void TransactionFilterProxy::setAssetsNamePrefix(const QString &assetsNamePrefix)
+{
+    this->assetsNamePrefix = assetsNamePrefix;
+    invalidateFilter();
+}
+
+void TransactionFilterProxy::setApplicationsIdPrefix(const QString &applicationsIdPrefix)
+{
+    this->applicationsIdPrefix = applicationsIdPrefix;
+    invalidateFilter();
+}
+
 void TransactionFilterProxy::setTypeFilter(quint32 modes)
 {
     this->typeFilter = modes;
     invalidateFilter();
 }
 
-void TransactionFilterProxy::setMinAmount(const CAmount& minimum)
+void TransactionFilterProxy::setMinAmount(const CAmount &minimum, const QString &assetsAmountStr)
 {
     this->minAmount = minimum;
+    this->minAssetsMountStr = assetsAmountStr;
+    invalidateFilter();
+}
+
+void TransactionFilterProxy::setMinAssetsAmountStr(const QString &assetsAmountStr)
+{
+    this->minAssetsMountStr = assetsAmountStr;
     invalidateFilter();
 }
 
@@ -88,6 +141,11 @@ void TransactionFilterProxy::setWatchOnlyFilter(WatchOnlyFilter filter)
 {
     this->watchOnlyFilter = filter;
     invalidateFilter();
+}
+
+void TransactionFilterProxy::setFilterType(bool filterType)
+{
+    bFilterType = filterType;
 }
 
 void TransactionFilterProxy::setLimit(int limit)

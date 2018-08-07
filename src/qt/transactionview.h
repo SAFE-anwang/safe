@@ -50,20 +50,12 @@ public:
         Range
     };
 
-    enum ColumnWidths {
-        STATUS_COLUMN_WIDTH = 30,
-        WATCHONLY_COLUMN_WIDTH = 23,
-        DATE_COLUMN_WIDTH = 120,
-        TYPE_COLUMN_WIDTH = 240,
-        AMOUNT_MINIMUM_COLUMN_WIDTH = 120,
-        MINIMUM_COLUMN_WIDTH = 23
-    };
-
 private:
     WalletModel *model;
     TransactionFilterProxy *transactionProxyModel;
     QTableView *transactionView;
     QComboBox *dateWidget;
+    QLineEdit *assetsNameWidget;
     QComboBox *typeWidget;
     QComboBox *watchOnlyWidget;
     QLineEdit *addressWidget;
@@ -87,12 +79,14 @@ private:
 
 private Q_SLOTS:
     void contextualMenu(const QPoint &);
-    void dateRangeChanged();
+    void dateFromRangeChanged();
+    void dateToRangeChanged();
     void showDetails();
     void copyAddress();
     void editLabel();
     void copyLabel();
     void copyAmount();
+    void copyAssetName();
     void copyTxID();
     void copyTxHex();
     void copyTxPlainText();
@@ -113,6 +107,7 @@ public Q_SLOTS:
     void chooseDate(int idx);
     void chooseType(int idx);
     void chooseWatchonly(int idx);
+    void changedAssetsName(const QString &name);
     void changedPrefix(const QString &prefix);
     void changedAmount(const QString &amount);
     void exportClicked();

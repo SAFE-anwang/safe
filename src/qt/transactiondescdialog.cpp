@@ -11,6 +11,7 @@
 #include <QModelIndex>
 #include <QSettings>
 #include <QString>
+#include <QPushButton>
 
 TransactionDescDialog::TransactionDescDialog(const QModelIndex &idx, QWidget *parent) :
     QDialog(parent),
@@ -23,6 +24,8 @@ TransactionDescDialog::TransactionDescDialog(const QModelIndex &idx, QWidget *pa
 
     QString desc = idx.data(TransactionTableModel::LongDescriptionRole).toString();
     ui->detailText->setHtml(desc);
+    ui->detailText->setStyleSheet("QTextEdit {font-size: 12px;}");
+    ui->buttonBox->button(QDialogButtonBox::Close)->setText(tr("Close"));
 }
 
 TransactionDescDialog::~TransactionDescDialog()

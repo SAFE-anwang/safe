@@ -7,12 +7,38 @@
 
 #include "amount.h"
 #include "uint256.h"
+#include "app/app.h"
 
 #include <QList>
 #include <QString>
+#include <QMap>
 
 class CWallet;
 class CWalletTx;
+class CAppData;
+class CTxOut;
+
+enum{SHOW_TX = 0, SHOW_LOCKED_TX = 1, SHOW_CANDY_TX = 2,SHOW_ASSETS_DISTRIBUTE=3,SHOW_APPLICATION_REGIST=4,SHOW_ALL=99};
+
+enum{APP_Dev_Type_Company = 1,APP_Dev_Type_Personal = 2};
+
+enum{ASSETS_FIRST_DISTRIBUTE=1,ASSETS_ADD_DISTIRBUE=2};
+
+class AssetsDisplayInfo
+{
+public:
+    AssetsDisplayInfo()
+    {
+        strAssetsUnit = "";
+        bInMainChain = false;
+        bNewAssets = true;
+    }
+    ~AssetsDisplayInfo(){}
+public:
+    QString strAssetsUnit;
+    bool bInMainChain;
+    bool bNewAssets;
+};
 
 /** UI model for transaction status. The transaction status is the part of a transaction that will change over time.
  */
@@ -86,35 +112,50 @@ public:
         PrivateSendCollateralPayment,
         PrivateSendMakeCollaterals,
         PrivateSendCreateDenominations,
-        PrivateSend
+        PrivateSend,
+        FirstDistribute,
+        AddDistribute,
+        PUTCandy,
+        GETCandy
     };
 
     /** Number of confirmation recommended for accepting a transaction */
     static const int RecommendedNumConfirmations = 6;
 
     TransactionRecord():
-            hash(), time(0), type(Other), address(""), debit(0), credit(0), idx(0)
+        hash(), time(0), type(Other), address(""), debit(0), assetDebit(0),credit(0),assetCredit(0),bSAFETransaction(true),bLocked(false), nLockedAmount(0),nLastLockStatus(false),nUnlockedHeight(0)
+        ,bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),appHeader(),transferSafeData(),idx(0)
     {
     }
 
     TransactionRecord(uint256 hash, qint64 time):
-            hash(hash), time(time), type(Other), address(""), debit(0),
-            credit(0), idx(0)
+            hash(hash), time(time), type(Other), address(""), debit(0),assetDebit(0),credit(0),assetCredit(0),bSAFETransaction(true), bLocked(false), nLockedAmount(0),nLastLockStatus(false),nUnlockedHeight(0)
+            ,bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),appHeader(),transferSafeData(),idx(0)
     {
     }
 
     TransactionRecord(uint256 hash, qint64 time,
                 Type type, const std::string &address,
                 const CAmount& debit, const CAmount& credit):
-            hash(hash), time(time), type(type), address(address), debit(debit), credit(credit),
-            idx(0)
+            hash(hash), time(time), type(type), address(address), debit(debit), assetDebit(0),credit(credit),assetCredit(0),bSAFETransaction(true),bLocked(false), nLockedAmount(0),nLastLockStatus(false)
+            ,nUnlockedHeight(0),bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),appHeader(),transferSafeData(),idx(0)
     {
     }
 
     /** Decompose CWallet transaction to model transaction records.
      */
     static bool showTransaction(const CWalletTx &wtx);
-    static QList<TransactionRecord> decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx);
+    static bool needParseAppAssetData(int appCmd,int showType);
+    static QList<TransactionRecord> decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx, int showType,QMap<QString,AssetsDisplayInfo>& assetNamesUnits);
+    static void decomposeToMe(const CWallet *wallet, const CWalletTx &wtx,int showType,QList<TransactionRecord>& parts,int64_t nTime,
+                                                            const uint256& hash,std::map<std::string, std::string>& mapValue,QMap<QString,AssetsDisplayInfo>& assetNamesUnits,CAmount& nAssetCredit,CAmount& nAssetDebit);
+    static void decomposeFromMeToMe(const CWallet *wallet, const CWalletTx &wtx,int showType,QList<TransactionRecord>& parts,int64_t nTime,
+                                    const uint256& hash,std::map<std::string, std::string>& mapValue,CAmount& nCredit,CAmount& nDebit,CAmount& nAssetCredit
+                                    ,CAmount& nAssetDebit,bool involvesWatchAddress,QMap<QString, AssetsDisplayInfo> &assetNamesUnits,bool hasAsset);
+    static void decomposeFromMe(const CWallet *wallet, const CWalletTx &wtx, int showType,QList<TransactionRecord>& parts,int64_t nTime,const uint256& hash,
+                                std::map<std::string, std::string>& mapValue,CAmount& nDebit,bool involvesWatchAddress,QMap<QString,AssetsDisplayInfo>& assetNamesUnits,CAmount& nAssetCredit,CAmount& nAssetDebit);
+    static bool getReserveData(const CWallet *wallet,const CWalletTx &wtx,QList<TransactionRecord> &parts,TransactionRecord& sub,const CTxOut& txout,int showType,QMap<QString, AssetsDisplayInfo> &assetNamesUnits
+                                 ,CAmount& nAssetDebit,bool getAddress=true);
 
     /** @name Immutable transaction attributes
       @{*/
@@ -123,7 +164,25 @@ public:
     Type type;
     std::string address;
     CAmount debit;
+    CAmount assetDebit;
     CAmount credit;
+    CAmount assetCredit;
+    bool bSAFETransaction;
+    bool bLocked;
+    CAmount nLockedAmount;
+    bool nLastLockStatus;
+    int64_t nUnlockedHeight;
+    bool bApp;
+    CAppData appData;
+    bool bAssets;
+    CAssetData assetsData;
+    CCommonData commonData;
+    bool bPutCandy;
+    CPutCandyData putCandyData;
+    bool bGetCandy;
+    CGetCandyData getCandyData;
+    CAppHeader appHeader;
+    CTransferSafeData transferSafeData;
     /**@}*/
 
     /** Subtransaction index, for sort key */
@@ -143,7 +202,7 @@ public:
 
     /** Update status from core wallet tx.
      */
-    void updateStatus(const CWalletTx &wtx);
+    bool updateStatus(const CWalletTx &wtx);
 
     /** Return whether a status update is needed.
      */

@@ -30,10 +30,32 @@ class QUrl;
 class QWidget;
 QT_END_NAMESPACE
 
+extern int gToolBarWidth;
+extern int gBaseFontSize;
+
 /** Utility functions used by the Safe Qt UI.
  */
 namespace GUIUtil
 {
+    enum CustomTableViewColumnWidths {
+        STATUS_COLUMN_WIDTH = 25,
+        WATCHONLY_COLUMN_WIDTH = 23,
+        DATE_COLUMN_WIDTH = 125,
+        ASSETS_NAME_COLUMN_WIDTH = 140,
+        LOCKED_ASSETS_NAME_COLUMN_WIDTH = 90,
+        TYPE_COLUMN_WIDTH = 235,
+        LOCKED_TYPE_COLUMN_WIDTH = 90,
+        AMOUNT_MINIMUM_COLUMN_WIDTH = 130,
+        LOCKED_MONTH_COLUMN_WIDTH = 95,
+        UNLOCKED_HEIGHT_COLUMN_WIDTH = 98,
+        LOCKED_STATUS_MINIMUM_COLUMN_WIDTH = 92,
+        MINIMUM_COLUMN_WIDTH = 23
+    };
+
+    bool invalidInput(QLineEdit* edit);
+
+    void setValidInput(QLineEdit* edit,bool valid);
+
     // Create human-readable string from date
     QString dateTimeStr(const QDateTime &datetime);
     QString dateTimeStr(qint64 nTime);

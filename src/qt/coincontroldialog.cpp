@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2015 The Bitcoin Core developers
+﻿// Copyright (c) 2011-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
 // Copyright (c) 2018-2018 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
@@ -19,6 +19,7 @@
 #include "init.h"
 #include "validation.h" // For minRelayTxFee
 #include "wallet/wallet.h"
+#include "main.h"
 
 #include "instantx.h"
 #include "privatesend-client.h"
@@ -56,8 +57,8 @@ CoinControlDialog::CoinControlDialog(const PlatformStyle *platformStyle, QWidget
     QAction *copyLabelAction = new QAction(tr("Copy label"), this);
     QAction *copyAmountAction = new QAction(tr("Copy amount"), this);
              copyTransactionHashAction = new QAction(tr("Copy transaction ID"), this);  // we need to enable/disable this
-             lockAction = new QAction(tr("Lock unspent"), this);                        // we need to enable/disable this
-             unlockAction = new QAction(tr("Unlock unspent"), this);                    // we need to enable/disable this
+             freezeAction = new QAction(tr("Freeze unspent"), this);                        // we need to enable/disable this
+             unfreezeAction = new QAction(tr("Unfreeze unspent"), this);                    // we need to enable/disable this
 
     // context menu
     contextMenu = new QMenu(this);
@@ -66,8 +67,9 @@ CoinControlDialog::CoinControlDialog(const PlatformStyle *platformStyle, QWidget
     contextMenu->addAction(copyAmountAction);
     contextMenu->addAction(copyTransactionHashAction);
     contextMenu->addSeparator();
-    contextMenu->addAction(lockAction);
-    contextMenu->addAction(unlockAction);
+    contextMenu->addAction(freezeAction);
+    contextMenu->addAction(unfreezeAction);
+    contextMenu->setStyleSheet("font-size:12px;");
 
     // context menu signals
     connect(ui->treeWidget, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
@@ -75,8 +77,8 @@ CoinControlDialog::CoinControlDialog(const PlatformStyle *platformStyle, QWidget
     connect(copyLabelAction, SIGNAL(triggered()), this, SLOT(copyLabel()));
     connect(copyAmountAction, SIGNAL(triggered()), this, SLOT(copyAmount()));
     connect(copyTransactionHashAction, SIGNAL(triggered()), this, SLOT(copyTransactionHash()));
-    connect(lockAction, SIGNAL(triggered()), this, SLOT(lockCoin()));
-    connect(unlockAction, SIGNAL(triggered()), this, SLOT(unlockCoin()));
+    connect(freezeAction, SIGNAL(triggered()), this, SLOT(freezeCoin()));
+    connect(unfreezeAction, SIGNAL(triggered()), this, SLOT(unfreezeCoin()));
 
     // clipboard actions
     QAction *clipboardQuantityAction = new QAction(tr("Copy quantity"), this);
@@ -120,12 +122,13 @@ CoinControlDialog::CoinControlDialog(const PlatformStyle *platformStyle, QWidget
 
     // ok button
     connect(ui->buttonBox, SIGNAL(clicked( QAbstractButton*)), this, SLOT(buttonBoxClicked(QAbstractButton*)));
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Ok"));
 
     // (un)select all
     connect(ui->pushButtonSelectAll, SIGNAL(clicked()), this, SLOT(buttonSelectAllClicked()));
 
-    // Toggle lock state
-    connect(ui->pushButtonToggleLock, SIGNAL(clicked()), this, SLOT(buttonToggleLockClicked()));
+    // Toggle freeze state
+    connect(ui->pushButtonToggleFreeze, SIGNAL(clicked()), this, SLOT(buttonToggleFreezeClicked()));
 
     // change coin control first column label due Qt4 bug.
     // see https://github.com/bitcoin/bitcoin/issues/5716
@@ -171,7 +174,7 @@ void CoinControlDialog::setModel(WalletModel *model)
     if(model && model->getOptionsModel() && model->getAddressTableModel())
     {
         updateView();
-        updateLabelLocked();
+        updateLabelFrozen();
         CoinControlDialog::updateLabels(model, this);
     }
 }
@@ -214,8 +217,8 @@ void CoinControlDialog::buttonSelectAllClicked()
     CoinControlDialog::updateLabels(model, this);
 }
 
-// Toggle lock state
-void CoinControlDialog::buttonToggleLockClicked()
+// Toggle freeze state
+void CoinControlDialog::buttonToggleFreezeClicked()
 {
     QTreeWidgetItem *item;
     QString theme = GUIUtil::getThemeName();
@@ -224,25 +227,27 @@ void CoinControlDialog::buttonToggleLockClicked()
         ui->treeWidget->setEnabled(false);
         for (int i = 0; i < ui->treeWidget->topLevelItemCount(); i++){
             item = ui->treeWidget->topLevelItem(i);
+            if(isItemLocked(item))
+                continue;
             COutPoint outpt(uint256S(item->text(COLUMN_TXHASH).toStdString()), item->text(COLUMN_VOUT_INDEX).toUInt());
-            if (model->isLockedCoin(uint256S(item->text(COLUMN_TXHASH).toStdString()), item->text(COLUMN_VOUT_INDEX).toUInt())){
-                model->unlockCoin(outpt);
+            if (model->isFrozenCoin(uint256S(item->text(COLUMN_TXHASH).toStdString()), item->text(COLUMN_VOUT_INDEX).toUInt())){
+                model->unfreezeCoin(outpt);
                 item->setDisabled(false);
                 item->setIcon(COLUMN_CHECKBOX, QIcon());
             }
             else{
-                model->lockCoin(outpt);
+                model->freezeCoin(outpt);
                 item->setDisabled(true);
                 item->setIcon(COLUMN_CHECKBOX, QIcon(":/icons/" + theme + "/lock_closed"));
             }
-            updateLabelLocked();
+            updateLabelFrozen();
         }
         ui->treeWidget->setEnabled(true);
         CoinControlDialog::updateLabels(model, this);
     }
     else{
         QMessageBox msgBox;
-        msgBox.setObjectName("lockMessageBox");
+        msgBox.setObjectName("freezeMessageBox");
         msgBox.setStyleSheet(GUIUtil::loadStyleSheet());
         msgBox.setText(tr("Please switch to \"List mode\" to use this function."));
         msgBox.exec();
@@ -257,26 +262,31 @@ void CoinControlDialog::showMenu(const QPoint &point)
     {
         contextMenuItem = item;
 
-        // disable some items (like Copy Transaction ID, lock, unlock) for tree roots in context menu
+        // disable some items (like Copy Transaction ID, freeze, unfreeze) for tree roots in context menu
         if (item->text(COLUMN_TXHASH).length() == 64) // transaction hash is 64 characters (this means its a child node, so its not a parent node in tree mode)
         {
             copyTransactionHashAction->setEnabled(true);
-            if (model->isLockedCoin(uint256S(item->text(COLUMN_TXHASH).toStdString()), item->text(COLUMN_VOUT_INDEX).toUInt()))
+            if (model->isFrozenCoin(uint256S(item->text(COLUMN_TXHASH).toStdString()), item->text(COLUMN_VOUT_INDEX).toUInt()))
             {
-                lockAction->setEnabled(false);
-                unlockAction->setEnabled(true);
+                freezeAction->setEnabled(false);
+                unfreezeAction->setEnabled(true);
             }
             else
             {
-                lockAction->setEnabled(true);
-                unlockAction->setEnabled(false);
+                freezeAction->setEnabled(true);
+                unfreezeAction->setEnabled(false);
+            }
+            if (isItemLocked(item))
+            {
+                freezeAction->setEnabled(false);
+                unfreezeAction->setEnabled(false);
             }
         }
         else // this means click on parent node in tree mode -> disable all
         {
             copyTransactionHashAction->setEnabled(false);
-            lockAction->setEnabled(false);
-            unlockAction->setEnabled(false);
+            freezeAction->setEnabled(false);
+            unfreezeAction->setEnabled(false);
         }
 
         // show context menu
@@ -314,28 +324,28 @@ void CoinControlDialog::copyTransactionHash()
     GUIUtil::setClipboard(contextMenuItem->text(COLUMN_TXHASH));
 }
 
-// context menu action: lock coin
-void CoinControlDialog::lockCoin()
+// context menu action: freeze coin
+void CoinControlDialog::freezeCoin()
 {
     QString theme = GUIUtil::getThemeName();
     if (contextMenuItem->checkState(COLUMN_CHECKBOX) == Qt::Checked)
         contextMenuItem->setCheckState(COLUMN_CHECKBOX, Qt::Unchecked);
 
     COutPoint outpt(uint256S(contextMenuItem->text(COLUMN_TXHASH).toStdString()), contextMenuItem->text(COLUMN_VOUT_INDEX).toUInt());
-    model->lockCoin(outpt);
+    model->freezeCoin(outpt);
     contextMenuItem->setDisabled(true);
     contextMenuItem->setIcon(COLUMN_CHECKBOX, QIcon(":/icons/" + theme + "/lock_closed"));
-    updateLabelLocked();
+    updateLabelFrozen();
 }
 
-// context menu action: unlock coin
-void CoinControlDialog::unlockCoin()
+// context menu action: unfreeze coin
+void CoinControlDialog::unfreezeCoin()
 {
     COutPoint outpt(uint256S(contextMenuItem->text(COLUMN_TXHASH).toStdString()), contextMenuItem->text(COLUMN_VOUT_INDEX).toUInt());
-    model->unlockCoin(outpt);
+    model->unfreezeCoin(outpt);
     contextMenuItem->setDisabled(false);
     contextMenuItem->setIcon(COLUMN_CHECKBOX, QIcon());
-    updateLabelLocked();
+    updateLabelFrozen();
 }
 
 // copy label "Quantity" to clipboard
@@ -435,7 +445,7 @@ void CoinControlDialog::viewItemChanged(QTreeWidgetItem* item, int column)
 
         if (item->checkState(COLUMN_CHECKBOX) == Qt::Unchecked)
             coinControl->UnSelect(outpt);
-        else if (item->isDisabled()) // locked (this happens if "check all" through parent node)
+        else if (item->isDisabled()) // frozen (this happens if "check all" through parent node)
             item->setCheckState(COLUMN_CHECKBOX, Qt::Unchecked);
         else {
             coinControl->Select(outpt);
@@ -443,7 +453,7 @@ void CoinControlDialog::viewItemChanged(QTreeWidgetItem* item, int column)
             if (coinControl->fUsePrivateSend && nRounds < privateSendClient.nPrivateSendRounds) {
                 QMessageBox::warning(this, windowTitle(),
                     tr("Non-anonymized input selected. <b>PrivateSend will be disabled.</b><br><br>If you still want to use PrivateSend, please deselect all non-nonymized inputs first and then check PrivateSend checkbox again."),
-                    QMessageBox::Ok, QMessageBox::Ok);
+                                     tr("Ok"));
                 coinControl->fUsePrivateSend = false;
             }
         }
@@ -464,17 +474,17 @@ void CoinControlDialog::viewItemChanged(QTreeWidgetItem* item, int column)
 #endif
 }
 
-// shows count of locked unspent outputs
-void CoinControlDialog::updateLabelLocked()
+// shows count of frozen unspent outputs
+void CoinControlDialog::updateLabelFrozen()
 {
     std::vector<COutPoint> vOutpts;
-    model->listLockedCoins(vOutpts);
+    model->listFrozenCoins(vOutpts);
     if (vOutpts.size() > 0)
     {
-       ui->labelLocked->setText(tr("(%1 locked)").arg(vOutpts.size()));
-       ui->labelLocked->setVisible(true);
+       ui->labelFrozen->setText(tr("(%1 frozen)").arg(vOutpts.size()));
+       ui->labelFrozen->setVisible(true);
     }
-    else ui->labelLocked->setVisible(false);
+    else ui->labelFrozen->setVisible(false);
 }
 
 void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
@@ -691,6 +701,21 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         label->setVisible(nChange < 0);
 }
 
+bool CoinControlDialog::isLockedTxOut(const COutPoint& outpoint,const uint256& txhash)
+{
+    CTransaction txTmp;
+    uint256 hashBlock = uint256();
+    if(GetTransaction(outpoint.hash, txTmp, Params().GetConsensus(), hashBlock, true))
+        if(IsLockedTxOut(txhash,txTmp.vout[outpoint.n]))
+            return true;
+    return false;
+}
+
+bool CoinControlDialog::isItemLocked(const QTreeWidgetItem *item)
+{
+    return item->data(COLUMN_CHECKBOX,COLUMN_ROLE_LOCKED).toString()==QString(" ");
+}
+
 void CoinControlDialog::updateView()
 {
     if (!model || !model->getOptionsModel() || !model->getAddressTableModel())
@@ -709,7 +734,6 @@ void CoinControlDialog::updateView()
 
     std::map<QString, std::vector<COutput> > mapCoins;
     model->listCoins(mapCoins);
-
     BOOST_FOREACH(const PAIRTYPE(QString, std::vector<COutput>)& coins, mapCoins) {
         QTreeWidgetItem *itemWalletAddress = new QTreeWidgetItem();
         itemWalletAddress->setCheckState(COLUMN_CHECKBOX, Qt::Unchecked);
@@ -805,8 +829,8 @@ void CoinControlDialog::updateView()
             // vout index
             itemOutput->setText(COLUMN_VOUT_INDEX, QString::number(out.i));
 
-             // disable locked coins
-            if (model->isLockedCoin(txhash, out.i))
+             // disable frozen coins
+            if (model->isFrozenCoin(txhash, out.i))
             {
                 COutPoint outpt(txhash, out.i);
                 coinControl->UnSelect(outpt); // just to be sure
@@ -817,6 +841,23 @@ void CoinControlDialog::updateView()
             // set checkbox
             if (coinControl->IsSelected(COutPoint(txhash, out.i)))
                 itemOutput->setCheckState(COLUMN_CHECKBOX, Qt::Checked);
+
+            if(isLockedTxOut(outpoint,txhash))
+            {
+                COutPoint outpt(txhash, out.i);
+                coinControl->UnSelect(outpt); // just to be sure
+                itemOutput->setDisabled(true);
+                itemOutput->setIcon(COLUMN_CHECKBOX, QIcon(":/icons/" + theme + "/lock_closed"));
+                QColor color("#ff8080");
+                itemOutput->setBackgroundColor(COLUMN_CHECKBOX, color);
+                itemOutput->setBackgroundColor(COLUMN_AMOUNT, color);
+                itemOutput->setBackgroundColor(COLUMN_LABEL, color);
+                itemOutput->setBackgroundColor(COLUMN_ADDRESS, color);
+                itemOutput->setBackgroundColor(COLUMN_PRIVATESEND_ROUNDS, color);
+                itemOutput->setBackgroundColor(COLUMN_DATE, color);
+                itemOutput->setBackgroundColor(COLUMN_CONFIRMATIONS, color);
+                itemOutput->setData(COLUMN_CHECKBOX,COLUMN_ROLE_LOCKED,QString(" "));
+            }
         }
 
         // amount

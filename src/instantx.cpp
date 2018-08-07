@@ -966,7 +966,9 @@ bool CTxLockRequest::IsValid() const
             return false;
         }
 
-        nValueIn += coins.vout[txin.prevout.n].nValue;
+        const CTxOut& in_txout = coins.vout[txin.prevout.n];
+        if(in_txout.IsSafeOnly() || in_txout.IsApp())
+            nValueIn += in_txout.nValue;
     }
 
     if(nValueIn > sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE)*COIN) {

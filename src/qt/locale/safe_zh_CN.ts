@@ -39,7 +39,7 @@
     </message>
     <message>
         <source>C&amp;lose</source>
-        <translation>关闭(&amp;C)</translation>
+        <translation>关闭(&amp;L)</translation>
     </message>
     <message>
         <source>Choose the address to send coins to</source>
@@ -55,19 +55,19 @@
     </message>
     <message>
         <source>Sending addresses</source>
-        <translation>正在发送地址</translation>
+        <translation>付款地址</translation>
     </message>
     <message>
         <source>Receiving addresses</source>
-        <translation>正在接收地址</translation>
+        <translation>收款地址</translation>
     </message>
     <message>
         <source>These are your Safe addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>这些是您要付款过去的安网3地址。在付款之前，务必要检查金额和收款地址是否正确。</translation>
+        <translation>这些是您要付款过去的Safe地址。在付款之前，务必要检查金额和收款地址是否正确。</translation>
     </message>
     <message>
         <source>These are your Safe addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</source>
-        <translation>这些是您用来收款的安网3地址。建议在每次交易时，都使用一个新的收款地址。</translation>
+        <translation>这些是您用来收款的Safe地址。建议在每次交易时，都使用一个新的收款地址。</translation>
     </message>
     <message>
         <source>&amp;Copy Address</source>
@@ -115,6 +115,18 @@
 </context>
 <context>
     <name>AskPassphraseDialog</name>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
     <message>
         <source>Passphrase Dialog</source>
         <translation>密码对话框</translation>
@@ -227,6 +239,14 @@
         <source>Warning: The Caps Lock key is on!</source>
         <translation>警告：大写锁定键处于打开状态！</translation>
     </message>
+    <message>
+        <source>Encrypting wallet, please wait.</source>
+        <translation>加密钱包中，请等待。</translation>
+    </message>
+    <message>
+        <source>Encrypting the wallet, this may take a few minutes to complete, please be patient.</source>
+        <translation>正在加密钱包，这个操作可能需要几分钟才能完成，请耐心等待。</translation>
+    </message>
 </context>
 <context>
     <name>BanTableModel</name>
@@ -240,7 +260,50 @@
     </message>
 </context>
 <context>
+	<name>TitleBar</name>
+    <message>
+        <source>&amp;File</source>
+        <translation>文件(&amp;F)</translation>
+    </message>
+    <message>
+        <source>&amp;Settings</source>
+        <translation>设置(&amp;S)</translation>
+    </message>
+    <message>
+        <source>&amp;Tools</source>
+        <translation>工具(&amp;T)</translation>
+    </message>
+    <message>
+        <source>&amp;Help</source>
+        <translation>帮助(&amp;H)</translation>
+    </message>
+    <message>
+        <source>Minimize</source>
+        <translation>最小化</translation>
+    </message>
+    <message>
+        <source>Restore</source>
+        <translation>还原</translation>
+    </message>
+    <message>
+        <source>Maximize</source>
+        <translation>最大化</translation>
+    </message>
+    <message>
+        <source>Close and exit</source>
+        <translation>关闭并退出程序</translation>
+    </message>
+</context>
+<context>
     <name>BitcoinGUI</name>
+    <message>
+        <source>Abort</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
     <message>
         <source>A fatal error occurred. Safe Core can no longer continue safely and will quit.</source>
         <translation>发生致命错误。安网3核心不再能安全地继续运行下去，程序将会关闭。</translation>
@@ -258,40 +321,76 @@
         <translation>节点</translation>
     </message>
     <message>
-        <source>&amp;Overview</source>
-        <translation>概况(&amp;O)</translation>
+        <source>Overview</source>
+        <translation>概况</translation>
+    </message>
+    <message>
+        <source>  &amp;Overview</source>
+        <translation>  概况(&amp;O)</translation>
     </message>
     <message>
         <source>Show general overview of wallet</source>
         <translation>显示钱包概况</translation>
     </message>
     <message>
-        <source>&amp;Send</source>
-        <translation>发送(&amp;S)</translation>
+        <source>  &amp;Send</source>
+        <translation>  发送(&amp;S)</translation>
     </message>
     <message>
         <source>Send coins to a Safe address</source>
-        <translation>发送币至安网3地址</translation>
+        <translation>发送币至Safe地址</translation>
     </message>
     <message>
-        <source>&amp;Receive</source>
-        <translation>接收(&amp;R)</translation>
+        <source>  &amp;Receive</source>
+        <translation>  接收(&amp;R)</translation>
     </message>
     <message>
         <source>Request payments (generates QR codes and safe: URIs)</source>
         <translation>请求付款(生成二维码和安网3付款协议的URI)</translation>
     </message>
     <message>
-        <source>&amp;Transactions</source>
-        <translation>交易记录(&amp;T)</translation>
+        <source>  &amp;Transactions</source>
+        <translation>  交易记录(&amp;T)</translation>
+    </message>
+    <message>
+        <source>  &amp;Locked</source>
+        <translation>  锁定记录(&amp;L)</translation>
     </message>
     <message>
         <source>Browse transaction history</source>
         <translation>查看交易历史</translation>
     </message>
     <message>
-        <source>&amp;Masternodes</source>
-        <translation>主节点(&amp;M)</translation>
+        <source>Browse locked transaction history</source>
+        <translation>查看锁定交易历史</translation>
+    </message>
+    <message>
+        <source>Browse Assets distribution</source>
+        <translation>查看资产发布历史</translation>
+    </message>
+    <message>
+        <source>Browse applications regist</source>
+        <translation>查看应用注册历史</translation>
+    </message>
+    <message>
+        <source>Browse Candy</source>
+        <translation>查看糖果历史</translation>
+    </message>
+    <message>
+        <source>  &amp;Assets</source>
+        <translation>  资产发行(&amp;A)</translation>
+    </message>
+    <message>
+        <source>  A&amp;pplications</source>
+        <translation>  应用(&amp;P)</translation>
+    </message>
+    <message>
+        <source>  &amp;Candy</source>
+        <translation>  糖果(&amp;C)</translation>
+    </message>
+    <message>
+        <source>  &amp;Masternodes</source>
+        <translation>  主节点(&amp;M)</translation>
     </message>
     <message>
         <source>Browse masternodes</source>
@@ -307,7 +406,7 @@
     </message>
     <message>
         <source>&amp;About Safe Core</source>
-        <translation>&amp;关于安网3核心</translation>
+        <translation>关于安网3核心(&amp;A)</translation>
     </message>
     <message>
         <source>Show information about Safe Core</source>
@@ -315,11 +414,11 @@
     </message>
     <message>
         <source>About &amp;Qt</source>
-        <translation>关于 &amp;Qt</translation>
+        <translation>关于&amp;Qt</translation>
     </message>
     <message>
         <source>Show information about Qt</source>
-        <translation>显示 Qt 相关信息</translation>
+        <translation>显示Qt相关信息</translation>
     </message>
     <message>
         <source>&amp;Options...</source>
@@ -379,7 +478,7 @@
     </message>
     <message>
         <source>Sign messages with your Safe addresses to prove you own them</source>
-        <translation>用安网3地址签署讯息来证明地址是您的</translation>
+        <translation>用您Safe地址对消息签名来证明地址是您的</translation>
     </message>
     <message>
         <source>&amp;Verify message...</source>
@@ -387,7 +486,7 @@
     </message>
     <message>
         <source>Verify messages to ensure they were signed with specified Safe addresses</source>
-        <translation>验证讯息是用来确定讯息是用指定的安网3地址签署的</translation>
+        <translation>验证消息来确定消息是用指定的Safe地址进行签名的</translation>
     </message>
     <message>
         <source>&amp;Information</source>
@@ -415,7 +514,7 @@
     </message>
     <message>
         <source>&amp;Peers list</source>
-        <translation>&amp;节点列表</translation>
+        <translation>节点列表(&amp;P)</translation>
     </message>
     <message>
         <source>Show peers info</source>
@@ -423,7 +522,7 @@
     </message>
     <message>
         <source>Wallet &amp;Repair</source>
-        <translation>钱包&amp;修复</translation>
+        <translation>钱包修复(&amp;P)</translation>
     </message>
     <message>
         <source>Show wallet repair options</source>
@@ -431,7 +530,7 @@
     </message>
     <message>
         <source>Open Wallet &amp;Configuration File</source>
-        <translation>打开钱包 &amp;配置文件</translation>
+        <translation>打开钱包配置文件(&amp;C)</translation>
     </message>
     <message>
         <source>Open configuration file</source>
@@ -439,7 +538,7 @@
     </message>
     <message>
         <source>Open &amp;Masternode Configuration File</source>
-        <translation>开启主节点配置文件(&amp;C)</translation>
+        <translation>开启主节点配置文件(&amp;M)</translation>
     </message>
     <message>
         <source>Open Masternode configuration file</source>
@@ -447,7 +546,7 @@
     </message>
     <message>
         <source>Show Automatic &amp;Backups</source>
-        <translation>显示自动备份&amp;</translation>
+        <translation>显示自动备份(&amp;B)</translation>
     </message>
     <message>
         <source>Show automatically created wallet backups</source>
@@ -455,7 +554,7 @@
     </message>
     <message>
         <source>&amp;Sending addresses...</source>
-        <translation>&amp;付款地址 </translation>
+        <translation>付款地址(&amp;S)</translation>
     </message>
     <message>
         <source>Show the list of used sending addresses and labels</source>
@@ -463,7 +562,7 @@
     </message>
     <message>
         <source>&amp;Receiving addresses...</source>
-        <translation>&amp;收款地址</translation>
+        <translation>收款地址(&amp;R)</translation>
     </message>
     <message>
         <source>Show the list of used receiving addresses and labels</source>
@@ -471,11 +570,11 @@
     </message>
     <message>
         <source>Open &amp;URI...</source>
-        <translation>打开 &amp;URI...</translation>
+        <translation>打开&amp;URI...</translation>
     </message>
     <message>
         <source>Open a safe: URI or payment request</source>
-        <translation>打开安网3：网页或付款请求</translation>
+        <translation>打开URI或付款请求</translation>
     </message>
     <message>
         <source>&amp;Command-line options</source>
@@ -543,7 +642,7 @@
     </message>
     <message>
         <source>Reindexing blocks on disk...</source>
-        <translation>正在为数据块重建索引...</translation>
+        <translation>正在重建区块索引...</translation>
     </message>
     <message>
         <source>Connecting to peers...</source>
@@ -593,6 +692,12 @@
         <source>Date: %1
 </source>
         <translation>日期: %1
+</translation>
+    </message>
+    <message>
+        <source>Asset Name: %1
+</source>
+        <translation>资产名称: %1
 </translation>
     </message>
     <message>
@@ -662,6 +767,10 @@
 <context>
     <name>CoinControlDialog</name>
     <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
         <source>Quantity:</source>
         <translation>总量：</translation>
     </message>
@@ -698,8 +807,8 @@
         <translation>(不)全选</translation>
     </message>
     <message>
-        <source>toggle lock state</source>
-        <translation>切换锁定状态</translation>
+        <source>toggle freeze state</source>
+        <translation>切换冻结状态</translation>
     </message>
     <message>
         <source>Tree mode</source>
@@ -710,8 +819,8 @@
         <translation>列表模式</translation>
     </message>
     <message>
-        <source>(1 locked)</source>
-        <translation>(1 锁定)</translation>
+        <source>(1 frozen)</source>
+        <translation>(1 冻结)</translation>
     </message>
     <message>
         <source>Amount</source>
@@ -758,12 +867,12 @@
         <translation>复制交易编号</translation>
     </message>
     <message>
-        <source>Lock unspent</source>
-        <translation>锁定未花费</translation>
+        <source>Freeze unspent</source>
+        <translation>冻结未花费</translation>
     </message>
     <message>
-        <source>Unlock unspent</source>
-        <translation>解锁未花费</translation>
+        <source>Unfreeze unspent</source>
+        <translation>解冻未花费</translation>
     </message>
     <message>
         <source>Copy quantity</source>
@@ -791,11 +900,11 @@
     </message>
     <message>
         <source>Please switch to &quot;List mode&quot; to use this function.</source>
-        <translation>请切换到 &quot;列表模式&quot; 来使用此功能。</translation>
+        <translation>请切换到&quot;列表模式&quot;来使用此功能。</translation>
     </message>
     <message>
         <source>Non-anonymized input selected. &lt;b&gt;PrivateSend will be disabled.&lt;/b&gt;&lt;br&gt;&lt;br&gt;If you still want to use PrivateSend, please deselect all non-nonymized inputs first and then check PrivateSend checkbox again.</source>
-        <translation>选择了非匿名的输入。 &lt;b&gt; 匿名发送将会被禁用。&lt;/ b&gt;&lt;br&gt; &lt;br&gt;如果您仍然想用匿名发送，请先取消选取所有的非匿名的输入，然后再勾选匿名发送的复选框</translation>
+        <translation>选择了非匿名的输入。&lt;b&gt; 匿名发送将会被禁用。&lt;/ b&gt;&lt;br&gt; &lt;br&gt;如果您仍然想用匿名发送，请先取消选取所有的非匿名的输入，然后再勾选匿名发送的复选框</translation>
     </message>
     <message>
         <source>(%1 locked)</source>
@@ -831,7 +940,7 @@
     </message>
     <message>
         <source>n/a</source>
-        <translation>不适用</translation>
+        <translation>无</translation>
     </message>
 </context>
 <context>
@@ -904,6 +1013,18 @@
 <context>
     <name>EditAddressDialog</name>
     <message>
+        <source>Yes</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
         <source>Edit Address</source>
         <translation>编辑地址</translation>
     </message>
@@ -941,11 +1062,11 @@
     </message>
     <message>
         <source>The entered address &quot;%1&quot; is not a valid Safe address.</source>
-        <translation>输入的地址 %1 不是有效的安网3地址。</translation>
+        <translation>输入的地址&quot;%1&quot;不是有效的Safe地址。</translation>
     </message>
     <message>
         <source>The entered address &quot;%1&quot; is already in the address book.</source>
-        <translation>输入的地址 %1 已经存在于地址簿中。</translation>
+        <translation>输入的地址&quot;%1&quot;已经存在于地址簿中。</translation>
     </message>
     <message>
         <source>Could not unlock wallet.</source>
@@ -995,7 +1116,7 @@
     </message>
     <message>
         <source>About Safe Core</source>
-        <translation>关于 安网3核心</translation>
+        <translation>关于安网3核心</translation>
     </message>
     <message>
         <source>Command-line options</source>
@@ -1019,7 +1140,7 @@
     </message>
     <message>
         <source>Set language, for example &quot;de_DE&quot; (default: system locale)</source>
-        <translation>设置语言, 例如 de_DE（默认为系统语言）</translation>
+        <translation>设置语言, 例如: &quot;de_DE&quot;（默认为系统语言）</translation>
     </message>
     <message>
         <source>Start minimized</source>
@@ -1027,7 +1148,7 @@
     </message>
     <message>
         <source>Set SSL root certificates for payment request (default: -system-)</source>
-        <translation>设置SSL根证书的付款请求(默认：-系统-)</translation>
+        <translation>设置SSL根证书的付款请求(默认：系统认证库)</translation>
     </message>
     <message>
         <source>Show splash screen on startup (default: %u)</source>
@@ -1035,7 +1156,7 @@
     </message>
     <message>
         <source>Reset all settings changed in the GUI</source>
-        <translation>重置所有在GUI 更改的设置</translation>
+        <translation>重置所有在GUI更改的设置</translation>
     </message>
     <message>
         <source>PrivateSend information</source>
@@ -1043,11 +1164,19 @@
     </message>
     <message>
         <source>&lt;h3&gt;PrivateSend Basics&lt;/h3&gt; PrivateSend gives you true financial privacy by obscuring the origins of your funds. All the Safe in your wallet is comprised of different &quot;inputs&quot; which you can think of as separate, discrete coins.&lt;br&gt; PrivateSend uses an innovative process to mix your inputs with the inputs of two other people, without having your coins ever leave your wallet. You retain control of your money at all times..&lt;hr&gt; &lt;b&gt;The PrivateSend process works like this:&lt;/b&gt;&lt;ol type=&quot;1&quot;&gt; &lt;li&gt;PrivateSend begins by breaking your transaction inputs down into standard denominations. These denominations are 0.01 SAFE, 0.1 SAFE, 1 SAFE and 10 SAFE -- sort of like the paper money you use every day.&lt;/li&gt; &lt;li&gt;Your wallet then sends requests to specially configured software nodes on the network, called &quot;masternodes.&quot; These masternodes are informed then that you are interested in mixing a certain denomination. No identifiable information is sent to the masternodes, so they never know &quot;who&quot; you are.&lt;/li&gt; &lt;li&gt;When two other people send similar messages, indicating that they wish to mix the same denomination, a mixing session begins. The masternode mixes up the inputs and instructs all three users&apos; wallets to pay the now-transformed input back to themselves. Your wallet pays that denomination directly to itself, but in a different address (called a change address).&lt;/li&gt; &lt;li&gt;In order to fully obscure your funds, your wallet must repeat this process a number of times with each denomination. Each time the process is completed, it&apos;s called a &quot;round.&quot; Each round of PrivateSend makes it exponentially more difficult to determine where your funds originated.&lt;/li&gt; &lt;li&gt;This mixing process happens in the background without any intervention on your part. When you wish to make a transaction, your funds will already be anonymized. No additional waiting is required.&lt;/li&gt; &lt;/ol&gt; &lt;hr&gt;&lt;b&gt;IMPORTANT:&lt;/b&gt; Your wallet only contains 1000 of these &quot;change addresses.&quot; Every time a mixing event happens, up to 9 of your addresses are used up. This means those 1000 addresses last for about 100 mixing events. When 900 of them are used, your wallet must create more addresses. It can only do this, however, if you have automatic backups enabled.&lt;br&gt; Consequently, users who have backups disabled will also have PrivateSend disabled. &lt;hr&gt;</source>
-        <translation>&lt;h3&gt;匿名发送基础知识&lt;/h3&gt; 匿名发送通过隐藏您的资金来源为您提供真正的财务隐私。您的钱包中所有的SAFE都由不同的“输入”组成，您可以将其视为分开的离散硬币。&lt;br&gt; 匿名发送使用创新的方法将您的输入域其他两个人的输入相结合，而过程中不会让您的SAFE离开您的钱包。每时每刻您仍然控制着您的钱。&lt;hr&gt; &lt;b&gt;匿名发送的运作原理如下:&lt;/b&gt;&lt;ol type=&quot;1&quot;&gt; &lt;li&gt;匿名发送首先将您的交易分拆成多个标准面额的交易。这些标准面额分别为0.01SAFE, 0.1SAFE, 1SAFE 和10SAFE --有点像您每天使用的纸币。&lt;/li&gt; &lt;li&gt;您的钱包然后发送请求到网络上有专门配置的节点，称为“主节点”。这些主节点会收到您希望混合一些资金的通知。沒有可识别的信息发送到主节点，所以他们永远不会知道您是&quot;谁&quot;。&lt;/li&gt; &lt;li&gt;当另外两个人发送类似的消息时，表示希望混合相同的面额的话，混合会话将会开始。相关的主节点会混合这些输入，并指示所有三个用户的钱包将已经转换了输入的交易支付给自己。您的钱包直接支付给自己，但是付给不同的地址 (称之为找零地址)。&lt;/li&gt; &lt;li&gt;为了完全掩盖您的资金来源，您的钱包必须以每个面额来重复此过程数次。每次这个过程完成后，都称之为一个 &quot;循环&quot;。每个循环的匿名发送都会令确定您的资金来源的工作倍加困难。&lt;/li&gt; &lt;li&gt;这种混合过程发生在后台，而不需要您进行任何操作。当您想进行交易时，您的资金将已被匿名处理。不需再花额外的时间等待。&lt;/li&gt; &lt;/ol&gt; &lt;hr&gt;&lt;b&gt;重要:&lt;/b&gt;您的钱包只能拥有1000个&quot;找零地址。&quot; 每次混合事件发生时，最多会使用9个找零地址。这意味这1000个地址可以容许100次的混合事件。当其的中900个已经被使用后，您的钱包必须创建更多的地址。如果您启动了自动备份，则只能够这么做。&lt;br&gt;因此，禁用备份的用戶也将禁用匿名发送。&lt;hr&gt;</translation>
+        <translation>&lt;h3&gt;匿名发送基础知识&lt;/h3&gt; 匿名发送通过隐藏您的资金来源为您提供真正的财务隐私。您的钱包中所有的SAFE都由不同的&quot;输入&quot;组成，您可以将其视为分开的离散硬币。&lt;br&gt; 匿名发送使用创新的方法将您的输入与其他两个人的输入相结合，而过程中不会让您的SAFE离开您的钱包。每时每刻您仍然控制着您的钱。&lt;hr&gt; &lt;b&gt;匿名发送的运作原理如下:&lt;/b&gt;&lt;ol type=&quot;1&quot;&gt; &lt;li&gt;匿名发送首先将您的交易分拆成多个标准面额的交易。这些标准面额分别为0.01SAFE, 0.1SAFE, 1SAFE 和10SAFE --有点像您每天使用的纸币。&lt;/li&gt; &lt;li&gt;您的钱包然后发送请求到网络上有专门配置的节点，称为&quot;主节点&quot;。这些主节点会收到您希望混合一些资金的通知。沒有可识别的信息发送到主节点，所以他们永远不会知道您是&quot;谁&quot;。&lt;/li&gt; &lt;li&gt;当另外两个人发送类似的消息时，表示希望混合相同的面额的话，混合会话将会开始。相关的主节点会混合这些输入，并指示所有三个用户的钱包将已经转换了输入的交易支付给自己。您的钱包直接支付给自己，但是付给不同的地址(称之为找零地址)。&lt;/li&gt; &lt;li&gt;为了完全掩盖您的资金来源，您的钱包必须以每个面额来重复此过程数次。每次这个过程完成后，都称之为一个&quot;循环&quot;。每个循环的匿名发送都会令确定您的资金来源的工作倍加困难。&lt;/li&gt; &lt;li&gt;这种混合过程发生在后台，而不需要您进行任何操作。当您想进行交易时，您的资金将已被匿名处理。不需再花额外的时间等待。&lt;/li&gt; &lt;/ol&gt; &lt;hr&gt;&lt;b&gt;重要:&lt;/b&gt;您的钱包只能拥有1000个&quot;找零地址&quot;。每次混合事件发生时，最多会使用9个找零地址。这意味这1000个地址可以容许100次的混合事件。当其的中900个已经被使用后，您的钱包必须创建更多的地址。如果您启动了自动备份，则只能够这么做。&lt;br&gt;因此，禁用备份的用戶也将禁用匿名发送。&lt;hr&gt;</translation>
     </message>
 </context>
 <context>
     <name>Intro</name>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
     <message>
         <source>Welcome</source>
         <translation>欢迎</translation>
@@ -1062,7 +1191,7 @@
     </message>
     <message>
         <source>Safe Core will download and store a copy of the Safe block chain. At least %1GB of data will be stored in this directory, and it will grow over time. The wallet will also be stored in this directory.</source>
-        <translation>安网3核心将会下载并存储安网3数据链。至少有 %1 GB的数据会保存到此路径下，并且随着时间增长。钱包文件也将存储到此路径下。</translation>
+        <translation>安网3核心将会下载并存储安网3区块链。至少有 %1 GB的数据会保存到此路径下，并且随着时间增长。钱包文件也将存储到此路径下。</translation>
     </message>
     <message>
         <source>Use the default data directory</source>
@@ -1078,7 +1207,7 @@
     </message>
     <message>
         <source>Error: Specified data directory &quot;%1&quot; cannot be created.</source>
-        <translation>错误:指定的数据目录 %1 无法被创建.</translation>
+        <translation>错误:指定的数据目录&quot;%1&quot;无法被创建.</translation>
     </message>
     <message>
         <source>Error</source>
@@ -1096,6 +1225,38 @@
 <context>
     <name>MasternodeList</name>
     <message>
+        <source>masternodes</source>
+        <translation>主节点</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Successfully started %1 masternodes, failed to start %2, total %3</source>
+        <translation>主节点启动成功%1个,启动失败%2个,总共%3个</translation>
+    </message>
+    <message>
+        <source>Successfully started masternode.</source>
+        <translation>主节点启动成功.</translation>
+    </message>
+    <message>
+        <source>Failed to start masternode.</source>
+        <translation>主节点启动失败.</translation>
+    </message>
+    <message>
+        <source>Error:</source>
+        <translation>错误:</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
         <source>Form</source>
         <translation>表单</translation>
     </message>
@@ -1105,7 +1266,7 @@
     </message>
     <message>
         <source>Note: Status of your masternodes in local wallet can potentially be slightly incorrect.&lt;br /&gt;Always wait for wallet to sync additional data and then double check from another node&lt;br /&gt;if your masternode should be running but you still do not see &quot;ENABLED&quot; in &quot;Status&quot; field.</source>
-        <translation>注意: 本地钱包中的主节点状态可能略有不正确。&lt;br /&gt;总是等待钱包同步额外的数据，然后再从另一个节点多检查一次&lt;br /&gt;如果您的主节点应该已经运行，但您仍然在“状态”栏看不到“ENABLED”的话。</translation>
+        <translation>注意: 本地钱包中的主节点状态可能略有不正确。&lt;br /&gt;总是等待钱包同步额外的数据，然后再从另一个节点多检查一次&lt;br /&gt;如果您的主节点应该已经运行，但您仍然在&quot;状态&quot;栏看不到&quot;ENABLED&quot;的话。</translation>
     </message>
     <message>
         <source>Alias</source>
@@ -1137,11 +1298,11 @@
     </message>
     <message>
         <source>S&amp;tart alias</source>
-        <translation>启动別名(&amp;t)</translation>
+        <translation>启动別名(&amp;T)</translation>
     </message>
     <message>
         <source>Start &amp;all</source>
-        <translation>启动所有(&amp;a)</translation>
+        <translation>启动所有(&amp;A)</translation>
     </message>
     <message>
         <source>Start &amp;MISSING</source>
@@ -1270,8 +1431,16 @@
 <context>
     <name>OpenURIDialog</name>
     <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
         <source>Open URI</source>
-        <translation>打开 URI</translation>
+        <translation>打开URI</translation>
     </message>
     <message>
         <source>Open payment request from URI or file</source>
@@ -1293,6 +1462,14 @@
 <context>
     <name>OptionsDialog</name>
     <message>
+        <source>Yes</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
         <source>Options</source>
         <translation>选项</translation>
     </message>
@@ -1310,7 +1487,7 @@
     </message>
     <message>
         <source>Number of script &amp;verification threads</source>
-        <translation>脚本&amp;验证 进程数 </translation>
+        <translation>脚本验证进程数(&amp;V)</translation>
     </message>
     <message>
         <source>(0 = auto, &lt;0 = leave that many cores free)</source>
@@ -1318,11 +1495,11 @@
     </message>
     <message>
         <source>Amount of Safe to keep anonymized</source>
-        <translation>匿名传送的循环次数</translation>
+        <translation>保持匿名的Safe数量</translation>
     </message>
     <message>
         <source>W&amp;allet</source>
-        <translation>钱包(&amp;W)</translation>
+        <translation>钱包(&amp;A)</translation>
     </message>
     <message>
         <source>Automatically start Safe Core after logging in to the system.</source>
@@ -1358,11 +1535,11 @@
     </message>
     <message>
         <source>Whether to use experimental PrivateSend mode with multiple mixing sessions per block.&lt;br/&gt;Note: You must use this feature carefully.&lt;br/&gt;Make sure you always have recent wallet (auto)backup in a safe place!</source>
-        <translation>是否在每个区块中使用多重混合会话的匿名发送模式。&lt;br/&gt;注意：一定要仔細使用该特性。&lt;br/&gt;确保最近 (自动) 备份钱包！</translation>
+        <translation>是否在每个区块中使用多重混合会话的匿名发送模式。&lt;br/&gt;注意：一定要小心使用该特性。&lt;br/&gt;确保最近 (自动) 备份钱包！</translation>
     </message>
     <message>
         <source>Enable PrivateSend &amp;multi-session</source>
-        <translation>启用匿名发送多重会话</translation>
+        <translation>启用匿名发送多重会话(&amp;M)</translation>
     </message>
     <message>
         <source>If you disable the spending of unconfirmed change, the change from a transaction&lt;br/&gt;cannot be used until that transaction has at least one confirmation.&lt;br/&gt;This also affects how your balance is computed.</source>
@@ -1394,7 +1571,7 @@
     </message>
     <message>
         <source>&amp;Connect through SOCKS5 proxy (default proxy):</source>
-        <translation>&amp;通过 SOCKS5 代理连接 (默认代理):</translation>
+        <translation>通过SOCKS5代理连接(&amp;C)(默认代理):</translation>
     </message>
     <message>
         <source>Minimize instead of exit the application when the window is closed. When this option is enabled, the application will be closed only after selecting Exit in the menu.</source>
@@ -1406,7 +1583,7 @@
     </message>
     <message>
         <source>Third party URLs (e.g. a block explorer) that appear in the transactions tab as context menu items.&lt;br/&gt;%s in the URL is replaced by transaction hash. Multiple URLs are separated by vertical bar |.</source>
-        <translation>在交易标签的情景选单出现的第三方(比如说区块浏览器)网址连接。&lt;br/&gt;网址中的 %s 会被取代为交易的哈希值。可以用直线符号 | 来分隔多个连接。</translation>
+        <translation>在交易标签的情景选单出现的第三方(例如: 区块浏览器)网址连接。&lt;br/&gt;网址中的 %s 会被取代为交易的哈希值。可以用直线符号 | 来分隔多个连接。</translation>
     </message>
     <message>
         <source>Expert</source>
@@ -1422,11 +1599,11 @@
     </message>
     <message>
         <source>Enable coin &amp;control features</source>
-        <translation>启动货币 &amp;控制功能</translation>
+        <translation>启动货币控制功能(&amp;C)</translation>
     </message>
     <message>
         <source>&amp;Spend unconfirmed change</source>
-        <translation>&amp;选择未经确认的花费</translation>
+        <translation>选择未经确认的花费(&amp;S)</translation>
     </message>
     <message>
         <source>&amp;Network</source>
@@ -1434,15 +1611,15 @@
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
-        <translation>使用 &amp;UPnP 映射端口</translation>
+        <translation>使用&amp;UPnP映射端口</translation>
     </message>
     <message>
         <source>Proxy &amp;IP:</source>
-        <translation>代理服务器 &amp;IP：</translation>
+        <translation>代理服务器&amp;IP：</translation>
     </message>
     <message>
         <source>IP address of the proxy (e.g. IPv4: 127.0.0.1 / IPv6: ::1)</source>
-        <translation>代理的 IP 地址 (例如 IPv4: 127.0.0.1 / IPv6: ::1)</translation>
+        <translation>代理的 IP 地址 (例如: IPv4: 127.0.0.1 / IPv6: ::1)</translation>
     </message>
     <message>
         <source>&amp;Port:</source>
@@ -1450,7 +1627,7 @@
     </message>
     <message>
         <source>Port of the proxy (e.g. 9050)</source>
-        <translation>代理端口（例如 9050）</translation>
+        <translation>代理端口（例如: 9050）</translation>
     </message>
     <message>
         <source>Used for reaching peers via:</source>
@@ -1485,12 +1662,12 @@
         <translation>窗口(&amp;W)</translation>
     </message>
     <message>
-        <source>&amp;Hide the icon from the system tray.</source>
-        <translation>&amp;隐藏系统托盘上的图标。</translation>
+        <source>Hide the icon from the system tray.</source>
+        <translation>隐藏系统托盘上的图标。</translation>
     </message>
     <message>
-        <source>Hide tray icon</source>
-        <translation>隐藏托盘图标</translation>
+        <source>&amp;Hide tray icon</source>
+        <translation>隐藏托盘图标(&amp;H)</translation>
     </message>
     <message>
         <source>Show only a tray icon after minimizing the window.</source>
@@ -1524,7 +1701,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>&amp;Unit to show amounts in:</source>
-        <translation>&amp;SAFE金额单位：</translation>
+        <translation>SAFE金额单位(&amp;U)：</translation>
     </message>
     <message>
         <source>Choose the default subdivision unit to show in the interface and when sending coins.</source>
@@ -1588,7 +1765,1425 @@ http://www.anwang.com/</translation>
     </message>
 </context>
 <context>
+    <name>ApplicationsPage</name>
+    <message>
+        <source>Applications Regist</source>
+        <translation>应用注册</translation>
+    </message>
+    <message>
+        <source>Regist Record</source>
+        <translation>注册应用记录</translation>
+    </message>
+    <message>
+        <source>Application instructions</source>
+        <translation>应用使用说明</translation>
+    </message>
+    <message>
+        <source>1)The first step is to register the application through the "Applications Register" interface. After successful, query the application ID through "Regist Record", as shown below.</source>
+        <translation>1）第一步，通过“注册应用”界面注册应用，成功后通过“注册应用记录”查询应用ID，如下图：</translation>
+    </message>
+    <message>
+        <source>2)The second step is to set the permissions for the users in the application, and set them through RPC interface setappauth. For the specific use method, refer to the RPC interface document of the security network;</source>
+        <translation>2）第二步，为应用内的用户设置权限，通过安网3RPC接口setappauth进行设置，具体使用方法参照安网3RPC接口文档；</translation>
+    </message>
+    <message>
+        <source>3)The third step is to write the application data to the Safe Core, and write the data through the RPC interface createextenddatatx. The specific usage method refers to the RPC interface document of the Safe Core;</source>
+        <translation>3）第三步，写入应用数据到安网3，通过安网3RPC接口createextenddatatx写入数据，具体使用方法参照安网3RPC接口文档；</translation>
+    </message>
+</context>
+<context>
+    <name>AssetsPage</name>
+    <message>
+        <source>Distribute</source>
+        <translation>发行</translation>
+    </message>
+    <message>
+        <source>Distribute Record</source>
+        <translation>发行记录</translation>
+    </message>
+    <message>
+        <source>Regist Record</source>
+        <translation>注册应用记录</translation>
+    </message>
+</context>
+<context>
+	<name>AssetsDistributeRecordView</name>
+    <message>
+        <source>Confirmed</source>
+        <translation>已确认</translation>
+    </message>
+    <message>
+        <source>Watch-only</source>
+        <translation>仅限查看</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>日期</translation>
+    </message>
+    <message>
+        <source>Assets Name</source>
+        <translation>资产名称</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>类别</translation>
+    </message>
+    <message>
+        <source>Address</source>
+        <translation>地址</translation>
+    </message>
+    <message>
+        <source>Exporting Failed</source>
+        <translation>导出失败</translation>
+    </message>
+    <message>
+        <source>There was an error trying to save the assets distribute history to %1.</source>
+        <translation>导出资产发行历史到 %1 时发生错误。</translation>
+    </message>
+    <message>
+        <source>Exporting Successful</source>
+        <translation>导出成功</translation>
+    </message>
+    <message>
+        <source>The assets distribute history was successfully saved to %1.</source>
+        <translation>资产发行历史已成功保存到 %1。</translation>
+    </message>
+    <message>
+        <source>Export Assets Distribute History</source>
+        <translation>导出资产发行历史</translation>
+    </message>
+    <message>
+        <source>Comma separated file (*.csv)</source>
+        <translation>逗号分隔文件 (*.csv)</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>全部</translation>
+    </message>
+    <message>
+        <source>First Distribute</source>
+        <translation>首次发行</translation>
+    </message>
+    <message>
+        <source>Add Distribute</source>
+        <translation>追加发行</translation>
+    </message>
+    <message>
+        <source>Enter assets name to search</source>
+        <translation>输入资产名称进行搜索</translation>
+    </message>
+    <message>
+        <source>Enter address or label to search</source>
+        <translation>输入地址或标签进行搜索</translation>
+    </message>
+    <message>
+        <source>Min amount</source>
+        <translation>最小金额</translation>
+    </message>
+	<message>
+        <source>Today</source>
+        <translation>今天</translation>
+    </message>
+    <message>
+        <source>This week</source>
+        <translation>本周</translation>
+    </message>
+    <message>
+        <source>This month</source>
+        <translation>本月</translation>
+    </message>
+    <message>
+        <source>Last month</source>
+        <translation>上月</translation>
+    </message>
+    <message>
+        <source>This year</source>
+        <translation>今年</translation>
+    </message>
+    <message>
+        <source>Range...</source>
+        <translation>范围...</translation>
+    </message>
+	<message>
+        <source>Abandon transaction</source>
+        <translation>放弃的交易</translation>
+    </message>
+    <message>
+        <source>Copy address</source>
+        <translation>复制地址</translation>
+    </message>
+    <message>
+        <source>Copy label</source>
+        <translation>复制标签</translation>
+    </message>
+    <message>
+        <source>Copy asset name</source>
+        <translation>复制资产名称</translation>
+    </message>
+    <message>
+        <source>Copy asset ID</source>
+        <translation>复制资产ID</translation>
+    </message>
+    <message>
+        <source>Copy amount</source>
+        <translation>复制金额</translation>
+    </message>
+    <message>
+        <source>Copy transaction ID</source>
+        <translation>复制交易编号</translation>
+    </message>
+    <message>
+        <source>Copy raw transaction</source>
+        <translation>复制原始交易</translation>
+    </message>
+    <message>
+        <source>Copy full transaction details</source>
+        <translation>复制完整交易詳情</translation>
+    </message>
+    <message>
+        <source>Edit label</source>
+        <translation>编辑标签</translation>
+    </message>
+    <message>
+        <source>Show transaction details</source>
+        <translation>显示交易详情</translation>
+    </message>
+</context>
+<context>
+	<name>ApplicationsRegistRecordView</name>
+    <message>
+        <source>Confirmed</source>
+        <translation>已确认</translation>
+    </message>
+    <message>
+        <source>Watch-only</source>
+        <translation>仅限查看</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>日期</translation>
+    </message>
+    <message>
+        <source>Application ID</source>
+        <translation>应用ID</translation>
+    </message>
+    <message>
+        <source>Admin Address</source>
+        <translation>管理员地址</translation>
+    </message>
+    <message>
+        <source>Transaction ID</source>
+        <translation>交易ID</translation>
+    </message>
+    <message>
+        <source>Export Application Registry History</source>
+        <translation>导出注册应用记录</translation>
+    </message>
+    <message>
+        <source>Comma separated file (*.csv)</source>
+        <translation>逗号分隔文件 (*.csv)</translation>
+    </message>
+    <message>
+        <source>Exporting Failed</source>
+        <translation>导出失败</translation>
+    </message>
+    <message>
+        <source>There was an error trying to save the Application registry history to %1.</source>
+        <translation>导出注册应用记录到 %1 时发生错误。</translation>
+    </message>
+    <message>
+        <source>The Application registry history was successfully saved to %1.</source>
+        <translation>注册应用记录成功保存到 %1。</translation>
+    </message>
+    <message>
+        <source>Exporting Successful</source>
+        <translation>导出成功</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>全部</translation>
+    </message>
+    <message>
+        <source>First Distribute</source>
+        <translation>首次发行</translation>
+    </message>
+    <message>
+        <source>Add Distribute</source>
+        <translation>追加发行</translation>
+    </message>
+    <message>
+        <source>Enter application id to search</source>
+        <translation>输入应用id进行搜索</translation>
+    </message>
+    <message>
+        <source>Enter manager address to search</source>
+        <translation>输入管理员地址进行搜索</translation>
+    </message>
+    <message>
+        <source>Application id</source>
+        <translation>应用id</translation>
+    </message>
+    <message>
+        <source>Manager address</source>
+        <translation>管理员地址</translation>
+    </message>
+	<message>
+        <source>Today</source>
+        <translation>今天</translation>
+    </message>
+    <message>
+        <source>This week</source>
+        <translation>本周</translation>
+    </message>
+    <message>
+        <source>This month</source>
+        <translation>本月</translation>
+    </message>
+    <message>
+        <source>Last month</source>
+        <translation>上月</translation>
+    </message>
+    <message>
+        <source>This year</source>
+        <translation>今年</translation>
+    </message>
+    <message>
+        <source>Range...</source>
+        <translation>范围...</translation>
+    </message>
+	<message>
+        <source>Abandon transaction</source>
+        <translation>放弃的交易</translation>
+    </message>
+    <message>
+        <source>Copy address</source>
+        <translation>复制地址</translation>
+    </message>
+    <message>
+        <source>Copy label</source>
+        <translation>复制标签</translation>
+    </message>
+    <message>
+        <source>Copy application name</source>
+        <translation>复制应用名称</translation>
+    </message>
+    <message>
+        <source>Copy application ID</source>
+        <translation>复制应用ID</translation>
+    </message>
+    <message>
+        <source>Copy amount</source>
+        <translation>复制金额</translation>
+    </message>
+    <message>
+        <source>Copy transaction ID</source>
+        <translation>复制交易编号</translation>
+    </message>
+    <message>
+        <source>Copy raw transaction</source>
+        <translation>复制原始交易</translation>
+    </message>
+    <message>
+        <source>Copy full transaction details</source>
+        <translation>复制完整交易詳情</translation>
+    </message>
+    <message>
+        <source>Edit label</source>
+        <translation>编辑标签</translation>
+    </message>
+    <message>
+        <source>Show transaction details</source>
+        <translation>显示交易详情</translation>
+    </message>
+</context>
+<context>
+    <name>AssetsLogin</name>
+    <message>
+        <source>Application ID:</source>
+        <translation>应用ID:</translation>
+    </message>
+    <message>
+        <source>Administrator Address:</source>
+        <translation>管理员地址:</translation>
+    </message>
+    <message>
+        <source>Previous step</source>
+        <translation>上一步</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>下一步</translation>
+    </message>
+</context>
+<context>
+    <name>ApplicationsRegistry</name>
+    <message>
+        <source>Personal name is internal reserved words, not allowed to use</source>
+        <translation>个人名称是内部保留字，不允许使用</translation>
+    </message>
+    <message>
+        <source>Application name is internal reserved words, not allowed to use</source>
+        <translation>应用名称是内部保留字，不允许使用</translation>
+    </message>
+    <message>
+        <source>Company name is internal reserved words, not allowed to use</source>
+        <translation>公司名称是内部保留字，不允许使用</translation>
+    </message>
+    <message>
+        <source>Official URL is internal reserved words, not allowed to use</source>
+        <translation>官网URL是内部保留字，不允许使用</translation>
+    </message>
+    <message>
+        <source>Application logo URL is internal reserved words, not allowed to use</source>
+        <translation>应用Logo URL是内部保留字，不允许使用</translation>
+    </message>
+    <message>
+        <source>Application cover URL is internal reserved words, not allowed to use</source>
+        <translation>应用封面URL是内部保留字，不允许使用</translation>
+    </message>
+    <message>
+        <source>Invalid cancelled safe amount</source>
+        <translation>无效的基本(SAFE)费用</translation>
+    </message>
+    <message>
+        <source>Application description input too long</source>
+        <translation>应用描述输入过长</translation>
+    </message>
+    <message>
+        <source>Synchronizing block data</source>
+        <translation>正在同步区块数据, 请稍后...</translation>
+    </message>
+    <message>
+        <source>Insufficient safe funds,register applications need to consume %1</source>
+        <translation>您的SAFE余额不足,注册应用要消耗%1</translation>
+    </message>
+    <message>
+        <source>Invalid URL</source>
+        <translation>无效的URL输入</translation>
+    </message>
+    <message>
+        <source>Company name input too long</source>
+        <translation>公司名称输入过长</translation>
+    </message>
+    <message>
+        <source>Official URL input too long</source>
+        <translation>官网URL输入过长</translation>
+    </message>
+    <message>
+        <source>Application logo URL input too long</source>
+        <translation>应用Logo URL输入过长</translation>
+    </message>
+    <message>
+        <source>Application cover URL input too long</source>
+        <translation>应用封面URL输入过长</translation>
+    </message>
+    <message>
+        <source>Invalid developer name</source>
+        <translation>无效的开发者名称</translation>
+    </message>
+    <message>
+        <source>Application registry</source>
+        <translation>应用注册</translation>
+    </message>
+    <message>
+        <source>Application name input too long</source>
+        <translation>应用名称输入过长</translation>
+    </message>
+    <message>
+        <source>Maximum %1 characters</source>
+        <translation>最大%1个字符</translation>
+    </message>
+    <message>
+        <source>Maximum %1 characters ,URL start with http://</source>
+        <translation>最大%1个字符,URL以"http://"开头</translation>
+    </message>
+    <message>
+        <source>Register applications need to consume %1 SAFE, are you sure to register?</source>
+        <translation>注册应用要消耗%1个SAFE, 确定要注册吗?</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Application name existed!</source>
+        <translation>应用名称已存在!</translation>
+    </message>
+    <message>
+        <source>Application name is available!</source>
+        <translation>应用名称可用!</translation>
+    </message>
+    <message>
+        <source>Application ID existed!</source>
+        <translation>应用ID已存在!</translation>
+    </message>
+    <message>
+        <source>Please enter the wallet passphrase with walletpassphrase first!</source>
+        <translation>请先解锁钱包!</translation>
+    </message>
+    <message>
+        <source>Peer-to-peer functionality missing or disabled!</source>
+        <translation>P2P功能缺失或被禁用!</translation>
+    </message>
+    <message>
+        <source>Insufficient funds!</source>
+        <translation>资金不足!</translation>
+    </message>
+    <message>
+        <source>Insufficient safe funds, this transaction requires a transaction fee of at least %1!</source>
+        <translation>SAFE金额不足, 该交易最少需要%1的交易费!</translation>
+    </message>
+    <message>
+        <source>Get admin address failed!</source>
+        <translation>获取管理员地址失败!</translation>
+    </message>
+    <message>
+        <source>Register application failed, please check your wallet and try again later!</source>
+        <translation>注册应用失败, 请检查您的钱包, 然后稍候再试!</translation>
+    </message>
+    <message>
+        <source>Application register success!</source>
+        <translation>应用注册成功!</translation>
+    </message>
+    <message>
+        <source>Application Name:</source>
+        <translation>应用名称:</translation>
+    </message>
+    <message>
+        <source>Detect exist</source>
+        <translation>检测是否存在</translation>
+    </message>
+    <message>
+        <source>Developer Type:</source>
+        <translation>开发者类型:</translation>
+    </message>
+    <message>
+        <source>Company</source>
+        <translation>公司</translation>
+    </message>
+    <message>
+        <source>Personal</source>
+        <translation>个人</translation>
+    </message>
+    <message>
+        <source>Company Name:</source>
+        <translation>公司名称:</translation>
+    </message>
+    <message>
+        <source>Personal Name:</source>
+        <translation>个人姓名:</translation>
+    </message>
+    <message>
+        <source>Official URL:</source>
+        <translation>官网URL:</translation>
+    </message>
+    <message>
+        <source>Application Logo URL:</source>
+        <translation>应用Logo URL:</translation>
+    </message>
+    <message>
+        <source>Application Cover URL:</source>
+        <translation>应用封面URL:</translation>
+    </message>
+    <message>
+        <source>Application Description:</source>
+        <translation>应用描述:</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>下一步</translation>
+    </message>
+    <message>
+        <source>Register</source>
+        <translation>注册</translation>
+    </message>
+</context>
+<context>
+	<name>AssetsDistribute</name>
+    <message>
+        <source>Put candy max %1 times,current can put %2 times.</source>
+        <translation>糖果发行最多%1次,当前可发行%2次. </translation>
+    </message>
+    <message>
+        <source>Asset name is internal reserved words, not allowed to use</source>
+        <translation>资产名称是内部保留字,不允许使用</translation>
+    </message>
+    <message>
+        <source>Asset short name is internal reserved words, not allowed to use</source>
+        <translation>资产简称是内部保留字,不允许使用</translation>
+    </message>
+    <message>
+        <source>Asset unit is internal reserved words, not allowed to use</source>
+        <translation>资产单位是内部保留字,不允许使用</translation>
+    </message>
+    <message>
+        <source>Invalid input information</source>
+        <translation>输入信息过长</translation>
+    </message>
+    <message>
+        <source>Remark input too long</source>
+        <translation>备注输入过长</translation>
+    </message>
+    <message>
+        <source>Invalid cancelled safe amount</source>
+        <translation>无效的基本(SAFE)费用</translation>
+    </message>
+    <message>
+        <source>Insufficient safe funds,distribute the assets need to consume %1</source>
+        <translation>您的SAFE余额不足,发行资产需要消耗%1</translation>
+    </message>
+    <message>
+        <source>Insufficient safe funds,add distribute the assets need to consume %1</source>
+        <translation>您的SAFE余额不足,追加发行资产需要消耗%1</translation>
+    </message>
+    <message>
+        <source>Amount out of range</source>
+        <translation>资产金额超过上限</translation>
+    </message>
+    <message>
+        <source>Asset units input too long</source>
+        <translation>资产单位输入过长</translation>
+    </message>
+    <message>
+        <source>Asset description input too long</source>
+        <translation>资产描述输入过长</translation>
+    </message>
+    <message>
+        <source>Synchronizing block data</source>
+        <translation>正在同步区块数据, 请稍后...</translation>
+    </message>
+    <message>
+        <source>Please transfer at least 0.01 SAFE to address(%1).</source>
+        <translation>请在地址(%1)转入至少0.01个safe.</translation>
+    </message>
+    <message>
+        <source>You will issue the assets %1, all of which will be used for put candy!</source>
+        <translation>你将发行资产%1,将全部用于发放糖果!</translation>
+    </message>
+    <message>
+        <source>The input amount is not matched decimal</source>
+        <translation>输入金额与小数点位數不匹配</translation>
+    </message>
+    <message>
+        <source>All the assets have been distributed, and they should not be added</source>
+        <translation>资产已全部发放，不可再追加</translation>
+    </message>
+    <message>
+        <source>Current can add:%1,you are going to add:%2,are you sure you wish to add distribute?</source>
+        <translation>可追加资产:%1,你将追加:%2,确定要追加吗?</translation>
+    </message>
+    <message>
+        <source>Current Available:%1,asset can not be added</source>
+        <translation>当前可用资产:%1,不足以继续追加</translation>
+    </message>
+    <message>
+        <source>Total amount of decimal no more than 19</source>
+        <translation>总量含小数位不超过19位</translation>
+    </message>
+    <message>
+        <source>For example: Gold,Maximum %1 characters</source>
+        <translation>例如：黄金，最大%1个字符,1个中文占3个字符</translation>
+    </message>
+    <message>
+        <source>Maximum %1 characters </source>
+        <translation>最大%1个字符,1个中文占3个字符</translation>
+    </message>
+    <message>
+        <source>For example: gram, the maximum %1 characters</source>
+        <translation>例如：克，最大%1个字符,1个中文占3个字符</translation>
+    </message>
+    <message>
+        <source>Invalid candy expired (min: %1, max: %2)</source>
+        <translation>无效的糖果过期时间(最小:%1,最大:%2)</translation>
+    </message>
+    <message>
+        <source>Maximum 99999999999999.9999</source>
+        <translation>最大不超过99999999999999.9999</translation>
+    </message>
+    <message>
+        <source>Minimum %1</source>
+        <translation>最小%1</translation>
+    </message>
+    <message>
+        <source>Between %1 ~ %2</source>
+        <translation>%1 ~ %2之间</translation>
+    </message>
+    <message>
+        <source>Can not exceed the total assets</source>
+        <translation>不能超过资产总量</translation>
+    </message>
+    <message>
+        <source>Decimals %1 to %2,for example:8 represent negative 8 times 10</source>
+        <translation>小数点%1-%2位,例如：8，代表10的负8次方</translation>
+    </message>
+    <message>
+        <source>Maximum %1 characters</source>
+        <translation>最大%1个字符</translation>
+    </message>
+    <message>
+        <source>The minimum %1 month, the maximum %2 months</source>
+        <translation>最小%1个月，最大%2个月</translation>
+    </message>
+    <message>
+        <source>Distribute Type:</source>
+        <translation>发行类型:</translation>
+    </message>
+    <message>
+        <source>First Distribute</source>
+        <translation>首次发行</translation>
+    </message>
+    <message>
+        <source>Additional distribution</source>
+        <translation>追加发行</translation>
+    </message>
+    <message>
+        <source>Assets Name:</source>
+        <translation>资产名称:</translation>
+    </message>
+    <message>
+        <source>Assets For Short:</source>
+        <translation>资产简称:</translation>
+    </message>
+    <message>
+        <source>Detect Exist</source>
+        <translation>检测是否存在</translation>
+    </message>
+    <message>
+        <source>Assets Unit:</source>
+        <translation>资产单位:</translation>
+    </message>
+    <message>
+        <source>Total Assets:</source>
+        <translation>资产总量:</translation>
+    </message>
+    <message>
+        <source>Add Total Assets:</source>
+        <translation>追加资产总量:</translation>
+    </message>
+    <message>
+        <source>First Distribute Count:</source>
+        <translation>首次发行总量:</translation>
+    </message>
+    <message>
+        <source>Decimal:</source>
+        <translation>小数点:</translation>
+    </message>
+    <message>
+        <source>Assets Description:</source>
+        <translation>资产描述:</translation>
+    </message>
+    <message>
+        <source>Comments:</source>
+        <translation>备注:</translation>
+    </message>
+    <message>
+        <source>Destroyed</source>
+        <translation>是否可销毁</translation>
+    </message>
+    <message>
+        <source>Distribute Candy</source>
+        <translation>是否分发糖果</translation>
+    </message>
+    <message>
+        <source>Candy Expire Time:</source>
+        <translation>糖果过期时间:</translation>
+    </message>
+    <message>
+        <source>Asset Candy Ratio:</source>
+        <translation>资产糖果比例:</translation>
+    </message>
+    <message>
+        <source>Assets Total 1‰ </source>
+        <translation>资产总量的1‰</translation>
+    </message>
+    <message>
+        <source>Assets Total 10%</source>
+        <translation>资产总量的10%</translation>
+    </message>
+    <message>
+        <source>You use the following address when you distribute an asset, so additional distribution must also be used in one of these addresses. Please select an address and ensure that there are at least 1 SAFE on the address.</source>
+        <translation>您发行资产时用到了以下地址,因此追加发行也必须用这些地址中的一个,请选择一个地址,并保证该地址有至少一个SAFE.</translation>
+    </message>
+    <message>
+        <source>Previous Step</source>
+        <translation>上一步</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Are you sure you wish to add distribute?</source>
+        <translation>确定要追加发行资产吗?</translation>
+    </message>
+    <message>
+        <source>Distribute assets need to consume %1 SAFE, are you sure to distribute?</source>
+        <translation>发行资产将要消耗%1个SAFE, 确定要发行吗?</translation>
+    </message>
+    <message>
+        <source>Assets distribute success!</source>
+        <translation>资产发行成功!</translation>
+    </message>
+    <message>
+        <source>Add assets distribute success!</source>
+        <translation>追加发行成功!</translation>
+    </message>
+    <message>
+        <source>Assets name existed!</source>
+        <translation>资产名称已存在</translation>
+    </message>
+    <message>
+        <source>Assets name is available.</source>
+        <translation>资产名称可用</translation>
+    </message>
+    <message>
+        <source>Assets distribute</source>
+        <translation>资产发行</translation>
+    </message>
+    <message>
+        <source>Distribute</source>
+        <translation>发行</translation>
+    </message>
+    <message>
+        <source>Wallet unavailable</source>
+        <translation>钱包不可用</translation>
+    </message>
+    <message>
+        <source>Asset abbreviation input too long</source>
+        <translation>资产简称输入过长</translation>
+    </message>
+    <message>
+        <source>Existent asset short name</source>
+        <translation>资产简称已存在</translation>
+    </message>
+    <message>
+        <source>Asset name input too long</source>
+        <translation>资产名称输入过长</translation>
+    </message>
+    <message>
+        <source>Existent asset name</source>
+        <translation>资产名称已存在</translation>
+    </message>
+    <message>
+        <source>Invalid asset total amount</source>
+        <translation>无效的资产总量</translation>
+    </message>
+    <message>
+        <source>Invalid first issue amount</source>
+        <translation>无效的首次发行总量</translation>
+    </message>
+    <message>
+        <source>First issue amount exceed total amount</source>
+        <translation>首次发行总量超过了资产总量</translation>
+    </message>
+    <message>
+        <source>Invalid first actual amount (min: 100)</source>
+        <translation>首次发行实际总量(首次发行总量-糖果总量)最低为100</translation>
+    </message>
+    <message>
+        <source>Invalid asset decimals</source>
+        <translation>无效的资产小数点</translation>
+    </message>
+    <message>
+        <source>Invalid candy amount</source>
+        <translation>无效的糖果总量</translation>
+    </message>
+    <message>
+        <source>Candy amount exceed first issue amount</source>
+        <translation>糖果总量超过了首次发行总量</translation>
+    </message>
+    <message>
+        <source>Candy is disabled</source>
+        <translation>糖果已禁用</translation>
+    </message>
+    <message>
+        <source>Existent asset</source>
+        <translation>资产已存在</translation>
+    </message>
+    <message>
+        <source>Wallet is locked</source>
+        <translation>钱包锁定中</translation>
+    </message>
+    <message>
+        <source>Peer-to-peer functionality missing or disabled</source>
+        <translation>P2P功能缺失或被禁用!</translation>
+    </message>
+    <message>
+        <source>Insufficient safe funds</source>
+        <translation>SAFE不足</translation>
+    </message>
+    <message>
+        <source>Insufficient safe funds, this transaction requires a transaction fee of at least %1!</source>
+        <translation>SAFE金额不足, 该交易最少需要%1的交易费!</translation>
+    </message>
+    <message>
+        <source>Issue asset failed, please check your wallet and try again later!</source>
+        <translation>发行资产失败, 请检查您的钱包, 然后稍候再试!</translation>
+    </message>
+    <message>
+        <source>Add-issue asset failed, please check your wallet and try again later!</source>
+        <translation>追加发行资产失败, 请检查您的钱包, 然后稍候再试!</translation>
+    </message>
+    <message>
+        <source>Invalid asset id</source>
+        <translation>无效的资产id</translation>
+    </message>
+    <message>
+        <source>Non-existent asset id</source>
+        <translation>资产id不存在</translation>
+    </message>
+    <message>
+        <source>You are not the admin</source>
+        <translation>你不是管理员</translation>
+    </message>
+    <message>
+        <source>Invalid asset amount</source>
+        <translation>无效的资产总量</translation>
+    </message>
+    <message>
+    	<source>The total amount of add assets cannot be 0</source>
+	<translation>追加资产总量不能为0</translation>
+    </message>
+    <message>
+        <source>Please enter the wallet passphrase with walletpassphrase first</source>
+        <translation>请先解锁钱包</translation>
+    </message>
+</context>
+<context>
+    <name>CandyPage</name>
+    <message>
+        <source>Put candy times used up</source>
+        <translation>糖果发行次数已用完</translation>
+    </message>
+    <message>
+        <source>Put candy max %1 times,current can put %2 times.Current distribute assets:%3,you are going put candy:%4,are you sure you wish to put candy?</source>
+        <translation>糖果发行最多%1次,当前可发行%2次. 当前发行资产:%3,你将发放糖果:%4,确定要发放糖果吗?</translation>
+    </message>
+	<message>
+        <source>Get candy transaction height fail</source>
+        <translation>领取失败,发行糖果高度获取失败</translation>
+    </message>
+    <message>
+        <source>Get candy need wait about %1 hours %2 minutes</source>
+        <translation>领取此糖果约需等待%1小时%2分钟</translation>
+    </message>
+    <message>
+        <source>Invalid candy amount</source>
+        <translation>无效的糖果数量</translation>
+    </message>
+    <message>
+        <source>Get candy need %1 confirm,please try again later</source>
+        <translation>领取糖果需要%1个确认，请稍后重试</translation>
+    </message>
+    <message>
+        <source>First</source>
+        <translation>首页</translation>
+    </message>
+    <message>
+        <source>Previous</source>
+        <translation>上一页</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>下一页</translation>
+    </message>
+    <message>
+        <source>Last</source>
+        <translation>尾页</translation>
+    </message>
+    <message>
+        <source>Skip</source>
+        <translation>跳转</translation>
+    </message>
+    <message>
+        <source>Total 1</source>
+        <translation>共 1 页</translation>
+    </message>
+    <message>
+        <source>Total %1</source>
+        <translation>共 %1 页</translation>
+    </message>
+    <message>
+        <source>Candy expired</source>
+        <translation>糖果已过期</translation>
+    </message>
+    <message>
+        <source>You have gotten this candy</source>
+        <translation>您已领取过该糖果</translation>
+    </message>
+    <message>
+        <source>Invalid candy</source>
+        <translation>无效的糖果</translation>
+    </message>
+    <message>
+        <source>Get candy success</source>
+        <translation>领取糖果成功</translation>
+    </message>
+    <message>
+        <source>Create candy transaction fail</source>
+        <translation>创建糖果交易失败</translation>
+    </message>
+    <message>
+        <source>Synchronizing block data</source>
+        <translation>正在同步区块数据, 请稍后...</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Expire time</source>
+        <translation>过期时间</translation>
+    </message>
+    <message>
+        <source>Synchronizing data</source>
+        <translation>数据同步中</translation>
+    </message>
+    <message>
+        <source>Invalid asset name</source>
+        <translation>无效的资产名称</translation>
+    </message>
+    <message>
+        <source>Insufficient safe funds</source>
+        <translation>SAFE金额不足</translation>
+    </message>
+    <message>
+        <source>Invalid asset id</source>
+        <translation>无效的资产ID</translation>
+    </message>
+    <message>
+        <source>Non-existent asset id</source>
+        <translation>不存在的资产ID</translation>
+    </message>
+    <message>
+        <source>Non-existent asset candy</source>
+        <translation>不存在的资产糖果</translation>
+    </message>
+    <message>
+        <source>Please enter the wallet passphrase with walletpassphrase first.</source>
+        <translation>请先解锁钱包。</translation>
+    </message>
+    <message>
+        <source>Peer-to-peer functionality missing or disabled</source>
+        <translation>P2P功能缺失或被禁用。</translation>
+    </message>
+    <message>
+        <source>get all address safe amount failed</source>
+        <translation>获取所有SAFE地址的总额失败</translation>
+    </message>
+    <message>
+        <source>get total safe amount failed</source>
+        <translation>获取SAFE总额失败</translation>
+    </message>
+    <message>
+        <source>Invalid amount</source>
+        <translation>无效的总额</translation>
+    </message>
+    <message>
+        <source>Get candy fail</source>
+        <translation>领取糖果失败</translation>
+    </message>
+    <message>
+        <source>Amount out of range</source>
+        <translation>金额越界</translation>
+    </message>
+    <message>
+        <source>Send candy failed</source>
+        <translation>发放糖果失败</translation>
+    </message>
+    <message>
+        <source>Remark maximum 500 character.</source>
+        <translation>备注最大500个字符.</translation>
+    </message>
+    <message>
+        <source>Put Candy success!</source>
+        <translation>发放糖果成功!</translation>
+    </message>
+    <message>
+        <source>You are not the admin</source>
+        <translation>你不是管理员</translation>
+    </message>
+    <message>
+        <source>Invalid asset candy amount</source>
+        <translation>无效的资产糖果总量</translation>
+    </message>
+    <message>
+        <source>Invalid candy expired (min: %1, max: %2)</source>
+        <translation>无效的糖果过期时间(最小:%1个月,最大:%2个月)</translation>
+    </message>
+    <message>
+        <source>Invalid remarks</source>
+        <translation>无效的备注</translation>
+    </message>
+    <message>
+        <source>All distribute assets have been used, can not put candy</source>
+        <translation>所有的发行资产都被使用了,不能发放糖果</translation>
+    </message>
+    <message>
+        <source>You are going put candy:%1,current available assets:%2,can not put candy</source>
+        <translation>你将发放糖果:%1,当前可用资产:%2,不足以发放糖果</translation>
+    </message>
+    <message>
+        <source>Insufficient safe funds, this transaction requires a transaction fee of at least %1!</source>
+        <translation>SAFE金额不足, 该交易最少需要%1的交易费!</translation>
+    </message>
+    <message>
+        <source>Get candy failed, please check your wallet and try again later!</source>
+        <translation>领取糖果失败, 请检查您的钱包, 然后稍候再试!</translation>
+    </message>
+    <message>
+        <source>Put candy failed, please check your wallet and try again later!</source>
+        <translation>发放糖果失败, 请检查您的钱包, 然后稍候再试!</translation>
+    </message>
+    <message>
+        <source>The minimum %1 month, the maximum %2 months</source>
+        <translation>最小%1个月,最大%2个月</translation>
+    </message>
+    <message>
+        <source>Put Candy</source>
+        <translation>发放糖果</translation>
+    </message>
+    <message>
+        <source>Get Candy</source>
+        <translation>领取糖果</translation>
+    </message>
+    <message>
+        <source>Get History</source>
+        <translation>领取记录</translation>
+    </message>
+    <message>
+        <source>assets</source>
+        <translation>资产</translation>
+    </message>
+    <message>
+        <source>candy expire time:</source>
+        <translation>糖果过期时间:</translation>
+    </message>
+    <message>
+        <source>Asset candy ratio:</source>
+        <translation>资产糖果比例:</translation>
+    </message>
+    <message>
+        <source>Assets Total 1‰ </source>
+        <translation>资产总量的1‰</translation>
+    </message>
+    <message>
+        <source>Assets Total 10%</source>
+        <translation>资产总量的10%</translation>
+	</message>
+    <message>
+        <source>Comment:</source>
+        <translation>备注:</translation>
+    </message>
+    <message>
+        <source>ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Release time</source>
+        <translation>发放时间</translation>
+    </message>
+    <message>
+        <source>Assets name</source>
+        <translation>资产名称</translation>
+    </message>
+    <message>
+        <source>Total candies</source>
+        <translation>糖果总量</translation>
+    </message>
+    <message>
+        <source>Operate</source>
+        <translation>操作</translation>
+    </message>
+    <message>
+        <source>Get</source>
+        <translation>领取</translation>
+    </message>
+</context>
+<context>
+	<name>AssetsDistributeRecordModel</name>
+    <message>
+        <source>Date</source>
+        <translation>日期</translation>
+	</message>
+	<message>
+        <source>Type</source>
+        <translation>类型</translation>
+	</message>
+	<message>
+        <source>Assets name</source>
+        <translation>资产名称</translation>
+	</message>
+	<message>
+        <source>Address / Label</source>
+        <translation>地址 / 标签</translation>
+	</message>
+	<message>
+        <source>Date and time that the assets was distributed.</source>
+        <translation>资产发行日期。</translation>
+	</message>
+	<message>
+        <source>Assets name of distribute.</source>
+        <translation>资产发行的名称。</translation>
+	</message>
+	<message>
+        <source>Type of assets distribute.</source>
+        <translation>资产发行的类型。</translation>
+	</message>
+	<message>
+        <source>User-defined intent/purpose of the assets distribute.</source>
+        <translation>用户定义的意图和交易的目的。</translation>
+	</message>
+	<message>
+        <source>Amount removed from or added to balance.</source>
+        <translation>从余额添加或移除的金额。</translation>
+	</message>
+</context>
+<context>
+	<name>ApplicationsRegistRecordModel</name>
+	<message>
+        <source>Date</source>
+        <translation>日期</translation>
+	</message>
+	<message>
+        <source>Application ID</source>
+        <translation>应用ID</translation>
+	</message>
+	<message>
+        <source>Manager Address</source>
+        <translation>管理员地址</translation>
+	</message>
+    <message>
+        <source>Date and time that the application was registed.</source>
+        <translation>应用的注册日期。</translation>
+    </message>
+    <message>
+        <source>Application ID of assets regist.</source>
+        <translation>应用的注册ID。</translation>
+    </message>
+    <message>
+        <source>Manager address of assets regist.</source>
+        <translation>应用的管理员地址。</translation>
+    </message>
+</context>
+<context>
+	<name>CandyTableModel</name>
+    <message>
+        <source>Date</source>
+        <translation>日期</translation>
+	</message>
+	<message>
+        <source>Assets name</source>
+        <translation>资产名称</translation>
+	</message>
+	<message>
+        <source>Address / Label</source>
+        <translation>地址 / 标签</translation>
+	</message>
+    <message>
+        <source>Assets amount</source>
+        <translation>资产金额</translation>
+    </message>
+    <message>
+        <source>Date and time that the candy was received.</source>
+        <translation>糖果领取时间。</translation>
+    </message>
+    <message>
+        <source>The Assets name of the candy.</source>
+        <translation>糖果资产名称。</translation>
+    </message>
+    <message>
+        <source>User-defined intent/purpose of the candy receive.</source>
+        <translation>用户定义的意图和糖果领取的目的。</translation>
+    </message>
+    <message>
+        <source>Amount removed from or added to balance.</source>
+        <translation>从余额添加或移除的金额。</translation>
+    </message>
+</context>
+<context>
+	<name>CandyView</name>
+    <message>
+        <source>Confirmed</source>
+        <translation>已确认</translation>
+    </message>
+    <message>
+        <source>Watch-only</source>
+        <translation>仅限查看</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>日期</translation>
+    </message>
+    <message>
+        <source>Asset Name</source>
+        <translation>资产名称</translation>
+    </message>
+    <message>
+        <source>Address</source>
+        <translation>地址</translation>
+    </message>
+    <message>
+        <source>Export Get Candy History</source>
+        <translation>导出糖果领取记录</translation>
+    </message>
+    <message>
+        <source>Comma separated file (*.csv)</source>
+        <translation>逗号分隔文件 (*.csv)</translation>
+    </message>
+    <message>
+        <source>Exporting Failed</source>
+        <translation>导出失败</translation>
+    </message>
+    <message>
+        <source>There was an error trying to save the get candy history to %1.</source>
+        <translation>导出糖果领取记录到 %1 时发生错误。</translation>
+    </message>
+    <message>
+        <source>Exporting Successful</source>
+        <translation>导出成功</translation>
+    </message>
+    <message>
+        <source>The get candy history was successfully saved to %1.</source>
+        <translation>糖果领取记录已成功保存到 %1。</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>全部</translation>
+    </message>
+    <message>
+        <source>Enter assets name to search</source>
+        <translation>输入资产名称进行搜索</translation>
+    </message>
+    <message>
+        <source>Enter address or label to search</source>
+        <translation>输入地址或标签进行搜索</translation>
+    </message>
+    <message>
+        <source>Min amount</source>
+        <translation>最小金额</translation>
+    </message>
+	<message>
+        <source>Today</source>
+        <translation>今天</translation>
+    </message>
+    <message>
+        <source>This week</source>
+        <translation>本周</translation>
+    </message>
+    <message>
+        <source>This month</source>
+        <translation>本月</translation>
+    </message>
+    <message>
+        <source>Last month</source>
+        <translation>上月</translation>
+    </message>
+    <message>
+        <source>This year</source>
+        <translation>今年</translation>
+    </message>
+    <message>
+        <source>Range...</source>
+        <translation>范围...</translation>
+    </message>
+	<message>
+        <source>Abandon transaction</source>
+        <translation>放弃的交易</translation>
+    </message>
+    <message>
+        <source>Copy address</source>
+        <translation>复制地址</translation>
+    </message>
+    <message>
+        <source>Copy label</source>
+        <translation>复制标签</translation>
+    </message>
+    <message>
+        <source>Copy amount</source>
+        <translation>复制金额</translation>
+    </message>
+    <message>
+        <source>Copy asset name</source>
+        <translation>复制资产名称</translation>
+    </message>
+    <message>
+        <source>Copy transaction ID</source>
+        <translation>复制交易编号</translation>
+    </message>
+    <message>
+        <source>Copy raw transaction</source>
+        <translation>复制原始交易</translation>
+    </message>
+    <message>
+        <source>Copy full transaction details</source>
+        <translation>复制完整交易詳情</translation>
+    </message>
+    <message>
+        <source>Edit label</source>
+        <translation>编辑标签</translation>
+    </message>
+    <message>
+        <source>Show transaction details</source>
+        <translation>显示交易详情</translation>
+    </message>
+</context>
+<context>
+    <name>OverViewEntry</name>
+    <message>
+        <source>total:</source>
+        <translation>总额:</translation>
+    </message>
+    <message>
+        <source>Available:</source>
+        <translation>可使用的余额:</translation>
+    </message>
+    <message>
+        <source>Pending:</source>
+        <translation>等待中的余额:</translation>
+    </message>
+    <message>
+        <source>Locked:</source>
+        <translation>锁定中的余额:</translation>
+    </message>
+</context>
+<context>
+	<name>Notificator</name>
+    <message>
+        <source>Yes</source>
+        <translation>确定</translation>
+    </message>
+</context>
+<context>
     <name>OverviewPage</name>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
     <message>
         <source>Form</source>
         <translation>表单</translation>
@@ -1596,6 +3191,18 @@ http://www.anwang.com/</translation>
     <message>
         <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Safe network after a connection is established, but this process has not completed yet.</source>
         <translation>显示信息也许已过期。当与安网3网络连接后钱包程序会自动同步，但现在还未完成。</translation>
+    </message>
+	<message>
+        <source>Last PrivateSend message:</source>
+        <translation>最新信息:</translation>
+    </message>
+	<message>
+        <source>Mixing</source>
+        <translation>混币</translation>
+    </message>
+    <message>
+        <source>Other assets</source>
+        <translation>其它资产</translation>
     </message>
     <message>
         <source>Available:</source>
@@ -1608,6 +3215,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Pending:</source>
         <translation>等待中的余额：</translation>
+    </message>
+    <message>
+        <source>Locked:</source>
+        <translation>锁定中的余额：</translation>
     </message>
     <message>
         <source>Total of transactions that have yet to be confirmed, and do not yet count toward the spendable balance</source>
@@ -1679,7 +3290,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Reset the current status of PrivateSend (can interrupt PrivateSend if it&apos;s in the process of Mixing, which can cost you money!)</source>
-        <translation>重置目前匿名发送状态(此操作可能会影响您目前正在执行的混合过程，并且产生费用並且產生！)</translation>
+        <translation>重置目前匿名发送状态(此操作可能会影响您目前正在执行的混合过程，并且产生费用！)</translation>
     </message>
     <message>
         <source>Information about PrivateSend and Mixing</source>
@@ -1703,7 +3314,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>n/a</source>
-        <translation>n/a</translation>
+        <translation>无</translation>
     </message>
     <message>
         <source>Recent transactions</source>
@@ -1746,7 +3357,7 @@ http://www.anwang.com/</translation>
         <translation>启动混币</translation>
     </message>
     <message>
-        <source>Stop Darksend Mixing</source>
+        <source>Stop Mixing</source>
         <translation>停止混币</translation>
     </message>
     <message>
@@ -1791,7 +3402,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Disabled</source>
-        <translation>己禁用</translation>
+        <translation>已禁用</translation>
     </message>
     <message>
         <source>Very low number of keys left since last automatic backup!</source>
@@ -1837,7 +3448,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>N/A</source>
-        <translation>不可用</translation>
+        <translation>无</translation>
     </message>
     <message>
         <source>PrivateSend was successfully reset.</source>
@@ -1868,11 +3479,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>URI handling</source>
-        <translation>URI 处理</translation>
+        <translation>URI处理</translation>
     </message>
     <message>
         <source>Payment request fetch URL is invalid: %1</source>
-        <translation>付款请求URI链接非法: %1</translation>
+        <translation>取得付款要求的URL非法: %1</translation>
     </message>
     <message>
         <source>Invalid payment address %1</source>
@@ -1880,7 +3491,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>URI cannot be parsed! This can be caused by an invalid Safe address or malformed URI parameters.</source>
-        <translation>链接不能被解析! 原因可能是无效的安网3地址或输入的链接有错。</translation>
+        <translation>链接不能被解析! 可能是因为Safe地址无效, 或URI参数格式错误。</translation>
     </message>
     <message>
         <source>Payment request file handling</source>
@@ -1955,7 +3566,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Node/Service</source>
-        <translation>节点/服務</translation>
+        <translation>节点/服务</translation>
     </message>
     <message>
         <source>User Agent</source>
@@ -1974,7 +3585,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Error: Specified data directory &quot;%1&quot; does not exist.</source>
-        <translation>错误: 指定的数据目录 &quot;%1&quot; 不存在。</translation>
+        <translation>错误: 指定的数据目录&quot;%1&quot;不存在。</translation>
     </message>
     <message>
         <source>Error: Cannot parse configuration file: %1. Only use key=value syntax.</source>
@@ -1998,7 +3609,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Enter a Safe address (e.g. %1)</source>
-        <translation>输入安网3地址(e.g. %1)</translation>
+        <translation>输入Safe地址 (例如: %1)</translation>
     </message>
     <message>
         <source>%1 d</source>
@@ -2017,12 +3628,16 @@ http://www.anwang.com/</translation>
         <translation>%1 秒</translation>
     </message>
     <message>
+        <source>%1 second(s)</source>
+        <translation>%1 秒</translation>
+    </message>
+    <message>
         <source>None</source>
         <translation>无</translation>
     </message>
     <message>
         <source>N/A</source>
-        <translation>不可用</translation>
+        <translation>无</translation>
     </message>
     <message>
         <source>%1 ms</source>
@@ -2096,7 +3711,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Name</source>
-        <translation>姓名</translation>
+        <translation>名称</translation>
     </message>
     <message>
         <source>Client name</source>
@@ -2104,7 +3719,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>N/A</source>
-        <translation>不可用</translation>
+        <translation>无</translation>
     </message>
     <message>
         <source>Number of connections</source>
@@ -2124,7 +3739,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Last block time</source>
-        <translation>上一数据块时间</translation>
+        <translation>最近区块时间</translation>
     </message>
     <message>
         <source>Debug log file</source>
@@ -2132,7 +3747,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Current number of blocks</source>
-        <translation>当前数据块数量</translation>
+        <translation>当前区块数量</translation>
     </message>
     <message>
         <source>Client version</source>
@@ -2144,7 +3759,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Block chain</source>
-        <translation>数据链</translation>
+        <translation>区块链</translation>
     </message>
     <message>
         <source>Number of Masternodes</source>
@@ -2196,7 +3811,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>&amp;Peers</source>
-        <translation>&amp;节点</translation>
+        <translation>节点(&amp;P)</translation>
     </message>
     <message>
         <source>Banned peers</source>
@@ -2292,7 +3907,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>&amp;Wallet Repair</source>
-        <translation>&amp;钱包修复</translation>
+        <translation>钱包修复(&amp;W)</translation>
     </message>
     <message>
         <source>Salvage wallet</source>
@@ -2324,11 +3939,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>-rescan: Rescan the block chain for missing wallet transactions.</source>
-        <translation>-rescan: 对丢失的钱包交易重新扫描数据块链.</translation>
+        <translation>-rescan: 对丢失的钱包交易重新扫描区块链.</translation>
     </message>
     <message>
         <source>-zapwallettxes=1: Recover transactions from blockchain (keep meta-data, e.g. account owner).</source>
-        <translation>-zapwallettxes=1: 从区块链恢复交易 (保留交易描述信息,例如:账户拥有者).</translation>
+        <translation>-zapwallettxes=1: 从区块链恢复交易 (保留交易描述信息,例如: 账户拥有者).</translation>
     </message>
     <message>
         <source>-zapwallettxes=2: Recover transactions from blockchain (drop meta-data).</source>
@@ -2348,7 +3963,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>-reindex: Rebuild block chain index from current blk000??.dat files.</source>
-        <translation>-reindex: 从现在的blk000??.dat文件重新建立数据块链索引.</translation>
+        <translation>-reindex: 从现在的blk000??.dat文件重新建立区块链索引.</translation>
     </message>
     <message>
         <source>&amp;Disconnect</source>
@@ -2360,19 +3975,19 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>1 &amp;hour</source>
-        <translation>1 小时(&amp;h)</translation>
+        <translation>1 小时(&amp;H)</translation>
     </message>
     <message>
         <source>1 &amp;day</source>
-        <translation>1 天(&amp;d)</translation>
+        <translation>1 天(&amp;D)</translation>
     </message>
     <message>
         <source>1 &amp;week</source>
-        <translation>1 星期(&amp;w)</translation>
+        <translation>1 星期(&amp;W)</translation>
     </message>
     <message>
         <source>1 &amp;year</source>
-        <translation>1 年(&amp;y)</translation>
+        <translation>1 年(&amp;Y)</translation>
     </message>
     <message>
         <source>&amp;Unban</source>
@@ -2380,7 +3995,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Welcome to the Safe Core RPC console.</source>
-        <translation>欢迎使用安网3核心 RPC 控制台。</translation>
+        <translation>欢迎使用安网3核心RPC控制台。</translation>
     </message>
     <message>
         <source>Use up and down arrows to navigate history, and &lt;b&gt;Ctrl-L&lt;/b&gt; to clear screen.</source>
@@ -2454,16 +4069,48 @@ http://www.anwang.com/</translation>
 <context>
     <name>ReceiveCoinsDialog</name>
     <message>
+        <source>Invalid asset name</source>
+        <translation>无效的资产名称</translation>
+    </message>
+    <message>
+        <source>Maximum 30 characters</source>
+        <translation>最大30个字符,1个中文占3个字符</translation>
+    </message>
+    <message>
+        <source>Maximum 150 characters</source>
+        <translation>最大150个字符,1个中文占3个字符</translation>
+    </message>
+    <message>
+        <source>Label input too long</source>
+        <translation>标签输入过长</translation>
+    </message>
+    <message>
+        <source>Message input too long</source>
+        <translation>消息输入过长</translation>
+    </message>
+    <message>
+        <source>Receive</source>
+        <translation>接收</translation>
+    </message>
+    <message>
+        <source>Please select asset</source>
+        <translation>请选择资产</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
         <source>Reuse one of the previously used receiving addresses.&lt;br&gt;Reusing addresses has security and privacy issues.&lt;br&gt;Do not use this unless re-generating a payment request made before.</source>
         <translation>重复使用以前用过的接收地址。&lt;br&gt;重用地址有安全和隐私方面的隐患。&lt;br&gt;除非是为重复生成同一项支付请求，否则请不要这样做。</translation>
     </message>
     <message>
         <source>R&amp;euse an existing receiving address (not recommended)</source>
-        <translation>重用现有的接收地址（不推荐）</translation>
+        <translation>重用现有的接收地址(&amp;E)(不推荐)</translation>
     </message>
     <message>
         <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the Safe network.</source>
-        <translation>附加在付款要求中的讯息，可以不填，打开要求内容时会显示。注意: 这个讯息不会随着付款送到安网3网路上。</translation>
+        <translation>附加在付款要求中的消息，可以不填，打开要求内容时会显示。注意: 这个消息不会随着付款送到安网3网路上。</translation>
     </message>
     <message>
         <source>&amp;Message:</source>
@@ -2475,7 +4122,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>An optional message to attach to the payment request, which will be displayed when the request is opened.&lt;br&gt;Note: The message will not be sent with the payment over the Safe network.</source>
-        <translation>附加在付款要求中的讯息，可以不填，打开要求内容时会显示。&lt;br&gt;注意: 这个讯息不会随着付款送到安网3网路上。</translation>
+        <translation>附加在付款要求中的消息，可以不填，打开要求内容时会显示。&lt;br&gt;注意: 这个消息不会随着付款送到安网3网路上。</translation>
     </message>
     <message>
         <source>Use this form to request payments. All fields are &lt;b&gt;optional&lt;/b&gt;.</source>
@@ -2500,6 +4147,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Clear all fields of the form.</source>
         <translation>清空此表单的所有字段。</translation>
+    </message>
+    <message>
+        <source>Assets</source>
+        <translation>资产  </translation>
     </message>
     <message>
         <source>Clear</source>
@@ -2531,7 +4182,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Copy URI</source>
-        <translation>复制 URI</translation>
+        <translation>复制URI</translation>
     </message>
     <message>
         <source>Copy label</source>
@@ -2548,13 +4199,17 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>ReceiveRequestDialog</name>
+	<message>
+		<source>Close</source>
+		<translation>关闭</translation>
+	</message>
     <message>
         <source>QR Code</source>
         <translation>二维码</translation>
     </message>
     <message>
         <source>Copy &amp;URI</source>
-        <translation>复制 URI(&amp;U)</translation>
+        <translation>复制URI(&amp;U)</translation>
     </message>
     <message>
         <source>Copy &amp;Address</source>
@@ -2606,11 +4261,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Resulting URI too long, try to reduce the text for label / message.</source>
-        <translation>URI 太长，请试着精简标签或消息文本。</translation>
+        <translation>URI太长，请试着精简标签或消息文本。</translation>
     </message>
     <message>
         <source>Error encoding URI into QR Code.</source>
-        <translation>将 URI 转为二维码失败。</translation>
+        <translation>将URI转为二维码失败。</translation>
     </message>
 </context>
 <context>
@@ -2646,6 +4301,34 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>SendCoinsDialog</name>
+    <message>
+        <source>Invalid asset name</source>
+        <translation>无效的资产名称</translation>
+    </message>
+    <message>
+        <source>Please select asset</source>
+        <translation>请选择资产</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Synchronizing block data</source>
+        <translation>正在同步区块数据, 请稍后...</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Assets</source>
+        <translation>资产  </translation>
+    </message>
     <message>
         <source>Send Coins</source>
         <translation>发送货币</translation>
@@ -2696,7 +4379,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>If this is activated, but the change address is empty or invalid, change will be sent to a newly generated address.</source>
-        <translation>如果激活该选项，但是零钱地址用光或者非法，将会新生成零钱地址，转入零钱。</translation>
+        <translation>如果激活该选项，一旦找零地址用光或者非法，那么这笔零钱将会存入到新生成的地址中。</translation>
     </message>
     <message>
         <source>Custom change address</source>
@@ -2724,11 +4407,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>If the custom fee is set to 1000 duffs and the transaction is only 250 bytes, then &quot;per kilobyte&quot; only pays 250 duffs in fee,&lt;br /&gt;while &quot;at least&quot; pays 1000 duffs. For transactions bigger than a kilobyte both pay by kilobyte.</source>
-        <translation>如果自定义手续费设定为 1000 duffs，而交易大小只有 250B的话，那么选择「每KB」就只会支付 250 duffs 的手续费，&lt;br /&gt;而「至少」会支付 1000 duffs。但是如果交易大小超过1KB，那么两者都是每KB的费用。</translation>
+        <translation>如果自定义手续费设定为 1000 duffs，而交易大小只有 250B的话，那么选择&quot;每KB&quot;就只会支付 250 duffs 的手续费，&lt;br /&gt;而&quot;至少&quot;会支付 1000 duffs。但是如果交易大小超过1KB，那么两者都是每KB的费用。</translation>
     </message>
     <message>
         <source>If the custom fee is set to 1000 duffs and the transaction is only 250 bytes, then &quot;per kilobyte&quot; only pays 250 duffs in fee,&lt;br /&gt;while &quot;total at least&quot; pays 1000 duffs. For transactions bigger than a kilobyte both pay by kilobyte.</source>
-        <translation>如果自定义手续费设定为 1000 duffs，而交易大小只有 250B的話，那么选择「每KB」就只会支付 250 duffs 的手续费，&lt;br /&gt;而「总共至少」会支付 1000 duffs。但是如果交易大小超过1KB，那么两者都是每KB的费用。</translation>
+        <translation>如果自定义手续费设定为 1000 duffs，而交易大小只有 250B的話，那么选择&quot;每KB&quot;就只会支付 250 duffs 的手续费，&lt;br /&gt;而&quot;总共至少&quot;会支付 1000 duffs。但是如果交易大小超过1KB，那么两者都是每KB的费用。</translation>
     </message>
     <message>
         <source>Paying only the minimum fee is just fine as long as there is less transaction volume than space in the blocks.&lt;br /&gt;But be aware that this can end up in a never confirming transaction once there is more demand for safe transactions than the network can process.</source>
@@ -2871,6 +4554,10 @@ http://www.anwang.com/</translation>
         <translation>作为交易费被添加</translation>
     </message>
     <message>
+        <source>Total Amount = &lt;b&gt;%1 %2&lt;/b&gt;&lt;br /&gt;</source>
+        <translation>总额 = &lt;b&gt;%1 %2&lt;/b&gt;&lt;br /&gt;</translation>
+    </message>
+    <message>
         <source>Total Amount = &lt;b&gt;%1&lt;/b&gt;&lt;br /&gt;= %2</source>
         <translation>总额 = &lt;b&gt;%1&lt;/b&gt;&lt;br /&gt;= %2</translation>
     </message>
@@ -2908,15 +4595,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.</source>
-        <translation>错误：该交易被拒绝！发生这种错误的原因可能是：钱包中的SAFE已经被用掉，有可能您复制了wallet.dat钱包文件，然后用复制的钱包文件支付了SAFE，但是这个钱包文件中没有记录。</translation>
+        <translation>该交易被拒绝！发生这种错误的原因可能是：钱包中的SAFE已经被用掉，有可能您复制了wallet.dat钱包文件，然后用复制的钱包文件支付了SAFE，但是这个钱包文件中没有记录。</translation>
     </message>
     <message>
         <source>A fee higher than %1 is considered an absurdly high fee.</source>
         <translation>手续费高于 %1 的被认为是非常高的费用。</translation>
-    </message>
-    <message>
-        <source>Payment request expired.</source>
-        <translation>付款的请求已过期。</translation>
     </message>
     <message>
         <source>Pay only the required fee of %1</source>
@@ -2928,7 +4611,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Warning: Invalid Safe address</source>
-        <translation>警告：无效的安网3地址</translation>
+        <translation>警告：无效的Safe地址</translation>
     </message>
     <message>
         <source>Warning: Unknown change address</source>
@@ -2938,20 +4621,84 @@ http://www.anwang.com/</translation>
         <source>(no label)</source>
         <translation>(没有标签)</translation>
     </message>
+    <message>
+        <source>Safe Core</source>
+        <translation>安网3核心</translation>
+    </message>
+    <message>
+        <source>Can not use PrivateSend or InstantSend if you create locked transaction</source>
+        <translation>创建锁定交易时不能使用匿名发送或即时支付</translation>
+    </message>
+   <message>
+        <source>Payment request expired.</source>
+        <translation>付款的请求已过期。</translation>
+    </message>
+   <message>
+        <source>Wallet unavailable.</source>
+        <translation>钱包不可用。</translation>
+    </message>
+    <message>
+        <source>Invalid receiver's address.</source>
+        <translation>无效的接收方地址。</translation>
+    </message>
+    <message>
+        <source>Get asset id fail.</source>
+        <translation>获取资产id失败。</translation>
+    </message>
+    <message>
+        <source>Invalid asset id.</source>
+        <translation>无效的资产id。</translation>
+    </message>
+    <message>
+        <source>Non-existent asset id.</source>
+        <translation>不存在的资产id。</translation>
+    </message>
+    <message>
+        <source>Invalid asset amount.</source>
+        <translation>无效的资产总量。</translation>
+    </message>
+    <message>
+        <source>Amount out of range.</source>
+        <translation>资产超出范围。</translation>
+    </message>
+    <message>
+        <source>Invalid locked month (min: 1, max: 1200).</source>
+        <translation>无效的锁定月数（最小：1,最大：1200）。</translation>
+    </message>
+    <message>
+        <source>Invalid remarks.</source>
+        <translation>无效的备注。</translation>
+    </message>
+    <message>
+        <source>Please enter the wallet passphrase with walletpassphrase first.</source>
+        <translation>请先解锁钱包。</translation>
+    </message>
+    <message>
+        <source>Peer-to-peer functionality missing or disabled.</source>
+        <translation>P2P功能缺失或被禁用。</translation>
+    </message>
+    <message>
+        <source>Insufficient asset funds.</source>
+        <translation>资产金额不足。</translation>
+    </message>
+    <message>
+        <source>Insufficient SAFE funds.</source>
+        <translation>SAFE金额不足。</translation>
+    </message>
+    <message>
+        <source>This asset transaction create fail!</source>
+        <translation>资产交易创建失败！</translation>
+    </message>
 </context>
 <context>
     <name>SendCoinsEntry</name>
-    <message>
-        <source>This is a normal payment.</source>
-        <translation>这是笔正常的支付。</translation>
-    </message>
     <message>
         <source>Pay &amp;To:</source>
         <translation>付给(&amp;T)：</translation>
     </message>
     <message>
         <source>The Safe address to send the payment to</source>
-        <translation>选择发款地址</translation>
+        <translation>选择付款的Safe地址</translation>
     </message>
     <message>
         <source>Choose previously used address</source>
@@ -2983,7 +4730,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>A&amp;mount:</source>
-        <translation>金额(&amp;M)</translation>
+        <translation>金额(&amp;M)：</translation>
+    </message>
+    <message>
+        <source>The Safe amount to send</source>
+        <translation>发送的金额</translation>
     </message>
     <message>
         <source>The fee will be deducted from the amount being sent. The recipient will receive a lower amount of Safe than you enter in the amount field. If multiple recipients are selected, the fee is split equally.</source>
@@ -2991,10 +4742,10 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>S&amp;ubtract fee from amount</source>
-        <translation>从金额中扣除费用(&amp;u)</translation>
+        <translation>从金额中扣除费用(&amp;U)</translation>
     </message>
     <message>
-        <source>Message:</source>
+        <source>&amp;Message:</source>
         <translation>消息：</translation>
     </message>
     <message>
@@ -3015,11 +4766,31 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Memo:</source>
-        <translation>便条：</translation>
+        <translation>备注：</translation>
+    </message>
+    <message>
+        <source>The memo content will be written into the block chain, which everyone can see</source>
+        <translation>备注内容将会写入区块链中,所有人都能查看</translation>
     </message>
     <message>
         <source>Enter a label for this address to add it to your address book</source>
         <translation>为这个地址输入一个标签，以便将它添加到您的地址簿</translation>
+    </message>
+    <message>
+        <source>&amp;Startup Lock</source>
+        <translation>启动锁定功能(&amp;S)</translation>
+    </message>
+    <message>
+        <source>If you want to send to someone with lock, you can check it</source>
+        <translation>如果您想发送锁定功能的交易,请选中它</translation>
+    </message>
+    <message>
+        <source>&amp;Locked Month:</source>
+        <translation>锁定月份数(&amp;L)：</translation>
+    </message>
+    <message>
+        <source>The locked month of transaction</source>
+        <translation>交易的锁定月份数</translation>
     </message>
 </context>
 <context>
@@ -3049,7 +4820,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>The Safe address to sign the message with</source>
-        <translation>对此地址进行签名</translation>
+        <translation>用来签名的Safe地址</translation>
     </message>
     <message>
         <source>Choose previously used address</source>
@@ -3081,7 +4852,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Sign the message to prove you own this Safe address</source>
-        <translation>签署信息证明您拥有此安网3地址</translation>
+        <translation>对该信息签名来证明您拥有此Safe地址</translation>
     </message>
     <message>
         <source>Sign &amp;Message</source>
@@ -3105,11 +4876,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>The Safe address the message was signed with</source>
-        <translation>已签名的地址</translation>
+        <translation>对该消息签名的Safe地址</translation>
     </message>
     <message>
         <source>Verify the message to ensure it was signed with the specified Safe address</source>
-        <translation>验证信息用来确保此被签署信息对应相对的安网3地址</translation>
+        <translation>验证信息用来确定它是被指定的Safe地址签名的</translation>
     </message>
     <message>
         <source>Verify &amp;Message</source>
@@ -3121,7 +4892,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Click &quot;Sign Message&quot; to generate signature</source>
-        <translation>单击“签名消息“产生签名。</translation>
+        <translation>单击&quot;签名消息&quot;产生签名。</translation>
     </message>
     <message>
         <source>The entered address is invalid.</source>
@@ -3204,13 +4975,149 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>TransactionDesc</name>
+    <message>
+        <source>Get Candy Amount</source>
+        <translation>领取糖果总量</translation>
+    </message>
+    <message>
+        <source>Get Candy Address</source>
+        <translation>领取糖果地址</translation>
+    </message>
+    <message>
+        <source>Candy Asset ID</source>
+        <translation>糖果资产ID</translation>
+    </message>
+    <message>
+        <source>Assets Name</source>
+        <translation>资产名称</translation>
+    </message>
+    <message>
+        <source>Assets Short Name</source>
+        <translation>资产简称</translation>
+    </message>
+    <message>
+        <source>Assets Unit</source>
+        <translation>资产单位</translation>
+    </message>
+    <message>
+        <source>Assets Total Amount</source>
+        <translation>资产总量</translation>
+    </message>
+    <message>
+        <source>Assets First Issue Amount</source>
+        <translation>首次发行总量</translation>
+    </message>
+    <message>
+        <source>Assets Actual Amount</source>
+        <translation>实际发行总量</translation>
+    </message>
+    <message>
+        <source>Assets Decimals</source>
+        <translation>小数点</translation>
+    </message>
+    <message>
+        <source>Assets Desc</source>
+        <translation>资产描述</translation>
+    </message>
+    <message>
+        <source>Assets Remarks</source>
+        <translation>资产备注</translation>
+    </message>
+    <message>
+        <source>Assets Destory</source>
+        <translation>是否可销毁</translation>
+    </message>
+    <message>
+        <source>Pay Candy</source>
+        <translation>是否分发糖果</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>是</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>否</translation>
+    </message>
+    <message>
+        <source>Assets Candy Amount</source>
+        <translation>资产糖果总量</translation>
+    </message>
+    <message>
+        <source>Assets Candy Expired</source>
+        <translation>糖果过期时间</translation>
+    </message>
+    <message>
+        <source>Assets ID</source>
+        <translation>资产ID</translation>
+    </message>
+    <message>
+        <source>Add Assets ID</source>
+        <translation>追加发行ID</translation>
+    </message>
+    <message>
+        <source>Add Assets Amount</source>
+        <translation>追加资产总量</translation>
+    </message>
+    <message>
+        <source>Add Assets Remarks</source>
+        <translation>追加备注</translation>
+    </message>
+    <message>
+        <source>Company</source>
+        <translation>公司</translation>
+    </message>
+    <message>
+        <source>Personal</source>
+        <translation>个人</translation>
+    </message>
+    <message>
+        <source>Application Name</source>
+        <translation>应用名称</translation>
+    </message>
+    <message>
+        <source>Application Dev Type</source>
+        <translation>开发者类型</translation>
+    </message>
+    <message>
+        <source>Company Name</source>
+        <translation>公司名称</translation>
+    </message>
+    <message>
+        <source>Personal Name</source>
+        <translation>个人名称</translation>
+    </message>
+    <message>
+        <source>Application Web URL</source>
+        <translation>官网URL</translation>
+    </message>
+    <message>
+        <source>Application Logo URL</source>
+        <translation>应用Logo URL</translation>
+    </message>
+    <message>
+        <source>Application Cover URL</source>
+        <translation>应用封面URL</translation>
+    </message>
+    <message>
+        <source>Application Desc</source>
+        <translation>应用描述</translation>
+    </message>
+    <message>
+        <source>Application ID</source>
+        <translation>应用ID</translation>
+    </message>
+    <message>
+        <source>Manager Address</source>
+        <translation>管理员地址</translation>
+    </message>
     <message numerus="yes">
         <source>Open for %n more block(s)</source>
         <translation><numerusform>对于%n个块开放</numerusform></translation>
     </message>
     <message>
         <source>Open until %1</source>
-        <translation>至 %1 个数据块时开启</translation>
+        <translation>至 %1 个区块时开启</translation>
     </message>
     <message>
         <source>conflicted</source>
@@ -3358,7 +5265,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Generated coins must mature %1 blocks before they can be spent. When you generated this block, it was broadcast to the network to be added to the block chain. If it fails to get into the chain, its state will change to &quot;not accepted&quot; and it won&apos;t be spendable. This may occasionally happen if another node generates a block within a few seconds of yours.</source>
-        <translation>生成的SAFE在可以使用前必须有 %1 个成熟的区块。当您生成了此区块后，它将被广播到网络中以加入区块链。如果它未成功进入区块链，其状态将变更为“不接受”并且不可使用。这可能偶尔会发生，如果另一个节点比您早几秒钟成功生成一个区块。</translation>
+        <translation>生成的SAFE在可以使用前必须有 %1 个成熟的区块。当您生成了此区块后，它将被广播到网络中以加入区块链。如果它未成功进入区块链，其状态将变更为&quot;不接受&quot;并且不可使用。这可能偶尔会发生，如果另一个节点比您早几秒钟成功生成一个区块。</translation>
     </message>
     <message>
         <source>Debug information</source>
@@ -3384,9 +5291,21 @@ http://www.anwang.com/</translation>
         <source>false</source>
         <translation>错误</translation>
     </message>
+    <message>
+        <source>Locked amount</source>
+        <translation>锁定金额</translation>
+    </message>
+    <message>
+        <source>Unlocked height</source>
+        <translation>解锁高度</translation>
+    </message>
 </context>
 <context>
     <name>TransactionDescDialog</name>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
     <message>
         <source>Transaction details</source>
         <translation>交易细节</translation>
@@ -3397,7 +5316,15 @@ http://www.anwang.com/</translation>
     </message>
 </context>
 <context>
-    <name>TransactionTableModel</name>
+    <name>LockedTransactionTableModel</name>
+    <message>
+        <source>Assets name</source>
+        <translation>资产名称</translation>
+    </message>
+    <message>
+        <source>Assets amount</source>
+        <translation>资产金额</translation>
+    </message>
     <message>
         <source>Date</source>
         <translation>日期</translation>
@@ -3410,13 +5337,37 @@ http://www.anwang.com/</translation>
         <source>Address / Label</source>
         <translation>地址 / 标签</translation>
     </message>
+    <message>
+        <source>Locked Month</source>
+        <translation>锁定月份数</translation>
+    </message>
+    <message>
+        <source>Unlocked Height</source>
+        <translation>解锁高度</translation>
+    </message>
+    <message>
+        <source>Locked Status</source>
+        <translation>锁定状态</translation>
+    </message>
+    <message>
+        <source>Invalid: Conflicted</source>
+        <translation>无效: 冲突</translation>
+    </message>
+    <message>
+        <source>Locking</source>
+        <translation>锁定中</translation>
+    </message>
+    <message>
+        <source>Unlocked</source>
+        <translation>已解锁</translation>
+    </message>
     <message numerus="yes">
         <source>Open for %n more block(s)</source>
         <translation><numerusform>对于%n个块开放</numerusform></translation>
     </message>
     <message>
         <source>Open until %1</source>
-        <translation>至 %1 个数据块时开启</translation>
+        <translation>至 %1 个区块时开启</translation>
     </message>
     <message>
         <source>Offline</source>
@@ -3448,7 +5399,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>This block was not received by any other nodes and will probably not be accepted!</source>
-        <translation>此数据块未被任何其他节点接收，可能不被接受！</translation>
+        <translation>此区块未被任何其他节点接收，可能不被接受！</translation>
     </message>
     <message>
         <source>Generated but not accepted</source>
@@ -3504,7 +5455,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>(n/a)</source>
-        <translation>（不可用）</translation>
+        <translation>（无）</translation>
     </message>
     <message>
         <source>(no label)</source>
@@ -3512,11 +5463,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Transaction status. Hover over this field to show number of confirmations.</source>
-        <translation>交易状态。 鼠标移到此区域可显示确认项数量。</translation>
+        <translation>交易状态。鼠标移到此区域可显示确认项数量。</translation>
     </message>
     <message>
         <source>Date and time that the transaction was received.</source>
-        <translation>接收到交易的时间</translation>
+        <translation>接收到交易的时间。</translation>
     </message>
     <message>
         <source>Type of transaction.</source>
@@ -3524,7 +5475,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Whether or not a watch-only address is involved in this transaction.</source>
-        <translation>决定是否有一个仅限查看的地址参与这次交易.</translation>
+        <translation>决定是否有一个仅限查看的地址参与这次交易。</translation>
     </message>
     <message>
         <source>User-defined intent/purpose of the transaction.</source>
@@ -3534,9 +5485,272 @@ http://www.anwang.com/</translation>
         <source>Amount removed from or added to balance.</source>
         <translation>从余额添加或移除的金额。</translation>
     </message>
+    <message>
+        <source>Locked transaction status. Hover over this field to show number of confirmations.</source>
+        <translation>锁定交易状态。鼠标移到此区域可显示确认项数量。</translation>
+    </message>
+    <message>
+        <source>Date and time that the locked transaction was received.</source>
+        <translation>接收到锁定交易的时间。</translation>
+    </message>
+    <message>
+        <source>Type of locked transaction.</source>
+        <translation>锁定交易类别。</translation>
+    </message>
+    <message>
+        <source>Whether or not a watch-only address is involved in this locked transaction.</source>
+        <translation>决定是否有一个仅限查看的地址参与这次锁定交易。</translation>
+    </message>
+    <message>
+        <source>User-defined intent/purpose of the locked transaction.</source>
+        <translation>用戶定义的意图/锁定交易的目的。</translation>
+    </message>
+    <message>
+        <source>Amount removed from or added to locked balance.</source>
+        <translation>从余额添加或移除的金额。</translation>
+    </message>
+    <message>
+        <source>Locked month of transaction.</source>
+        <translation>交易锁定的月数。</translation>
+    </message>
+    <message>
+        <source>Unlocked height of transaction.</source>
+        <translation>交易的解锁高度。</translation>
+    </message>
+    <message>
+        <source>Current locked status: locking or unlocked.</source>
+        <translation>当前锁定状态：锁定或未锁定。</translation>
+    </message>
+</context>
+<context>
+    <name>TransactionTableModel</name>
+    <message>
+        <source>Application Id</source>
+        <translation>应用名称</translation>
+    </message>
+    <message>
+        <source>Manager Address</source>
+        <translation>管理员地址</translation>
+    </message>
+    <message>
+        <source>Assets name</source>
+        <translation>资产名称</translation>
+    </message>
+    <message>
+        <source>Assets amount</source>
+        <translation>资产金额</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>日期</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>类型</translation>
+    </message>
+    <message>
+        <source>Address / Label</source>
+        <translation>地址 / 标签</translation>
+    </message>
+    <message>
+        <source>Locked Month</source>
+        <translation>锁定月份数</translation>
+    </message>
+    <message>
+        <source>Unlocked Height</source>
+        <translation>解锁高度</translation>
+    </message>
+    <message>
+        <source>Locked Status</source>
+        <translation>锁定状态</translation>
+    </message>
+    <message>
+        <source>Invalid: Conflicted</source>
+        <translation>无效: 冲突</translation>
+    </message>
+    <message>
+        <source>Locking</source>
+        <translation>锁定中</translation>
+    </message>
+    <message>
+        <source>Unlocked</source>
+        <translation>已解锁</translation>
+    </message>
+    <message>
+        <source>First Distribute</source>
+        <translation>首次发行</translation>
+    </message>
+    <message>
+        <source>Add Distribute</source>
+        <translation>追加发行</translation>
+    </message>
+    <message numerus="yes">
+        <source>Open for %n more block(s)</source>
+        <translation><numerusform>对于%n个块开放</numerusform></translation>
+    </message>
+    <message>
+        <source>Open until %1</source>
+        <translation>至 %1 个区块时开启</translation>
+    </message>
+    <message>
+        <source>Offline</source>
+        <translation>掉线</translation>
+    </message>
+    <message>
+        <source>Unconfirmed</source>
+        <translation>未确认的 </translation>
+    </message>
+    <message>
+        <source>Abandoned</source>
+        <translation>放弃了</translation>
+    </message>
+    <message>
+        <source>Confirming (%1 of %2 recommended confirmations)</source>
+        <translation>确认中 (推荐 %2个确认，已经有 %1个确认)</translation>
+    </message>
+    <message>
+        <source>Confirmed (%1 confirmations)</source>
+        <translation>已确认 (%1 条确认信息)</translation>
+    </message>
+    <message>
+        <source>Conflicted</source>
+        <translation>冲突的</translation>
+    </message>
+    <message>
+        <source>Immature (%1 confirmations, will be available after %2)</source>
+        <translation>未成熟 (%1 个确认，将在 %2 个后可用)</translation>
+    </message>
+    <message>
+        <source>This block was not received by any other nodes and will probably not be accepted!</source>
+        <translation>此区块未被任何其他节点接收，可能不被接受！</translation>
+    </message>
+    <message>
+        <source>Generated but not accepted</source>
+        <translation>已生成但未被接受</translation>
+    </message>
+    <message>
+        <source>Received with</source>
+        <translation>接收于</translation>
+    </message>
+    <message>
+        <source>Received from</source>
+        <translation>收款来自</translation>
+    </message>
+    <message>
+        <source>Received via PrivateSend</source>
+        <translation>已通过匿名处理接收</translation>
+    </message>
+    <message>
+        <source>Sent to</source>
+        <translation>发送给</translation>
+    </message>
+    <message>
+        <source>Payment to yourself</source>
+        <translation>付款给自己</translation>
+    </message>
+    <message>
+        <source>Mined</source>
+        <translation>挖矿所得</translation>
+    </message>
+    <message>
+        <source>PrivateSend Denominate</source>
+        <translation>匿名发送面额化</translation>
+    </message>
+    <message>
+        <source>PrivateSend Collateral Payment</source>
+        <translation>匿名发送附加费用</translation>
+    </message>
+    <message>
+        <source>PrivateSend Make Collateral Inputs</source>
+        <translation>匿名发送会产生附加费用</translation>
+    </message>
+    <message>
+        <source>PrivateSend Create Denominations</source>
+        <translation>匿名发送会生成面值额度</translation>
+    </message>
+    <message>
+        <source>PrivateSend</source>
+        <translation>匿名发送</translation>
+    </message>
+    <message>
+        <source>watch-only</source>
+        <translation>仅限查看</translation>
+    </message>
+    <message>
+        <source>(n/a)</source>
+        <translation>（无）</translation>
+    </message>
+    <message>
+        <source>(no label)</source>
+        <translation>(没有标签)</translation>
+    </message>
+    <message>
+        <source>Transaction status. Hover over this field to show number of confirmations.</source>
+        <translation>交易状态。鼠标移到此区域可显示确认项数量。</translation>
+    </message>
+    <message>
+        <source>Date and time that the transaction was received.</source>
+        <translation>接收到交易的时间。</translation>
+    </message>
+    <message>
+        <source>Type of transaction.</source>
+        <translation>交易类别。</translation>
+    </message>
+    <message>
+        <source>Whether or not a watch-only address is involved in this transaction.</source>
+        <translation>决定是否有一个仅限查看的地址参与这次交易。</translation>
+    </message>
+    <message>
+        <source>User-defined intent/purpose of the transaction.</source>
+        <translation>用戶定义的意图/交易的目的。</translation>
+    </message>
+    <message>
+        <source>Amount removed from or added to balance.</source>
+        <translation>从余额添加或移除的金额。</translation>
+    </message>
+    <message>
+        <source>Locked transaction status. Hover over this field to show number of confirmations.</source>
+        <translation>锁定交易状态。鼠标移到此区域可显示确认项数量。</translation>
+    </message>
+    <message>
+        <source>Date and time that the locked transaction was received.</source>
+        <translation>接收到锁定交易的时间。</translation>
+    </message>
+    <message>
+        <source>Type of locked transaction.</source>
+        <translation>锁定交易类别。</translation>
+    </message>
+    <message>
+        <source>Whether or not a watch-only address is involved in this locked transaction.</source>
+        <translation>决定是否有一个仅限查看的地址参与这次锁定交易。</translation>
+    </message>
+    <message>
+        <source>User-defined intent/purpose of the locked transaction.</source>
+        <translation>用戶定义的意图/锁定交易的目的。</translation>
+    </message>
+    <message>
+        <source>Amount removed from or added to locked balance.</source>
+        <translation>从余额添加或移除的金额。</translation>
+    </message>
+    <message>
+        <source>Locked month of transaction.</source>
+        <translation>交易锁定的月数。</translation>
+    </message>
+    <message>
+        <source>Unlocked height of transaction.</source>
+        <translation>交易的解锁高度。</translation>
+    </message>
+    <message>
+        <source>Current locked status: locking or unlocked.</source>
+        <translation>当前锁定状态：锁定或未锁定。</translation>
+    </message>
 </context>
 <context>
     <name>TransactionView</name>
+    <message>
+        <source>Enter assets name to search</source>
+        <translation>输入资产名称进行搜索</translation>
+    </message>
     <message>
         <source>All</source>
         <translation>全部</translation>
@@ -3619,7 +5833,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Abandon transaction</source>
-        <translation>放弃的交易</translation>
+        <translation>放弃交易</translation>
     </message>
     <message>
         <source>Copy address</source>
@@ -3632,6 +5846,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Copy amount</source>
         <translation>复制金额</translation>
+    </message>
+    <message>
+        <source>Copy asset name</source>
+        <translation>复制资产名称</translation>
     </message>
     <message>
         <source>Copy transaction ID</source>
@@ -3713,6 +5931,201 @@ http://www.anwang.com/</translation>
         <source>to</source>
         <translation>到</translation>
     </message>
+    <message>
+        <source>unreasonable date range</source>
+        <translation>区间不合理</translation>
+    </message>
+    <message>
+        <source>Start date cannot be later than the end date.</source>
+        <translation>开始时间不能晚于结束时间。</translation>
+    </message>
+    <message>
+        <source>End date cannot be earlier than start date.</source>
+        <translation>结束时间不能早于开始时间。</translation>
+    </message>
+</context>
+<context>
+    <name>LockedTransactionView</name>
+    <message>
+        <source>Locked Month</source>
+        <translation>锁定月份</translation>
+    </message>
+    <message>
+        <source>Unlocked Height</source>
+        <translation>解锁高度</translation>
+    </message>
+    <message>
+        <source>Locked Status</source>
+        <translation>锁定状态</translation>
+    </message>
+    <message>
+        <source>Enter assets name to search</source>
+        <translation>输入资产名称进行搜索</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>全部</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>今天</translation>
+    </message>
+    <message>
+        <source>This week</source>
+        <translation>本周</translation>
+    </message>
+    <message>
+        <source>This month</source>
+        <translation>本月</translation>
+    </message>
+    <message>
+        <source>Last month</source>
+        <translation>上月</translation>
+    </message>
+    <message>
+        <source>This year</source>
+        <translation>今年</translation>
+    </message>
+    <message>
+        <source>Range...</source>
+        <translation>范围...</translation>
+    </message>
+    <message>
+        <source>Received with</source>
+        <translation>接收于</translation>
+    </message>
+    <message>
+        <source>Sent to</source>
+        <translation>发送给</translation>
+    </message>
+    <message>
+        <source>To yourself</source>
+        <translation>到自己</translation>
+    </message>
+    <message>
+        <source>Other</source>
+        <translation>其他</translation>
+    </message>
+    <message>
+        <source>Enter address or label to search</source>
+        <translation>输入地址或标签进行搜索</translation>
+    </message>
+    <message>
+        <source>Min amount</source>
+        <translation>最小金额</translation>
+    </message>
+    <message>
+        <source>Abandon transaction</source>
+        <translation>放弃交易</translation>
+    </message>
+    <message>
+        <source>Copy address</source>
+        <translation>复制地址</translation>
+    </message>
+    <message>
+        <source>Copy label</source>
+        <translation>复制标签</translation>
+    </message>
+    <message>
+        <source>Copy amount</source>
+        <translation>复制金额</translation>
+    </message>
+    <message>
+        <source>Copy asset name</source>
+        <translation>复制资产名称</translation>
+    </message>
+    <message>
+        <source>Copy transaction ID</source>
+        <translation>复制交易编号</translation>
+    </message>
+    <message>
+        <source>Copy raw transaction</source>
+        <translation>复制原始交易</translation>
+    </message>
+    <message>
+        <source>Copy full transaction details</source>
+        <translation>复制完整交易詳情</translation>
+    </message>
+    <message>
+        <source>Edit label</source>
+        <translation>编辑标签</translation>
+    </message>
+    <message>
+        <source>Show transaction details</source>
+        <translation>显示交易详情</translation>
+    </message>
+    <message>
+        <source>Export Locked Transaction History</source>
+        <translation>导出锁定交易历史</translation>
+    </message>
+    <message>
+        <source>Comma separated file (*.csv)</source>
+        <translation>逗号分隔文件 (*.csv)</translation>
+    </message>
+    <message>
+        <source>Confirmed</source>
+        <translation>已确认</translation>
+    </message>
+    <message>
+        <source>Watch-only</source>
+        <translation>仅限查看</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>日期</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>类别</translation>
+    </message>
+    <message>
+        <source>Label</source>
+        <translation>标签</translation>
+    </message>
+    <message>
+        <source>Address</source>
+        <translation>地址</translation>
+    </message>
+    <message>
+        <source>ID</source>
+        <translation>ID</translation>
+    </message>
+    <message>
+        <source>Exporting Failed</source>
+        <translation>导出失败</translation>
+    </message>
+    <message>
+        <source>There was an error trying to save the locked transaction history to %1.</source>
+        <translation>导出锁定交易历史到 %1 时发生错误。</translation>
+    </message>
+    <message>
+        <source>Exporting Successful</source>
+        <translation>导出成功</translation>
+    </message>
+    <message>
+        <source>The locked transaction history was successfully saved to %1.</source>
+        <translation>锁定交易历史已成功保存到 %1。</translation>
+    </message>
+    <message>
+        <source>Range:</source>
+        <translation>范围：</translation>
+    </message>
+    <message>
+        <source>to</source>
+        <translation>到</translation>
+    </message>
+    <message>
+        <source>unreasonable date range</source>
+        <translation>区间不合理</translation>
+    </message>
+    <message>
+        <source>Start date cannot be later than the end date.</source>
+        <translation>开始时间不能晚于结束时间。</translation>
+    </message>
+    <message>
+        <source>End date cannot be earlier than start date.</source>
+        <translation>结束时间不能早于开始时间。</translation>
+    </message>
 </context>
 <context>
     <name>UnitDisplayStatusBarControl</name>
@@ -3727,6 +6140,42 @@ http://www.anwang.com/</translation>
         <source>No wallet has been loaded.</source>
         <translation>没有载入钱包。</translation>
     </message>
+    <message>
+        <source>Overview</source>
+        <translation>概况</translation>
+    </message>
+    <message>
+        <source>Transactions</source>
+        <translation>交易记录</translation>
+    </message>
+    <message>
+        <source>Locked</source>
+        <translation>锁定记录</translation>
+    </message>
+    <message>
+        <source>Assets</source>
+        <translation>资产发行</translation>
+    </message>
+    <message>
+        <source>Applications</source>
+        <translation>应用</translation>
+    </message>
+    <message>
+        <source>Candy</source>
+        <translation>糖果</translation>
+    </message>
+    <message>
+        <source>Masternodes</source>
+        <translation>主节点</translation>
+    </message>
+    <message>
+        <source>Receive</source>
+        <translation>接收</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>发送</translation>
+    </message>
 </context>
 <context>
     <name>WalletModel</name>
@@ -3735,8 +6184,8 @@ http://www.anwang.com/</translation>
         <translation>发送SAFE</translation>
     </message>
     <message>
-        <source>InstantSend doesn&apos;t support sending values that high yet. Transactions are currently limited to %1 SAFE.</source>
-        <translation>即时发送暂时不支持这么高的交易金额。目前的金额仅限于%1 SAFE。</translation>
+        <source>InstantSend doesn&apos;t support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE.</source>
+        <translation>即时发送暂时不支持高金额的交易输入来源。目前交易输入来源的金额不能超过 %1 SAFE。</translation>
     </message>
     <message>
         <source>Used way too many inputs (&gt;%1) for this InstantSend transaction, fees could be huge.</source>
@@ -3784,6 +6233,10 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>safe-core</name>
+    <message>
+        <source>Reach the current change limit,please try again later.</source>
+        <translation>达到当前零钱使用上限,请稍后再试。</translation>
+    </message>
     <message>
         <source>Bind to given address and always listen on it. Use [host]:port notation for IPv6</source>
         <translation>与提供地址绑定，持续监听。使用[host]:标记IPv6端口</translation>
@@ -3870,7 +6323,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Block creation options:</source>
-        <translation>数据块创建选项：</translation>
+        <translation>区块创建选项：</translation>
     </message>
     <message>
         <source>Cannot downgrade wallet</source>
@@ -3906,7 +6359,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Corrupted block database detected</source>
-        <translation>已找到损坏的数据块</translation>
+        <translation>已找到损坏的区块</translation>
     </message>
     <message>
         <source>Debugging/Testing options:</source>
@@ -3970,7 +6423,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>(1 = keep tx meta data e.g. account owner and payment request information, 2 = drop tx meta data)</source>
-        <translation>(1 表示保留交易元数据，像是账户所有者和支付请求信息；2 表示丟掉交易元数据)</translation>
+        <translation>(1 表示保留交易元数据，例如: 账户所有者和支付请求信息；2 表示丟掉交易元数据)</translation>
     </message>
     <message>
         <source>-fallbackfee is set very high! This is the transaction fee you may pay when fee estimates are not available.</source>
@@ -3994,7 +6447,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Allow JSON-RPC connections from specified source. Valid for &lt;ip&gt; are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24). This option can be specified multiple times</source>
-        <translation>允许指定来源建立 JSON-RPC 连接。&lt;ip&gt; 的有效值可以是一个单据地址(像是 1.2.3.4)，一个网段/掩码(例如 1.2.3.4/255.255.255.0)，或是网段/CIDR值(像是 1.2.3.4/24)。这个选项可以设定多次。</translation>
+        <translation>允许指定来源建立 JSON-RPC 连接。&lt;ip&gt; 的有效值可以是一个单据地址(例如: 1.2.3.4)，一个网段/掩码(例如: 1.2.3.4/255.255.255.0)，或是网段/CIDR值(例如: 1.2.3.4/24)。这个选项可以设定多次。</translation>
     </message>
     <message>
         <source>Bind to given address and whitelist peers connecting to it. Use [host]:port notation for IPv6</source>
@@ -4241,6 +6694,14 @@ http://www.anwang.com/</translation>
         <translation>存款不足。</translation>
     </message>
     <message>
+        <source>Please transfer at least 0.01 SAFE to address(%s).</source>
+        <translation>请在地址(%s)转入至少0.01个safe.</translation>
+    </message>
+    <message>
+        <source>Please transfer at least 0.01 SAFE to wallet.</source>
+        <translation>请在钱包转入至少0.01个safe.</translation>
+    </message>
+    <message>
         <source>Invalid -onion address: &apos;%s&apos;</source>
         <translation>无效 -onion 地址：&apos;%s&apos;</translation>
     </message>
@@ -4270,7 +6731,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Keypool ran out, please call keypoolrefill first</source>
-        <translation>Keypool 用完了，请先调用 keypoolrefill </translation>
+        <translation>Keypool 用完了，请先调用 keypoolrefill </translation>
     </message>
     <message>
         <source>Listen for JSON-RPC connections on &lt;port&gt; (default: %u or testnet: %u)</source>
@@ -4589,12 +7050,12 @@ http://www.anwang.com/</translation>
         <translation>如果 &lt;category&gt; 不支持或如果 &lt;category&gt; = 1, 将输出所有调试信息。</translation>
     </message>
     <message>
-        <source>InstantSend doesn&apos;t support sending values that high yet. Transactions are currently limited to %1 SAFE.</source>
-        <translation>即时发送暂时并不支持这么高的交易金额。目前的目前的金额仅限于 %1 SAFE。</translation>
+        <source>InstantSend doesn&apos;t support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE.</source>
+        <translation>即时发送暂时不支持高金额的交易输入来源。目前交易输入来源的金额不能超过 %1 SAFE。</translation>
     </message>
     <message>
         <source>InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again.</source>
-        <translation>即时发送要求输入的资金最少有 %d 个确认，您可能需要等待数分钟后在重试。</translation>
+        <translation>即时发送要求输入的资金最少有 %d 个确认，您可能需要等待数分钟后再重试。</translation>
     </message>
     <message>
         <source>Maintain a full address index, used to query for the balance, txids and unspent outputs for addresses (default: %u)</source>
@@ -4674,7 +7135,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Unable to locate enough PrivateSend denominated funds for this transaction.</source>
-        <translation>在本之交易中，无法找到足够的匿名发送已出资金。</translation>
+        <translation>在本次交易中，无法找到足够的匿名发送已出资金。</translation>
     </message>
     <message>
         <source>Unable to locate enough PrivateSend non-denominated funds for this transaction that are not equal 1000 SAFE.</source>
@@ -4854,7 +7315,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Loading block index...</source>
-        <translation>正在读取数据块索引...</translation>
+        <translation>正在读取区块索引...</translation>
     </message>
     <message>
         <source>Loading governance cache...</source>
@@ -5105,6 +7566,10 @@ http://www.anwang.com/</translation>
         <translation>交易额过小</translation>
     </message>
     <message>
+        <source>Must sync block first</source>
+        <translation>需先同步区块</translation>
+    </message>
+    <message>
         <source>Transaction amounts must be positive</source>
         <translation>交易额一定要真实有效</translation>
     </message>
@@ -5121,8 +7586,12 @@ http://www.anwang.com/</translation>
         <translation>交易无效。</translation>
     </message>
     <message>
+        <source>Insufficient asset funds.</source>
+        <translation>资产金额不足。</translation>
+    </message>
+    <message>
         <source>Transaction too large for fee policy</source>
-        <translation>根据交易手续费标准判断，本交易的字节過大</translation>
+        <translation>根据交易手续费标准判断，本交易的字节太大</translation>
     </message>
     <message>
         <source>Transaction too large</source>
@@ -5134,7 +7603,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Unable to sign spork message, wrong key?</source>
-        <translation>无法签署交叉信息，错误的密钥？</translation>
+        <translation>无法对Spork消息签名，错误的密钥？</translation>
     </message>
     <message>
         <source>Unknown network specified in -onlynet: &apos;%s&apos;</source>
@@ -5150,7 +7619,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Verifying blocks...</source>
-        <translation>验证数据块中...</translation>
+        <translation>验证区块中...</translation>
     </message>
     <message>
         <source>Verifying wallet...</source>
@@ -5195,6 +7664,42 @@ http://www.anwang.com/</translation>
     <message>
         <source>wallet.dat corrupt, salvage failed</source>
         <translation>钱包数据损坏，恢复失败</translation>
+    </message>
+    <message>
+        <source>Cannot get app info by app id</source>
+        <translation>无法通过应用ID获取应用信息</translation>
+    </message>
+    <message>
+        <source>Invalid safe coins</source>
+        <translation>无效的safe输入来源</translation>
+    </message>
+    <message>
+        <source>Register app need 1 admin only</source>
+        <translation>注册应用只需要1个管理员</translation>
+    </message>
+    <message>
+        <source>Cannot get admin address</source>
+        <translation>无法获取管理员地址</translation>
+    </message>
+    <message>
+        <source>Transaction reserver is too large</source>
+        <translation>交易的预留字段内容太大</translation>
+    </message>
+    <message>
+        <source>Invalid locked month (min: 0, max: 120)</source>
+        <translation>无效的锁定月份数(最小: 0, 最大: 120)</translation>
+    </message>
+    <message>
+        <source>Cannot get asset info by asset id</source>
+        <translation>无法通过资产ID获取资产信息</translation>
+    </message>
+    <message>
+        <source>Get candy information failed</source>
+        <translation>获取糖果信息失败</translation>
+    </message>
+    <message>
+        <source>Issue asset need 1 admin only</source>
+        <translation>发行资产只需要1个管理员</translation>
     </message>
 </context>
 </TS>

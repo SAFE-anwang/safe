@@ -117,6 +117,8 @@ public:
         }
         CScriptCompressor cscript(REF(txout.scriptPubKey));
         READWRITE(cscript);
+        READWRITE(txout.nUnlockedHeight);
+        READWRITE(txout.vReserve);
     }
 };
 

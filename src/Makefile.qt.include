@@ -17,6 +17,12 @@ QT_FORMS_UI = \
   qt/forms/intro.ui \
   qt/forms/modaloverlay.ui \
   qt/forms/masternodelist.ui \
+  qt/forms/candypage.ui \
+  qt/forms/assetspage.ui \
+  qt/forms/applicationspage.ui \
+  qt/forms/applicationsregistry.ui \
+  qt/forms/assetsdistribute.ui \
+  qt/forms/assetslogin.ui \
   qt/forms/openuridialog.ui \
   qt/forms/optionsdialog.ui \
   qt/forms/overviewpage.ui \
@@ -25,6 +31,7 @@ QT_FORMS_UI = \
   qt/forms/debugwindow.ui \
   qt/forms/sendcoinsdialog.ui \
   qt/forms/sendcoinsentry.ui \
+  qt/forms/overviewentry.ui \
   qt/forms/signverifymessagedialog.ui \
   qt/forms/transactiondescdialog.ui
 
@@ -35,6 +42,7 @@ QT_MOC_CPP = \
   qt/moc_bantablemodel.cpp \
   qt/moc_bitcoinaddressvalidator.cpp \
   qt/moc_bitcoinamountfield.cpp \
+  qt/moc_lockedmonthfield.cpp \
   qt/moc_bitcoingui.cpp \
   qt/moc_bitcoinunits.cpp \
   qt/moc_clientmodel.cpp \
@@ -64,6 +72,7 @@ QT_MOC_CPP = \
   qt/moc_rpcconsole.cpp \
   qt/moc_sendcoinsdialog.cpp \
   qt/moc_sendcoinsentry.cpp \
+  qt/moc_overviewentry.cpp \
   qt/moc_signverifymessagedialog.cpp \
   qt/moc_splashscreen.cpp \
   qt/moc_trafficgraphwidget.cpp \
@@ -72,10 +81,28 @@ QT_MOC_CPP = \
   qt/moc_transactionfilterproxy.cpp \
   qt/moc_transactiontablemodel.cpp \
   qt/moc_transactionview.cpp \
+  qt/moc_candyview.cpp \
+  qt/moc_candytablemodel.cpp \
+  qt/moc_assetsdistributerecordview.cpp \
+  qt/moc_applicationsregistrecordmodel.cpp \
+  qt/moc_assetsdistributerecordmodel.cpp \
+  qt/moc_applicationsregistrecordview.cpp \
+  qt/moc_lockedtransactionview.cpp \
   qt/moc_utilitydialog.cpp \
   qt/moc_walletframe.cpp \
   qt/moc_walletmodel.cpp \
-  qt/moc_walletview.cpp
+  qt/moc_titlebar.cpp \
+  qt/moc_candypage.cpp \
+  qt/moc_applicationsregistry.cpp \
+  qt/moc_assetsdistribute.cpp \
+  qt/moc_assetslogin.cpp \
+  qt/moc_walletview.cpp \
+  qt/moc_framelesswidget.cpp \
+  qt/moc_customslider.cpp \
+  qt/moc_customlineedit.cpp \
+  qt/moc_lockedtransactiontablemodel.cpp \
+  qt/moc_applicationspage.cpp \
+  qt/moc_assetspage.cpp	
 
 BITCOIN_MM = \
   qt/macdockiconhandler.mm \
@@ -104,6 +131,7 @@ BITCOIN_QT_H = \
   qt/bantablemodel.h \
   qt/bitcoinaddressvalidator.h \
   qt/bitcoinamountfield.h \
+  qt/lockedmonthfield.h \
   qt/bitcoingui.h \
   qt/bitcoinunits.h \
   qt/clientmodel.h \
@@ -137,6 +165,7 @@ BITCOIN_QT_H = \
   qt/rpcconsole.h \
   qt/sendcoinsdialog.h \
   qt/sendcoinsentry.h \
+  qt/overviewentry.h \
   qt/signverifymessagedialog.h \
   qt/splashscreen.h \
   qt/trafficgraphdata.h \
@@ -147,11 +176,30 @@ BITCOIN_QT_H = \
   qt/transactionrecord.h \
   qt/transactiontablemodel.h \
   qt/transactionview.h \
+  qt/candyview.h \
+  qt/candytablemodel.h \
+  qt/assetsdistributerecordview.h \
+  qt/applicationsregistrecordmodel.h \
+  qt/assetsdistributerecordmodel.h \
+  qt/applicationsregistrecordview.h \
+  qt/lockedtransactionview.h \
   qt/utilitydialog.h \
   qt/walletframe.h \
   qt/walletmodel.h \
   qt/walletmodeltransaction.h \
+  qt/titlebar.h \
+  qt/candypage.h \
+  qt/applicationsregistry.h \
+  qt/assetsdistribute.h \
+  qt/assetslogin.h \
+  qt/assetspage.h \
+  qt/applicationspage.h \
   qt/walletview.h \
+  qt/framelesswidget.h \
+  qt/customslider.h \
+  qt/customlineedit.h \
+  qt/lockedtransactiontablemodel.h \
+  qt/customdoublevalidator.h \
   qt/winshutdownmonitor.h
 
 RES_ICONS = \
@@ -380,6 +428,7 @@ BITCOIN_QT_CPP = \
   qt/bantablemodel.cpp \
   qt/bitcoinaddressvalidator.cpp \
   qt/bitcoinamountfield.cpp \
+  qt/lockedmonthfield.cpp \
   qt/bitcoingui.cpp \
   qt/bitcoinunits.cpp \
   qt/clientmodel.cpp \
@@ -424,6 +473,7 @@ BITCOIN_QT_CPP += \
   qt/recentrequeststablemodel.cpp \
   qt/sendcoinsdialog.cpp \
   qt/sendcoinsentry.cpp \
+  qt/overviewentry.cpp \
   qt/signverifymessagedialog.cpp \
   qt/transactiondesc.cpp \
   qt/transactiondescdialog.cpp \
@@ -431,9 +481,27 @@ BITCOIN_QT_CPP += \
   qt/transactionrecord.cpp \
   qt/transactiontablemodel.cpp \
   qt/transactionview.cpp \
+  qt/candyview.cpp \
+  qt/candytablemodel.cpp \
+  qt/assetsdistributerecordview.cpp \
+  qt/assetsdistributerecordmodel.cpp \
+  qt/applicationsregistrecordview.cpp \
+  qt/applicationsregistrecordmodel.cpp \
+  qt/lockedtransactionview.cpp \
   qt/walletframe.cpp \
   qt/walletmodel.cpp \
   qt/walletmodeltransaction.cpp \
+  qt/titlebar.cpp \
+  qt/candypage.cpp \
+  qt/applicationsregistry.cpp \
+  qt/assetsdistribute.cpp \
+  qt/assetslogin.cpp \
+  qt/assetspage.cpp \
+  qt/applicationspage.cpp \
+  qt/framelesswidget.cpp \
+  qt/customslider.cpp \
+  qt/customlineedit.cpp \
+  qt/lockedtransactiontablemodel.cpp \
   qt/walletview.cpp
 endif
 

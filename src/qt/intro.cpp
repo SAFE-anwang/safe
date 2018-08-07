@@ -43,7 +43,6 @@ class FreespaceChecker : public QObject
 
 public:
     FreespaceChecker(Intro *intro);
-
     enum Status {
         ST_OK,
         ST_ERROR
@@ -125,6 +124,9 @@ Intro::Intro(QWidget *parent) :
     if (pruneTarget)
         requiredSpace = CHAIN_STATE_SIZE + std::ceil(pruneTarget * 1024 * 1024.0 / GB_BYTES);
     ui->sizeWarningLabel->setText(ui->sizeWarningLabel->text().arg(requiredSpace));
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Ok"));
+    ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("Cancel"));
+    setStyleSheet("font-size: 12px;");
     startThread();
 }
 

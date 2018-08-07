@@ -18,7 +18,14 @@
 #include "signverifymessagedialog.h"
 #include "transactiontablemodel.h"
 #include "transactionview.h"
+#include "lockedtransactionview.h"
 #include "walletmodel.h"
+#include "candypage.h"
+#include "candyview.h"
+#include "assetspage.h"
+#include "assetsdistributerecordview.h"
+#include "applicationsregistrecordview.h"
+#include "applicationspage.h"
 
 #include "ui_interface.h"
 
@@ -41,7 +48,9 @@ WalletView::WalletView(const PlatformStyle *platformStyle, QWidget *parent):
     // Create tabs
     overviewPage = new OverviewPage(platformStyle);
 
+    /****************** transaction history ******************/
     transactionsPage = new QWidget(this);
+    transactionsPage->setMouseTracking(true);
     QVBoxLayout *vbox = new QVBoxLayout();
     QHBoxLayout *hbox_buttons = new QHBoxLayout();
     transactionView = new TransactionView(platformStyle, this);
@@ -70,6 +79,37 @@ WalletView::WalletView(const PlatformStyle *platformStyle, QWidget *parent):
     vbox->addLayout(hbox_buttons);
     transactionsPage->setLayout(vbox);
 
+    /****************** locked transaction history ******************/
+    lockedTransactionsPage = new QWidget(this);
+    lockedTransactionsPage->setMouseTracking(true);
+    QVBoxLayout *vbox_locked = new QVBoxLayout();
+    QHBoxLayout *hbox_locked_buttons = new QHBoxLayout();
+    lockedTransactionView = new LockedTransactionView(platformStyle, this);
+    vbox_locked->addWidget(lockedTransactionView);
+    QPushButton *lockedExportButton = new QPushButton(tr("&Export"), this);
+    lockedExportButton->setToolTip(tr("Export the data in the current tab to a file"));
+    if (platformStyle->getImagesOnButtons()) {
+        QString theme = GUIUtil::getThemeName();
+        lockedExportButton->setIcon(QIcon(":/icons/" + theme + "/export"));
+    }
+    hbox_locked_buttons->addStretch();
+
+    // Sum of selected transactions
+    QLabel *lockedTransactionSumLabel = new QLabel(); // Label
+    lockedTransactionSumLabel->setObjectName("lockedTransactionSumLabel"); // Label ID as CSS-reference
+    lockedTransactionSumLabel->setText(tr("Selected amount:"));
+    hbox_locked_buttons->addWidget(lockedTransactionSumLabel);
+
+    lockedTransactionSum = new QLabel(); // Amount
+    lockedTransactionSum->setObjectName("lockedTransactionSum"); // Label ID as CSS-reference
+    lockedTransactionSum->setMinimumSize(200, 8);
+    lockedTransactionSum->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    hbox_locked_buttons->addWidget(lockedTransactionSum);
+
+    hbox_locked_buttons->addWidget(lockedExportButton);
+    vbox_locked->addLayout(hbox_locked_buttons);
+    lockedTransactionsPage->setLayout(vbox_locked);
+
     receiveCoinsPage = new ReceiveCoinsDialog(platformStyle);
     sendCoinsPage = new SendCoinsDialog(platformStyle);
 
@@ -78,8 +118,89 @@ WalletView::WalletView(const PlatformStyle *platformStyle, QWidget *parent):
 
     addWidget(overviewPage);
     addWidget(transactionsPage);
+    addWidget(lockedTransactionsPage);
     addWidget(receiveCoinsPage);
     addWidget(sendCoinsPage);
+
+    candyPage = new CandyPage;
+    candyView = new CandyView(platformStyle,this);
+    QVBoxLayout *candyHistoryLayout = new QVBoxLayout();
+    candyHistoryLayout->addWidget(candyView);
+    QPushButton *candyExportButton = new QPushButton(tr("&Export"), this);
+    candyExportButton->setToolTip(tr("Export the data in the current tab to a file"));
+    if (platformStyle->getImagesOnButtons()) {
+        QString theme = GUIUtil::getThemeName();
+        candyExportButton->setIcon(QIcon(":/icons/" + theme + "/export"));
+    }
+    QHBoxLayout *candy_hbox_buttons = new QHBoxLayout();
+    candy_hbox_buttons->addStretch();
+
+    // Sum of selected transactions
+    QLabel *candyTransactionSumLabel = new QLabel(); // Label
+    candyTransactionSumLabel->setObjectName("candyTransactionSumLabel"); // Label ID as CSS-reference
+    candyTransactionSumLabel->setText(tr("Selected amount:"));
+    candy_hbox_buttons->addWidget(candyTransactionSumLabel);
+
+    candyTransactionSum = new QLabel(); // Amount
+    candyTransactionSum->setObjectName("candyTransactionSum"); // Label ID as CSS-reference
+    candyTransactionSum->setMinimumSize(200, 8);
+    candyTransactionSum->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    candy_hbox_buttons->addWidget(candyTransactionSum);
+
+    candy_hbox_buttons->addWidget(candyExportButton);
+    candyHistoryLayout->addLayout(candy_hbox_buttons);
+    candyPage->setGetHistoryTabLayout(candyHistoryLayout);
+    addWidget(candyPage);
+
+    assetsPage = new AssetsPage;
+    // Tab Distribute Record
+    assetsDistributeRecordView = new AssetsDistributeRecordView(platformStyle,this);
+    QVBoxLayout *distributeLayout = new QVBoxLayout;
+    distributeLayout->addWidget(assetsDistributeRecordView);
+    QPushButton *assetsExportButton = new QPushButton(tr("&Export"), this);
+    assetsExportButton->setToolTip(tr("Export the data in the current tab to a file"));
+    if (platformStyle->getImagesOnButtons()) {
+        QString theme = GUIUtil::getThemeName();
+        assetsExportButton->setIcon(QIcon(":/icons/" + theme + "/export"));
+    }
+    QHBoxLayout *assets_hbox_buttons = new QHBoxLayout();
+    assets_hbox_buttons->addStretch();
+
+    // Sum of selected transactions
+    QLabel *assetsTransactionSumLabel = new QLabel(); // Label
+    assetsTransactionSumLabel->setObjectName("assetsTransactionSumLabel"); // Label ID as CSS-reference
+    assetsTransactionSumLabel->setText(tr("Selected amount:"));
+    assets_hbox_buttons->addWidget(assetsTransactionSumLabel);
+
+    assetsTransactionSum = new QLabel(); // Amount
+    assetsTransactionSum->setObjectName("assetsTransactionSum"); // Label ID as CSS-reference
+    assetsTransactionSum->setMinimumSize(200, 8);
+    assetsTransactionSum->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    assets_hbox_buttons->addWidget(assetsTransactionSum);
+
+    assets_hbox_buttons->addWidget(assetsExportButton);
+    distributeLayout->addLayout(assets_hbox_buttons);
+    assetsPage->setDistributeRecordLayout(distributeLayout);
+    addWidget(assetsPage);
+
+    applicationsPage = new ApplicationsPage;
+
+    //Tab Regist Record
+    applicationsView = new ApplicationsRegistRecordView(platformStyle,this);
+    QVBoxLayout *appLayout = new QVBoxLayout;
+    appLayout->addWidget(applicationsView);
+    QPushButton *appExportButton = new QPushButton(tr("&Export"), this);
+    appExportButton->setToolTip(tr("Export the data in the current tab to a file"));
+    if (platformStyle->getImagesOnButtons()) {
+        QString theme = GUIUtil::getThemeName();
+        appExportButton->setIcon(QIcon(":/icons/" + theme + "/export"));
+    }
+    QHBoxLayout *app_hbox_buttons = new QHBoxLayout();
+    app_hbox_buttons->addStretch();
+    app_hbox_buttons->addWidget(appExportButton);
+    appLayout->addLayout(app_hbox_buttons);
+    applicationsPage->setRegistRecordLayout(appLayout);
+    addWidget(applicationsPage);
 
     QSettings settings;
     if (settings.value("fShowMasternodesTab").toBool()) {
@@ -94,17 +215,63 @@ WalletView::WalletView(const PlatformStyle *platformStyle, QWidget *parent):
     // Double-clicking on a transaction on the transaction history page shows details
     connect(transactionView, SIGNAL(doubleClicked(QModelIndex)), transactionView, SLOT(showDetails()));
 
+    // Double-clicking on a transaction on the transaction history page shows details
+    connect(lockedTransactionView, SIGNAL(doubleClicked(QModelIndex)), lockedTransactionView, SLOT(showDetails()));
+
+    // Double-clicking on a candy on the candy page shows details
+    connect(candyView, SIGNAL(doubleClicked(QModelIndex)), candyView, SLOT(showDetails()));
+
+    // Double-clicking on a assets distribute record on the assets page shows details
+    connect(assetsDistributeRecordView,SIGNAL(doubleClicked(QModelIndex)),assetsDistributeRecordView,SLOT(showDetails()));
+
+    // Double-clicking on a assets distribute record on the assets page shows details
+    connect(applicationsView,SIGNAL(doubleClicked(QModelIndex)),applicationsView,SLOT(showDetails()));
+
     // Update wallet with sum of selected transactions
     connect(transactionView, SIGNAL(trxAmount(QString)), this, SLOT(trxAmount(QString)));
 
+    // Update wallet with sum of selected locked transactions
+    connect(lockedTransactionView, SIGNAL(trxAmount(QString)), this, SLOT(lockedTrxAmount(QString)));
+
+    // Update wallet with sum of selected assets distribute transactions
+    connect(assetsDistributeRecordView,SIGNAL(trxAmount(QString)),this,SLOT(assetsTrxAmount(QString)));
+
+    // Update wallet with sum of get candy transactions
+    connect(candyView,SIGNAL(trxAmount(QString)),this,SLOT(candyTrxAmount(QString)));
+
     // Clicking on "Export" allows to export the transaction list
     connect(exportButton, SIGNAL(clicked()), transactionView, SLOT(exportClicked()));
+
+    // Clicking on "Export" allows to export the locked transaction list
+    connect(lockedExportButton, SIGNAL(clicked()), lockedTransactionView, SLOT(exportClicked()));
+
+    // Clicking on "Export" allows to export the assets transaction list
+    connect(assetsExportButton,SIGNAL(clicked()),assetsDistributeRecordView,SLOT(exportClicked()));
+
+    // Clicking on "Export" allows to export the application registry list
+    connect(appExportButton,SIGNAL(clicked()),applicationsView,SLOT(exportClicked()));
+
+    // Clicking on "Export" allows to export the get candy list
+    connect(candyExportButton,SIGNAL(clicked()),candyView,SLOT(exportClicked()));
 
     // Pass through messages from sendCoinsPage
     connect(sendCoinsPage, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
 
     // Pass through messages from transactionView
     connect(transactionView, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
+
+    // Pass through messages from lockedTransactionView
+    connect(lockedTransactionView, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
+
+    // Pass through messages from candyView
+    connect(candyView, SIGNAL(message(QString,QString,unsigned int)), this, SIGNAL(message(QString,QString,unsigned int)));
+
+    // Pass through messages from distributeRecordView
+    connect(assetsDistributeRecordView,SIGNAL(message(QString,QString,uint)),this,SIGNAL(message(QString,QString,uint)));
+
+    // Pass through messages from distributeRecordView
+    connect(applicationsView,SIGNAL(message(QString,QString,uint)),this,SIGNAL(message(QString,QString,uint)));
+
 }
 
 WalletView::~WalletView()
@@ -125,7 +292,7 @@ void WalletView::setBitcoinGUI(BitcoinGUI *gui)
         connect(this, SIGNAL(encryptionStatusChanged(int)), gui, SLOT(setEncryptionStatus(int)));
 
         // Pass through transaction notifications
-        connect(this, SIGNAL(incomingTransaction(QString,int,CAmount,QString,QString,QString)), gui, SLOT(incomingTransaction(QString,int,CAmount,QString,QString,QString)));
+        connect(this, SIGNAL(incomingTransaction(QString,int,CAmount,QString,QString,QString,bool,QString,QString)), gui, SLOT(incomingTransaction(QString,int,CAmount,QString,QString,QString,bool,QString,QString)));
 
         // Connect HD enabled state signal
         connect(this, SIGNAL(hdEnabledStatusChanged(int)), gui, SLOT(setHDStatus(int)));
@@ -138,6 +305,9 @@ void WalletView::setClientModel(ClientModel *clientModel)
 
     overviewPage->setClientModel(clientModel);
     sendCoinsPage->setClientModel(clientModel);
+    receiveCoinsPage->setClientModel(clientModel);
+    candyPage->setClientModel(clientModel);
+    assetsPage->setClientModel(clientModel);
     QSettings settings;
     if (settings.value("fShowMasternodesTab").toBool()) {
         masternodeListPage->setClientModel(clientModel);
@@ -150,6 +320,10 @@ void WalletView::setWalletModel(WalletModel *walletModel)
 
     // Put transaction list in tabs
     transactionView->setModel(walletModel);
+    lockedTransactionView->setModel(walletModel);
+    candyView->setModel(walletModel);
+    assetsDistributeRecordView->setModel(walletModel);
+    applicationsView->setModel(walletModel);
     overviewPage->setWalletModel(walletModel);
     QSettings settings;
     if (settings.value("fShowMasternodesTab").toBool()) {
@@ -157,6 +331,9 @@ void WalletView::setWalletModel(WalletModel *walletModel)
     }
     receiveCoinsPage->setModel(walletModel);
     sendCoinsPage->setModel(walletModel);
+    assetsPage->setWalletModel(walletModel);
+    applicationsPage->setWalletModel(walletModel);
+    candyPage->setModel(walletModel);
     usedReceivingAddressesPage->setModel(walletModel->getAddressTableModel());
     usedSendingAddressesPage->setModel(walletModel->getAddressTableModel());
 
@@ -181,6 +358,50 @@ void WalletView::setWalletModel(WalletModel *walletModel)
 
         // Show progress dialog
         connect(walletModel, SIGNAL(showProgress(QString,int)), this, SLOT(showProgress(QString,int)));
+
+        //tx,issue assets
+        connect(walletModel->getLockedTransactionTableModel(),SIGNAL(updateAssets(int,bool,QString)),this,SLOT(updateAssetsInfo(int,bool,QString)));
+        connect(walletModel->getTransactionTableModel(),SIGNAL(updateAssets(int,bool,QString)),this,SLOT(updateAssetsInfo(int,bool,QString)));
+        connect(walletModel->getAssetsDistributeTableModel(),SIGNAL(updateAssets(int,bool,QString)),this,SLOT(updateAssetsInfo(int,bool,QString)));
+
+        connect(overviewPage,SIGNAL(testRefresh()),this,SLOT(updateAssetsDisplay()));
+
+        //update once
+        overviewPage->updateAssetsInfo();
+        receiveCoinsPage->updateAssetsInfo();
+        sendCoinsPage->updateAssetsInfo();
+        assetsPage->updateAssetsInfo();
+        candyPage->updateAssetsInfo();
+    }
+}
+
+void WalletView::updateAssetsDisplay()
+{
+    walletModel->getTransactionTableModel()->refreshWallet();
+    walletModel->getLockedTransactionTableModel()->refreshWallet();
+    walletModel->getAssetsDistributeTableModel()->refreshWallet();
+    walletModel->getCandyTableModel()->refreshWallet();
+    updateAssetsInfo(SHOW_ALL);
+}
+
+void WalletView::updateAssetsInfo(int showType, bool bConfirmedNewAssets, const QString &strAssetName)
+{
+    if(showType==SHOW_APPLICATION_REGIST)
+        return;
+
+    bool bShowAll = showType==SHOW_ALL;
+
+    overviewPage->updateAssetsInfo(strAssetName);
+
+    if(bShowAll)
+        receiveCoinsPage->updateAssetsInfo();
+
+    //only issue asset,update the add asset combox and put candy combox
+    if(bConfirmedNewAssets||bShowAll)
+    {
+        sendCoinsPage->updateAssetsInfo();
+        assetsPage->updateAssetsInfo();
+        candyPage->updateAssetsInfo();
     }
 }
 
@@ -194,14 +415,21 @@ void WalletView::processNewTransaction(const QModelIndex& parent, int start, int
     if (!ttm || ttm->processingQueuedTransactions())
         return;
 
-    QString date = ttm->index(start, TransactionTableModel::Date, parent).data().toString();
-    qint64 amount = ttm->index(start, TransactionTableModel::Amount, parent).data(Qt::EditRole).toULongLong();
-    QString type = ttm->index(start, TransactionTableModel::Type, parent).data().toString();
+    QString date = ttm->index(start, TransactionTableModel::TransactionColumnDate, parent).data().toString();
+    qint64 amount = ttm->index(start, TransactionTableModel::TransactionColumnAmount, parent).data(Qt::EditRole).toULongLong();
+    QString type = ttm->index(start, TransactionTableModel::TransactionColumnType, parent).data().toString();
     QModelIndex index = ttm->index(start, 0, parent);
     QString address = ttm->data(index, TransactionTableModel::AddressRole).toString();
     QString label = ttm->data(index, TransactionTableModel::LabelRole).toString();
-
-    Q_EMIT incomingTransaction(date, walletModel->getOptionsModel()->getDisplayUnit(), amount, type, address, label);
+    bool bSAFETransaction = ttm->data(index,TransactionTableModel::SAFERole).toBool();
+    QString strAssetUnit = ttm->data(index,TransactionTableModel::AmountUnitRole).toString();
+    QString strAssetName =  ttm->data(index,TransactionTableModel::AssetsNameRole).toString();
+    int unit = 0;
+    if(bSAFETransaction)
+        unit = walletModel->getOptionsModel()->getDisplayUnit();
+    else
+        unit = ttm->data(index,TransactionTableModel::AssetsDecimalsRole).toInt();
+    Q_EMIT incomingTransaction(date, unit, amount, type, address, label,bSAFETransaction,strAssetUnit,strAssetName);
 }
 
 void WalletView::gotoOverviewPage()
@@ -212,6 +440,26 @@ void WalletView::gotoOverviewPage()
 void WalletView::gotoHistoryPage()
 {
     setCurrentWidget(transactionsPage);
+}
+
+void WalletView::gotoLockedHistoryPage()
+{
+    setCurrentWidget(lockedTransactionsPage);
+}
+
+void WalletView::gotoAssetsPage()
+{
+    setCurrentWidget(assetsPage);
+}
+
+void WalletView::gotoApplicationPage()
+{
+    setCurrentWidget(applicationsPage);
+}
+
+void WalletView::gotoCandyPage()
+{
+    setCurrentWidget(candyPage);
 }
 
 void WalletView::gotoMasternodePage()
@@ -385,4 +633,22 @@ void WalletView::requestedSyncWarningInfo()
 void WalletView::trxAmount(QString amount)
 {
     transactionSum->setText(amount);
+}
+
+/** Update wallet with the sum of the selected locked transactions */
+void WalletView::lockedTrxAmount(QString amount)
+{
+    lockedTransactionSum->setText(amount);
+}
+
+/** Update selected Assets amount from assetstransactionview */
+void WalletView::assetsTrxAmount(QString amount)
+{
+    assetsTransactionSum->setText(amount);
+}
+
+/** Update selected Candy amount from candytransactionview */
+void WalletView::candyTrxAmount(QString amount)
+{
+    candyTransactionSum->setText(amount);
 }

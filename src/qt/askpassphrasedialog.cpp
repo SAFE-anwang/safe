@@ -38,6 +38,13 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
     ui->passEdit2->installEventFilter(this);
     ui->passEdit3->installEventFilter(this);
 
+    ui->passEdit1->setContextMenuPolicy(Qt::NoContextMenu);
+    ui->passEdit1->setEchoMode(QLineEdit::Password);
+    ui->passEdit2->setContextMenuPolicy(Qt::NoContextMenu);
+    ui->passEdit2->setEchoMode(QLineEdit::Password);
+    ui->passEdit3->setContextMenuPolicy(Qt::NoContextMenu);
+    ui->passEdit3->setEchoMode(QLineEdit::Password);
+
     switch(mode)
     {
         case Encrypt: // Ask passphrase x2
@@ -74,6 +81,10 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
     connect(ui->passEdit1, SIGNAL(textChanged(QString)), this, SLOT(textChanged()));
     connect(ui->passEdit2, SIGNAL(textChanged(QString)), this, SLOT(textChanged()));
     connect(ui->passEdit3, SIGNAL(textChanged(QString)), this, SLOT(textChanged()));
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Ok"));
+    ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("Cancel"));
+    msgbox = new QMessageBox(QMessageBox::Information, tr("Encrypting wallet, please wait."), tr("Encrypting the wallet, this may take a few minutes to complete, please be patient."));
+    msgbox->setStandardButtons(QMessageBox::NoButton);
 }
 
 AskPassphraseDialog::~AskPassphraseDialog()
@@ -111,35 +122,26 @@ void AskPassphraseDialog::accept()
             // Cannot encrypt with empty passphrase
             break;
         }
-        QMessageBox::StandardButton retval = QMessageBox::question(this, tr("Confirm wallet encryption"),
-                 tr("Warning: If you encrypt your wallet and lose your passphrase, you will <b>LOSE ALL OF YOUR SAFE</b>!") + "<br><br>" + tr("Are you sure you wish to encrypt your wallet?"),
-                 QMessageBox::Yes|QMessageBox::Cancel,
-                 QMessageBox::Cancel);
-        if(retval == QMessageBox::Yes)
+        QMessageBox box(QMessageBox::Question,  tr("Confirm wallet encryption"),
+                        tr("Warning: If you encrypt your wallet and lose your passphrase, you will <b>LOSE ALL OF YOUR SAFE</b>!") +
+                        "<br><br>" + tr("Are you sure you wish to encrypt your wallet?"));
+        QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
+        box.addButton(tr("Cancel"),QMessageBox::NoRole);
+        box.exec();
+        if ((QPushButton*)box.clickedButton() == okButton)
         {
             if(newpass1 == newpass2)
             {
-                if(model->setWalletEncrypted(true, newpass1))
-                {
-                    QMessageBox::warning(this, tr("Wallet encrypted"),
-                                         "<qt>" +
-                                         tr("Safe Core will close now to finish the encryption process. "
-                                         "Remember that encrypting your wallet cannot fully protect "
-                                         "your safes from being stolen by malware infecting your computer.") +
-                                         "<br><br><b>" +
-                                         tr("IMPORTANT: Any previous backups you have made of your wallet file "
-                                         "should be replaced with the newly generated, encrypted wallet file. "
-                                         "For security reasons, previous backups of the unencrypted wallet file "
-                                         "will become useless as soon as you start using the new, encrypted wallet.") +
-                                         "</b></qt>");
-                    QApplication::quit();
-                }
-                else
-                {
-                    QMessageBox::critical(this, tr("Wallet encryption failed"),
-                                         tr("Wallet encryption failed due to an internal error. Your wallet was not encrypted."));
-                }
-                QDialog::accept(); // Success
+                //Put the encryption operation into the thread to prevent the main thread from being suspended.
+                EncryptWorker *eptWorker = new EncryptWorker(this, model, newpass1);
+                eptWorker->moveToThread(&encryThread);
+                connect(this, SIGNAL(runEncrypt()), eptWorker, SLOT(doEncrypt()));
+                connect(&encryThread, &QThread::finished, eptWorker, &QObject::deleteLater);
+                connect(eptWorker, SIGNAL(resultReady(const bool)), this, SLOT(handlerEncryptResult(const bool)));
+                encryThread.start();
+
+                Q_EMIT runEncrypt();
+                msgbox->exec();
             }
             else
             {
@@ -181,7 +183,7 @@ void AskPassphraseDialog::accept()
             if(model->changePassphrase(oldpass, newpass1))
             {
                 QMessageBox::information(this, tr("Wallet encrypted"),
-                                     tr("Wallet passphrase was successfully changed."));
+                                         tr("Wallet passphrase was successfully changed."),tr("Ok"));
                 QDialog::accept(); // Success
             }
             else
@@ -276,3 +278,33 @@ void AskPassphraseDialog::secureClearPassFields()
     SecureClearQLineEdit(ui->passEdit2);
     SecureClearQLineEdit(ui->passEdit3);
 }
+
+void AskPassphraseDialog::handlerEncryptResult(const bool result)
+{
+    if (!msgbox->close())
+        msgbox->hide();
+
+    if(result)
+    {
+        QMessageBox::warning(this, tr("Wallet encrypted"),
+                             "<qt>" +
+                             tr("Safe Core will close now to finish the encryption process. "
+                                "Remember that encrypting your wallet cannot fully protect "
+                                "your safes from being stolen by malware infecting your computer.") +
+                             "<br><br><b>" +
+                             tr("IMPORTANT: Any previous backups you have made of your wallet file "
+                                "should be replaced with the newly generated, encrypted wallet file. "
+                                "For security reasons, previous backups of the unencrypted wallet file "
+                                "will become useless as soon as you start using the new, encrypted wallet.") +
+                             "</b></qt>",tr("Ok"));
+
+        QApplication::quit();
+    }
+    else
+    {
+        QMessageBox::critical(this, tr("Wallet encryption failed"),
+                              tr("Wallet encryption failed due to an internal error. Your wallet was not encrypted."));
+    }
+    QDialog::accept(); // Success
+}
+

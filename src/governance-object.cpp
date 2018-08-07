@@ -455,6 +455,8 @@ bool CGovernanceObject::IsValidLocally(std::string& strError, bool& fMissingMast
                     strError = "Failed to find Masternode UTXO, missing masternode=" + strOutpoint + "\n";
                 } else if (err == CMasternode::COLLATERAL_INVALID_AMOUNT) {
                     strError = "Masternode UTXO should have 1000 SAFE, missing masternode=" + strOutpoint + "\n";
+                } else if (err == CMasternode::COLLATERAL_INVALID_LOCKED_MONTH) {
+                    strError = "Masternode UTXO should be locked 6 months at least, missing masternode=" + strOutpoint + "\n";
                 }
 
                 return false;

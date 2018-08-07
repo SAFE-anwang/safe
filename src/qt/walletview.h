@@ -18,8 +18,15 @@ class ReceiveCoinsDialog;
 class SendCoinsDialog;
 class SendCoinsRecipient;
 class TransactionView;
+class LockedTransactionView;
 class WalletModel;
 class AddressBookPage;
+class CandyView;
+class CandyPage;
+class AssetsPage;
+class ApplicationsPage;
+class AssetsDistributeRecordView;
+class ApplicationsRegistRecordView;
 
 QT_BEGIN_NAMESPACE
 class QLabel;
@@ -62,16 +69,27 @@ private:
 
     OverviewPage *overviewPage;
     QWidget *transactionsPage;
+    QWidget *lockedTransactionsPage;
     ReceiveCoinsDialog *receiveCoinsPage;
     SendCoinsDialog *sendCoinsPage;
     AddressBookPage *usedSendingAddressesPage;
     AddressBookPage *usedReceivingAddressesPage;
+    CandyPage *candyPage;
+    ApplicationsPage *applicationsPage;
+    AssetsPage *assetsPage;
     MasternodeList *masternodeListPage;
 
+    CandyView* candyView;
+    AssetsDistributeRecordView* assetsDistributeRecordView;
+    ApplicationsRegistRecordView* applicationsView;
     TransactionView *transactionView;
+    LockedTransactionView *lockedTransactionView;
 
     QProgressDialog *progressDialog;
     QLabel *transactionSum;
+    QLabel *lockedTransactionSum;
+    QLabel *assetsTransactionSum;
+    QLabel *candyTransactionSum;
     const PlatformStyle *platformStyle;
 
 public Q_SLOTS:
@@ -79,6 +97,14 @@ public Q_SLOTS:
     void gotoOverviewPage();
     /** Switch to history (transactions) page */
     void gotoHistoryPage();
+    /** Switch to locked history (transactions) page */
+    void gotoLockedHistoryPage();
+    /** Switch to asset disttribution page */
+    void gotoAssetsPage();
+    /** Switch to application page */
+    void gotoApplicationPage();
+    /** Switch to candy page */
+    void gotoCandyPage();
     /** Switch to masternode page */
     void gotoMasternodePage();
     /** Switch to receive coins page */
@@ -124,6 +150,20 @@ public Q_SLOTS:
 
     /** Update selected SAFE amount from transactionview */
     void trxAmount(QString amount);
+
+    /** Update selected SAFE amount from lockedtransactionview */
+    void lockedTrxAmount(QString amount);
+
+    /** Update selected Assets amount from assetstransactionview */
+    void assetsTrxAmount(QString amount);
+
+    /** Update selected Candy amount from candytransactionview */
+    void candyTrxAmount(QString amount);
+
+    /** Update assets names*/
+    void updateAssetsInfo(int showType,bool bConfirmedNewAssets=false,const QString& strAssetName="");
+
+    void updateAssetsDisplay();
 Q_SIGNALS:
     /** Signal that we want to show the main window */
     void showNormalIfMinimized();
@@ -134,7 +174,8 @@ Q_SIGNALS:
     /** HD-Enabled status of wallet changed (only possible during startup) */
     void hdEnabledStatusChanged(int hdEnabled);
     /** Notify that a new transaction appeared */
-    void incomingTransaction(const QString& date, int unit, const CAmount& amount, const QString& type, const QString& address, const QString& label);
+    void incomingTransaction(const QString& date, int unit, const CAmount& amount, const QString& type, const QString& address,
+                             const QString& label,bool fAsset,const QString& strAssetUnit,const QString& strAssetName);
     /** Notify that the out of sync warning icon has been pressed */
     void outOfSyncWarningClicked();
 };

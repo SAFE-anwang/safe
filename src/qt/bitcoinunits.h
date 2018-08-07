@@ -80,25 +80,25 @@ public:
     //! Is unit ID valid?
     static bool valid(int unit);
     //! Short name
-    static QString name(int unit);
+    static QString name(int unit,bool fAssets=false,const QString& strUnit="");
     //! Longer description
     static QString description(int unit);
     //! Number of Satoshis (1e-8) per unit
-    static qint64 factor(int unit);
+    static qint64 factor(int unit,bool fAssets=false);
     //! Number of decimals left
-    static int decimals(int unit);
+    static int decimals(int unit,bool fAssets=false);
     //! Format as string
-    static QString format(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
+    static QString format(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard,bool fAsset=false);
     static QString simpleFormat(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
     //! Format as string (with unit)
-    static QString formatWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
+    static QString formatWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard,bool fAsset=false,const QString& strUnit="");
     //! Format as HTML string (with unit)
-    static QString formatHtmlWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
+    static QString formatHtmlWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard,bool fAsset=false,const QString& strUnit="");
     //! Format as string (with unit) but floor value up to "digits" settings
     static QString floorWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
     static QString floorHtmlWithUnit(int unit, const CAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
     //! Parse string to coin amount
-    static bool parse(int unit, const QString &value, CAmount *val_out);
+    static bool parse(int unit, const QString &value, CAmount *val_out,bool fAssets=false);
     //! Gets title for amount column including current display unit if optionsModel reference available */
     static QString getAmountColumnTitle(int unit);
     ///@}
@@ -126,6 +126,9 @@ public:
 
     //! Return maximum number of base units (Satoshis)
     static CAmount maxMoney();
+
+    //! Return maximum number of assets
+    static CAmount maxAssets();
 
 private:
     QList<BitcoinUnits::Unit> unitlist;

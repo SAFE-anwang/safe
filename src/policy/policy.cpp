@@ -105,7 +105,7 @@ bool IsStandardTx(const CTransaction& tx, std::string& reason)
         else if ((whichType == TX_MULTISIG) && (!fIsBareMultisigStd)) {
             reason = "bare-multisig";
             return false;
-        } else if (txout.IsDust(::minRelayTxFee)) {
+        } else if (!txout.IsAsset() && txout.IsDust(::minRelayTxFee)) {
             reason = "dust";
             return false;
         }

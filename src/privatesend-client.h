@@ -41,7 +41,7 @@ private:
     std::vector<COutPoint> vecMasternodesUsed;
 
     std::vector<CAmount> vecDenominationsSkipped;
-    std::vector<COutPoint> vecOutPointLocked;
+    std::vector<COutPoint> vecOutPointFrozen;
 
     int nCachedLastSuccessBlock;
     int nMinBlocksToWait; // how many blocks to wait after one successful mixing tx in non-multisession mode
@@ -132,7 +132,7 @@ public:
 
     void ResetPool();
 
-    void UnlockCoins();
+    void UnfreezeCoins();
 
     std::string GetStatus();
 

@@ -50,6 +50,11 @@ src/qt/forms/ui_*.h
 src/qt/test/moc*.cpp
 libconftest.dylib*
 
+*.pro
+*.user
+*.autosave
+*.bak
+
 .deps
 .dirstamp
 .libs

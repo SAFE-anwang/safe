@@ -18,6 +18,7 @@
 #include <QPoint>
 #include <QPushButton>
 #include <QSystemTrayIcon>
+#include "framelesswidget.h"
 
 class ClientModel;
 class NetworkStyle;
@@ -32,7 +33,7 @@ class WalletModel;
 class HelpMessageDialog;
 class ModalOverlay;
 class MasternodeList;
-
+class TitleBar;
 class CWallet;
 
 QT_BEGIN_NAMESPACE
@@ -45,7 +46,7 @@ QT_END_NAMESPACE
   Bitcoin GUI main class. This class represents the main window of the Bitcoin UI. It communicates with both the client and
   wallet models to give the user an up-to-date view of the current core state.
 */
-class BitcoinGUI : public QMainWindow
+class BitcoinGUI : public FramelessWidget
 {
     Q_OBJECT
 
@@ -69,6 +70,8 @@ public:
     bool addWallet(const QString& name, WalletModel *walletModel);
     bool setCurrentWallet(const QString& name);
     void removeAllWallets();
+    void updateCentralTitle(const QString& title);
+    //void handleResize();
 #endif // ENABLE_WALLET
     bool enableWallet;
 
@@ -79,11 +82,13 @@ protected:
     void dragEnterEvent(QDragEnterEvent *event);
     void dropEvent(QDropEvent *event);
     bool eventFilter(QObject *object, QEvent *event);
+    virtual void  keyPressEvent(QKeyEvent *);
 
 private:
     ClientModel *clientModel;
     WalletFrame *walletFrame;
 
+    QLabel *labelCopyRight;
     UnitDisplayStatusBarControl *unitDisplayControl;
     QLabel *labelEncryptionIcon;
     QLabel *labelWalletHDStatusIcon;
@@ -92,11 +97,16 @@ private:
     QLabel *progressBarLabel;
     QProgressBar *progressBar;
     QProgressDialog *progressDialog;
+    TitleBar *titlebar;
 
     QMenuBar *appMenuBar;
     QAction *overviewAction;
     QAction *historyAction;
+    QAction *lockedHistoryAction;
     QAction *masternodeAction;
+    QAction *assetsAction;
+    QAction *applicationsAction;
+    QAction *candyAction;
     QAction *quitAction;
     QAction *sendCoinsAction;
     QAction *sendCoinsMenuAction;
@@ -126,6 +136,7 @@ private:
     QAction *openAction;
     QAction *showHelpMessageAction;
     QAction *showPrivateSendHelpAction;
+    QLabel* centralTitleLabel;
 
     QSystemTrayIcon *trayIcon;
     QMenu *trayIconMenu;
@@ -134,6 +145,7 @@ private:
     RPCConsole *rpcConsole;
     HelpMessageDialog *helpMessageDialog;
     ModalOverlay *modalOverlay;
+    bool bUpdateAssetsDisplay;
 
     /** Keep track of previous number of blocks, to detect progress */
     int prevBlocks;
@@ -143,6 +155,8 @@ private:
 
     /** Create the main UI actions. */
     void createActions();
+
+    void createTitleBar();
     /** Create the menu bar and sub-menus. */
     void createMenuBar();
     /** Create the toolbars */
@@ -208,7 +222,8 @@ public Q_SLOTS:
     bool handlePaymentRequest(const SendCoinsRecipient& recipient);
 
     /** Show incoming transaction notification for new transactions. */
-    void incomingTransaction(const QString& date, int unit, const CAmount& amount, const QString& type, const QString& address, const QString& label);
+    void incomingTransaction(const QString& date, int unit, const CAmount& amount, const QString& type, const QString& address, const QString& label,
+                             bool bSAFETransaction,const QString& strAssetUnit,const QString& strAssetName);
 #endif // ENABLE_WALLET
 
 private Q_SLOTS:
@@ -217,6 +232,14 @@ private Q_SLOTS:
     void gotoOverviewPage();
     /** Switch to history (transactions) page */
     void gotoHistoryPage();
+    /** Switch to locked history (transactions) page */
+    void gotoLockedHistoryPage();
+    /** Switch to asset disttribution page */
+    void gotoAssetsPage();
+    /** Switch to application page */
+    void gotoApplicationPage();
+    /** Switch to candy page */
+    void gotoCandyPage();
     /** Switch to masternode page */
     void gotoMasternodePage();
     /** Switch to receive coins page */
@@ -280,6 +303,11 @@ private Q_SLOTS:
     void toggleNetworkActive();
 
     void showModalOverlay();
+
+    void onMinButtonClicked();
+    void onRestoreButtonClicked();
+    void onMaxButtonClicked();
+    void onCloseButtonClicked();
 };
 
 class UnitDisplayStatusBarControl : public QLabel

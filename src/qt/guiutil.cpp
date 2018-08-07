@@ -58,6 +58,7 @@
 #include <QTextDocument> // for Qt::mightBeRichText
 #include <QThread>
 #include <QMouseEvent>
+#include "guiconstants.h"
 
 #if QT_VERSION < 0x050000
 #include <QUrl>
@@ -83,11 +84,37 @@ extern double NSAppKitVersionNumber;
 #endif
 #endif
 
+int gToolBarWidth = 0;
+int gBaseFontSize = 13;
+CAmount gFilterAmountMaxNum = 99999999999999;//safe or asset
+QString gStrSafe = "SAFE";
+bool gInitByDefault = false;
+
 namespace GUIUtil {
+
+bool invalidInput(QLineEdit *edit)
+{
+    QString text = edit->text().trimmed();
+    if(text.isEmpty())
+    {
+        edit->setStyleSheet(STYLE_INVALID);
+        return true;
+    }
+    edit->setStyleSheet("");
+    return false;
+}
+
+void setValidInput(QLineEdit *edit, bool valid)
+{
+    if(valid)
+        edit->setStyleSheet("");
+    else
+        edit->setStyleSheet(STYLE_INVALID);
+}
 
 QString dateTimeStr(const QDateTime &date)
 {
-    return date.date().toString(Qt::SystemLocaleShortDate) + QString(" ") + date.toString("hh:mm");
+    return date.toString("yyyy/MM/dd hh:mm:ss");
 }
 
 QString dateTimeStr(qint64 nTime)
@@ -98,7 +125,8 @@ QString dateTimeStr(qint64 nTime)
 QFont fixedPitchFont()
 {
 #if QT_VERSION >= 0x50200
-    return QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    return QFont(QStringLiteral("Microsoft YaHei"));
+    //return QFontDatabase::systemFont(QFontDatabase::FixedFont);
 #else
     QFont font("Monospace");
 #if QT_VERSION >= 0x040800
@@ -155,6 +183,8 @@ bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
 #endif
     
     rv.fUseInstantSend = false;
+    rv.strAssetName = gStrSafe;
+    QString strAmount = "";
     for (QList<QPair<QString, QString> >::iterator i = items.begin(); i != items.end(); i++)
     {
         bool fShouldReturnFalse = false;
@@ -185,16 +215,43 @@ bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
         {
             if(!i->second.isEmpty())
             {
-                if(!BitcoinUnits::parse(BitcoinUnits::SAFE, i->second, &rv.amount))
-                {
-                    return false;
-                }
+                strAmount = i->second;
             }
             fShouldReturnFalse = false;
+        }
+        if(i->first == "assetName")
+        {
+            if(!i->second.isEmpty())
+            {
+                rv.strAssetName = i->second;
+                rv.fAsset = true;
+            }
         }
 
         if (fShouldReturnFalse)
             return false;
+    }
+    if(!strAmount.isEmpty())
+    {
+        if(!rv.fAsset)
+        {
+            if(!BitcoinUnits::parse(BitcoinUnits::SAFE, strAmount, &rv.amount))
+            {
+                return false;
+            }
+        }else
+        {
+            rv.strAssetAmount = strAmount;
+            QStringList lst = strAmount.split(".");
+            if(lst.size()>1)
+            {
+                rv.assetDecimal = lst[1].size();
+                if(!BitcoinUnits::parse(rv.assetDecimal,strAmount,&rv.amount,true))
+                {
+                    return false;
+                }
+            }
+        }
     }
     if(out)
     {
@@ -224,7 +281,10 @@ QString formatBitcoinURI(const SendCoinsRecipient &info)
 
     if (info.amount)
     {
-        ret += QString("?amount=%1").arg(BitcoinUnits::format(BitcoinUnits::SAFE, info.amount, false, BitcoinUnits::separatorNever));
+        if(info.fAsset)
+            ret += QString("?amount=%1").arg(BitcoinUnits::format(info.assetDecimal,info.amount,false,BitcoinUnits::separatorNever,true));
+        else
+            ret += QString("?amount=%1").arg(BitcoinUnits::format(BitcoinUnits::SAFE, info.amount, false, BitcoinUnits::separatorNever));
         paramCount++;
     }
 
@@ -245,6 +305,13 @@ QString formatBitcoinURI(const SendCoinsRecipient &info)
     if(info.fUseInstantSend)
     {
         ret += QString("%1IS=1").arg(paramCount == 0 ? "?" : "&");
+        paramCount++;
+    }
+
+    if(info.fAsset)
+    {
+        QString assetName(QUrl::toPercentEncoding(info.strAssetName));
+        ret += QString("%1assetName=%2").arg(paramCount == 0 ? "?" : "&").arg(assetName);
         paramCount++;
     }
 
@@ -586,6 +653,7 @@ void TableViewLastColumnResizingFixer::stretchColumnWidth(int column)
 {
     disconnectViewHeadersSignals();
     resizeColumn(column, getAvailableWidthForColumn(column));
+    secondToLastColumnIndex = column;
     connectViewHeadersSignals();
 }
 
@@ -1036,7 +1104,10 @@ QString formatNiceTimeOffset(qint64 secs)
     const int YEAR_IN_SECONDS = 31556952; // Average length of year in Gregorian calendar
     if(secs < 60)
     {
+        if(secs<0)
+            secs = -secs;
         timeBehindText = QObject::tr("%n second(s)","",secs);
+        //timeBehindText = QObject::tr("%1 second(s)").arg(QString::number(secs));
     }
     else if(secs < 2*HOUR_IN_SECONDS)
     {
@@ -1066,11 +1137,13 @@ QString formatNiceTimeOffset(qint64 secs)
 void ClickableLabel::mouseReleaseEvent(QMouseEvent *event)
 {
     Q_EMIT clicked(event->pos());
+    QLabel::mouseReleaseEvent(event);
 }
     
 void ClickableProgressBar::mouseReleaseEvent(QMouseEvent *event)
 {
     Q_EMIT clicked(event->pos());
+    QProgressBar::mouseReleaseEvent(event);
 }
 
 } // namespace GUIUtil

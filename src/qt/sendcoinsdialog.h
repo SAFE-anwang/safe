@@ -8,7 +8,10 @@
 #include "walletmodel.h"
 
 #include <QDialog>
+#include <QMap>
 #include <QString>
+#include <QCompleter>
+#include <QStringListModel>
 
 static const int MAX_SEND_POPUP_ENTRIES = 10;
 
@@ -47,15 +50,16 @@ public:
     void setAddress(const QString &address);
     void pasteEntry(const SendCoinsRecipient &rv);
     bool handlePaymentRequest(const SendCoinsRecipient &recipient);
+    void updateAssetsInfo();
 
 public Q_SLOTS:
     void clear();
     void reject();
     void accept();
-    SendCoinsEntry *addEntry();
+    SendCoinsEntry *addEntry(bool showLocked=false);
     void updateTabsAndLabels();
-    void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& anonymizedBalance,
-                    const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
+    void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& lockedBalance, const CAmount& anonymizedBalance,
+                    const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance);
 
 private:
     Ui::SendCoinsDialog *ui;
@@ -64,7 +68,12 @@ private:
     bool fNewRecipientAllowed;
     void send(QList<SendCoinsRecipient> recipients, QString strFee, QString strFunds);
     bool fFeeMinimized;
+    bool fAssets;
+    int nAssetsDecimals;
+    QString strAssetsUnit;
     const PlatformStyle *platformStyle;
+    QCompleter* completer;
+    QStringListModel* stringListModel;
 
     // Process WalletModel::SendCoinsReturn and generate a pair consisting
     // of a message and message flags for use in Q_EMIT message().
@@ -97,6 +106,7 @@ private Q_SLOTS:
     void updateMinFeeLabel();
     void updateSmartFeeLabel();
     void updateGlobalFeeVariables();
+    void updateCurrentAsset(const QString&);
 
 Q_SIGNALS:
     // Fired when a message should be reported to the user

@@ -6,6 +6,9 @@
 #define BITCOIN_QT_ASKPASSPHRASEDIALOG_H
 
 #include <QDialog>
+#include <QThread>
+#include <QMessageBox>
+#include "walletmodel.h"
 
 class WalletModel;
 
@@ -40,14 +43,23 @@ private:
     Mode mode;
     WalletModel *model;
     bool fCapsLock;
+    QThread encryThread;
+    QMessageBox *msgbox;
 
 private Q_SLOTS:
     void textChanged();
     void secureClearPassFields();
 
+public Q_SLOTS:
+    void handlerEncryptResult(const bool result);
+
 protected:
     bool event(QEvent *event);
     bool eventFilter(QObject *object, QEvent *event);
+
+Q_SIGNALS:
+    void runEncrypt();
+
 };
 
 #endif // BITCOIN_QT_ASKPASSPHRASEDIALOG_H

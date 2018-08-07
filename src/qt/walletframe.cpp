@@ -12,21 +12,24 @@
 #include <QHBoxLayout>
 #include <QLabel>
 
+extern bool fGetCandyInfoStart;
+
 WalletFrame::WalletFrame(const PlatformStyle *platformStyle, BitcoinGUI *_gui) :
     QFrame(_gui),
     gui(_gui),
     platformStyle(platformStyle)
 {
     // Leave HBox hook for adding a list view later
-    QHBoxLayout *walletFrameLayout = new QHBoxLayout(this);
+    QVBoxLayout *walletFrameLayout = new QVBoxLayout(this);
     setContentsMargins(0,0,0,0);
     walletStack = new QStackedWidget(this);
+    walletStack->setMouseTracking(true);
     walletFrameLayout->setContentsMargins(0,0,0,0);
     walletFrameLayout->addWidget(walletStack);
-
     QLabel *noWallet = new QLabel(tr("No wallet has been loaded."));
     noWallet->setAlignment(Qt::AlignCenter);
     walletStack->addWidget(noWallet);
+    setMouseTracking(true);
 }
 
 WalletFrame::~WalletFrame()
@@ -48,6 +51,7 @@ bool WalletFrame::addWallet(const QString& name, WalletModel *walletModel)
     walletView->setClientModel(clientModel);
     walletView->setWalletModel(walletModel);
     walletView->showOutOfSyncWarning(bOutOfSync);
+    walletView->setMouseTracking(true);
 
      /* TODO we should goto the currently selected page once dynamically adding wallets is supported */
     walletView->gotoOverviewPage();
@@ -108,39 +112,106 @@ void WalletFrame::showOutOfSyncWarning(bool fShow)
         i.value()->showOutOfSyncWarning(fShow);
 }
 
+bool WalletFrame::updateAssetsDisplay()
+{
+    WalletView* walletView = currentWalletView();
+    if(walletView)
+    {
+        walletView->updateAssetsDisplay();
+        fGetCandyInfoStart = true;
+        return true;
+    }
+    return false;
+}
+
 void WalletFrame::gotoOverviewPage()
 {
     QMap<QString, WalletView*>::const_iterator i;
     for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+    {
+        gui->updateCentralTitle(tr("Overview"));
         i.value()->gotoOverviewPage();
+    }
 }
 
 void WalletFrame::gotoHistoryPage()
 {
     QMap<QString, WalletView*>::const_iterator i;
     for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+    {
+        gui->updateCentralTitle(tr("Transactions"));
         i.value()->gotoHistoryPage();
+    }
+}
+
+void WalletFrame::gotoLockedHistoryPage()
+{
+    QMap<QString, WalletView*>::const_iterator i;
+    for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+    {
+        gui->updateCentralTitle(tr("Locked"));
+        i.value()->gotoLockedHistoryPage();
+    }
+}
+
+void WalletFrame::gotoAssetsPage()
+{
+    QMap<QString, WalletView*>::const_iterator i;
+    for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+    {
+        gui->updateCentralTitle(tr("Assets"));
+        i.value()->gotoAssetsPage();
+    }
+}
+
+void WalletFrame::gotoApplicationPage()
+{
+    QMap<QString, WalletView*>::const_iterator i;
+    for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+    {
+        gui->updateCentralTitle(tr("Applications"));
+        i.value()->gotoApplicationPage();
+    }
+}
+
+void WalletFrame::gotoCandyPage()
+{
+    QMap<QString, WalletView*>::const_iterator i;
+    for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+    {
+        gui->updateCentralTitle(tr("Candy"));
+        i.value()->gotoCandyPage();
+    }
 }
 
 void WalletFrame::gotoMasternodePage()
 {
     QMap<QString, WalletView*>::const_iterator i;
     for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+    {
+        gui->updateCentralTitle(tr("Masternodes"));
         i.value()->gotoMasternodePage();
+    }
 }
 
 void WalletFrame::gotoReceiveCoinsPage()
 {
     QMap<QString, WalletView*>::const_iterator i;
     for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+    {
+        gui->updateCentralTitle(tr("Receive"));
         i.value()->gotoReceiveCoinsPage();
+    }
 }
 
 void WalletFrame::gotoSendCoinsPage(QString addr)
 {
     QMap<QString, WalletView*>::const_iterator i;
     for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+    {
+        gui->updateCentralTitle(tr("Send"));
         i.value()->gotoSendCoinsPage(addr);
+    }
 }
 
 void WalletFrame::gotoSignMessageTab(QString addr)

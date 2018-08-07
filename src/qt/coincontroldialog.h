@@ -21,6 +21,8 @@ class WalletModel;
 
 class CCoinControl;
 class CTxMemPool;
+class uint256;
+class COutPoint;
 
 namespace Ui {
     class CoinControlDialog;
@@ -54,14 +56,22 @@ private:
     QMenu *contextMenu;
     QTreeWidgetItem *contextMenuItem;
     QAction *copyTransactionHashAction;
-    QAction *lockAction;
-    QAction *unlockAction;
+    QAction *freezeAction;
+    QAction *unfreezeAction;
 
     const PlatformStyle *platformStyle;
 
     QString strPad(QString, int, QString);
     void sortView(int, Qt::SortOrder);
     void updateView();
+    bool isLockedTxOut(const COutPoint& outpoint,const uint256& txhash);
+    bool isItemLocked(const QTreeWidgetItem* item);
+
+    enum COLUMN_ROLE
+    {
+        COLUMN_ROLE_LOCKED,
+        COLUMN_ROLE_FREEZE
+    };
 
     enum
     {
@@ -105,8 +115,8 @@ private Q_SLOTS:
     void copyLabel();
     void copyAddress();
     void copyTransactionHash();
-    void lockCoin();
-    void unlockCoin();
+    void freezeCoin();
+    void unfreezeCoin();
     void clipboardQuantity();
     void clipboardAmount();
     void clipboardFee();
@@ -120,8 +130,8 @@ private Q_SLOTS:
     void headerSectionClicked(int);
     void buttonBoxClicked(QAbstractButton*);
     void buttonSelectAllClicked();
-    void buttonToggleLockClicked();
-    void updateLabelLocked();
+    void buttonToggleFreezeClicked();
+    void updateLabelFrozen();
 };
 
 #endif // BITCOIN_QT_COINCONTROLDIALOG_H

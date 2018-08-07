@@ -9,6 +9,15 @@
 #include "tinyformat.h"
 #include "utilstrencodings.h"
 
+int g_nChainHeight = -1;
+int g_nProtocolV1Height = 809220;
+int g_nProtocolV2Height = 929666;
+
+bool IsProtocolV0(const int& nHeight)
+{
+    return nHeight < g_nProtocolV1Height;
+}
+
 std::string COutPoint::ToString() const
 {
     return strprintf("COutPoint(%s, %u)", hash.ToString()/*.substr(0,10)*/, n);
@@ -48,12 +57,12 @@ std::string CTxIn::ToString() const
     return str;
 }
 
-CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn, const int64_t nUnlockHeightIn)
+CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn, const int64_t nUnlockedHeightIn)
 {
     nValue = nValueIn;
     scriptPubKey = scriptPubKeyIn;
     nRounds = -10;
-    nUnlockHeight = nUnlockHeightIn;
+    nUnlockedHeight = nUnlockedHeightIn;
     vReserve.clear();
     vReserve.push_back('s');
     vReserve.push_back('a');
@@ -68,7 +77,7 @@ uint256 CTxOut::GetHash() const
 
 std::string CTxOut::ToString() const
 {
-    return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s, nUnlockHeight=%lu, vReserve=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30), nUnlockHeight, HexStr(vReserve).substr(0, 30));
+    return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s, nUnlockedHeight=%lu, vReserve=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30), nUnlockedHeight, HexStr(vReserve).substr(0, 30));
 }
 
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::CURRENT_VERSION), nLockTime(0) {}
@@ -115,14 +124,26 @@ CTransaction& CTransaction::operator=(const CTransaction &tx) {
     return *this;
 }
 
-CAmount CTransaction::GetValueOut() const
+CAmount CTransaction::GetValueOut(const bool fAsset) const
 {
     CAmount nValueOut = 0;
     for (std::vector<CTxOut>::const_iterator it(vout.begin()); it != vout.end(); ++it)
     {
+        if((fAsset && !it->IsAsset()) || (!fAsset && it->IsAsset()))
+            continue;
+
         nValueOut += it->nValue;
-        if (!MoneyRange(it->nValue) || !MoneyRange(nValueOut))
-            throw std::runtime_error("CTransaction::GetValueOut(): value out of range");
+
+        if(fAsset)
+        {
+            if (!AssetsRange(it->nValue) || !AssetsRange(nValueOut))
+                throw std::runtime_error("CTransaction::GetValueOut(): asset value out of range");
+        }
+        else
+        {
+            if (!MoneyRange(it->nValue) || !MoneyRange(nValueOut))
+                throw std::runtime_error("CTransaction::GetValueOut(): safe value out of range");
+        }
     }
     return nValueOut;
 }

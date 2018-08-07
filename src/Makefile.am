@@ -199,7 +199,9 @@ BITCOIN_CORE_H = \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
   zmq/zmqpublishnotifier.h \
-  main.h
+  main.h \
+  app/app.pb.h \
+  app/app.h
 
 
 obj/build.h: FORCE
@@ -258,6 +260,10 @@ libbitcoin_server_a_SOURCES = \
   validation.cpp \
   validationinterface.cpp \
   versionbits.cpp \
+  app/app.pb.cc \
+  app/app.cpp \
+  app/rpcapp.cpp \
+  app/rpcasset.cpp \
   $(BITCOIN_CORE_H)
 
 if ENABLE_ZMQ
@@ -443,7 +449,7 @@ if ENABLE_WALLET
 safed_LDADD += libbitcoin_wallet.a
 endif
 
-safed_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS)
+safed_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(PROTOBUF_LIBS)
 
 # safe-cli binary #
 safe_cli_SOURCES = safe-cli.cpp

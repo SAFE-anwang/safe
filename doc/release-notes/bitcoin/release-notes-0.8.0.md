@@ -77,7 +77,7 @@ reindex : rebuild block and transaction indices from the downloaded block data.
 New JSON-RPC API Features
 -------------------------
 
-lockunspent / listlockunspent allow locking transaction outputs for a period of time so
+freezeunspent / listfrozenunspent allow freezing transaction outputs for a period of time so
 they will not be spent by other processes that might be accessing the same wallet.
 
 addnode / getaddednodeinfo methods, to connect to specific peers without restarting.

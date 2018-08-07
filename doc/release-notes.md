@@ -1,4 +1,4 @@
-Safe Core version 1.0.1
+Safe Core version 2.0.0
 ========================
 
 Release is now available from:

@@ -118,7 +118,7 @@ QT_TRANSLATE_NOOP("safe-core", ""
 "potentially skip their script verification (0 to verify all, default: %s, "
 "testnet: %s)"),
 QT_TRANSLATE_NOOP("safe-core", ""
-"InstantSend doesn't support sending values that high yet. Transactions are "
+"InstantSend doesn't support sending high values of transaction inputs yet. Values of transaction inputs are "
 "currently limited to %1 SAFE."),
 QT_TRANSLATE_NOOP("safe-core", ""
 "InstantSend requires inputs with at least %d confirmations, you might need "
@@ -553,4 +553,15 @@ QT_TRANSLATE_NOOP("safe-core", "ZeroMQ notification options:"),
 QT_TRANSLATE_NOOP("safe-core", "no mixing available."),
 QT_TRANSLATE_NOOP("safe-core", "see debug.log for details."),
 QT_TRANSLATE_NOOP("safe-core", "wallet.dat corrupt, salvage failed"),
+QT_TRANSLATE_NOOP("safe-core", "Please transfer at least 0.01 SAFE to address(%s)."),
+QT_TRANSLATE_NOOP("safe-core", "Please transfer at least 0.01 SAFE to wallet."),
+QT_TRANSLATE_NOOP("safe-core", "Cannot get app info by app id"),
+QT_TRANSLATE_NOOP("safe-core", "Invalid safe coins"),
+QT_TRANSLATE_NOOP("safe-core", "Register app need 1 admin only"),
+QT_TRANSLATE_NOOP("safe-core", "Cannot get admin address"),
+QT_TRANSLATE_NOOP("safe-core", "Transaction reserver is too large"),
+QT_TRANSLATE_NOOP("safe-core", "Invalid locked month (min: 0, max: 120)"),
+QT_TRANSLATE_NOOP("safe-core", "Cannot get asset info by asset id"),
+QT_TRANSLATE_NOOP("safe-core", "Get candy information failed"),
+QT_TRANSLATE_NOOP("safe-core", "Issue asset need 1 admin only"),
 };

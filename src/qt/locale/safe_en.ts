@@ -883,8 +883,8 @@
     </message>
     <message>
         <location line="+16"/>
-        <source>toggle lock state</source>
-        <translation>toggle lock state</translation>
+        <source>toggle freeze state</source>
+        <translation>toggle freeze state</translation>
     </message>
     <message>
         <location line="+16"/>
@@ -898,8 +898,8 @@
     </message>
     <message>
         <location line="+10"/>
-        <source>(1 locked)</source>
-        <translation>(1 locked)</translation>
+        <source>(1 frozen)</source>
+        <translation>(1 frozen)</translation>
     </message>
     <message>
         <location line="+46"/>
@@ -959,13 +959,13 @@
     </message>
     <message>
         <location line="+1"/>
-        <source>Lock unspent</source>
-        <translation>Lock unspent</translation>
+        <source>Freeze unspent</source>
+        <translation>Freeze unspent</translation>
     </message>
     <message>
         <location line="+1"/>
-        <source>Unlock unspent</source>
-        <translation>Unlock unspent</translation>
+        <source>Unfreeze unspent</source>
+        <translation>Unfreeze unspent</translation>
     </message>
     <message>
         <location line="+22"/>
@@ -1882,13 +1882,13 @@
     </message>
     <message>
         <location line="+6"/>
-        <source>&amp;Hide the icon from the system tray.</source>
-        <translation>&amp;Hide the icon from the system tray.</translation>
+        <source>Hide the icon from the system tray.</source>
+        <translation>Hide the icon from the system tray.</translation>
     </message>
     <message>
         <location line="+3"/>
-        <source>Hide tray icon</source>
-        <translation>Hide tray icon</translation>
+        <source>&amp;Hide tray icon</source>
+        <translation>&amp;Hide tray icon</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -3814,11 +3814,6 @@ http://www.anwang.com/</translation>
     <name>SendCoinsEntry</name>
     <message>
         <location filename="../forms/sendcoinsentry.ui" line="+21"/>
-        <source>This is a normal payment.</source>
-        <translation>This is a normal payment.</translation>
-    </message>
-    <message>
-        <location line="+21"/>
         <source>Pay &amp;To:</source>
         <translation>Pay &amp;To:</translation>
     </message>
@@ -4843,8 +4838,8 @@ http://www.anwang.com/</translation>
     <message>
         <location line="-28"/>
         <location line="+12"/>
-        <source>InstantSend doesn&apos;t support sending values that high yet. Transactions are currently limited to %1 SAFE.</source>
-        <translation>InstantSend doesn&apos;t support sending values that high yet. Transactions are currently limited to %1 SAFE.</translation>
+        <source>InstantSend doesn&apos;t support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE.</source>
+        <translation>InstantSend doesn&apos;t support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE.</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -5909,8 +5904,8 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <location line="+10"/>
-        <source>InstantSend doesn&apos;t support sending values that high yet. Transactions are currently limited to %1 SAFE.</source>
-        <translation>InstantSend doesn&apos;t support sending values that high yet. Transactions are currently limited to %1 SAFE.</translation>
+        <source>InstantSend doesn&apos;t support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE.</source>
+        <translation>InstantSend doesn&apos;t support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE.</translation>
     </message>
     <message>
         <location line="+3"/>

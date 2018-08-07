@@ -22,6 +22,16 @@
 
 class CAutoFile;
 class CBlockIndex;
+struct CName_Id_IndexValue;
+struct CAppId_AppInfo_IndexValue;
+struct CAuth_IndexKey;
+struct CAppTx_IndexKey;
+struct CAssetId_AssetInfo_IndexValue;
+struct CAssetTx_IndexKey;
+struct CPutCandy_IndexKey;
+struct CPutCandy_IndexValue;
+struct CGetCandy_IndexKey;
+struct CGetCandy_IndexValue;
 
 inline double AllowFreeThreshold()
 {
@@ -261,6 +271,26 @@ public:
     }
 };
 
+struct CAppTx_IndexKeyCompare
+{
+    bool operator()(const CAppTx_IndexKey& a, const CAppTx_IndexKey& b) const;
+};
+
+struct CAuth_IndexKeyCompare
+{
+    bool operator()(const CAuth_IndexKey& a, const CAuth_IndexKey& b) const;
+};
+
+struct CAssetTx_IndexKeyCompare
+{
+    bool operator()(const CAssetTx_IndexKey& a, const CAssetTx_IndexKey& b) const;
+};
+
+struct CGetCandy_IndexKeyCompare
+{
+    bool operator()(const CGetCandy_IndexKey& a, const CGetCandy_IndexKey& b) const;
+};
+
 class CBlockPolicyEstimator;
 
 /** An inpoint - a combination of a transaction and an index n into its vin */
@@ -434,6 +464,51 @@ private:
     typedef std::map<uint256, std::vector<CSpentIndexKey> > mapSpentIndexInserted;
     mapSpentIndexInserted mapSpentInserted;
 
+    typedef std::map<uint256, CAppId_AppInfo_IndexValue> mapAppId_AppInfo_Index;
+    mapAppId_AppInfo_Index mapAppId_AppInfo;
+    typedef std::map<uint256, std::vector<uint256> > mapAppId_AppInfo_IndexInserted;
+    mapAppId_AppInfo_IndexInserted mapAppId_AppInfo_Inserted;
+
+    typedef std::map<std::string, CName_Id_IndexValue> mapAppName_AppId_Index;
+    mapAppName_AppId_Index mapAppName_AppId;
+    typedef std::map<uint256, std::vector<std::string> > mapAppName_AppId_IndexInserted;
+    mapAppName_AppId_IndexInserted mapAppName_AppId_Inserted;
+
+    typedef std::map<CAppTx_IndexKey, int, CAppTx_IndexKeyCompare> mapAppTx_Index;
+    mapAppTx_Index mapAppTx;
+    typedef std::map<uint256, std::vector<CAppTx_IndexKey> > mapAppTx_IndexInserted;
+    mapAppTx_IndexInserted mapAppTx_Inserted;
+
+    typedef std::map<CAuth_IndexKey, int, CAuth_IndexKeyCompare> mapAuth_Index;
+    mapAuth_Index mapAuth;
+    typedef std::map<uint256, std::vector<CAuth_IndexKey> >  mapAuth_IndexInserted;
+    mapAuth_IndexInserted mapAuth_Inserted;
+
+    typedef std::map<uint256, CAssetId_AssetInfo_IndexValue> mapAssetId_AssetInfo_Index;
+    mapAssetId_AssetInfo_Index mapAssetId_AssetInfo;
+    typedef std::map<uint256, std::vector<uint256> > mapAssetId_AssetInfo_IndexInserted;
+    mapAssetId_AssetInfo_IndexInserted mapAssetId_AssetInfo_Inserted;
+
+    typedef std::map<std::string, CName_Id_IndexValue> mapShortName_AssetId_Index;
+    mapShortName_AssetId_Index mapShortName_AssetId;
+    typedef std::map<uint256, std::vector<std::string> > mapShortName_AssetId_IndexInserted;
+    mapShortName_AssetId_IndexInserted mapShortName_AssetId_Inserted;
+
+    typedef std::map<std::string, CName_Id_IndexValue> mapAssetName_AssetId_Index;
+    mapAssetName_AssetId_Index mapAssetName_AssetId;
+    typedef std::map<uint256, std::vector<std::string> > mapAssetName_AssetId_IndexInserted;
+    mapAssetName_AssetId_IndexInserted mapAssetName_AssetId_Inserted;
+
+    typedef std::map<CAssetTx_IndexKey, int, CAssetTx_IndexKeyCompare> mapAssetTx_Index;
+    mapAssetTx_Index mapAssetTx;
+    typedef std::map<uint256, std::vector<CAssetTx_IndexKey> > mapAssetTx_IndexInserted;
+    mapAssetTx_IndexInserted mapAssetTx_Inserted;
+
+    typedef std::map<CGetCandy_IndexKey, CGetCandy_IndexValue, CGetCandy_IndexKeyCompare> mapGetCandy_Index;
+    mapGetCandy_Index mapGetCandy;
+    typedef std::map<uint256, std::vector<CGetCandy_IndexKey> > mapGetCandy_IndexInserted;
+    mapGetCandy_IndexInserted mapGetCandy_Inserted;
+
     void UpdateParent(txiter entry, txiter parent, bool add);
     void UpdateChild(txiter entry, txiter child, bool add);
 
@@ -462,8 +537,8 @@ public:
     // to track size/count of descendant transactions.  First version of
     // addUnchecked can be used to have it call CalculateMemPoolAncestors(), and
     // then invoke the second version.
-    bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, bool fCurrentEstimate = true);
-    bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, setEntries &setAncestors, bool fCurrentEstimate = true);
+    bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, const CCoinsViewCache &view, bool fCurrentEstimate = true);
+    bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, const CCoinsViewCache &view, setEntries &setAncestors, bool fCurrentEstimate = true);
 
     void addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view);
     bool getAddressIndex(std::vector<std::pair<uint160, int> > &addresses,
@@ -473,6 +548,41 @@ public:
     void addSpentIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view);
     bool getSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
     bool removeSpentIndex(const uint256 txhash);
+
+    void addAppInfoIndex(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
+    bool getAppInfoByAppId(const uint256& appId, CAppId_AppInfo_IndexValue& appInfo);
+    bool getAppIdByAppName(const std::string& strAppName, CName_Id_IndexValue& value);
+    bool getAppList(std::vector<uint256>& vAppId);
+    bool removeAppInfoIndex(const uint256& txhash);
+
+    void add_AppTx_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
+    bool get_AppTx_Index(const uint256& appId, std::vector<COutPoint>& vOut);
+    bool get_AppTx_Index(const uint256& appId, const std::string& strAddress, std::vector<COutPoint>& vOut);
+    bool getAppList(const std::string& strAddress, std::vector<uint256>& vAppId);
+    bool remove_AppTx_Index(const uint256& txhash);
+
+    void add_Auth_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
+    bool get_Auth_Index(const uint256& appId, const std::string& strAddress, std::vector<uint32_t>& vAuth);
+    bool remove_Auth_Index(const uint256& txhash);
+
+    void addAssetInfoIndex(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
+    bool getAssetInfoByAssetId(const uint256& assetId, CAssetId_AssetInfo_IndexValue& assetInfo);
+    bool getAssetList(std::vector<uint256>& vAssetId);
+    bool getAssetIdByShortName(const std::string& strShortName, CName_Id_IndexValue& value);
+    bool getAssetIdByAssetName(const std::string& strAssetName, CName_Id_IndexValue& value);
+    bool removeAssetInfoIndex(const uint256& txhash);
+
+    void add_AssetTx_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
+    bool get_AssetTx_Index(const uint256& assetId, const uint8_t& nTxClass, std::vector<COutPoint>& vOut);
+    bool get_AssetTx_Index(const uint256& assetId, const std::string& strAddress, const uint8_t& nTxClass, std::vector<COutPoint>& vOut);
+    bool getAssetList(const std::string& strAddress, std::vector<uint256>& vAssetId);
+    bool remove_AssetTx_Index(const uint256& txhash);
+
+    void add_GetCandy_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
+    bool get_GetCandy_Index(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& nAmount);
+    bool remove_GetCandy_Index(const uint256& txhash);
+
+    int get_PutCandy_count(const uint256& assetId);
 
     void remove(const CTransaction &tx, std::list<CTransaction>& removed, bool fRecursive = false);
     void removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMemPoolHeight, int flags);
@@ -585,7 +695,7 @@ public:
 
     /** Estimate priority needed to get into the next nBlocks */
     double estimatePriority(int nBlocks) const;
-    
+
     /** Write/Read estimates to disk */
     bool WriteFeeEstimates(CAutoFile& fileout) const;
     bool ReadFeeEstimates(CAutoFile& filein);
@@ -631,7 +741,7 @@ private:
     void removeUnchecked(txiter entry);
 };
 
-/** 
+/**
  * CCoinsView that brings transactions from a memorypool into view.
  * It does not check for spendings by memory pool transactions.
  */

@@ -16,6 +16,8 @@ class CBasicKeyStore;
 class CWallet;
 class uint256;
 class CBlockIndex;
+struct CCandy_BlockTime_Info;
+struct CCandy_BlockTime_InfoVec;
 
 /** General change type (added, updated, removed). */
 enum ChangeType
@@ -114,6 +116,12 @@ public:
 
     /** Banlist did change. */
     boost::signals2::signal<void (void)> BannedListChanged;
+
+    /** New asset has been found */
+    boost::signals2::signal<void (const std::string& strAssetName)> AssetFound;
+
+    /** New candy has been put */
+    boost::signals2::signal<void ()> CandyVecPut;
 };
 
 extern CClientUIInterface uiInterface;

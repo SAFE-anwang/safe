@@ -614,8 +614,8 @@ UniValue gettxout(const UniValue& params, bool fHelp)
             "        ,...\n"
             "     ]\n"
             "  },\n"
-            "  \"unlockHeight\" : x,       (numeric) Display it if version is more than SAFE_TX_VERSION\n"
-            "  \"reserve\" : xxxxxxx,      (string) Display it if version is more than SAFE_TX_VERSION\n"
+            "  \"unlockedHeight\" : x,     (numeric) Display unlocked height if version is not little than SAFE_TX_VERSION_1\n"
+            "  \"reserve\" : xxxxxxx,      (string) Display reserve if version is not little than SAFE_TX_VERSION_1\n"
             "  \"version\" : n,            (numeric) The version\n"
             "  \"coinbase\" : true|false   (boolean) Coinbase or not\n"
             "}\n"
@@ -662,9 +662,9 @@ UniValue gettxout(const UniValue& params, bool fHelp)
     else
         ret.push_back(Pair("confirmations", pindex->nHeight - coins.nHeight + 1));
     ret.push_back(Pair("value", ValueFromAmount(coins.vout[n].nValue)));
-    if(coins.nVersion >= SAFE_TX_VERSION)
+    if(coins.nVersion >= SAFE_TX_VERSION_1)
     {
-        ret.push_back(Pair("unlockHeight", coins.vout[n].nUnlockHeight));
+        ret.push_back(Pair("unlockedHeight", coins.vout[n].nUnlockedHeight));
         ret.push_back(Pair("reserve", HexStr(coins.vout[n].vReserve)));
     }
     UniValue o(UniValue::VOBJ);

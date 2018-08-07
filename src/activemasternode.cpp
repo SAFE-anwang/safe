@@ -297,7 +297,7 @@ void CActiveMasternode::ManageStateLocal(CConnman& connman)
 
         {
             LOCK(pwalletMain->cs_wallet);
-            pwalletMain->LockCoin(outpoint);
+            pwalletMain->FreezeCoin(outpoint);
         }
 
         CMasternodeBroadcast mnb;

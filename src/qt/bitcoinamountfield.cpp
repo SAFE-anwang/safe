@@ -25,7 +25,9 @@ public:
     explicit AmountSpinBox(QWidget *parent):
         QAbstractSpinBox(parent),
         currentUnit(BitcoinUnits::SAFE),
-        singleStep(100000) // satoshis
+        singleStep(100000), // satoshis
+        fAssets(false),
+        nAssetDecimals(0)
     {
         setAlignment(Qt::AlignRight);
 
@@ -42,13 +44,22 @@ public:
         return valid ? QValidator::Intermediate : QValidator::Invalid;
     }
 
+    void updateAssetUnit(bool fAssets, int nAssetDecimals)
+    {
+        this->fAssets = fAssets;
+        this->nAssetDecimals = nAssetDecimals;
+    }
+
     void fixup(QString &input) const
     {
         bool valid = false;
         CAmount val = parse(input, &valid);
         if(valid)
         {
-            input = BitcoinUnits::format(currentUnit, val, false, BitcoinUnits::separatorAlways);
+            if(fAssets)
+                input = BitcoinUnits::format(nAssetDecimals, val, false, BitcoinUnits::separatorAlways,true);
+            else
+                input = BitcoinUnits::format(currentUnit, val, false, BitcoinUnits::separatorAlways);
             lineEdit()->setText(input);
         }
     }
@@ -58,9 +69,17 @@ public:
         return parse(text(), valid_out);
     }
 
+    QString textValue()const
+    {
+        return text().trimmed();
+    }
+
     void setValue(const CAmount& value)
     {
-        lineEdit()->setText(BitcoinUnits::format(currentUnit, value, false, BitcoinUnits::separatorAlways));
+        if(fAssets)
+            lineEdit()->setText(BitcoinUnits::format(nAssetDecimals, value, false, BitcoinUnits::separatorAlways,true));
+        else
+            lineEdit()->setText(BitcoinUnits::format(currentUnit, value, false, BitcoinUnits::separatorAlways));
         Q_EMIT valueChanged();
     }
 
@@ -69,7 +88,10 @@ public:
         bool valid = false;
         CAmount val = value(&valid);
         val = val + steps * singleStep;
-        val = qMin(qMax(val, CAmount(0)), BitcoinUnits::maxMoney());
+        if(fAssets)
+            val = qMin(qMax(val, CAmount(0)), BitcoinUnits::maxAssets());
+        else
+            val = qMin(qMax(val, CAmount(0)), BitcoinUnits::maxMoney());
         setValue(val);
     }
 
@@ -99,7 +121,11 @@ public:
 
             const QFontMetrics fm(fontMetrics());
             int h = lineEdit()->minimumSizeHint().height();
-            int w = fm.width(BitcoinUnits::format(BitcoinUnits::SAFE, BitcoinUnits::maxMoney(), false, BitcoinUnits::separatorAlways));
+            int w = 0;
+            if(fAssets)
+                w = fm.width(BitcoinUnits::format(BitcoinUnits::SAFE, BitcoinUnits::maxAssets(), false, BitcoinUnits::separatorAlways,true));
+            else
+                w = fm.width(BitcoinUnits::format(BitcoinUnits::SAFE, BitcoinUnits::maxMoney(), false, BitcoinUnits::separatorAlways));
             w += 2; // cursor blinking space
 
             QStyleOptionSpinBox opt;
@@ -128,6 +154,8 @@ private:
     int currentUnit;
     CAmount singleStep;
     mutable QSize cachedMinimumSizeHint;
+    bool fAssets;
+    int nAssetDecimals;
 
     /**
      * Parse a string into a number of base monetary units and
@@ -137,11 +165,22 @@ private:
     CAmount parse(const QString &text, bool *valid_out=0) const
     {
         CAmount val = 0;
-        bool valid = BitcoinUnits::parse(currentUnit, text, &val);
+        bool valid = false;
+        if(fAssets)
+            valid = BitcoinUnits::parse(nAssetDecimals, text, &val,fAssets);
+        else
+            valid = BitcoinUnits::parse(currentUnit, text, &val);
         if(valid)
         {
-            if(val < 0 || val > BitcoinUnits::maxMoney())
-                valid = false;
+            if(fAssets)
+            {
+                if(val < 0 || val > BitcoinUnits::maxAssets())
+                    valid = false;
+            }else
+            {
+                if(val < 0 || val > BitcoinUnits::maxMoney())
+                    valid = false;
+            }
         }
         if(valid_out)
             *valid_out = valid;
@@ -178,8 +217,15 @@ protected:
         {
             if(val > 0)
                 rv |= StepDownEnabled;
-            if(val < BitcoinUnits::maxMoney())
-                rv |= StepUpEnabled;
+            if(fAssets)
+            {
+                if(val < BitcoinUnits::maxAssets())
+                    rv |= StepUpEnabled;
+            }else
+            {
+                if(val < BitcoinUnits::maxMoney())
+                    rv |= StepUpEnabled;
+            }
         }
         return rv;
     }
@@ -192,7 +238,9 @@ Q_SIGNALS:
 
 BitcoinAmountField::BitcoinAmountField(QWidget *parent) :
     QWidget(parent),
-    amount(0)
+    amount(0),
+    fAssets(false),
+    nAssetDecimals(0)
 {
     amount = new AmountSpinBox(this);
     amount->setLocale(QLocale::c());
@@ -203,9 +251,12 @@ BitcoinAmountField::BitcoinAmountField(QWidget *parent) :
     layout->addWidget(amount);
     unit = new QValueComboBox(this);
     unit->setModel(new BitcoinUnits(this));
+    label = new QLabel(this);
     layout->addWidget(unit);
+    layout->addWidget(label);
     layout->addStretch(1);
     layout->setContentsMargins(0,0,0,0);
+    label->setVisible(false);
 
     setLayout(layout);
 
@@ -230,6 +281,17 @@ void BitcoinAmountField::setEnabled(bool fEnabled)
 {
     amount->setEnabled(fEnabled);
     unit->setEnabled(fEnabled);
+}
+
+void BitcoinAmountField::updateAssetUnit(const QString &unitName, bool fAssets, int nAssetDecimals)
+{
+    unit->setVisible(!fAssets);
+    label->setText(unitName);
+    label->setVisible(fAssets);
+    this->fAssets = fAssets;
+    this->nAssetDecimals = nAssetDecimals;
+    amount->updateAssetUnit(fAssets,nAssetDecimals);
+    amount->clear();
 }
 
 bool BitcoinAmountField::validate()
@@ -268,6 +330,12 @@ QWidget *BitcoinAmountField::setupTabChain(QWidget *prev)
 CAmount BitcoinAmountField::value(bool *valid_out) const
 {
     return amount->value(valid_out);
+}
+
+QString BitcoinAmountField::textValue()const
+{
+    QString str = amount->textValue().trimmed();
+    return str.split(" ").join("");
 }
 
 void BitcoinAmountField::setValue(const CAmount& value)

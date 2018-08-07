@@ -30,7 +30,7 @@ public:
     void setTransactionFee(const CAmount& newFee);
     CAmount getTransactionFee();
 
-    CAmount getTotalTransactionAmount();
+    CAmount getTotalTransactionAmount(bool fAssets=false,int nAssetDecimal=0);
 
     void newPossibleKeyChange(CWallet *wallet);
     CReserveKey *getPossibleKeyChange();

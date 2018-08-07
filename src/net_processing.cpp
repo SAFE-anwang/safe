@@ -1567,10 +1567,51 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             vRecv >> txLockRequest;
             tx = txLockRequest;
             nInvType = MSG_TXLOCK_REQUEST;
+
+            for(unsigned int i = 0; i < tx.vout.size(); i++)
+            {
+                const CTxOut& txout = tx.vout[i];
+                if(txout.nUnlockedHeight > 0)
+                {
+                    LogPrintf("instantsend tx is conflicted with locked txout");
+                    return false;
+                }
+                uint32_t nAppCmd = 0;
+                if(txout.IsApp(&nAppCmd) && nAppCmd != CREATE_EXTEND_TX_CMD)
+                {
+                    LogPrintf("instantsend tx is conflicted with app txout (beyond create extend txout)");
+                    return false;
+                }
+                if(txout.IsAsset())
+                {
+                    LogPrintf("instantsend tx is conflicted with asset txout");
+                    return false;
+                }
+            }
         } else if (strCommand == NetMsgType::DSTX) {
             vRecv >> dstx;
             tx = dstx.tx;
             nInvType = MSG_DSTX;
+
+            for(unsigned int i = 0; i < tx.vout.size(); i++)
+            {
+                const CTxOut& txout = tx.vout[i];
+                if(txout.nUnlockedHeight > 0)
+                {
+                    LogPrintf("privatesend tx is conflicted with locked txout");
+                    return false;
+                }
+                if(txout.IsApp())
+                {
+                    LogPrintf("privatesend tx is conflicted with app txout");
+                    return false;
+                }
+                if(txout.IsAsset())
+                {
+                    LogPrintf("privatesend tx is conflicted with asset txout");
+                    return false;
+                }
+            }
         }
 
         CInv inv(nInvType, tx.GetHash());

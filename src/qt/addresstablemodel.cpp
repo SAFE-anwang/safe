@@ -222,6 +222,7 @@ QVariant AddressTableModel::data(const QModelIndex &index, int role) const
         {
             font = GUIUtil::fixedPitchFont();
         }
+        font.setPixelSize(12);
         return font;
     }
     else if (role == TypeRole)

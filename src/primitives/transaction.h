@@ -10,7 +10,52 @@
 #include "script/script.h"
 #include "serialize.h"
 #include "uint256.h"
-#include "main.h"
+
+#define SAFE_TX_VERSION_1       101
+#define SAFE_TX_VERSION_2       102
+
+#define TXOUT_RESERVE_MIN_SIZE  4
+#define TXOUT_RESERVE_MAX_SIZE  3000
+
+#define REGISTER_APP_CMD        100
+#define ADD_AUTH_CMD            101
+#define DELETE_AUTH_CMD         102
+#define CREATE_EXTEND_TX_CMD    103
+#define ISSUE_ASSET_CMD         200
+#define ADD_ASSET_CMD           201
+#define TRANSFER_ASSET_CMD      202
+#define DESTORY_ASSET_CMD       203
+#define CHANGE_ASSET_CMD        204
+#define PUT_CANDY_CMD           205
+#define GET_CANDY_CMD           206
+#define TRANSFER_SAFE_CMD       300
+
+extern int g_nProtocolV1Height;
+extern int g_nProtocolV2Height;
+
+bool IsProtocolV0(const int& nHeight);
+
+inline bool VectorEqual(const std::vector<unsigned char>& a, const std::vector<unsigned char>& b)
+{
+    unsigned int a_size = a.size();
+    unsigned int b_size = b.size();
+
+    if(a_size != b_size) // non-equal length
+        return false;
+
+    if(a_size == 0) // all are empty
+        return true;
+
+    for(std::vector<unsigned char>::const_iterator it_a = a.begin(), it_b = b.begin();
+            it_a != a.end(), it_b != b.end();
+            it_a++, it_b++)
+    {
+        if(*it_a != *it_b)
+            return false;
+    }
+
+    return true;
+}
 
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint
@@ -137,7 +182,7 @@ public:
     CAmount nValue;
     CScript scriptPubKey;
     int nRounds;
-    int64_t nUnlockHeight;
+    int64_t nUnlockedHeight;
     std::vector<unsigned char> vReserve;
 
     CTxOut()
@@ -145,7 +190,7 @@ public:
         SetNull();
     }
 
-    CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn, const int64_t nUnlockHeightIn = 0);
+    CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn, const int64_t nUnlockedHeightIn = 0);
 
     ADD_SERIALIZE_METHODS;
 
@@ -153,9 +198,9 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(nValue);
         READWRITE(*(CScriptBase*)(&scriptPubKey));
-        if(nVersion >= SAFE_TX_VERSION)
+        if(nVersion >= SAFE_TX_VERSION_1)
         {
-            READWRITE(nUnlockHeight);
+            READWRITE(nUnlockedHeight);
             READWRITE(vReserve);
         }
     }
@@ -165,7 +210,7 @@ public:
         nValue = -1;
         scriptPubKey.clear();
         nRounds = -10; // an initial value, should be no way to get this by calculations
-        nUnlockHeight = 0;
+        nUnlockedHeight = 0;
         vReserve.clear();
         vReserve.push_back('s');
         vReserve.push_back('a');
@@ -176,6 +221,45 @@ public:
     bool IsNull() const
     {
         return (nValue == -1);
+    }
+
+    bool IsAsset(uint32_t* pAppCmd = NULL) const
+    {
+        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
+        if(vReserve.size() < nOffset + sizeof(uint32_t))
+            return false;
+
+        uint32_t nAppCmd = *(uint32_t*)&vReserve[nOffset];
+        if(pAppCmd)
+            *pAppCmd = nAppCmd;
+
+        return (nAppCmd == ISSUE_ASSET_CMD || nAppCmd == ADD_ASSET_CMD || nAppCmd == TRANSFER_ASSET_CMD || nAppCmd == DESTORY_ASSET_CMD || nAppCmd == CHANGE_ASSET_CMD || nAppCmd == PUT_CANDY_CMD || nAppCmd == GET_CANDY_CMD);
+    }
+
+    bool IsApp(uint32_t* pAppCmd = NULL) const
+    {
+        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
+        if(vReserve.size() < nOffset + sizeof(uint32_t))
+            return false;
+
+        uint32_t nAppCmd = *(uint32_t*)&vReserve[nOffset];
+        if(pAppCmd)
+            *pAppCmd = nAppCmd;
+
+        return (nAppCmd == REGISTER_APP_CMD || nAppCmd == ADD_AUTH_CMD || nAppCmd == DELETE_AUTH_CMD || nAppCmd == CREATE_EXTEND_TX_CMD);
+    }
+
+    bool IsSafeOnly(uint32_t* pAppCmd = NULL) const
+    {
+        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
+        if(vReserve.size() < nOffset + sizeof(uint32_t))
+            return true;
+
+        uint32_t nAppCmd = *(uint32_t*)&vReserve[nOffset];
+        if(pAppCmd)
+            *pAppCmd = nAppCmd;
+
+        return (nAppCmd == TRANSFER_SAFE_CMD);
     }
 
     uint256 GetHash() const;
@@ -206,7 +290,7 @@ public:
         return (a.nValue       == b.nValue &&
                 a.scriptPubKey == b.scriptPubKey &&
                 a.nRounds      == b.nRounds &&
-                a.nUnlockHeight == b.nUnlockHeight &&
+                a.nUnlockedHeight == b.nUnlockedHeight &&
                 VectorEqual(a.vReserve, b.vReserve));
     }
 
@@ -232,13 +316,13 @@ private:
 
 public:
     // Default transaction version.
-    static const int32_t CURRENT_VERSION=SAFE_TX_VERSION;
+    static const int32_t CURRENT_VERSION=SAFE_TX_VERSION_2;
 
     // Changing the default transaction version requires a two step process: first
     // adapting relay policy by bumping MAX_STANDARD_VERSION, and then later date
     // bumping the default CURRENT_VERSION at which point both CURRENT_VERSION and
     // MAX_STANDARD_VERSION will be equal.
-    static const int32_t MAX_STANDARD_VERSION=SAFE_TX_VERSION;
+    static const int32_t MAX_STANDARD_VERSION=SAFE_TX_VERSION_2;
 
     // The local variables are made const to prevent unintended modification
     // without updating the cached hash value. However, CTransaction is not
@@ -280,7 +364,7 @@ public:
     }
 
     // Return sum of txouts.
-    CAmount GetValueOut() const;
+    CAmount GetValueOut(const bool fAsset = false) const;
     // GetValueIn() is a method on CCoinsViewCache, because
     // inputs must be known to compute value in.
 

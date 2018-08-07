@@ -231,14 +231,19 @@ const CTxOut &CCoinsViewCache::GetOutputFor(const CTxIn& input) const
     return coins->vout[input.prevout.n];
 }
 
-CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
+CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx, const bool fAsset) const
 {
     if (tx.IsCoinBase())
         return 0;
 
     CAmount nResult = 0;
     for (unsigned int i = 0; i < tx.vin.size(); i++)
-        nResult += GetOutputFor(tx.vin[i]).nValue;
+    {
+        const CTxOut& txout = GetOutputFor(tx.vin[i]);
+        if((fAsset && !txout.IsAsset()) || (!fAsset && txout.IsAsset()))
+            continue;
+        nResult += txout.nValue;
+    }
 
     return nResult;
 }
@@ -268,9 +273,13 @@ double CCoinsViewCache::GetPriority(const CTransaction &tx, int nHeight, CAmount
         const CCoins* coins = AccessCoins(txin.prevout.hash);
         assert(coins);
         if (!coins->IsAvailable(txin.prevout.n)) continue;
+
+        const CTxOut& txout = coins->vout[txin.prevout.n];
+        if(txout.IsAsset()) continue;
+
         if (coins->nHeight <= nHeight) {
-            dResult += coins->vout[txin.prevout.n].nValue * (nHeight-coins->nHeight);
-            inChainInputValue += coins->vout[txin.prevout.n].nValue;
+            dResult += txout.nValue * (nHeight-coins->nHeight);
+            inChainInputValue += txout.nValue;
         }
     }
     return tx.ComputePriority(dResult);
