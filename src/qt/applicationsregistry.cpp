@@ -33,6 +33,10 @@ ApplicationsRegistry::ApplicationsRegistry(ApplicationsPage *applicationPage):
     ui->companyNameLabel->setVisible(true);
     ui->personalNameLabel->setVisible(false);
 
+    //first letter not num,allow cn en num space;
+    QRegExp regExpApplicationNameEdit;
+    regExpApplicationNameEdit.setPattern("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9\u4e00-\u9fa5 ]{1,50}");
+    ui->applicationNameEdit->setValidator (new QRegExpValidator(regExpApplicationNameEdit, this));
     ui->applicationNameEdit->setMaxLength(MAX_APPNAME_SIZE);
     ui->devNameEdit->setMaxLength(MAX_DEVNAME_SIZE);
     //^((http)?:\/\/)[^\s]+   ^((http[s])?:\\/\\/)[^\\s\\S]+
@@ -124,7 +128,7 @@ void ApplicationsRegistry::on_detectExistButton_clicked()
 {
     if(GUIUtil::invalidInput(ui->applicationNameEdit))
         return;
-    string appName = ui->applicationNameEdit->text().trimmed().toStdString();
+    std::string appName = ui->applicationNameEdit->text().trimmed().toStdString();
     if(IsKeyWord(appName))
     {
         QMessageBox::warning(applicationPage, tr("Application registry"),tr("Application name is internal reserved words, not allowed to use"),tr("Ok"));
@@ -157,7 +161,7 @@ bool ApplicationsRegistry::applicationRegist()
 
     if(GUIUtil::invalidInput(ui->applicationNameEdit))
         return false;
-    string strAppName = ui->applicationNameEdit->text().trimmed().toStdString();
+    std::string strAppName = ui->applicationNameEdit->text().trimmed().toStdString();
     if(IsKeyWord(strAppName))
     {
         QMessageBox::warning(applicationPage, tr("Application registry"),tr("Application name is internal reserved words, not allowed to use"),tr("Ok"));
@@ -176,7 +180,7 @@ bool ApplicationsRegistry::applicationRegist()
 
     uint8_t nDevType = ui->devTypeComboBox->currentIndex()+1;
 
-    string strDevName = ui->devNameEdit->text().trimmed().toStdString();
+    std::string strDevName = ui->devNameEdit->text().trimmed().toStdString();
     if(GUIUtil::invalidInput(ui->devNameEdit))
         return false;
     if(IsKeyWord(strDevName))
@@ -195,9 +199,9 @@ bool ApplicationsRegistry::applicationRegist()
         return false;
     }
 
-    string strWebUrl = "";
-    string strLogoUrl = "";
-    string strCoverUrl = "";
+    std::string strWebUrl = "";
+    std::string strLogoUrl = "";
+    std::string strCoverUrl = "";
 
     if(nDevType==APP_Dev_Type_Company)
     {
@@ -279,7 +283,7 @@ bool ApplicationsRegistry::applicationRegist()
 
     if(GUIUtil::invalidInput(ui->applicationDescEdit))
         return false;
-    string strAppDesc = ui->applicationDescEdit->text().trimmed().toStdString();
+    std::string strAppDesc = ui->applicationDescEdit->text().trimmed().toStdString();
     if(strAppDesc.empty() || strAppDesc.size() > MAX_APPDESC_SIZE)
     {
         QMessageBox::warning(applicationPage, tr("Application registry"),tr("Application description input too long"),tr("Ok"));
@@ -300,6 +304,13 @@ bool ApplicationsRegistry::applicationRegist()
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
     {
         QMessageBox::warning(applicationPage,tr("Application registry"), tr("Peer-to-peer functionality missing or disabled!"),tr("Ok"));
+        return false;
+    }
+
+    int nOffset = g_nChainHeight - g_nProtocolV2Height;
+    if (nOffset < 0)
+    {
+        QMessageBox::warning(applicationPage,tr("Application registry"), tr("This feature is enabled when the block height is %1").arg(g_nProtocolV2Height),tr("Ok"));
         return false;
     }
 
@@ -328,7 +339,6 @@ bool ApplicationsRegistry::applicationRegist()
     QString costMoneyStr = QString::fromStdString(FormatMoney(GetCancelledAmount(g_nChainHeight)));
     QString str = tr("Register applications need to consume %1 SAFE, are you sure to register?").arg(costMoneyStr);
     QMessageBox box(QMessageBox::Question,  tr("Application registry"),str);
-    box.setStyleSheet("QMessageBox{font-size:12px;} QPushButton{font-size:12px;}");
     QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
     box.addButton(tr("Cancel"),QMessageBox::NoRole);
     box.exec();
@@ -340,7 +350,7 @@ bool ApplicationsRegistry::applicationRegist()
     CReserveKey reservekey(pwalletMain);
     CAmount nFeeRequired;
     int nChangePosRet = -1;
-    string strError;
+    std::string strError;
     if(!pwalletMain->CreateAppTransaction(&appHeader, &appData, vecSend, NULL, wtx, reservekey, nFeeRequired, nChangePosRet, strError, NULL, true, ALL_COINS))
     {
         QString errorStr = QString::fromStdString(strError);

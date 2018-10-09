@@ -47,19 +47,19 @@ OverViewEntry::OverViewEntry(const PlatformStyle *platformStyle, QWidget *parent
         config.setProtocol(QSsl::TlsV1_0);
         config.setPeerVerifyMode(QSslSocket::VerifyNone);
         request.setSslConfiguration(config);
+        manager->get(request);
     }else
     {
         QString theme = GUIUtil::getThemeName();
         ui->iconLabel->setPixmap(QIcon(":/icons/" + theme + "/about").pixmap(30,30));
     }
 
-    manager->get(request);
     int indent = 20;
     ui->labelOtherAvailable->setIndent(indent);
     ui->labelOtherPending->setIndent(indent);
     ui->labelOtherLocked->setIndent(indent);
     ui->labelOtherTotal->setIndent(indent);
-    ui->assetsLabel->setText(GUIUtil::HtmlEscape(assetName));
+    ui->assetsLabel->setText(GUIUtil::HtmlEscape2(assetName));
     setMouseTracking(true);
 }
 

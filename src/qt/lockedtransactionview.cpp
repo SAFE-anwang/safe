@@ -430,13 +430,14 @@ void LockedTransactionView::exportClicked()
         writer.addColumn(tr("Watch-only"), LockedTransactionTableModel::LockedColumnWatchonly);
     writer.addColumn(tr("Date"), 0, TransactionTableModel::DateRole);
     writer.addColumn(tr("Type"), LockedTransactionTableModel::LockedColumnType, Qt::EditRole);
+    writer.addColumn(tr("Asset Name"), 0, TransactionTableModel::AssetsNameRole);
     writer.addColumn(tr("Label"), 0, TransactionTableModel::LabelRole);
     writer.addColumn(tr("Address"), 0, TransactionTableModel::AddressRole);
-    writer.addColumn(BitcoinUnits::getAmountColumnTitle(model->getOptionsModel()->getDisplayUnit()), 0, TransactionTableModel::FormattedAmountRole);
     writer.addColumn(tr("Locked Month"), 0, TransactionTableModel::LockedMonthRole);
     writer.addColumn(tr("Unlocked Height"), 0, TransactionTableModel::UnlockedHeightRole);
     writer.addColumn(tr("Locked Status"), 0, TransactionTableModel::LockedStatusRole);
-    writer.addColumn(tr("ID"), 0, TransactionTableModel::TxIDRole);
+    writer.addColumn(BitcoinUnits::getAmountColumnTitle(model->getOptionsModel()->getDisplayUnit()), 0, TransactionTableModel::FormattedAmountRole);
+    writer.addColumn(tr("Transaction ID"), 0, TransactionTableModel::TxIDRole);
 
     if(!writer.write()) {
         Q_EMIT message(tr("Exporting Failed"), tr("There was an error trying to save the locked transaction history to %1.").arg(filename),

@@ -98,11 +98,10 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     ui->frame2->setMouseTracking(true);
 
     QRegExp regExpReqLabelEdit;
-    regExpReqLabelEdit.setPattern("^[\u4e00-\u9fa5a-zA-Z0-9]+$");
+    regExpReqLabelEdit.setPattern("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9-+*/。，$%^&*,!?.()#_\u4e00-\u9fa5 ]{1,150}");
     ui->reqLabel->setValidator (new QRegExpValidator(regExpReqLabelEdit, this));
     QRegExp regExpReqMessageEdit;
-    regExpReqMessageEdit.setPattern("^((?! {2,}).)+$");
-    //No two consecutive spaces are prohibited
+    regExpReqMessageEdit.setPattern("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9-+*/。，$%^&*,!?.()#_\u4e00-\u9fa5 ]{1,150}");
     ui->reqMessage->setValidator (new QRegExpValidator(regExpReqMessageEdit, this));
     initWidget();
 }

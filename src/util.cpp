@@ -366,7 +366,8 @@ int LogPrintStr(const std::string &str)
 
         // buffer if we haven't opened the log yet
         if (fileout == NULL) {
-            assert(vMsgsBeforeOpenLog);
+            if(!vMsgsBeforeOpenLog)
+                assert(!!! "debug.log is occupied by other program");
             ret = strTimestamped.length();
             vMsgsBeforeOpenLog->push_back(strTimestamped);
         }

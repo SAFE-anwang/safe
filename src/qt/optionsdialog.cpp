@@ -31,6 +31,7 @@
 #include <QLocale>
 #include <QMessageBox>
 #include <QTimer>
+#include <QSettings>
 
 extern CWallet* pwalletMain;
 
@@ -83,10 +84,43 @@ OptionsDialog::OptionsDialog(QWidget *parent, bool enableWallet) :
     /* Display elements init */
     
     /* Number of displayed decimal digits selector */
-    QString digits;
-    for(int index = 2; index <=8; index++){
-        digits.setNum(index);
+    QSettings setting;
+    int nUnit = setting.value("nDisplayUnit").toInt();
+    if(nUnit == 0)
+    {
+        ui->digits->clear();
+        QString digits;
+        for(int index = 2; index <=8; index++){
+            digits.setNum(index);
+            ui->digits->addItem(digits, digits);
+        }
+    }
+    else if(nUnit == 1)
+    {
+        ui->digits->clear();
+        QString digits;
+        for(int index = 2; index <=5; index++){
+            digits.setNum(index);
+            ui->digits->addItem(digits, digits);
+        }
+        int nDigits = setting.value("digits").toInt();
+        if(nDigits > 5)
+            setting.setValue("digits", nDigits - 3);
+    }
+    else if(nUnit == 2)
+    {
+        ui->digits->clear();
+        QString digits;
+        digits.setNum(2);
         ui->digits->addItem(digits, digits);
+        setting.setValue("digits", 2);
+    }
+    else if(nUnit == 3)
+    {
+        ui->digits->clear();
+        ui->digits->hide();
+        ui->digitsLabel->hide();
+        setting.setValue("digits", 2);
     }
     
     /* Theme selector */
@@ -143,6 +177,56 @@ OptionsDialog::OptionsDialog(QWidget *parent, bool enableWallet) :
     ui->theme->setVisible(false);
 }
 
+void OptionsDialog::updateDigits()
+{
+    int nUnit = ui->unit->value().toInt();
+    if(nUnit == 0)
+    {
+        ui->digits->show();
+        ui->digitsLabel->show();
+        int nDigits = std::max(ui->digits->value().toInt(), 2);
+        ui->digits->clear();
+        QString digits;
+        for(int index = 2; index <=8; index++){
+            digits.setNum(index);
+            ui->digits->addItem(digits, digits);
+        }
+        ui->digits->setValue(nDigits);
+    }
+    else if(nUnit == 1)
+    {
+        ui->digits->show();
+        ui->digitsLabel->show();
+        int nDigits = std::max(ui->digits->value().toInt(), 2);
+        ui->digits->clear();
+        QString digits;
+        for(int index = 2; index <=5; index++){
+            digits.setNum(index);
+            ui->digits->addItem(digits, digits);
+        }
+        if(nDigits > 5)
+            ui->digits->setValue(nDigits - 3);
+        else
+            ui->digits->setValue(nDigits);
+    }
+    else if(nUnit == 2)
+    {
+        ui->digits->show();
+        ui->digitsLabel->show();
+        ui->digits->clear();
+        QString digits;
+        digits.setNum(2);
+        ui->digits->addItem(digits, digits);
+        ui->digits->setValue(2);
+    }
+    else if(nUnit == 3)
+    {
+        ui->digits->clear();
+        ui->digits->hide();
+        ui->digitsLabel->hide();
+    }
+}
+
 OptionsDialog::~OptionsDialog()
 {
     delete ui;
@@ -187,6 +271,8 @@ void OptionsDialog::setModel(OptionsModel *model)
     connect(ui->theme, SIGNAL(valueChanged()), this, SLOT(showRestartWarning()));
     connect(ui->lang, SIGNAL(valueChanged()), this, SLOT(showRestartWarning()));
     connect(ui->thirdPartyTxUrls, SIGNAL(textChanged(const QString &)), this, SLOT(showRestartWarning()));
+
+    connect(ui->unit, SIGNAL(valueChanged()), this, SLOT(updateDigits()));
 }
 
 void OptionsDialog::setMapper()
@@ -247,7 +333,6 @@ void OptionsDialog::on_resetButton_clicked()
         QMessageBox box(QMessageBox::Question,  tr("Confirm options reset"), tr("Client restart required to activate changes.") + "<br><br>" + tr("Client will be shut down. Do you want to proceed?"));
         QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
         box.addButton(tr("Cancel"),QMessageBox::NoRole);
-        box.setStyleSheet("QLabel{font-size:12px;} QPushButton{font-size:12px;}");
         box.exec();
         if ((QPushButton*)box.clickedButton() != okButton)
             return;

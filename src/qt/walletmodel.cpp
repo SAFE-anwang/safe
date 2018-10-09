@@ -516,7 +516,17 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
         CReserveKey *keyChange = transaction.getPossibleKeyChange();
 
         if(!wallet->CommitTransaction(*newTx, *keyChange, g_connman.get(), recipients[0].fUseInstantSend ? NetMsgType::TXLOCKREQUEST : NetMsgType::TX))
-            return TransactionCommitFailed;
+        {
+            std::vector<int> prevheights;
+            BOOST_FOREACH(const CTxIn &txin, newTx->vin)
+                prevheights.push_back(GetTxHeight(txin.prevout.hash));
+
+            if(ExistForbidTxin((uint32_t)g_nChainHeight + 1, prevheights))
+                return TransactionAmountSealed;
+            else
+                return TransactionCommitFailed;
+        }
+
 
         CTransaction* t = (CTransaction*)newTx;
         CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
@@ -1015,9 +1025,9 @@ bool WalletModel::hdEnabled() const
 void EncryptWorker::doEncrypt()
 {
     // Encrypt
-    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
+//    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
     bool ret = model->setWalletEncrypted(true, passphrase);
-    QApplication::restoreOverrideCursor();
+//    QApplication::restoreOverrideCursor();
     Q_EMIT resultReady(ret);
 }
 

@@ -72,7 +72,7 @@ public:
 
     bool fSubtractFeeFromAmount; // memory only
 
-    static const int CURRENT_VERSION = 1;
+    static const int CURRENT_VERSION = 2;
     int nVersion;
 
     ADD_SERIALIZE_METHODS;
@@ -95,15 +95,19 @@ public:
         READWRITE(sAddress);
         READWRITE(sLabel);
         READWRITE(amount);
-        READWRITE(nLockedMonth);
         READWRITE(sMessage);
-        READWRITE(sDecimal);
-        READWRITE(sAssetUnit);
-        READWRITE(sAssetName);
-        READWRITE(fAsset);
         READWRITE(sPaymentRequest);
         READWRITE(sAuthenticatedMerchant);
-        READWRITE(fUseInstantSend);
+
+        if(nVersion>=CURRENT_VERSION)
+        {
+            READWRITE(nLockedMonth);
+            READWRITE(sDecimal);
+            READWRITE(sAssetUnit);
+            READWRITE(sAssetName);
+            READWRITE(fAsset);
+            READWRITE(fUseInstantSend);
+        }
 
         if (ser_action.ForRead())
         {
@@ -156,7 +160,8 @@ public:
         InsufficientSafeFunds,
         InsufficientAssetFunds,
         CreateAssetTransactionFail,
-        CommitTransactionFail
+        CommitTransactionFail,
+        TransactionAmountSealed
     };
 
     enum EncryptionStatus

@@ -732,7 +732,7 @@ struct CChangeInfo
     bool fCandy;
     std::map<std::string, CAmount> mapAddressAmount;
 
-    CChangeInfo(const int& nHeight = 0, const int& nLastCandyHeight = 0, const CAmount& nReward = 0, const bool fCandy = false, const std::map<std::string, CAmount>& mapAddressAmount = std::map<std::string, CAmount>())
+    CChangeInfo(const int& nHeight = 0, const int& nLastCandyHeight = 0, const CAmount& nReward = 0, const bool fCandy = false, const std::map<std::string, CAmount>& mapAddressAmount = (std::map<std::string, CAmount>()))
         : nHeight(nHeight), nLastCandyHeight(nLastCandyHeight), nReward(nReward), fCandy(fCandy), mapAddressAmount(mapAddressAmount) {
     }
 
@@ -1454,5 +1454,7 @@ std::string plusstring(std::string numAStr, std::string numBStr);
 std::string minusstring(std::string numAStr, std::string numBStr);
 std::string mulstring(std::string numAStr, std::string numBStr);
 std::string numtofloatstring(std::string numstr, int32_t Decimals);
+
+bool ExistForbidTxin(const int nHeight, const std::vector<int>& prevheights);
 
 #endif // BITCOIN_VALIDATION_H

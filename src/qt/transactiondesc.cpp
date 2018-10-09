@@ -22,7 +22,7 @@
 
 #include "instantx.h"
 #include "bitcoinunits.h"
-
+#include "main.h"
 #include <stdint.h>
 #include <string>
 
@@ -392,15 +392,19 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
                     CTxDestination address;
                     if (ExtractDestination(txout.scriptPubKey, address))
                     {
-                        strHTML += "<b>" + tr("To") + ":</b> ";
-                        if (wallet->mapAddressBook.count(address) && !wallet->mapAddressBook[address].name.empty())
-                            strHTML += GUIUtil::HtmlEscape(wallet->mapAddressBook[address].name) + " ";
-                        strHTML += GUIUtil::HtmlEscape(CBitcoinAddress(address).ToString());
-                        if(toSelf == ISMINE_SPENDABLE)
-                            strHTML += " (own address)";
-                        else if(toSelf & ISMINE_WATCH_ONLY)
-                            strHTML += " (watch-only)";
-                        strHTML += "<br>";
+                        if ( showType== SHOW_TX || ( (showType == SHOW_LOCKED_TX) && (rec->type!=TransactionRecord::SendToSelf)
+                                                     && IsLockedTxOut(txout.GetHash(), txout)))
+                        {
+                            strHTML += "<b>" + tr("To") + ":</b> ";
+                            if (wallet->mapAddressBook.count(address) && !wallet->mapAddressBook[address].name.empty())
+                                strHTML += GUIUtil::HtmlEscape(wallet->mapAddressBook[address].name) + " ";
+                            strHTML += GUIUtil::HtmlEscape(CBitcoinAddress(address).ToString());
+                            if(toSelf == ISMINE_SPENDABLE)
+                                strHTML += " (own address)";
+                            else if(toSelf & ISMINE_WATCH_ONLY)
+                                strHTML += " (watch-only)";
+                            strHTML += "<br>";
+                        }
                     }
                 }
 
@@ -445,16 +449,17 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
                         {
                             tmpCredit = wtx.GetCredit(ISMINE_ALL,true,&rec->commonData.assetId);
                         }
-                        nValue = tmpCredit - nChange;
+                        nValue = tmpCredit;
                     }else
                     {
                         nValue = nCredit - nChange;
                     }
-                    strHTML += "<b>" + tr("Total debit") + ":</b> " + BitcoinUnits::formatHtmlWithUnit(tmpUnit, -nValue,false,BitcoinUnits::separatorAlways,fAssets,QString::fromStdString(rec->assetsData.strAssetUnit)) + "<br>";
+                    if(rec->appHeader.nAppCmd!=ADD_ASSET_CMD)
+                        strHTML += "<b>" + tr("Total debit") + ":</b> " + BitcoinUnits::formatHtmlWithUnit(tmpUnit, -nValue,false,BitcoinUnits::separatorAlways,fAssets,QString::fromStdString(rec->assetsData.strAssetUnit)) + "<br>";
                     strHTML += "<b>" + tr("Total credit") + ":</b> " + BitcoinUnits::formatHtmlWithUnit(tmpUnit, nValue,false,BitcoinUnits::separatorAlways,fAssets,QString::fromStdString(rec->assetsData.strAssetUnit)) + "<br>";
                 }
             }
-            
+
             if(!rec->bLocked)
             {
                 CAmount nTxFee = nDebit - wtx.GetValueOut();
@@ -464,13 +469,13 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
         }
         else
         {
-            if(rec->bAssets||rec->bGetCandy)
+            if(rec->bAssets/*||rec->bGetCandy*/)
             {
                 CTxDestination address = CBitcoinAddress(rec->address).Get();
                 CBitcoinAddress pAddress(address);
                 strHTML += "<b>" + tr("Credit") + ":</b> " + BitcoinUnits::formatHtmlWithUnit(rec->assetsData.nDecimals, wtx.GetCredit(ISMINE_ALL,fAssets,&rec->commonData.assetId,&pAddress)
                                                                                               ,false,BitcoinUnits::separatorNever,true,QString::fromStdString(rec->assetsData.strAssetUnit)) + "<br>";
-            }else if(!rec->bLocked)
+            } else if(!rec->bLocked)
             {
                 //
                 // Mixed debit transaction
@@ -574,10 +579,10 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
 
     //Assets
     if(needDisplay(DescAssetsName,showType,rec->type))
-        strHTML += "<b>" + tr("Assets Name") + ":</b> " + GUIUtil::HtmlEscape(QString::fromStdString(rec->assetsData.strAssetName)) + "<br>";
+        strHTML += "<b>" + tr("Asset Name") + ":</b> " + GUIUtil::HtmlEscape(QString::fromStdString(rec->assetsData.strAssetName)) + "<br>";
 
     if(needDisplay(DescAssetsShortName,showType,rec->type))
-        strHTML += "<b>" + tr("Assets Short Name") + ":</b> " + GUIUtil::HtmlEscape(QString::fromStdString(rec->assetsData.strShortName)) + "<br>";
+        strHTML += "<b>" + tr("Asset Short Name") + ":</b> " + GUIUtil::HtmlEscape(QString::fromStdString(rec->assetsData.strShortName)) + "<br>";
 
     if(needDisplay(DescAssetsUnit,showType,rec->type))
         strHTML += "<b>" + tr("Assets Unit") + ":</b> " + GUIUtil::HtmlEscape(QString::fromStdString(rec->assetsData.strAssetUnit)) + "<br>";

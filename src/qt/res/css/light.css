@@ -12,6 +12,10 @@ padding-top:0px;
 background-color:#ffffff;
 }
 
+QCalendarWidget {
+font-size:12px;
+}
+
 QStatusBar {
 background-color:#ffffff;
 font-size:12px;
@@ -36,6 +40,7 @@ background-color:#f8f6f6;
 
 QMenu {
 background-color:#f8f6f6;
+font-size:12px;
 }
 
 QMenu::item {
@@ -880,6 +885,7 @@ min-width:400px;
 
 QWidget#CandyPage .QTabWidget#tabWidget .QWidget#tabSendCandy .QFrame#sendCandyFrame .QTextEdit#commentTextEdit { 
 border:1px solid #d7d7d7;
+font-size:12px;
 }
 
 QWidget#CandyPage .QPushButton#firstBtn{
@@ -1079,6 +1085,7 @@ margin-right:43px;
 text-align: right;
 color:#818181;
 max-height:10px;
+font-size:12px;
 }
 
 QWidget#OverviewPage .QScrollArea#OverviewScrollArea .QWidget#scrollAreaWidgetContents .QFrame#framePrivateSend  .QProgressBar#privateSendProgress::chunk {
@@ -1662,11 +1669,13 @@ QDialog#CoinControlDialog .QDialogButtonBox#buttonBox QPushButton { /* Coin Cont
 QDialog#CoinControlDialog .QFrame#frame .QRadioButton#radioTreeMode { /* Coin Control Tree Mode Selector */
 color:#818181;
 background-color:transparent;
+font-size:12px;
 }
 
 QDialog#CoinControlDialog .QFrame#frame .QRadioButton#radioListMode { /* Coin Control List Mode Selector */
 color:#818181;
 background-color:transparent;
+font-size:12px;
 }
 
 QDialog#CoinControlDialog QHeaderView::section:first { /* Bug Fix: the number "1" displays in this table for some reason... */
@@ -1677,6 +1686,7 @@ QDialog#CoinControlDialog .CoinControlTreeWidget#treeWidget { /* Coin Control Wi
 outline:0;
 background-color:#ffffff;
 border:0px solid #818181;
+font-size:12px;
 }
 
 QDialog#CoinControlDialog .CoinControlTreeWidget#treeWidget::item {
@@ -2143,6 +2153,12 @@ text-align:center;
 }
 
 CandyView QLineEdit#amountWidget { /* Amount Filter */
+margin-bottom:2px;
+margin-right:1px;
+text-align:center;
+}
+
+CandyView QLineEdit#assetsNameWidget { /* Address Filter */
 margin-bottom:2px;
 margin-right:1px;
 text-align:center;

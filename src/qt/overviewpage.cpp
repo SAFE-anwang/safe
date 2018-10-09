@@ -315,10 +315,10 @@ bool OverviewPage::getCurrAssetInfoByName(const QString &strAssetName, CAmount &
 {
     strUnit = "SAFE";
     uint256 assetId;
-    if(GetAssetIdByAssetName(strAssetName.toStdString(),assetId))
+    if(GetAssetIdByAssetName(strAssetName.toStdString(),assetId, false))
     {
         CAssetId_AssetInfo_IndexValue assetsInfo;
-        if(GetAssetInfoByAssetId(assetId,assetsInfo))
+        if(GetAssetInfoByAssetId(assetId,assetsInfo, false))
         {
             bool fAssets = true;
             amount = walletModel->getBalance(NULL,true,&assetId);
@@ -337,7 +337,8 @@ void OverviewPage::updateAssetsInfo(const QString &strAssetName)
     bool updateOneAsset = !strAssetName.isEmpty();
     QList<QString> entryList;
     QStringList assetsNames;
-    walletModel->getAssetsNames(true,assetsNames);
+    //tranfer asset,get candy will recv new assets
+    walletModel->getAssetsNames(false,assetsNames);
 
     CAmount amount = 0,unconfirmAmount=0,lockedAmount=0;
     int nDecimals = 0;
@@ -375,6 +376,7 @@ void OverviewPage::updateAssetsInfo(const QString &strAssetName)
     {
         if(entryList.contains(assetName))
             continue;
+
         if(!getCurrAssetInfoByName(assetName,amount,unconfirmAmount,lockedAmount,nDecimals,strUnit))
             continue;
 
@@ -902,6 +904,6 @@ void OverviewPage::initTableView()
 //    tableView->setColumnWidth(RecentRequestsTableModel::Message,AMOUNT_MINIMUM_COLUMN_WIDTH);
 
 //    connect(tableView->selectionModel(),SIGNAL(selectionChanged(QItemSelection, QItemSelection)), this,SLOT(recentRequestsView_selectionChanged(QItemSelection, QItemSelection)));
-    // Last 2 columns are set by the columnResizingFixer, when the table geometry is ready.,XJTODO
+    // Last 2 columns are set by the columnResizingFixer, when the table geometry is ready.
     //columnResizingFixer = new GUIUtil::TableViewLastColumnResizingFixer(tableView, AMOUNT_MINIMUM_COLUMN_WIDTH, DATE_COLUMN_WIDTH, this);
 }

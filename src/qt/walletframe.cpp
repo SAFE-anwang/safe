@@ -12,8 +12,6 @@
 #include <QHBoxLayout>
 #include <QLabel>
 
-extern bool fGetCandyInfoStart;
-
 WalletFrame::WalletFrame(const PlatformStyle *platformStyle, BitcoinGUI *_gui) :
     QFrame(_gui),
     gui(_gui),
@@ -118,7 +116,6 @@ bool WalletFrame::updateAssetsDisplay()
     if(walletView)
     {
         walletView->updateAssetsDisplay();
-        fGetCandyInfoStart = true;
         return true;
     }
     return false;

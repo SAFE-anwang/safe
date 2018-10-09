@@ -163,7 +163,7 @@ public Q_SLOTS:
     /** Update assets names*/
     void updateAssetsInfo(int showType,bool bConfirmedNewAssets=false,const QString& strAssetName="");
 
-    void updateAssetsDisplay();
+    void updateAssetsDisplay(bool updateAsset=true);
 Q_SIGNALS:
     /** Signal that we want to show the main window */
     void showNormalIfMinimized();

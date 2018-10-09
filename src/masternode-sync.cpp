@@ -18,6 +18,8 @@
 class CMasternodeSync;
 CMasternodeSync masternodeSync;
 
+extern bool fGetCandyInfoStart;
+
 void CMasternodeSync::Fail()
 {
     nTimeLastFailure = GetTime();
@@ -187,6 +189,8 @@ void CMasternodeSync::ProcessTick(CConnman& connman)
     // Calculate "progress" for LOG reporting / GUI notification
     double nSyncProgress = double(nRequestedMasternodeAttempt + (nRequestedMasternodeAssets - 1) * 8) / (8*4);
     LogPrintf("CMasternodeSync::ProcessTick -- nTick %d nRequestedMasternodeAssets %d nRequestedMasternodeAttempt %d nSyncProgress %f\n", nTick, nRequestedMasternodeAssets, nRequestedMasternodeAttempt, nSyncProgress);
+    if(nSyncProgress >= 0.5f)
+        fGetCandyInfoStart = true;
     uiInterface.NotifyAdditionalDataSyncProgressChanged(nSyncProgress);
 
     std::vector<CNode*> vNodesCopy = connman.CopyNodeVector();

@@ -495,7 +495,6 @@ void SendCoinsDialog::send(QList<SendCoinsRecipient> recipients, QString strFee,
 
     // Display message box
     QMessageBox box(QMessageBox::Question,  tr("Confirm send coins"), questionString.arg(formatted.join("<br />")), NULL);
-    box.setStyleSheet("QMessageBox{font-size:12px;} QPushButton{font-size:12px;}");
     QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
     box.addButton(tr("Cancel"),QMessageBox::NoRole);
     box.exec();
@@ -869,6 +868,10 @@ void SendCoinsDialog::processSendCoinsReturn(const WalletModel::SendCoinsReturn 
         break;
     case WalletModel::CommitTransactionFail:
         msgParams.first = tr("The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+        msgParams.second = CClientUIInterface::MSG_ERROR;
+        break;
+    case WalletModel::TransactionAmountSealed:
+        msgParams.first = tr("The transaction was rejected! The transaction (partial) amount has been sealed.");
         msgParams.second = CClientUIInterface::MSG_ERROR;
         break;
     // included to prevent a compiler warning.

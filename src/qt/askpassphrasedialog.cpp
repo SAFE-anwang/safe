@@ -83,7 +83,8 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget *parent) :
     connect(ui->passEdit3, SIGNAL(textChanged(QString)), this, SLOT(textChanged()));
     ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Ok"));
     ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("Cancel"));
-    msgbox = new QMessageBox(QMessageBox::Information, tr("Encrypting wallet, please wait."), tr("Encrypting the wallet, this may take a few minutes to complete, please be patient."));
+    msgbox = new QMessageBox(QMessageBox::Information, tr("Encrypt wallet"), tr("Encrypting the wallet, this may take a few minutes to complete, please be patient."));
+    msgbox->setStyleSheet("QLabel{font-size:12px;} QPushButton {font-size:12px;}");
     msgbox->setStandardButtons(QMessageBox::NoButton);
 }
 

@@ -33,6 +33,7 @@ private:
     bool addAssets();
     void updateCandyValue();
     bool amountFromString(const std::string& valueStr,int decimal,CAmount& amount,bool* invalidDecimal=NULL);
+    void updateTotalAssetsEdit();
 
 private Q_SLOTS:
     void on_distributeComboBox_currentIndexChanged(int index);
@@ -50,6 +51,8 @@ private Q_SLOTS:
     void on_totalAssetsEdit_textChanged(const QString &arg1);
 
     void handlerExpireLineEditTextChange(const QString &text);
+
+    void handlerAssetsNameComboBoxTextChange(const QString &text);
 private:
     Ui::AssetsDistribute *ui;
     AssetsPage* assetsPage;

@@ -312,6 +312,8 @@ void WalletView::setClientModel(ClientModel *clientModel)
     if (settings.value("fShowMasternodesTab").toBool()) {
         masternodeListPage->setClientModel(clientModel);
     }
+    if(clientModel)
+        connect(clientModel,SIGNAL(updateForbitChanged(bool)),this,SLOT(updateAssetsDisplay(bool)));
 }
 
 void WalletView::setWalletModel(WalletModel *walletModel)
@@ -363,8 +365,7 @@ void WalletView::setWalletModel(WalletModel *walletModel)
         connect(walletModel->getLockedTransactionTableModel(),SIGNAL(updateAssets(int,bool,QString)),this,SLOT(updateAssetsInfo(int,bool,QString)));
         connect(walletModel->getTransactionTableModel(),SIGNAL(updateAssets(int,bool,QString)),this,SLOT(updateAssetsInfo(int,bool,QString)));
         connect(walletModel->getAssetsDistributeTableModel(),SIGNAL(updateAssets(int,bool,QString)),this,SLOT(updateAssetsInfo(int,bool,QString)));
-
-        connect(overviewPage,SIGNAL(testRefresh()),this,SLOT(updateAssetsDisplay()));
+        connect(walletModel->getCandyTableModel(),SIGNAL(updateAssets(int,bool,QString)),this,SLOT(updateAssetsInfo(int,bool,QString)));
 
         //update once
         overviewPage->updateAssetsInfo();
@@ -375,13 +376,14 @@ void WalletView::setWalletModel(WalletModel *walletModel)
     }
 }
 
-void WalletView::updateAssetsDisplay()
+void WalletView::updateAssetsDisplay(bool updateAsset)
 {
     walletModel->getTransactionTableModel()->refreshWallet();
     walletModel->getLockedTransactionTableModel()->refreshWallet();
     walletModel->getAssetsDistributeTableModel()->refreshWallet();
     walletModel->getCandyTableModel()->refreshWallet();
-    updateAssetsInfo(SHOW_ALL);
+    if(updateAsset)
+        updateAssetsInfo(SHOW_ALL);
 }
 
 void WalletView::updateAssetsInfo(int showType, bool bConfirmedNewAssets, const QString &strAssetName)

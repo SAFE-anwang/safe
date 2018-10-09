@@ -12,6 +12,7 @@
 #include "script/sign.h"
 #include "masternode-sync.h"
 #include "txmempool.h"
+#include "askpassphrasedialog.h"
 #include <string.h>
 #include <map>
 #include <vector>
@@ -55,7 +56,7 @@ CandyPage::CandyPage():
     nBtnColumn = 4;
     ui->expireLineEdit->setValidator(new QIntValidator(MIN_CANDYEXPIRED_VALUE,MAX_CANDYEXPIRED_VALUE, this));
     connect(ui->expireLineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(handlerExpireLineEditTextChange(const QString &)));
-    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(QString)),this,SLOT(updateCandyInfo(QString)));
+    connect(ui->assetsComboBox,SIGNAL(currentTextChanged(QString)),this,SLOT(updateCandyInfo(QString)));
     ui->candyRatioSlider->initSlider(1,100,20);
     sliderFixedHeight = 15;
     nPageCount = nCandyPageCount;
@@ -64,6 +65,7 @@ CandyPage::CandyPage():
     ui->candyRatioSlider->initLabel(sliderFixedHeight);
     ui->candyRatioSlider->setSize(400,50);
     ui->labelTotal->setVisible(false);
+    isUnlockByGlobal = false;
 
     completer = new QCompleter;
     stringListModel = new QStringListModel;
@@ -86,6 +88,14 @@ CandyPage::CandyPage():
         ui->candyValueLabel->setText("1");
     }
     setMouseTracking(true);
+
+    msgbox = new QMessageBox(QMessageBox::Information, tr("Get Candy"), tr("Getting candy, please wait."));
+    msgbox->setStandardButtons(QMessageBox::NoButton);
+    candyWorker = new GetCandyWorker(this);
+    candyWorker->moveToThread(&getCandyThread);
+    connect(this, SIGNAL(runGetCandy()), candyWorker, SLOT(doGetCandy()));
+    connect(&getCandyThread, &QThread::finished, candyWorker, &QObject::deleteLater);
+    connect(candyWorker, SIGNAL(resultReady(bool, QString, int, CAmount)), this, SLOT(handlerGetCandyResult(bool, QString, int, CAmount)));
 }
 
 CandyPage::~CandyPage()
@@ -101,6 +111,8 @@ void CandyPage::clear()
     ui->candyRatioSlider->initLabel(sliderFixedHeight);
     ui->expireLineEdit->clear();
     on_candyRatioSlider_valueChanged(value);
+    if (ui->assetsComboBox->count() == 0)
+        ui->candyValueLabel->setText("");
 }
 
 bool CandyPage::existedCandy(QWidget* widget,const QString &strAssetId, const qint64 &candyAmount
@@ -255,7 +267,12 @@ void CandyPage::getCandy(QPushButton *btn)
         int seconds = (neededHeight-nCurrentHeight)*Params().GetConsensus().nPowTargetSpacing;
         int hour = seconds / 3600;
         int minute = seconds % 3600 / 60;
-        QMessageBox::warning(this, strGetCandy,tr("Get candy need wait about %1 hours %2 minutes").arg(QString::number(hour)).arg(QString::number(minute)),tr("Ok"));
+        if (hour == 0 && minute != 0)
+            QMessageBox::warning(this, strGetCandy,tr("Get candy need wait about %1 minutes").arg(QString::number(minute)),tr("Ok"));
+        else if (hour != 0 && minute == 0)
+            QMessageBox::warning(this, strGetCandy,tr("Get candy need wait about %1 hours").arg(QString::number(hour)),tr("Ok"));
+        else
+            QMessageBox::warning(this, strGetCandy,tr("Get candy need wait about %1 hours %2 minutes").arg(QString::number(hour)).arg(QString::number(minute)),tr("Ok"));
         return;
     }
 
@@ -279,6 +296,40 @@ void CandyPage::getCandy(QPushButton *btn)
         return;
     }
 
+    //Put get candy operation into the thread to prevent the main thread from being suspended.
+    candyWorker->init(assetId, out, nTxHeight, nTotalSafe, candyInfo, assetInfo,rowNum);
+    getCandyThread.start();
+    Q_EMIT runGetCandy();
+    msgbox->show();
+}
+
+void CandyPage::handlerGetCandyResult(const bool result, const QString errorStr, const int rowNum, const CAmount nFeeRequired)
+{
+    if (!msgbox->close())
+        msgbox->hide();
+
+    if (isUnlockByGlobal)
+        model->setWalletLocked(true);
+    isUnlockByGlobal = false;
+
+    if(result == false)
+    {
+        if (nFeeRequired != GetCandyWorker::uselessArg)
+            QMessageBox::warning(this, strGetCandy, tr(errorStr.toStdString().c_str()).arg(QString::fromStdString(FormatMoney(nFeeRequired)),tr("Ok")));
+        else
+            QMessageBox::warning(this, strGetCandy, tr(errorStr.toStdString().c_str()),tr("Ok"));
+        if (rowNum != GetCandyWorker::uselessArg)
+            eraseCandy(rowNum);
+        return;
+    }
+
+    QMessageBox::information(this, strGetCandy,tr("Get candy success"),tr("Ok"));
+    eraseCandy(rowNum);
+
+}
+
+void GetCandyWorker::doGetCandy()
+{
     //CGetCandyInfo getCandyInfo(assetId,candyInfo,out,assetInfo.assetData.nDecimals,nTxHeight,nTotalSafe,true);
     //PutCandyDataToList(getCandyInfo);
     //btn->setText(tr("get candying..."));
@@ -307,14 +358,23 @@ void CandyPage::getCandy(QPushButton *btn)
         CAmount nSafe = 0;
         if(!GetAddressAmountByHeight(nTxHeight, *addit, nSafe))
             continue;
-        if (nSafe == 0 || nSafe > nTotalSafe)
+        if (nSafe < 1 * COIN || nSafe > nTotalSafe)
             continue;
 
         CAmount nTempAmount = 0;
         CAmount nCandyAmount = (CAmount)(1.0 * nSafe / nTotalSafe * candyInfo.nAmount);
         CAmount amount;
-        if(!amountFromString("0.0001", strGetCandy,assetInfo.assetData.nDecimals, amount))
+        if(!parnt->amountFromString("0.0001", parnt->strGetCandy,assetInfo.assetData.nDecimals, amount))
+        {
+            if (!parnt->msgbox->close())
+                parnt->msgbox->hide();
+
+            if (parnt->isUnlockByGlobal)
+                parnt->model->setWalletLocked(true);
+            parnt->isUnlockByGlobal = false;
+
             return;
+        }
         if(nCandyAmount < amount)
             continue;
         if(GetGetCandyAmount(assetId, out, *addit, nTempAmount))
@@ -334,12 +394,13 @@ void CandyPage::getCandy(QPushButton *btn)
     {
         if(bGottenCandy)
         {
-            QMessageBox::warning(this, strGetCandy, tr("You have gotten this candy"), tr("Ok"));
-            eraseCandy(rowNum);
+            QString errorStr = tr("You have gotten this candy");
+            Q_EMIT resultReady(false, errorStr, rowNum, uselessArg);
         }
         else
         {
-            QMessageBox::warning(this, strGetCandy,tr("Invalid candy"),tr("Ok"));
+            QString errorStr = tr("Invalid candy");
+            Q_EMIT resultReady(false, errorStr, uselessArg, uselessArg);
         }
         return;
     }
@@ -372,21 +433,19 @@ void CandyPage::getCandy(QPushButton *btn)
         {
             QString errorStr = QString::fromStdString(strError);
             if(nFeeRequired > pwalletMain->GetBalance())
-                errorStr = tr("Insufficient safe funds, this transaction requires a transaction fee of at least %1!").arg(QString::fromStdString(FormatMoney(nFeeRequired)));
-            QMessageBox::warning(this, strGetCandy,errorStr,tr("Ok"));
+                errorStr = tr("Insufficient safe funds, this transaction requires a transaction fee of at least %1!");
+            Q_EMIT resultReady(false, errorStr, uselessArg, nFeeRequired);
             return;
         }
 
         if(!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
         {
-            QMessageBox::warning(this, strGetCandy, tr("Get candy failed, please check your wallet and try again later!"), tr("Ok"));
+            QString errorStr = tr("Get candy failed, please check your wallet and try again later!");
+            Q_EMIT resultReady(false, errorStr, uselessArg, uselessArg);
             return;
         }
     }
-
-    QMessageBox::information(this, strGetCandy,tr("Get candy success"),tr("Ok"));
-
-    eraseCandy(rowNum);
+    Q_EMIT resultReady(true, tr(""), rowNum, uselessArg);
 }
 
 void CandyPage::eraseCandy(int rowNum)
@@ -429,6 +488,7 @@ void CandyPage::eraseCandy(int rowNum)
     if(!found)
     {
         LogPrintf("erase candy not found,height:%d,assetName:%s\n", tmpInfo.nHeight,tmpInfo.assetData.strAssetName);
+        updatePage();
         return;
     }
     gAllCandyInfoVec.erase(gAllCandyInfoVec.begin()+removeIndex);
@@ -441,9 +501,16 @@ void CandyPage::getCandy()
     WalletModel::EncryptionStatus encStatus = model->getEncryptionStatus();
     if(encStatus == model->Locked || encStatus == model->UnlockedForMixingOnly)
     {
-        WalletModel::UnlockContext ctx(model->requestUnlock());
-        if(!ctx.isValid())
-            return;
+//        WalletModel::UnlockContext ctx(model->requestUnlock());
+//        if(!ctx.isValid())
+//            return;
+        if (model->getEncryptionStatus() == WalletModel::Locked || model->getEncryptionStatus() == WalletModel::UnlockedForMixingOnly)
+        {
+            AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
+            dlg.setModel(model);
+            dlg.exec();
+            isUnlockByGlobal = true;
+        }
         getCandy(btn);
         return;
     }
@@ -483,7 +550,7 @@ void CandyPage::setModel(WalletModel *model)
 
 void CandyPage::updateAssetsInfo()
 {
-    disconnect(ui->assetsComboBox,SIGNAL(currentIndexChanged(QString)),this,SLOT(updateCandyInfo(QString)));
+    disconnect(ui->assetsComboBox,SIGNAL(currentTextChanged(QString)),this,SLOT(updateCandyInfo(QString)));
     std::map<uint256, CAssetData> issueAssetMap;
     std::vector<std::string> assetNameVec;
     if(GetIssueAssetInfo(issueAssetMap))
@@ -525,7 +592,7 @@ void CandyPage::updateAssetsInfo()
     if(stringList.contains(currText))
         ui->assetsComboBox->setCurrentText(currText);
     updateCandyInfo(ui->assetsComboBox->currentText());
-    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(QString)),this,SLOT(updateCandyInfo(QString)));
+    connect(ui->assetsComboBox,SIGNAL(currentTextChanged(QString)),this,SLOT(updateCandyInfo(QString)));
 }
 
 bool CandyPage::amountFromString(const std::string &valueStr, const QString &msgboxTitle, int decimal, CAmount &amount)
@@ -600,11 +667,13 @@ void CandyPage::updateCandyInfo(const QString &text)
     std::string strAssetName = text.trimmed().toStdString();
     uint256 assetId;
     if(!GetAssetIdByAssetName(strAssetName,assetId)){
+        ui->candyValueLabel->setText("");
         return;
     }
 
     CAssetId_AssetInfo_IndexValue assetInfo;
     if(assetId.IsNull() || !GetAssetInfoByAssetId(assetId, assetInfo)){
+        ui->candyValueLabel->setText("");
         return;
     }
     currAssetTotalAmount = assetInfo.assetData.nTotalAmount;
@@ -620,6 +689,11 @@ void CandyPage::on_candyRatioSlider_valueChanged(int /*value*/)
 bool CandyPage::invalidInput()
 {
     int index = ui->assetsComboBox->findText(ui->assetsComboBox->currentText().trimmed());
+    if(ui->assetsComboBox->currentText().toStdString().empty())
+    {
+        QMessageBox::warning(this, strPutCandy,tr("Please select asset name"),tr("Ok"));
+        return true;
+    }
     if(index<0)
     {
         QMessageBox::warning(this, strPutCandy,tr("Invalid asset name"),tr("Ok"));
@@ -647,6 +721,11 @@ bool CandyPage::putCandy()
     }
     std::string strAssetName = ui->assetsComboBox->currentText().trimmed().toStdString();
     uint256 assetId;
+    if(ui->assetsComboBox->currentText().toStdString().empty())
+    {
+        QMessageBox::warning(this, strPutCandy,tr("Please select asset name"),tr("Ok"));
+        return false;
+    }
     if(!GetAssetIdByAssetName(strAssetName,assetId, false))
     {
         QMessageBox::warning(this, strPutCandy,tr("Invalid asset name"),tr("Ok"));
@@ -662,6 +741,7 @@ bool CandyPage::putCandy()
     if(putCandyCount>=MAX_PUTCANDY_VALUE)
     {
         QMessageBox::warning(this, strPutCandy,tr("Put candy times used up"),tr("Ok"));
+        updateAssetsInfo();
         return false;
     }
 
@@ -743,7 +823,6 @@ bool CandyPage::putCandy()
     QMessageBox box(QMessageBox::Question,  strPutCandy ,str);
     QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
     box.addButton(tr("Cancel"),QMessageBox::NoRole);
-    box.setStyleSheet("QMessageBox{font-size:12px;} QPushButton{font-size:12px;}");
     box.exec();
     if ((QPushButton*)box.clickedButton() != okButton)
         return false;

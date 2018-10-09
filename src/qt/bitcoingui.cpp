@@ -250,7 +250,7 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *platformStyle, const NetworkStyle *n
     progressBar = new GUIUtil::ProgressBar();
     progressBar->setAlignment(Qt::AlignCenter);
     progressBar->setVisible(true);
-    progressBar->setStyleSheet("QProgressBar{font-size: 12px;}");
+    progressBar->setStyleSheet("QProgressBar{font-size: 12px; max-height: 20px;}");
 
     // Override style sheet for progress bar for styles that have a segmented progress bar,
     // as they make the text unreadable (workaround for issue #1071)
@@ -395,7 +395,7 @@ void BitcoinGUI::createActions()
     applicationsAction->setToolTip(applicationsAction->statusTip());
     applicationsAction->setCheckable(true);
 #ifdef Q_OS_MAC
-    applicationAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_6));
+    applicationsAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_6));
 #else
     applicationsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
 #endif
@@ -515,7 +515,7 @@ void BitcoinGUI::createActions()
     openConfEditorAction = new QAction(QIcon(":/icons/" + theme + "/edit"), tr("Open Wallet &Configuration File"), this);
     openConfEditorAction->setStatusTip(tr("Open configuration file"));
     openMNConfEditorAction = new QAction(QIcon(":/icons/" + theme + "/edit"), tr("Open &Masternode Configuration File"), this);
-    openMNConfEditorAction->setStatusTip(tr("Open Masternode configuration file"));    
+    openMNConfEditorAction->setStatusTip(tr("Open Masternode configuration file"));
     showBackupsAction = new QAction(QIcon(":/icons/" + theme + "/browse"), tr("Show Automatic &Backups"), this);
     showBackupsAction->setStatusTip(tr("Show automatically created wallet backups"));
     // initially disable the debug window menu items
@@ -563,7 +563,7 @@ void BitcoinGUI::createActions()
 
     // Get restart command-line parameters and handle restart
     connect(rpcConsole, SIGNAL(handleRestart(QStringList)), this, SLOT(handleRestart(QStringList)));
-    
+
     // prevents an open debug window from becoming stuck/unusable on client shutdown
     connect(quitAction, SIGNAL(triggered()), rpcConsole, SLOT(hide()));
 
@@ -796,6 +796,77 @@ void BitcoinGUI::updateCentralTitle(const QString &title)
     centralTitleLabel->setText(title);
 }
 
+//void BitcoinGUI::handleResize()
+//{
+//    int xdiff = QCursor::pos().x() - resizeDownPos.x();
+//    int ydiff = QCursor::pos().y() - resizeDownPos.y();
+//    int currWidth = 0;
+//    int diffWidth = 10;
+//    switch (resizeRegion)
+//    {
+//    case East:
+//    {
+//        currWidth = mouseDownRect.width()+xdiff;
+//        titlebar->setFixedWidth(currWidth-BORDER_SIZE*2);
+//        resize(currWidth, height());
+//        break;
+//    }
+//    case West:
+//    {
+//        int w = mouseDownRect.width()-xdiff;
+//        titlebar->setFixedWidth(w-BORDER_SIZE*2);
+//        resize(w, height());
+//        move(resizeDownPos.x()+xdiff, y());
+//        break;
+//    }
+//    case South:
+//    {
+//        resize(width(),mouseDownRect.height()+ydiff);
+//        break;
+//    }
+//    case North:
+//    {
+//        resize(width(),mouseDownRect.height()-ydiff);
+//        move(x(), resizeDownPos.y()+ydiff);
+//        break;
+//    }
+//    case SouthEast:
+//    {
+//        titlebar->setFixedWidth(mouseDownRect.width() + xdiff-BORDER_SIZE*2);
+//        resize(mouseDownRect.width() + xdiff, mouseDownRect.height() + ydiff);
+//        break;
+//    }
+//    case NorthEast:
+//    {
+//        titlebar->setFixedWidth(mouseDownRect.width()+xdiff-BORDER_SIZE*2);
+//        resize(mouseDownRect.width()+xdiff, mouseDownRect.height()-ydiff);
+//        move(x(), resizeDownPos.y()+ydiff);
+//        break;
+//    }
+//    case NorthWest:
+//    {
+//        titlebar->setFixedWidth(mouseDownRect.width()-xdiff-BORDER_SIZE*2);
+//        resize(mouseDownRect.width()-xdiff, mouseDownRect.height()-ydiff);
+//        move(resizeDownPos.x()+xdiff, resizeDownPos.y()+ydiff);
+//        break;
+//    }
+//    case SouthWest:
+//    {
+//        titlebar->setFixedWidth(mouseDownRect.width()-xdiff-BORDER_SIZE*2);
+//        resize(mouseDownRect.width()-xdiff, mouseDownRect.height()+ydiff);
+//        move(resizeDownPos.x()+xdiff, y());
+//        break;
+//    }
+//    default:
+//    {
+//        break;
+//    }
+//    }
+//    if(std::abs(width()-currWidth)>diffWidth){
+//        titlebar->setFixedWidth(width()-BORDER_SIZE*2);
+//    }
+//}
+
 void BitcoinGUI::setClientModel(ClientModel *clientModel)
 {
     this->clientModel = clientModel;
@@ -820,7 +891,7 @@ void BitcoinGUI::setClientModel(ClientModel *clientModel)
             MacDockIconHandler *dockIconHandler = MacDockIconHandler::instance();
             dockIconHandler->setMainWindow((QMainWindow *)this);
             dockIconMenu = dockIconHandler->dockMenu();
- 
+
             createIconMenu(dockIconMenu);
 #endif
         }
@@ -850,13 +921,13 @@ void BitcoinGUI::setClientModel(ClientModel *clientModel)
         }
 #endif // ENABLE_WALLET
         unitDisplayControl->setOptionsModel(clientModel->getOptionsModel());
-        
+
         OptionsModel* optionsModel = clientModel->getOptionsModel();
         if(optionsModel)
         {
             // be aware of the tray icon disable state change reported by the OptionsModel object.
             connect(optionsModel,SIGNAL(hideTrayIconChanged(bool)),this,SLOT(setTrayIconVisible(bool)));
-        
+
             // initialize the disable state of the tray icon with the current value in the model.
             setTrayIconVisible(optionsModel->getHideTrayIcon());
         }

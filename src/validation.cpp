@@ -1022,7 +1022,7 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             }
             if(nCount == 0)
                 return state.DoS(50, false, REJECT_INVALID, "register_app: need cancel safe");
-            if(!IsCancelledRange(nCancelledAmount) || (masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
+            if(!IsCancelledRange(nCancelledAmount) || (fWithMempool && masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
                 return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
 
             // check vin
@@ -1398,7 +1398,7 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             }
             if(nCancelledCount == 0)
                 return state.DoS(50, false, REJECT_INVALID, "issue_asset: need cancel safe");
-            if(!IsCancelledRange(nCancelledAmount) || (masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
+            if(!IsCancelledRange(nCancelledAmount) || (fWithMempool && masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
                 return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid safe cancelld amount");
             if(assetData.bPayCandy && nCandyCount == 0)
                 return state.DoS(10, false, REJECT_INVALID, "issue_asset: tx need put candy txout when paycandy is opened");
@@ -1844,14 +1844,17 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                 return state.DoS(10, false, REJECT_INVALID, "get_candy: current user got candy already, " + out.ToString());
 
             int nPrevTxHeight = GetTxHeight(out.hash);
-            if(nPrevTxHeight >= nTxHeight)
-                return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy txin");
+            if(fWithMempool)
+            {
+                if(nPrevTxHeight >= nTxHeight)
+                    return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy txin");
 
-            if(nPrevTxHeight+BLOCKS_PER_DAY>nTxHeight)
-                return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                if(nPrevTxHeight+BLOCKS_PER_DAY>nTxHeight)
+                    return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
 
-            if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                    return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+            }
 
             CAmount nSafe = 0;
             if(!GetAddressAmountByHeight(nPrevTxHeight, strAddress, nSafe))
@@ -1859,17 +1862,30 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                 LogPrint("asset", "check-getcandy: cannot get safe amount of address[%s] at %d\n", strAddress, nPrevTxHeight);
                 return state.DoS(10, false, REJECT_INVALID, strprintf("get_candy: cannot get safe amount of address[%s] at %d", strAddress, nPrevTxHeight));
             }
-            if(nSafe <= 0 || nSafe > MAX_MONEY)
+            if(nSafe < 1 * COIN || nSafe > MAX_MONEY)
             {
-                LogPrint("asset", "check-getcandy: invalid safe amount of address[%s] at %d", strAddress, nPrevTxHeight);
+                LogPrint("asset", "check-getcandy: invalid safe amount(at least 1 safe) of address[%s] at %d", strAddress, nPrevTxHeight);
                 return state.DoS(10, false, REJECT_INVALID, strprintf("get_candy: invalid safe amount of address[%s] at %d", strAddress, nPrevTxHeight));
             }
 
             CAmount nTotalSafe = 0;
-            if(!GetTotalAmountByHeight(nPrevTxHeight, nTotalSafe))
+            if(fWithMempool)
             {
-                LogPrint("asset", "check-getcandy: get total safe amount failed at %d\n", nPrevTxHeight);
-                return state.DoS(10, false, REJECT_INVALID, strprintf("get_candy: get total safe amount failed at %d\n", nPrevTxHeight));
+                if(!GetTotalAmountByHeight(nPrevTxHeight, nTotalSafe))
+                {
+                    LogPrint("asset", "check-getcandy: get total safe amount failed at %d\n", nPrevTxHeight);
+                    return state.DoS(10, false, REJECT_INVALID, strprintf("get_candy: get total safe amount failed at %d\n", nPrevTxHeight));
+                }
+            }
+            else
+            {
+                while(!GetTotalAmountByHeight(nPrevTxHeight, nTotalSafe)) // Waitting for candy block handle finished, when program is downloading block
+                {
+                    boost::this_thread::interruption_point();
+                    if(ShutdownRequested())
+                        return false;
+                    MilliSleep(1000);
+                }
             }
             if(nTotalSafe <= 0 || nTotalSafe > MAX_MONEY)
             {
@@ -1993,6 +2009,20 @@ std::string FormatStateMessage(const CValidationState &state)
         state.GetRejectReason(),
         state.GetDebugMessage().empty() ? "" : ", "+state.GetDebugMessage(),
         state.GetRejectCode());
+}
+
+bool ExistForbidTxin(const int nHeight, const std::vector<int>& prevheights)
+{
+    if(nHeight < g_nProtocolV2Height)
+        return false;
+
+    for(unsigned int i = 0; i < prevheights.size(); i++)
+    {
+        if(prevheights[i] < g_nCriticalHeight)
+            return !error("transaction contain forbidden txin[%d]", i);
+    }
+
+    return false;
 }
 
 bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const CTransaction &tx, bool fLimitFree,
@@ -2187,11 +2217,14 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         }
 
         // Check previous tx is locked or not
+        std::vector<int> prevheights;
         BOOST_FOREACH(const CTxIn &txin, tx.vin)
         {
             const CCoins* coins = view.AccessCoins(txin.prevout.hash);
             if(!coins || !coins->IsAvailable(txin.prevout.n))
                 return state.Invalid(false, REJECT_DUPLICATE, "2-bad-txns-inputs-spent");
+
+            prevheights.push_back(coins->nHeight);
 
             const CTxOut& txout = coins->vout[txin.prevout.n];
             if(txout.nUnlockedHeight <= 0)
@@ -2206,6 +2239,9 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
 
             return state.DoS(100, false, REJECT_NONSTANDARD, "invalid-txin-locked");
         }
+
+        if(ExistForbidTxin( (uint32_t)g_nChainHeight + 1, prevheights))
+            return state.DoS(50, error("%s: contain forbidden transaction(%s) txin", __func__, hash.GetHex()), REJECT_INVALID, "bad-txns-forbid");
 
         if(!CheckAppTransaction(tx, state, view, true))
             return false;
@@ -3385,6 +3421,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         // but it must be corrected before txout nversion ever influences a network rule.
         if (outsBlock.nVersion < 0)
             outs->nVersion = outsBlock.nVersion;
+
         if (*outs != outsBlock)
             fClean = fClean && error("DisconnectBlock(): added transaction mismatch? database corrupted");
 
@@ -3897,6 +3934,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     CCheckQueueControl<CScriptCheck> control(fScriptChecks && nScriptCheckThreads ? &scriptcheckqueue : NULL);
 
     std::vector<int> prevheights;
+    std::vector<int> calprevheights;
     CAmount nFees = 0;
     int nInputs = 0;
     unsigned int nSigOps = 0;
@@ -3946,9 +3984,14 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             // BIP68 lock checks (as opposed to nLockTime checks) must
             // be in ConnectBlock because they require the UTXO set
             prevheights.resize(tx.vin.size());
+            calprevheights.resize(tx.vin.size());
             for (size_t j = 0; j < tx.vin.size(); j++) {
                 prevheights[j] = view.AccessCoins(tx.vin[j].prevout.hash)->nHeight;
+                calprevheights[j] = view.AccessCoins(tx.vin[j].prevout.hash)->nHeight;
             }
+
+            if(!fJustCheck && ExistForbidTxin((uint32_t)pindex->nHeight, calprevheights))
+                return state.DoS(100, error("%s: contain forbidden transaction(%s) txin", __func__, txhash.GetHex()), REJECT_INVALID, "bad-txns-forbid");
 
             if (!SequenceLocks(tx, nLockTimeFlags, &prevheights, *pindex)) {
                 return state.DoS(100, error("%s: contains a non-BIP68-final transaction", __func__),
@@ -3956,23 +3999,26 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             }
 
             for (size_t j = 0; j < tx.vin.size(); j++) {
-                const CTxIn& input = tx.vin[j];
+                const CTxIn input = tx.vin[j];
                 const CTxOut& prevout = view.GetOutputFor(input);
 
-                string strAddress = "";
-                if(!GetTxOutAddress(prevout, &strAddress))
-                    continue;
-
-                if(!prevout.IsAsset())
+                if (pindex->nHeight >= g_nCriticalHeight)
                 {
-                    if(mapAddressAmount.count(strAddress))
+                    string strAddress = "";
+                    if (GetTxOutAddress(prevout, &strAddress))
                     {
-                        mapAddressAmount[strAddress] += -prevout.nValue;
-                        if(mapAddressAmount[strAddress] == 0)
-                            mapAddressAmount.erase(strAddress);
+                        if (!prevout.IsAsset() && calprevheights[j] >= g_nCriticalHeight)
+                        {
+                            if (mapAddressAmount.count(strAddress))
+                            {
+                                mapAddressAmount[strAddress] += -prevout.nValue;
+                                if (mapAddressAmount[strAddress] == 0)
+                                    mapAddressAmount.erase(strAddress);
+                            }
+                            else
+                                mapAddressAmount[strAddress] = -prevout.nValue;
+                        }
                     }
-                    else
-                        mapAddressAmount[strAddress] = -prevout.nValue;
                 }
 
                 if (fAddressIndex || fSpentIndex)
@@ -4033,19 +4079,21 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
         for (unsigned int k = 0; k < tx.vout.size(); k++) {
             const CTxOut &out = tx.vout[k];
-
-            string strAddress = "";
-            if (out.IsAsset() || !GetTxOutAddress(out, &strAddress))
+            if (out.IsAsset())
                 continue;
 
-            if(mapAddressAmount.count(strAddress))
+            string strAddress = "";
+            if (pindex->nHeight >= g_nCriticalHeight && GetTxOutAddress(out, &strAddress))
             {
-                mapAddressAmount[strAddress] += out.nValue;
-                if(mapAddressAmount[strAddress] == 0)
-                    mapAddressAmount.erase(strAddress);
+                if(mapAddressAmount.count(strAddress))
+                {
+                    mapAddressAmount[strAddress] += out.nValue;
+                    if(mapAddressAmount[strAddress] == 0)
+                        mapAddressAmount.erase(strAddress);
+                }
+                else
+                    mapAddressAmount[strAddress] = out.nValue;
             }
-            else
-                mapAddressAmount[strAddress] = out.nValue;
 
             if (fAddressIndex) {
                 if (out.scriptPubKey.IsPayToScriptHash()) {
@@ -4166,6 +4214,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     CCommonData addData;
                     if(ParseCommonData(vData, addData))
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(addData.assetId, strAddress, ADD_ISSUE_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+                }
+                else if (header.nAppCmd == CHANGE_ASSET_CMD)
+                {
+                    CCommonData changeData;
+                    if(ParseCommonData(vData, changeData))
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(changeData.assetId, strAddress, CHANGE_ASSET_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
                 }
                 else if(header.nAppCmd == TRANSFER_ASSET_CMD)
                 {
@@ -6479,7 +6533,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool GetAppInfoByAppId(const uint256& appId, CAppId_AppInfo_IndexValue& appInfo, const bool fWithMempool)
 {
-    if(pblocktree->Read_AppId_AppInfo_Index(appId, appInfo) && g_nChainHeight >= appInfo.nHeight)
+    if(pblocktree->Read_AppId_AppInfo_Index(appId, appInfo))
         return true;
     return fWithMempool && mempool.getAppInfoByAppId(appId, appInfo);
 }
@@ -6487,7 +6541,7 @@ bool GetAppInfoByAppId(const uint256& appId, CAppId_AppInfo_IndexValue& appInfo,
 bool GetAppIdByAppName(const string& strAppName, uint256& appId, const bool fWithMempool)
 {
     CName_Id_IndexValue value;
-    if(pblocktree->Read_AppName_AppId_Index(strAppName, value) && g_nChainHeight >= value.nHeight)
+    if(pblocktree->Read_AppName_AppId_Index(strAppName, value))
     {
         appId = value.id;
         return true;
@@ -6606,7 +6660,7 @@ bool GetAuthByAppIdAddressFromMempool(const uint256& appId, const string& strAdd
 
 bool GetAssetInfoByAssetId(const uint256& assetId, CAssetId_AssetInfo_IndexValue& assetInfo, const bool fWithMempool)
 {
-    if(pblocktree->Read_AssetId_AssetInfo_Index(assetId, assetInfo) && g_nChainHeight >= assetInfo.nHeight)
+    if(pblocktree->Read_AssetId_AssetInfo_Index(assetId, assetInfo))
         return true;
     return fWithMempool && mempool.getAssetInfoByAssetId(assetId, assetInfo);
 }
@@ -6614,7 +6668,7 @@ bool GetAssetInfoByAssetId(const uint256& assetId, CAssetId_AssetInfo_IndexValue
 bool GetAssetIdByShortName(const string& strShortName, uint256& assetId, const bool fWithMempool)
 {
     CName_Id_IndexValue value;
-    if(pblocktree->Read_ShortName_AssetId_Index(strShortName, value) && g_nChainHeight >= value.nHeight)
+    if(pblocktree->Read_ShortName_AssetId_Index(strShortName, value))
     {
         assetId = value.id;
         return true;
@@ -6632,7 +6686,7 @@ bool GetAssetIdByShortName(const string& strShortName, uint256& assetId, const b
 bool GetAssetIdByAssetName(const string& strAssetName, uint256& assetId, const bool fWithMempool)
 {
     CName_Id_IndexValue value;
-    if(pblocktree->Read_AssetName_AssetId_Index(strAssetName, value) && g_nChainHeight >= value.nHeight)
+    if(pblocktree->Read_AssetName_AssetId_Index(strAssetName, value))
     {
         assetId = value.id;
         return true;
@@ -6822,7 +6876,7 @@ bool GetAddressAmountByHeight(const int& nHeight, const std::string& strAddress,
     std::lock_guard<std::mutex> lock(g_mutexChangeFile);
 
     uint64_t nDetailFileSize = boost::filesystem::file_size(GetDataDir() / "height/detail.dat");
-    if(nDetailFileSize / sizeof(CBlockDetail) - nHeight > 3 * BLOCKS_PER_MONTH)
+    if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * BLOCKS_PER_MONTH)
         return error("%s: cannot get address amount out of 3 months", __func__);
 
     vector<int> vChangeHeight;
@@ -6935,7 +6989,10 @@ static bool GetAllCandyInfo()
     sort(vallassetidcandyinfolist.begin(), vallassetidcandyinfolist.end(), CompareCandyInfo());
 
     map<CKeyID, int64_t> mapKeyBirth;
-    pwalletMain->GetKeyBirthTimes(mapKeyBirth);
+    {
+        LOCK(pwalletMain->cs_wallet);
+        pwalletMain->GetKeyBirthTimes(mapKeyBirth);
+    }
 
     int keyBirthCount = 0;
     std::vector<std::string> vaddress;
@@ -7002,12 +7059,12 @@ static bool GetAllCandyInfo()
             CAmount nSafe = 0;
             if(!GetAddressAmountByHeight(nTxHeight, vaddress[addrCount], nSafe))
                 continue;
-            if (nSafe <= 0 || nSafe > nTotalSafe)
+            if (nSafe < 1 * COIN || nSafe > nTotalSafe)
                 continue;
 
             CAmount nTempAmount = 0;
             CAmount nCandyAmount = (CAmount)(1.0 * nSafe / nTotalSafe * candyInfo.nAmount);
-            if (nCandyAmount >= AmountFromValue("0.0001", assetInfo.assetData.nDecimals, true) && !GetGetCandyAmount(assetId, out, vaddress[addrCount], nTempAmount,false))
+            if (nCandyAmount >= AmountFromValue("0.0001", assetInfo.assetData.nDecimals, true) && !GetGetCandyAmount(assetId, out, vaddress[addrCount], nTempAmount))
             {
                 relust = true;
                 break;
@@ -7020,7 +7077,7 @@ static bool GetAllCandyInfo()
             CCandy_BlockTime_Info tempcandybolcktimeinfo(assetId,assetInfo.assetData,candyInfo,out,nTimeBegin,nTxHeight);
 
             icounter++;
-            if (icounter == nCandyPageCount)
+            if (icounter <= nCandyPageCount && fHaveGUI)
                 uiInterface.CandyVecPut();
 
             {
@@ -7083,7 +7140,7 @@ static bool GetAllCandyInfo()
             }
         }
 
-        if(sendToFirstPage)
+        if(sendToFirstPage && fHaveGUI)
             uiInterface.CandyVecPut();
     }
 
@@ -7105,7 +7162,6 @@ void ThreadGetAllCandyInfo()
         boost::this_thread::interruption_point();
         if(!fGetCandyInfoStart)
         {
-            boost::this_thread::interruption_point();
             MilliSleep(100);
             continue;
         }
@@ -7345,7 +7401,7 @@ static int BinarySearchFromFile(const string& strFile, const string& strAddress,
     const string strFullName = GetDataDir().string() + "/height/" + strFile;
     FILE* pFile = fopen(strFullName.data(), "rb");
     if(!pFile)
-        return error("%s: open %s failed", __func__, strFile);
+        return false;
 
     int nRet = BinarySearchFromFile(pFile, strAddress, nAmount, pPos);
     fclose(pFile);
@@ -7422,7 +7478,7 @@ static bool GetChangeFilterAmount(const int& nStartHeight, const int& nEndHeight
     if(!pDetailFile)
         return error("%s: open detail.dat failed", __func__);
 
-    if(fseek(pDetailFile, (nStartHeight - 1) * sizeof(CBlockDetail), SEEK_SET))
+    if(fseek(pDetailFile, (nStartHeight - g_nCriticalHeight) * sizeof(CBlockDetail), SEEK_SET))
     {
         fclose(pDetailFile);
         return error("%s: fseek detail.dat to height: %d failed", __func__, nStartHeight);
@@ -7491,15 +7547,13 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
 
     CAmount nChangeTotalAmount = 0;
     CAmount nFilterAmount = 0;
-    if(!GetChangeFilterAmount(nLastCandyHeight + 1, nCandyHeight, nChangeTotalAmount, nFilterAmount))
-        return error("%s: get change-amount and filter-amount from %d to %d failed", __func__, nLastCandyHeight + 1, nCandyHeight);
+    int nStartHeight = nLastCandyHeight == 0 ? g_nCriticalHeight : nLastCandyHeight + 1;
+    if(!GetChangeFilterAmount(nStartHeight, nCandyHeight, nChangeTotalAmount, nFilterAmount))
+        return error("%s: get change-amount and filter-amount from %d to %d failed", __func__, nStartHeight, nCandyHeight);
 
     CAmount nTotalAmount = nLastTotalAmount + nChangeTotalAmount - nFilterAmount;
     if (!pblocktree->Write_CandyHeight_TotalAmount_Index(nCandyHeight, nTotalAmount))
         return error("%s: write finnal candy height index failed at %d", __func__, nCandyHeight);
-
-    if(!fHaveGUI)
-        return true;
 
     CBlock candyBlock;
     while(true)
@@ -7512,19 +7566,19 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
             continue;
         }
 
-        {
-            LOCK(cs_main);
-            CBlockIndex* pindex = chainActive[nCandyHeight];
-            if (ReadBlockFromDisk(candyBlock, pindex, Params().GetConsensus()))
-                break;
-        }
+        CBlockIndex* pindex = chainActive[nCandyHeight];
+        if (ReadBlockFromDisk(candyBlock, pindex, Params().GetConsensus()))
+            break;
         MilliSleep(1000);
     }
 
     bool fUpdateUI = false;
 
     map<CKeyID, int64_t> mapKeyBirth;
-    pwalletMain->GetKeyBirthTimes(mapKeyBirth);
+    {
+        LOCK(pwalletMain->cs_wallet);
+        pwalletMain->GetKeyBirthTimes(mapKeyBirth);
+    }
 
     std::vector<std::string> vaddress;
     for (map<CKeyID, int64_t>::const_iterator tempit = mapKeyBirth.begin(); tempit != mapKeyBirth.end(); tempit++)
@@ -7577,7 +7631,7 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
                 CAmount nSafe = 0;
                 if(!GetAddressAmountByHeight(nCandyHeight, *addit, nSafe))
                     continue;
-                if (nSafe <= 0 || nSafe > nTotalAmount)
+                if (nSafe < 1 * COIN || nSafe > nTotalAmount)
                     continue;
 
                 CAmount nTempAmount = 0;
@@ -7606,7 +7660,7 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
             }
         }
     }
-    if(fUpdateUI)
+    if(fUpdateUI && fHaveGUI)
         uiInterface.CandyVecPut();
 
     return true;
@@ -7651,7 +7705,7 @@ static bool CheckDetailFile(FILE* pFile, const int& nHeight, int& nLastCandyHeig
     if(nFileLen < 0)
         return error("%s: ftell detail.dat failed", __func__);
 
-    int nLastHeight = nFileLen / sizeof(CBlockDetail);
+    int nLastHeight = nFileLen / sizeof(CBlockDetail) + g_nCriticalHeight - 1;
 
     if(nLastHeight < nHeight - 1 - g_nListChangeInfoLimited)
     {
@@ -7661,7 +7715,7 @@ static bool CheckDetailFile(FILE* pFile, const int& nHeight, int& nLastCandyHeig
 
     if(nLastHeight >= nHeight)
     {
-        if(fseek(pFile, (nHeight - 1) * sizeof(CBlockDetail), SEEK_SET))
+        if(fseek(pFile, (nHeight - g_nCriticalHeight) * sizeof(CBlockDetail), SEEK_SET))
             return error("%s: fseek %d from detail.dat failed", __func__, nHeight);
 
         CBlockDetail detail;
@@ -7692,7 +7746,7 @@ static bool WriteDetailFile(const string& strFile, const CBlockDetail& detail)
 
     if(nLastCandyHeight >= 0)
     {
-        if(!TruncateFile(pFile, (detail.nHeight - 1) * sizeof(CBlockDetail)) || fflush(pFile))
+        if(!TruncateFile(pFile, (detail.nHeight - g_nCriticalHeight) * sizeof(CBlockDetail)) || fflush(pFile))
         {
             fclose(pFile);
             return error("%s: truncate detail.dat start from %d failed", __func__, detail.nHeight);
@@ -7773,8 +7827,8 @@ bool LoadChangeInfoToList()
         return error("%s: ftell detail.dat failed", __func__);
     }
 
-    int nLastHeight = nLen / sizeof(CBlockDetail);
-    if(nLastHeight != 0)
+    int nLastHeight = nLen / sizeof(CBlockDetail) + g_nCriticalHeight - 1;
+    if(nLastHeight != g_nCriticalHeight - 1)
     {
         if(fseek(pFile, -1 * sizeof(CBlockDetail), SEEK_END))
         {
@@ -7823,21 +7877,18 @@ bool LoadChangeInfoToList()
 
                     CTransaction in_tx;
                     uint256 in_blockHash;
-                    if(!GetTransaction(txin.prevout.hash, in_tx, Params().GetConsensus(), in_blockHash, true))
+                    if(!GetTransaction(txin.prevout.hash, in_tx, Params().GetConsensus(), in_blockHash, true) || in_blockHash.IsNull())
                     {
                         fclose(pFile);
                         return error("%s: read txin transaction failed, hash=%s", __func__, txin.prevout.hash.ToString());
                     }
 
                     const CTxOut& in_txout = in_tx.vout[txin.prevout.n];
-                    if(in_txout.IsAsset())
+                    if(in_txout.IsAsset() || !GetTxOutAddress(in_txout, &strAddress))
                         continue;
 
-                    if(!GetTxOutAddress(in_txout, &strAddress))
-                    {
-                        fclose(pFile);
-                        return error("%s: get txin address failed, hash=%s, n=%d", __func__, txin.prevout.hash.ToString(), txin.prevout.n);
-                    }
+                    if(mapBlockIndex.count(in_blockHash) == 0 || mapBlockIndex[in_blockHash]->nHeight < g_nCriticalHeight)
+                        continue;
 
                     if(mapAddressAmount.count(strAddress))
                     {
@@ -7853,13 +7904,8 @@ bool LoadChangeInfoToList()
             for(size_t j = 0; j < tx.vout.size(); j++)
             {
                 const CTxOut& txout = tx.vout[j];
-                if(txout.IsAsset())
+                if(txout.IsAsset() || !GetTxOutAddress(txout, &strAddress))
                     continue;
-                if(!GetTxOutAddress(txout, &strAddress))
-                {
-                    fclose(pFile);
-                    return error("%s: get txout address failed, hash=%s, n=%d", __func__, tx.GetHash().ToString(), j);
-                }
 
                 if(mapAddressAmount.count(strAddress))
                 {
@@ -7903,6 +7949,9 @@ bool LoadChangeInfoToList()
 
 static bool PutChangeInfoToList(const int& nHeight, const CAmount& nReward, const bool fCandy, const map<string, CAmount>& mapAddressAmount)
 {
+    if (nHeight < g_nCriticalHeight)
+        return true;
+
     std::lock_guard<std::mutex> lock(g_mutexChangeInfo);
 
     if(!g_listChangeInfo.empty() && (nHeight < g_listChangeInfo.front().nHeight))
@@ -7944,7 +7993,7 @@ static bool PutChangeInfoToList(const int& nHeight, const CAmount& nReward, cons
     {
         if(nHeight <= g_nLastCandyHeight) // after invoke invalidateblock, need reset g_nLastCandyHeight
         {
-            if(nHeight <= 1)
+            if(nHeight <= g_nCriticalHeight)
             {
                 g_nLastCandyHeight = 0;
             }
@@ -7961,8 +8010,8 @@ static bool PutChangeInfoToList(const int& nHeight, const CAmount& nReward, cons
                     fclose(pFile);
                     return error("%s: ftell detail.dat failed", __func__);
                 }
-                int nLastHeight = nLen / sizeof(CBlockDetail);
-                if(nLastHeight == 0 || nLastHeight != nHeight - 1)
+                int nLastHeight = nLen / sizeof(CBlockDetail) + g_nCriticalHeight - 1;
+                if(nLastHeight == g_nCriticalHeight - 1 || nLastHeight != nHeight - 1)
                     throw std::runtime_error(strprintf("%s: 2-Corrupt detail.dat, missing block information", __func__));
                 else
                 {
@@ -8046,6 +8095,9 @@ static void DeleteFilesToHeight(const int& nHeight)
 
 static bool WriteChangeInfo(const CChangeInfo& changeInfo)
 {
+    if(changeInfo.nHeight <= 0 || changeInfo.nReward <= 0)
+        return false;
+
     std::lock_guard<std::mutex> lock(g_mutexChangeFile);
 
     boost::filesystem::path heightDir = GetDataDir() / "height";
@@ -8400,7 +8452,7 @@ bool VerifyDetailFile()
     }
 
     CBlockDetail detail;
-    int nHeight = 1;
+    int nHeight = g_nCriticalHeight;
     while(true)
     {
         if(fread(&detail, sizeof(CBlockDetail), 1, pFile) != 1)
@@ -8414,8 +8466,12 @@ bool VerifyDetailFile()
         if(detail.nHeight != nHeight)
         {
             fclose(pFile);
-            throw std::runtime_error(strprintf("%s: Corrupt detail.dat, missing block %d", __func__, nHeight));
-            return error("%s: detail.dat is corrupted, missing block %d", __func__, nHeight);
+            uiInterface.ThreadSafeQuestion(
+                _("detail.dat is corrupted, please restart with -reindex=1 or set reindex=1 in safe.conf if you want to repaire it."),
+                "detail.dat is corrupted, please restart with -reindex=1 or set reindex=1 in safe.conf if you want to repaire it.",
+                "",
+                CClientUIInterface::MSG_ERROR);
+            return false;
         }
 
         nHeight++;

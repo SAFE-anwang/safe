@@ -11,7 +11,7 @@
 
 int g_nChainHeight = -1;
 int g_nProtocolV1Height = 809220;
-int g_nProtocolV2Height = 929666;
+int g_nProtocolV2Height = 943809;
 
 bool IsProtocolV0(const int& nHeight)
 {

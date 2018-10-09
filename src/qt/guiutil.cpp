@@ -346,6 +346,16 @@ QString HtmlEscape(const std::string& str, bool fMultiLine)
     return HtmlEscape(QString::fromStdString(str), fMultiLine);
 }
 
+QString HtmlEscape2(const QString& str)
+{
+#if QT_VERSION < 0x050000
+    QString escaped = Qt::escape(str);
+#else
+    QString escaped = str.toHtmlEscaped();
+#endif
+    return escaped;
+}
+
 void copyEntryData(QAbstractItemView *view, int column, int role)
 {
     if(!view || !view->selectionModel())

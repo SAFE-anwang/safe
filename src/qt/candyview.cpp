@@ -81,6 +81,7 @@ CandyView::CandyView(const PlatformStyle *platformStyle, QWidget *parent):
     dateWidget->addItem(tr("This year"), ThisYear);
     dateWidget->addItem(tr("Range..."), Range);
     dateWidget->setCurrentIndex(settings.value("transactionDate").toInt());
+    dateWidget->setStyleSheet("QComboBox{font-size:12px;}");
     hlayout->addWidget(dateWidget);
 
     assetsNameWidget = new QLineEdit(this);
@@ -307,7 +308,8 @@ void CandyView::chooseDate(int idx)
         break;
     case Range:
         dateRangeWidget->setVisible(true);
-        dateRangeChanged();
+        dateFromRangeChanged();
+        dateToRangeChanged();
         break;
     }
     // Persist new date settings
@@ -387,9 +389,10 @@ void CandyView::exportClicked()
         writer.addColumn(tr("Watch-only"), TransactionTableModel::WatchonlyRole);
     writer.addColumn(tr("Date"), 0, TransactionTableModel::DateRole);
     writer.addColumn(tr("Asset Name"), 0, TransactionTableModel::AssetsNameRole);
+    writer.addColumn(tr("Label"), 0, TransactionTableModel::LabelRole);
     writer.addColumn(tr("Address"), 0, TransactionTableModel::AddressRole);
     writer.addColumn(BitcoinUnits::getAmountColumnTitle(model->getOptionsModel()->getDisplayUnit()), 0, TransactionTableModel::FormattedAmountRole);
-    writer.addColumn(tr("ID"), 0, TransactionTableModel::TxIDRole);
+    writer.addColumn(tr("Transaction ID"), 0, TransactionTableModel::TxIDRole);
 
     if(!writer.write()) {
         Q_EMIT message(tr("Exporting Failed"), tr("There was an error trying to save the get candy history to %1.").arg(filename),
@@ -593,8 +596,8 @@ QWidget *CandyView::createDateRangeWidget()
     dateFrom->setCalendarPopup(true);
     dateFrom->setMinimumWidth(100);
     // Load persisted FROM date
-    dateFrom->setDate(QDate::fromString(settings.value("transactionDateFrom", defaultDateFrom).toString(), PERSISTENCE_DATE_FORMAT));
-
+//    dateFrom->setDate(QDate::fromString(settings.value("transactionDateFrom", defaultDateFrom).toString(), PERSISTENCE_DATE_FORMAT));
+    dateFrom->setDate(QDate::currentDate());
     layout->addWidget(dateFrom);
     layout->addWidget(new QLabel(tr("to")));
 
@@ -602,7 +605,8 @@ QWidget *CandyView::createDateRangeWidget()
     dateTo->setCalendarPopup(true);
     dateTo->setMinimumWidth(100);
     // Load persisted TO date
-    dateTo->setDate(QDate::fromString(settings.value("transactionDateTo", defaultDateTo).toString(), PERSISTENCE_DATE_FORMAT));
+//    dateTo->setDate(QDate::fromString(settings.value("transactionDateTo", defaultDateTo).toString(), PERSISTENCE_DATE_FORMAT));
+    dateTo->setDate(QDate::currentDate().addDays(1));
 
     layout->addWidget(dateTo);
     layout->addStretch();
@@ -611,16 +615,61 @@ QWidget *CandyView::createDateRangeWidget()
     dateRangeWidget->setVisible(false);
 
     // Notify on change
-    connect(dateFrom, SIGNAL(dateChanged(QDate)), this, SLOT(dateRangeChanged()));
-    connect(dateTo, SIGNAL(dateChanged(QDate)), this, SLOT(dateRangeChanged()));
+    connect(dateFrom, SIGNAL(dateChanged(QDate)), this, SLOT(dateFromRangeChanged()));
+    connect(dateTo, SIGNAL(dateChanged(QDate)), this, SLOT(dateToRangeChanged()));
 
     return dateRangeWidget;
 }
 
-void CandyView::dateRangeChanged()
+void CandyView::dateFromRangeChanged()
 {
     if(!transactionProxyModel)
         return;
+
+    if (dateTo->dateTime() < dateFrom->dateTime())
+    {
+        if (!dateFrom->hasFocus())
+        {
+            dateFrom->setFocus();
+            dateFrom->setDateTime(dateTo->dateTime().addDays(-1));
+            return;
+        }
+        QMessageBox::warning(this, tr("unreasonable date range"),
+                             tr("Start date cannot be later than the end date."));
+        dateFrom->setDateTime(dateTo->dateTime().addDays(-1));
+        return;
+    }
+
+    // Persist new date range
+    QSettings settings;
+    settings.setValue("transactionDateFrom", dateFrom->date().toString(PERSISTENCE_DATE_FORMAT));
+    settings.setValue("transactionDateTo", dateTo->date().toString(PERSISTENCE_DATE_FORMAT));
+
+    transactionProxyModel->setDateRange(
+            QDateTime(dateFrom->date()),
+            QDateTime(dateTo->date()));
+}
+
+void CandyView::dateToRangeChanged()
+{
+    if(!transactionProxyModel)
+        return;
+
+    if (dateTo->dateTime() < dateFrom->dateTime())
+    {
+        if (!dateTo->hasFocus())
+        {
+            dateTo->setFocus();
+            dateTo->setDateTime(dateFrom->dateTime().addDays(1));
+            return;
+        }
+
+        QMessageBox::warning(this, tr("unreasonable date range"),
+                             tr("End date cannot be earlier than start date."));
+
+        dateTo->setDateTime(dateFrom->dateTime().addDays(1));
+        return;
+    }
 
     // Persist new date range
     QSettings settings;

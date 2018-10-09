@@ -407,7 +407,16 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
     if (!pwalletMain->CommitTransaction(wtxNew, reservekey, g_connman.get(), fUseInstantSend ? NetMsgType::TXLOCKREQUEST : NetMsgType::TX))
-        throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+    {
+        std::vector<int> prevheights;
+        BOOST_FOREACH(const CTxIn &txin, wtxNew.vin)
+            prevheights.push_back(GetTxHeight(txin.prevout.hash));
+
+        if(ExistForbidTxin((uint32_t)g_nChainHeight + 1, prevheights))
+            throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! The transaction (partial) amount has been sealed.");
+        else
+            throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+    }
 }
 
 UniValue sendtoaddress(const UniValue& params, bool fHelp)
@@ -476,6 +485,71 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
     EnsureWalletIsUnlocked();
 
     SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, fUseInstantSend, fUsePrivateSend);
+
+    return wtx.GetHash().GetHex();
+}
+
+UniValue sendwithlock(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 3)
+        throw runtime_error(
+            "sendwithlock \"safeaddress\" amount month\n"
+            "\nTry to send an amount to a given address with locked monthe(s)\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"safeaddress\" (string, required) The safe address to send to.\n"
+            "2. \"amount\"      (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "3. \"month\"       (numeric or string, required) The lokced month(s), minimum: 1 month, maximum: 120 months\n"
+            "\nResult:\n"
+            "\"transactionid\"  (string) The locked transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("sendwithlock", "\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\" 0.1 6")
+            + HelpExampleRpc("sendwithlock", "\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\", 0.1, 6")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    EnsureWalletIsUnlocked();
+
+    CBitcoinAddress address(params[0].get_str());
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Safe address");
+
+    CAmount nLockAmount = AmountFromValue(params[1]);
+    if(nLockAmount <= 0 || nLockAmount > MAX_MONEY)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid locked amount, minimum: 0.00000001 SAFE, maximum: 37000000 SAFE");
+
+    int nLockMonth = params[2].get_int();
+    if(nLockMonth < 1 || nLockMonth > 120)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid locked month, minimum: 1 month, maximum: 120 months");
+
+    CAmount curBalance = pwalletMain->GetBalance();
+    if(nLockAmount > curBalance)
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+    if (pwalletMain->GetBroadcastTransactions() && !g_connman)
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+    // Parse Safe address
+    CScript scriptPubKey = GetScriptForDestination(address.Get());
+
+    // Create and send the transaction
+    CReserveKey reservekey(pwalletMain);
+    CAmount nFeeRequired;
+    std::string strError;
+    vector<CRecipient> vecSend;
+    int nChangePosRet = -1;
+    CRecipient recipient = {scriptPubKey, nLockAmount, nLockMonth, false};
+    vecSend.push_back(recipient);
+    CWalletTx wtx;
+    if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError)) {
+        if (nLockAmount + nFeeRequired > pwalletMain->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 
     return wtx.GetHash().GetHex();
 }
@@ -696,9 +770,14 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
             continue;
 
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+        {
+            if (txout.IsAsset())
+                continue;
+
             if (txout.scriptPubKey == scriptPubKey)
                 if (wtx.GetDepthInMainChain(fAddLockConf) >= nMinDepth)
                     nAmount += txout.nValue;
+        }
     }
 
     return  ValueFromAmount(nAmount);
@@ -753,6 +832,9 @@ UniValue getreceivedbyaccount(const UniValue& params, bool fHelp)
 
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
         {
+            if (txout.IsAsset())
+                continue;
+
             CTxDestination address;
             if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*pwalletMain, address) && setAddress.count(address))
                 if (wtx.GetDepthInMainChain(fAddLockConf) >= nMinDepth)
@@ -1264,6 +1346,9 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
 
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
         {
+            if (txout.IsAsset())
+                continue;
+
             CTxDestination address;
             if (!ExtractDestination(txout.scriptPubKey, address))
                 continue;
@@ -2817,4 +2902,106 @@ UniValue fundrawtransaction(const UniValue& params, bool fHelp)
     result.push_back(Pair("fee", ValueFromAmount(nFee)));
 
     return result;
+}
+
+UniValue sendmanywithlock(const UniValue& params, bool fHelp)
+{
+     if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "sendmanywithlock [{\"safeaddress\":\"xxx\",\"amount\":xxxx, \"month\":xxxx},...] \n"
+            "\nTry to send an amount to many given address with locked monthe(s)\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"receiveinfo\"        (string, required) A json array of json objects\n"
+            "     [\n"
+            "       {\n"
+            "         \"safeaddress\":\"xxx\",      (string, required) The safe address to send to.\n"
+            "         \"amount\":n,                 (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "         \"month\":n                   (numeric or string, required) The lokced month(s), minimum: 1 month, maximum: 120 months\n"
+            "       }\n"
+            "       ,...\n"
+            "     ]\n"
+            "\nResult:\n"
+            "\"transactionid\"  (string) The locked transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("sendmanywithlock", "\"[{\\\"safeaddress\\\":\\\"myaddress\\\",\\\"amount\\\":0.1,\\\"month\\\":6}]\"")
+            + HelpExampleRpc("sendmanywithlock", "\"[{\\\"safeaddress\\\":\\\"myaddress\\\",\\\"amount\\\":0.1,\\\"month\\\":6}]\"")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    if(!masternodeSync.IsBlockchainSynced())
+        throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
+    EnsureWalletIsUnlocked();
+
+    if (params[0].isNull())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, arguments 1 must be non-null");
+
+    UniValue inputs = params[0].get_array();
+    CAmount totalmoney = 0;
+
+    vector<CRecipient> vecSend;
+    for (unsigned int addressid = 0; addressid < inputs.size(); addressid++)
+    {
+        const UniValue& input = inputs[addressid];
+        const UniValue& o = input.get_obj();
+
+        const UniValue& vsafeaddress = find_value(o, "safeaddress");
+        if (!vsafeaddress.isStr())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing safeaddress key");
+
+        string strAddress = vsafeaddress.get_str();
+        CBitcoinAddress address(strAddress);
+        if (!address.IsValid())
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Safe address");
+
+        const UniValue& vamount = find_value(o, "amount");
+        if (!vamount.isNum())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing amount key");
+        CAmount nLockAmount = AmountFromValue(vamount.get_int());
+        if (nLockAmount <= 0 || nLockAmount > MAX_MONEY)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid locked amount, minimum: 0.00000001 SAFE, maximum: 37000000 SAFE");
+
+        CAmount curBalance = pwalletMain->GetBalance();
+        if (nLockAmount > curBalance)
+            throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+        totalmoney += nLockAmount;
+
+        const UniValue& vmonth = find_value(o, "month");
+        if (!vmonth.isNum())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing month key");
+        int nLockMonth = vmonth.get_int();
+        if(nLockMonth < 1 || nLockMonth > 120)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid locked month, minimum: 1 month, maximum: 120 months");
+
+        CScript scriptPubKey = GetScriptForDestination(address.Get());
+
+        CRecipient recipient = {scriptPubKey, nLockAmount, nLockMonth, false};
+        vecSend.push_back(recipient);
+    }
+
+    if (totalmoney > pwalletMain->GetBalance())
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+    if (pwalletMain->GetBroadcastTransactions() && !g_connman)
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+    // Create and send the transaction
+    CReserveKey reservekey(pwalletMain);
+    CAmount nFeeRequired;
+    std::string strError;
+    int nChangePosRet = -1;
+    CWalletTx wtx;
+    if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError)) {
+        if (totalmoney + nFeeRequired > pwalletMain->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+
+    return wtx.GetHash().GetHex();
 }
