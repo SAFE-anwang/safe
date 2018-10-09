@@ -392,13 +392,14 @@ bool CBlockTreeDB::Erase_AppId_AppInfo_Index(const std::vector<std::pair<uint256
 
 bool CBlockTreeDB::Read_AppId_AppInfo_Index(const uint256& appId, CAppId_AppInfo_IndexValue& appInfo)
 {
-    return Read(make_pair(DB_APPID_APPINFO_INDEX, appId), appInfo);
+    return Read(make_pair(DB_APPID_APPINFO_INDEX, appId), appInfo) && g_nChainHeight >= appInfo.nHeight;
 }
 
 bool CBlockTreeDB::Read_AppList_Index(std::vector<uint256>& vAppId)
 {
     boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
 
+    int nCurHeight = g_nChainHeight;
     pcursor->Seek(make_pair(DB_APPID_APPINFO_INDEX, uint256()));
     while (pcursor->Valid())
     {
@@ -406,8 +407,17 @@ bool CBlockTreeDB::Read_AppList_Index(std::vector<uint256>& vAppId)
         std::pair<std::string, uint256> key;
         if (pcursor->GetKey(key) && key.first == DB_APPID_APPINFO_INDEX)
         {
-            vAppId.push_back(key.second);
-            pcursor->Next();
+            CAppId_AppInfo_IndexValue value;
+            if(pcursor->GetValue(value))
+            {
+                if(nCurHeight >= value.nHeight)
+                    vAppId.push_back(key.second);
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get appid_appinfo index value");
+            }
         }
         else
         {
@@ -436,7 +446,7 @@ bool CBlockTreeDB::Erase_AppName_AppId_Index(const std::vector<std::pair<std::st
 
 bool CBlockTreeDB::Read_AppName_AppId_Index(const std::string& strAppName, CName_Id_IndexValue& value)
 {
-    return Read(make_pair(DB_APPNAME_APPID_INDEX, ToLower(strAppName)), value);
+    return Read(make_pair(DB_APPNAME_APPID_INDEX, ToLower(strAppName)), value) && g_nChainHeight >= value.nHeight;
 }
 
 bool CBlockTreeDB::Write_AppTx_Index(const std::vector<std::pair<CAppTx_IndexKey, int> > &vect)
@@ -461,14 +471,24 @@ bool CBlockTreeDB::Read_AppTx_Index(const uint256& appId, std::vector<COutPoint>
 
     pcursor->Seek(make_pair(DB_APPTX_INDEX, CIterator_IdKey(appId)));
 
+    int nCurHeight = g_nChainHeight;
     while (pcursor->Valid())
     {
         boost::this_thread::interruption_point();
         std::pair<std::string, CAppTx_IndexKey> key;
         if (pcursor->GetKey(key) && key.first == DB_APPTX_INDEX && key.second.appId == appId)
         {
-            vOut.push_back(key.second.out);
-            pcursor->Next();
+            int nHeight;
+            if(pcursor->GetValue(nHeight))
+            {
+                if(nCurHeight >= nHeight)
+                    vOut.push_back(key.second.out);
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get apptx index value");
+            }
         }
         else
         {
@@ -485,14 +505,24 @@ bool CBlockTreeDB::Read_AppTx_Index(const uint256& appId, const std::string& str
 
     pcursor->Seek(make_pair(DB_APPTX_INDEX, CIterator_IdAddressKey(appId, strAddress)));
 
+    int nCurHeight = g_nChainHeight;
     while (pcursor->Valid())
     {
         boost::this_thread::interruption_point();
         std::pair<std::string, CAppTx_IndexKey> key;
         if (pcursor->GetKey(key) && key.first == DB_APPTX_INDEX && key.second.appId == appId && key.second.strAddress == strAddress)
         {
-            vOut.push_back(key.second.out);
-            pcursor->Next();
+            int nHeight;
+            if(pcursor->GetValue(nHeight))
+            {
+                if(nCurHeight >= nHeight)
+                    vOut.push_back(key.second.out);
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get apptx index value");
+            }
         }
         else
         {
@@ -509,6 +539,7 @@ bool CBlockTreeDB::Read_AppList_Index(const std::string& strAddress, std::vector
 
     pcursor->Seek(make_pair(DB_APPTX_INDEX, CIterator_IdAddressKey()));
 
+    int nCurHeight = g_nChainHeight;
     std::map<uint256, char> mapAppId;
     while (pcursor->Valid())
     {
@@ -516,9 +547,17 @@ bool CBlockTreeDB::Read_AppList_Index(const std::string& strAddress, std::vector
         std::pair<std::string, CAppTx_IndexKey> key;
         if (pcursor->GetKey(key) && key.first == DB_APPTX_INDEX)
         {
-            if (key.second.strAddress == strAddress)
-                mapAppId[key.second.appId] = 1;
-            pcursor->Next();
+            int nHeight;
+            if(pcursor->GetValue(nHeight))
+            {
+                if(nCurHeight >= nHeight && key.second.strAddress == strAddress)
+                    mapAppId[key.second.appId] = 1;
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get apptx index value");
+            }
         }
         else
         {
@@ -594,7 +633,7 @@ bool CBlockTreeDB::Erase_AssetId_AssetInfo_Index(const std::vector<std::pair<uin
 
 bool CBlockTreeDB::Read_AssetId_AssetInfo_Index(const uint256& assetId, CAssetId_AssetInfo_IndexValue& assetInfo)
 {
-    return Read(make_pair(DB_ASSETID_ASSETINFO_INDEX, assetId), assetInfo);
+    return Read(make_pair(DB_ASSETID_ASSETINFO_INDEX, assetId), assetInfo) && g_nChainHeight >= assetInfo.nHeight;
 }
 
 bool CBlockTreeDB::Read_AssetList_Index(std::vector<uint256>& vAssetId)
@@ -602,14 +641,25 @@ bool CBlockTreeDB::Read_AssetList_Index(std::vector<uint256>& vAssetId)
     boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
 
     pcursor->Seek(make_pair(DB_ASSETID_ASSETINFO_INDEX, uint256()));
+
+    int nCurHeight = g_nChainHeight;
     while (pcursor->Valid())
     {
         boost::this_thread::interruption_point();
         std::pair<std::string, uint256> key;
         if (pcursor->GetKey(key) && key.first == DB_ASSETID_ASSETINFO_INDEX)
         {
-            vAssetId.push_back(key.second);
-            pcursor->Next();
+            CAssetId_AssetInfo_IndexValue value;
+            if(pcursor->GetValue(value))
+            {
+                if(nCurHeight >= value.nHeight)
+                    vAssetId.push_back(key.second);
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get assetid_assetinfo index value");
+            }
         }
         else
         {
@@ -638,7 +688,7 @@ bool CBlockTreeDB::Erase_ShortName_AssetId_Index(const std::vector<std::pair<std
 
 bool CBlockTreeDB::Read_ShortName_AssetId_Index(const std::string& strShortName, CName_Id_IndexValue& value)
 {
-    return Read(make_pair(DB_SHORTNAME_ASSETID_INDEX, ToLower(strShortName)), value);
+    return Read(make_pair(DB_SHORTNAME_ASSETID_INDEX, ToLower(strShortName)), value) && g_nChainHeight >= value.nHeight;
 }
 
 bool CBlockTreeDB::Write_AssetName_AssetId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
@@ -659,7 +709,7 @@ bool CBlockTreeDB::Erase_AssetName_AssetId_Index(const std::vector<std::pair<std
 
 bool CBlockTreeDB::Read_AssetName_AssetId_Index(const std::string& strAssetName, CName_Id_IndexValue& value)
 {
-    return Read(make_pair(DB_ASSETNAME_ASSETID_INDEX, ToLower(strAssetName)), value);
+    return Read(make_pair(DB_ASSETNAME_ASSETID_INDEX, ToLower(strAssetName)), value) && g_nChainHeight >= value.nHeight;
 }
 
 bool CBlockTreeDB::Write_AssetTx_Index(const std::vector<std::pair<CAssetTx_IndexKey, int> > &vect)
@@ -684,6 +734,7 @@ bool CBlockTreeDB::Read_AssetTx_Index(const uint256& assetId, const uint8_t& nTx
 
     pcursor->Seek(make_pair(DB_ASSETTX_INDEX, CIterator_IdKey(assetId)));
 
+    int nCurHeight = g_nChainHeight;
     multimap<int, COutPoint> tmpMap;
     while (pcursor->Valid())
     {
@@ -694,24 +745,27 @@ bool CBlockTreeDB::Read_AssetTx_Index(const uint256& assetId, const uint8_t& nTx
             int nHeight;
             if(pcursor->GetValue(nHeight))
             {
-                if(nTxClass == ALL_TXOUT)
+                if(nCurHeight >= nHeight)
                 {
-                    tmpMap.insert(make_pair(nHeight, key.second.out));
-                }
-                else if(nTxClass == UNLOCKED_TXOUT)
-                {
-                    if(key.second.nTxClass != LOCKED_TXOUT)
+                    if(nTxClass == ALL_TXOUT)
+                    {
                         tmpMap.insert(make_pair(nHeight, key.second.out));
-                }
-                else if(key.second.nTxClass == nTxClass)
-                {
-                     tmpMap.insert(make_pair(nHeight, key.second.out));
+                    }
+                    else if(nTxClass == UNLOCKED_TXOUT)
+                    {
+                        if(key.second.nTxClass != LOCKED_TXOUT)
+                            tmpMap.insert(make_pair(nHeight, key.second.out));
+                    }
+                    else if(key.second.nTxClass == nTxClass)
+                    {
+                         tmpMap.insert(make_pair(nHeight, key.second.out));
+                    }
                 }
                 pcursor->Next();
             }
             else
             {
-                return error("failed to get asset tx value");
+                return error("failed to get assettx index value");
             }
         }
         else
@@ -734,6 +788,7 @@ bool CBlockTreeDB::Read_AssetTx_Index(const uint256& assetId, const std::string&
 
     pcursor->Seek(make_pair(DB_ASSETTX_INDEX, CIterator_IdAddressKey(assetId, strAddress)));
 
+    int nCurHeight = g_nChainHeight;
     multimap<int, COutPoint> tmpMap;
     while (pcursor->Valid())
     {
@@ -744,24 +799,27 @@ bool CBlockTreeDB::Read_AssetTx_Index(const uint256& assetId, const std::string&
             int nHeight;
             if(pcursor->GetValue(nHeight))
             {
-                if(nTxClass == ALL_TXOUT)
+                if(nCurHeight >= nHeight)
                 {
-                    tmpMap.insert(make_pair(nHeight, key.second.out));
-                }
-                else if(nTxClass == UNLOCKED_TXOUT)
-                {
-                    if(key.second.nTxClass != LOCKED_TXOUT)
+                    if(nTxClass == ALL_TXOUT)
+                    {
                         tmpMap.insert(make_pair(nHeight, key.second.out));
-                }
-                else if(key.second.nTxClass == nTxClass)
-                {
-                     tmpMap.insert(make_pair(nHeight, key.second.out));
+                    }
+                    else if(nTxClass == UNLOCKED_TXOUT)
+                    {
+                        if(key.second.nTxClass != LOCKED_TXOUT)
+                            tmpMap.insert(make_pair(nHeight, key.second.out));
+                    }
+                    else if(key.second.nTxClass == nTxClass)
+                    {
+                         tmpMap.insert(make_pair(nHeight, key.second.out));
+                    }
                 }
                 pcursor->Next();
             }
             else
             {
-                return error("failed to get asset tx value");
+                return error("failed to get assettx index value");
             }
         }
         else
@@ -784,6 +842,7 @@ bool CBlockTreeDB::Read_AssetList_Index(const std::string& strAddress, std::vect
 
     pcursor->Seek(make_pair(DB_ASSETTX_INDEX, CIterator_IdAddressKey()));
 
+    int nCurHeight = g_nChainHeight;
     std::map<uint256, char> mapAssetId;
     while (pcursor->Valid())
     {
@@ -791,9 +850,17 @@ bool CBlockTreeDB::Read_AssetList_Index(const std::string& strAddress, std::vect
         std::pair<std::string, CAssetTx_IndexKey> key;
         if (pcursor->GetKey(key) && key.first == DB_ASSETTX_INDEX)
         {
-            if (key.second.strAddress == strAddress)
-                mapAssetId[key.second.assetId] = 1;
-            pcursor->Next();
+            int nHeight;
+            if(pcursor->GetValue(nHeight))
+            {
+                if(nCurHeight >= nHeight && key.second.strAddress == strAddress)
+                    mapAssetId[key.second.assetId] = 1;
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get assettx index value");
+            }
         }
         else
         {
@@ -829,14 +896,24 @@ bool CBlockTreeDB::Read_PutCandy_Index(const uint256& assetId, std::map<COutPoin
 
     pcursor->Seek(make_pair(DB_PUTCANDY_INDEX, CIterator_IdKey(assetId)));
 
+    int nCurHeight = g_nChainHeight;
     while (pcursor->Valid())
     {
         boost::this_thread::interruption_point();
         std::pair<std::string, CPutCandy_IndexKey> key;
         if (pcursor->GetKey(key) && key.first == DB_PUTCANDY_INDEX && key.second.assetId == assetId)
         {
-            mapCandyInfo[key.second.out] = key.second.candyInfo;
-            pcursor->Next();
+            CPutCandy_IndexValue value;
+            if(pcursor->GetValue(value))
+            {
+                if(nCurHeight >= value.nHeight)
+                    mapCandyInfo[key.second.out] = key.second.candyInfo;
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get putcandy index value");
+            }
         }
         else
         {
@@ -853,14 +930,27 @@ bool CBlockTreeDB::Read_PutCandy_Index(const uint256& assetId, const COutPoint& 
 
     pcursor->Seek(make_pair(DB_PUTCANDY_INDEX, CIterator_IdOutKey(assetId, out)));
 
+    int nCurHeight = g_nChainHeight;
     while (pcursor->Valid())
     {
         boost::this_thread::interruption_point();
         std::pair<std::string, CPutCandy_IndexKey> key;
         if (pcursor->GetKey(key) && key.first == DB_PUTCANDY_INDEX && key.second.assetId == assetId && key.second.out == out)
         {
-            candyInfo = key.second.candyInfo;
-            return true;
+            CPutCandy_IndexValue value;
+            if(pcursor->GetValue(value))
+            {
+                if(nCurHeight >= value.nHeight)
+                {
+                    candyInfo = key.second.candyInfo;
+                    return true;
+                }
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get putcandy index value");
+            }
         }
         else
         {
@@ -877,6 +967,7 @@ bool CBlockTreeDB::Read_PutCandy_Index(std::map<CPutCandy_IndexKey, CPutCandy_In
 
     pcursor->Seek(make_pair(DB_PUTCANDY_INDEX, CIterator_IdKey()));
 
+    int nCurHeight = g_nChainHeight;
     while (pcursor->Valid())
     {
         boost::this_thread::interruption_point();
@@ -886,7 +977,8 @@ bool CBlockTreeDB::Read_PutCandy_Index(std::map<CPutCandy_IndexKey, CPutCandy_In
             CPutCandy_IndexValue value;
             if(pcursor->GetValue(value))
             {
-                mapCandy.insert(make_pair(key.second, value));
+                if(nCurHeight >= value.nHeight)
+                    mapCandy.insert(make_pair(key.second, value));
                 pcursor->Next();
             }
             else
@@ -925,6 +1017,7 @@ bool CBlockTreeDB::Read_GetCandy_Index(const uint256& assetId, const COutPoint& 
 
     pcursor->Seek(make_pair(DB_GETCANDY_INDEX, CGetCandy_IndexKey(assetId, out, strAddress)));
 
+    int nCurHeight = g_nChainHeight;
     while (pcursor->Valid())
     {
         boost::this_thread::interruption_point();
@@ -934,8 +1027,12 @@ bool CBlockTreeDB::Read_GetCandy_Index(const uint256& assetId, const COutPoint& 
             CGetCandy_IndexValue value;
             if(pcursor->GetValue(value))
             {
-                nAmount = value.nAmount;
-                return true;
+                if(nCurHeight >= value.nHeight)
+                {
+                    nAmount = value.nAmount;
+                    return true;
+                }
+                pcursor->Next();
             }
             else
             {
@@ -957,24 +1054,36 @@ bool CBlockTreeDB::Read_GetCandy_Index(const uint256& assetId, std::map<COutPoin
 
     pcursor->Seek(make_pair(DB_GETCANDY_INDEX, CIterator_IdKey(assetId)));
 
+    int nCurHeight = g_nChainHeight;
     while (pcursor->Valid())
     {
         boost::this_thread::interruption_point();
         std::pair<std::string, CGetCandy_IndexKey> key;
         if (pcursor->GetKey(key) && key.first == DB_GETCANDY_INDEX && key.second.assetId == assetId)
         {
-            if (mapOutAddress.end() == mapOutAddress.find(key.second.out))
+            CGetCandy_IndexValue value;
+            if(pcursor->GetValue(value))
             {
-                std::vector<std::string> vAddress;
-                vAddress.push_back(key.second.strAddress);
-                mapOutAddress[key.second.out] = vAddress;
+                if(nCurHeight >= value.nHeight)
+                {
+                    if (mapOutAddress.end() == mapOutAddress.find(key.second.out))
+                    {
+                        std::vector<std::string> vAddress;
+                        vAddress.push_back(key.second.strAddress);
+                        mapOutAddress[key.second.out] = vAddress;
+                    }
+                    else
+                    {
+                        if (mapOutAddress[key.second.out].end() == find(mapOutAddress[key.second.out].begin(), mapOutAddress[key.second.out].end(), key.second.strAddress))
+                            mapOutAddress[key.second.out].push_back(key.second.strAddress);
+                    }
+                }
+                pcursor->Next();
             }
             else
             {
-                if (mapOutAddress[key.second.out].end() == find(mapOutAddress[key.second.out].begin(), mapOutAddress[key.second.out].end(), key.second.strAddress))
-                    mapOutAddress[key.second.out].push_back(key.second.strAddress);
+                return error("failed to get getcandy index value");
             }
-            pcursor->Next();
         }
         else
         {
@@ -990,15 +1099,25 @@ bool CBlockTreeDB::Read_GetCandy_Index(const uint256& assetId, const std::string
     boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
 
     pcursor->Seek(make_pair(DB_GETCANDY_INDEX, CIterator_IdKey(assetId)));
+
+    int nCurHeight = g_nChainHeight;
     while (pcursor->Valid())
     {
         boost::this_thread::interruption_point();
         std::pair<std::string, CGetCandy_IndexKey> key;
         if (pcursor->GetKey(key) && key.first == DB_GETCANDY_INDEX && key.second.assetId == assetId)
         {
-            if (key.second.strAddress == straddress)
-                vOut.push_back(key.second.out);
-            pcursor->Next();
+            CGetCandy_IndexValue value;
+            if(pcursor->GetValue(value))
+            {
+                if(nCurHeight >= value.nHeight && key.second.strAddress == straddress)
+                    vOut.push_back(key.second.out);
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get getcandy index value");
+            }
         }
         else
         {

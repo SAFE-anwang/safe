@@ -576,6 +576,8 @@ int main(int argc, char *argv[])
 
     BitcoinApplication app(argc, argv);
     app.setFont(QFont(QStringLiteral("Microsoft YaHei"), 12));
+    app.setStyleSheet("QMessageBox { font-size: 12px;}"
+                    "QMessageBox .QPushButton{font-size:12px}");
 
 #if QT_VERSION > 0x050100
     // Generate high-dpi pixmaps

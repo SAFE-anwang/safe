@@ -13,6 +13,7 @@
 #include <QDataWidgetMapper>
 #include <QMessageBox>
 #include <QPushButton>
+#define MAX_ADRESS_LABEL_SIZE 60
 
 EditAddressDialog::EditAddressDialog(Mode mode, QWidget *parent) :
     QDialog(parent),
@@ -47,6 +48,10 @@ EditAddressDialog::EditAddressDialog(Mode mode, QWidget *parent) :
     mapper->setSubmitPolicy(QDataWidgetMapper::ManualSubmit);
     ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Ok"));
     ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("Cancel"));
+    connect(ui->labelEdit, SIGNAL(textChanged(QString)), this, SLOT(on_addEdit_textChanged(QString)));
+    QRegExp addExpReqLabelEdit;
+    addExpReqLabelEdit.setPattern("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9-+*/。，$%^&*,!?.()#_\u4e00-\u9fa5 ]{1,150}");
+    ui->labelEdit->setValidator (new QRegExpValidator(addExpReqLabelEdit, this));
 }
 
 EditAddressDialog::~EditAddressDialog()
@@ -63,6 +68,12 @@ void EditAddressDialog::setModel(AddressTableModel *model)
     mapper->setModel(model);
     mapper->addMapping(ui->labelEdit, AddressTableModel::Label);
     mapper->addMapping(ui->addressEdit, AddressTableModel::Address);
+}
+
+void EditAddressDialog::on_addEdit_textChanged(const QString &address)
+{
+    while(ui->labelEdit->text().toStdString().size() > MAX_ADRESS_LABEL_SIZE)
+        ui->labelEdit->setText(ui->labelEdit->text().left(ui->labelEdit->text().length()-1));
 }
 
 void EditAddressDialog::loadRow(int row)

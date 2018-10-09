@@ -2645,6 +2645,15 @@ bool CWalletTx::IsTrusted() const
     return true;
 }
 
+// forbit dash candy in g_nProtocolV2Height
+bool CWalletTx::IsForbid()const
+{
+    int nDepth = GetDepthInMainChain(false);
+    if(g_nChainHeight >= g_nProtocolV2Height && g_nChainHeight - nDepth + 1 < g_nCriticalHeight /*&& !bIsSpent*/)
+        return true;
+    return false;
+}
+
 bool CWalletTx::IsEquivalentTo(const CWalletTx& tx) const
 {
         CMutableTransaction tx1 = *this;
@@ -2704,8 +2713,6 @@ void CWallet::ResendWalletTransactions(int64_t nBestBlockTime, CConnman* connman
 /** @} */ // end of mapWallet
 
 
-
-
 /** @defgroup Actions
  *
  * @{
@@ -2720,6 +2727,10 @@ CAmount CWallet::GetBalance(const bool fAsset, const uint256* pAssetId, const CB
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
             const CWalletTx* pcoin = &(*it).second;
+
+            if(pcoin->IsForbid())
+                continue;
+
             if (pcoin->IsTrusted())
                 nTotal += pcoin->GetAvailableCredit(fAsset, pAssetId, pAddress, !fAsset);
         }
@@ -2765,7 +2776,10 @@ CAmount CWallet::GetAnonymizedBalance() const
         setWalletTxesCounted.insert(outpoint.hash);
 
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.find(outpoint.hash); it != mapWallet.end() && it->first == outpoint.hash; ++it) {
-            if (it->second.IsTrusted())
+            const CWalletTx* pcoin = &(*it).second;
+            if(pcoin->IsForbid())
+                continue;
+            if (pcoin->IsTrusted())
                 nTotal += it->second.GetAnonymizedCredit();
         }
     }
@@ -2867,6 +2881,8 @@ CAmount CWallet::GetUnconfirmedBalance(const bool fAsset, const uint256* pAssetI
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
             const CWalletTx* pcoin = &(*it).second;
+            if(pcoin->IsForbid())
+                continue;
             if (!pcoin->IsTrusted() && pcoin->GetDepthInMainChain() == 0 && pcoin->InMempool())
                 nTotal += pcoin->GetAvailableCredit(fAsset, pAssetId, pAddress, !fAsset);
         }
@@ -2882,6 +2898,8 @@ CAmount CWallet::GetImmatureBalance(const bool fAsset, const uint256* pAssetId, 
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
             const CWalletTx* pcoin = &(*it).second;
+            if(pcoin->IsForbid())
+                continue;
             nTotal += pcoin->GetImmatureCredit(fAsset, pAssetId, pAddress, !fAsset);
         }
     }
@@ -2896,6 +2914,8 @@ CAmount CWallet::GetLockedBalance(const bool fAsset, const uint256* pAssetId, co
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
             const CWalletTx* pcoin = &(*it).second;
+            if(pcoin->IsForbid())
+                continue;
             nTotal += pcoin->GetLockedCredit(fAsset, pAssetId, pAddress);
         }
     }
@@ -2986,6 +3006,9 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
                 continue;
 
             int nDepth = pcoin->GetDepthInMainChain(false);
+            if(pcoin->IsForbid())
+                continue;
+
             // do not use IX for inputs that have less then INSTANTSEND_CONFIRMATIONS_REQUIRED blockchain confirmations
             if (fUseInstantSend && nDepth < INSTANTSEND_CONFIRMATIONS_REQUIRED)
                 continue;
@@ -3884,7 +3907,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 {
     if(!masternodeSync.IsBlockchainSynced())
     {
-        strFailReason = _("Must sync block first");
+        strFailReason = _("Synchronizing block data");
         return false;
     }
 
@@ -4021,24 +4044,20 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         strFailReason += " " + _("PrivateSend uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.");
                     } else if (nValueIn < nValueToSelect) {
                         strFailReason = _("Insufficient funds.");
-
-                        if (GetBalance() >= nValueToSelect)
-                            strFailReason = _("Reach the current change limit,please try again later.");
-
-                        if (fUseInstantSend) {
-                            // could be not true but most likely that's the reason
+                        if (fUseInstantSend) // could be not true but most likely that's the reason
                             strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED);
-                        }
+                        else if (GetBalance() >= nValueToSelect)
+                            strFailReason = _("Reach the current change limit,please try again later.");
                     }
 
-                    if (fUseInstantSend && nValueIn > sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE)*COIN) {
-                        strFailReason += " " + strprintf(_("InstantSend doesn't support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE."), sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE));
-                        return false;
-                    }
+                    if (fUseInstantSend && nValueIn > sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE)*COIN)
+                        strFailReason = strprintf(_("InstantSend doesn't support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE."), sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE));
+
                     return false;
                 }
+
                 if (fUseInstantSend && nValueIn > sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE)*COIN) {
-                    strFailReason += " " + strprintf(_("InstantSend doesn't support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE."), sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE));
+                    strFailReason = strprintf(_("InstantSend doesn't support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE."), sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE));
                     return false;
                 }
 
@@ -4266,7 +4285,7 @@ bool CWallet::CreateAppTransaction(const CAppHeader* pHeader, const void* pBody,
 {
     if(!masternodeSync.IsBlockchainSynced())
     {
-        strFailReason = _("Must sync block first");
+        strFailReason = _("Synchronizing block data");
         return false;
     }
 
@@ -4378,24 +4397,30 @@ bool CWallet::CreateAppTransaction(const CAppHeader* pHeader, const void* pBody,
                         strFailReason = _("Unable to locate enough PrivateSend denominated funds for this transaction.");
                         strFailReason += " " + _("PrivateSend uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.");
                     } else if (nValueIn < nValueToSelect) {
-                        strFailReason = _("Insufficient funds.");
-
-                        if (pSafeAddress && (GetBalance(false, NULL, pSafeAddress) < nValueToSelect))
+                        if (pSafeAddress)
+                        {
+                            if (GetBalance(false, NULL, pSafeAddress) < nValueToSelect)
+                                strFailReason = strprintf(_("Please transfer at least 0.01 SAFE to address(%s)."), pSafeAddress->ToString());
+                            else if(fUseInstantSend)
+                                strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED);
+                            else
+                                strFailReason = _("Reach the current change limit,please try again later.");
                             return false;
+                        }
 
+                        strFailReason = _("Insufficient funds.");
                         if (GetBalance() >= nValueToSelect)
                             strFailReason = _("Reach the current change limit,please try again later.");
-
-                        if (fUseInstantSend) {
-                            // could be not true but most likely that's the reason
-                            strFailReason += " " + strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED);
-                        }
                     }
+
+                    if (fUseInstantSend && nValueIn > sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE)*COIN)
+                        strFailReason = strprintf(_("InstantSend doesn't support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE."), sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE));
 
                     return false;
                 }
+
                 if (fUseInstantSend && nValueIn > sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE)*COIN) {
-                    strFailReason += " " + strprintf(_("InstantSend doesn't support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE."), sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE));
+                    strFailReason = strprintf(_("InstantSend doesn't support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE."), sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE));
                     return false;
                 }
 
@@ -4652,7 +4677,7 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
 {
     if(!masternodeSync.IsBlockchainSynced())
     {
-        strFailReason = _("Must sync block first");
+        strFailReason = _("Synchronizing block data");
         return false;
     }
 
@@ -4788,22 +4813,22 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
                 {
                     if (nValueIn < nValueToSelect)
                     {
-                        if (pSafeAddress && (GetBalance(false, NULL, pSafeAddress) < nValueToSelect))
+                        if (pSafeAddress)
                         {
-                            strFailReason = strprintf(_("Please transfer at least 0.01 SAFE to address(%s)."), pSafeAddress->ToString());
-                            return false;
-                        }
-
-                        if (GetBalance() >= nValueToSelect)
-                            strFailReason = _("Reach the current change limit,please try again later.");
-                        else
-                        {
-                            if(pSafeAddress)
+                            if(GetBalance(false, NULL, pSafeAddress) < nValueToSelect)
                                 strFailReason = strprintf(_("Please transfer at least 0.01 SAFE to address(%s)."), pSafeAddress->ToString());
                             else
+                                strFailReason = _("Reach the current change limit,please try again later.");
+                        }
+                        else
+                        {
+                            if (GetBalance() < nValueToSelect)
                                 strFailReason = _("Please transfer at least 0.01 SAFE to wallet.");
+                            else
+                                strFailReason = _("Reach the current change limit,please try again later.");
                         }
                     }
+
                     return false;
                 }
 
@@ -4830,8 +4855,8 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
                     {
                         if (nAssetValueIn < nAssetValueToSelect)
                         {
-                            if (GetBalance() >= nValueToSelect)
-                                strFailReason = _("Reach the current change limit,please try again later.");
+                            if (GetBalance(true, (&((const CCommonData*)pBody)->assetId), pAssetAddress) >= nAssetValueToSelect)
+                                strFailReason = _("Reach the current asset change limit,please try again later.");
                             else
                                 strFailReason = _("Insufficient asset funds.");
                         }
@@ -5622,6 +5647,9 @@ std::map<CTxDestination, CAmount> CWallet::GetAddressBalances()
 
             for (unsigned int i = 0; i < pcoin->vout.size(); i++)
             {
+                if (pcoin->vout[i].IsAsset())
+                    continue;
+
                 CTxDestination addr;
                 if (!IsMine(pcoin->vout[i]))
                     continue;
@@ -5659,6 +5687,10 @@ set< set<CTxDestination> > CWallet::GetAddressGroupings()
                 CTxDestination address;
                 if(!IsMine(txin)) /* If this input isn't mine, ignore it */
                     continue;
+
+                if (mapWallet[txin.prevout.hash].vout[txin.prevout.n].IsAsset())
+                    continue;
+
                 if(!ExtractDestination(mapWallet[txin.prevout.hash].vout[txin.prevout.n].scriptPubKey, address))
                     continue;
                 grouping.insert(address);
@@ -5671,6 +5703,9 @@ set< set<CTxDestination> > CWallet::GetAddressGroupings()
                BOOST_FOREACH(CTxOut txout, pcoin->vout)
                    if (IsChange(txout))
                    {
+                       if (txout.IsAsset())
+                           continue;
+
                        CTxDestination txoutAddr;
                        if(!ExtractDestination(txout.scriptPubKey, txoutAddr))
                            continue;
@@ -5688,6 +5723,9 @@ set< set<CTxDestination> > CWallet::GetAddressGroupings()
         for (unsigned int i = 0; i < pcoin->vout.size(); i++)
             if (IsMine(pcoin->vout[i]))
             {
+                if (pcoin->vout[i].IsAsset())
+                    continue;
+
                 CTxDestination address;
                 if(!ExtractDestination(pcoin->vout[i].scriptPubKey, address))
                     continue;

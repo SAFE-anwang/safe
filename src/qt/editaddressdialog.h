@@ -42,6 +42,7 @@ public:
 
 public Q_SLOTS:
     void accept();
+    void on_addEdit_textChanged(const QString &address);
 
 private:
     bool saveCurrentRow();

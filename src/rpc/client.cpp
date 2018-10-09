@@ -37,6 +37,8 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "sendtoaddress", 4 },
     { "sendtoaddress", 5 },
     { "sendtoaddress", 6 },
+    { "sendwithlock", 1 },
+    { "sendwithlock", 2 },
     { "instantsendtoaddress", 1 },
     { "instantsendtoaddress", 4 },
     { "settxfee", 0 },
@@ -162,6 +164,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "getapptxids", 1},
     { "getapptxids", 2},
     { "getaddressamountbyheight", 0},
+    { "sendmanywithlock", 0 },
 };
 
 class CRPCConvertTable

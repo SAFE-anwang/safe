@@ -19,6 +19,9 @@
 
 using namespace std;
 
+extern std::mutex g_mutexAllCandyInfo;
+extern std::vector<CCandy_BlockTime_Info> gAllCandyInfoVec;
+
 void EnsureWalletIsUnlocked();
 bool EnsureWalletIsAvailable(bool avoidException);
 
@@ -54,7 +57,7 @@ UniValue issueasset(const UniValue& params, bool fHelp)
             + HelpExampleCli("issueasset", "\"gold\" \"gold\" \"gold is an asset\" \"g\" 100000 30000 4 false false 0 0")
             + HelpExampleCli("issueasset", "\"gold\" \"gold\" \"gold is an asset\" \"g\" 100000 30000 4 false true 10000 1")
             + HelpExampleCli("issueasset", "\"gold\" \"gold\" \"gold is an asset\" \"g\" 100000 30000 4 false true 10000 1 \"This is a test\"")
-            + HelpExampleRpc("issueasset", "\"gold\" \"gold\" \"gold is an asset\" \"g\" 100000 30000 4 false true 10000 1")
+            + HelpExampleRpc("issueasset", "\"gold\", \"gold\", \"gold is an asset\", \"g\", 100000, 30000, 4, false, true, 10000, 1")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -156,6 +159,10 @@ UniValue issueasset(const UniValue& params, bool fHelp)
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
+    int nOffset = g_nChainHeight - g_nProtocolV2Height;
+    if (nOffset < 0)
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height));
+
     CAmount nCancelledValue = GetCancelledAmount(g_nChainHeight);
     if(!IsCancelledRange(nCancelledValue))
         throw JSONRPCError(INVALID_CANCELLED_SAFE, "Invalid cancelled safe amount");
@@ -223,7 +230,7 @@ UniValue addissueasset(const UniValue& params, bool fHelp)
             "\nExamples:\n"
             + HelpExampleCli("addissueasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 400")
             + HelpExampleCli("addissueasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 400 \"This is a test\"")
-            + HelpExampleRpc("addissueasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 400")
+            + HelpExampleRpc("addissueasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\", 400")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -311,7 +318,7 @@ UniValue transferasset(const UniValue& params, bool fHelp)
             "\nExamples:\n"
             + HelpExampleCli("transferasset", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 400 1")
             + HelpExampleCli("transferasset", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 400 1 \"This is a test\"")
-            + HelpExampleRpc("transferasset", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 400 0")
+            + HelpExampleRpc("transferasset", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\", \"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\", 400, 0")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -402,7 +409,7 @@ UniValue destoryasset(const UniValue& params, bool fHelp)
             "\nExamples:\n"
             + HelpExampleCli("destoryasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 600")
             + HelpExampleCli("destoryasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 600 \"This is a test\"")
-            + HelpExampleRpc("destoryasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 600")
+            + HelpExampleRpc("destoryasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\", 600")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -489,7 +496,7 @@ UniValue putcandy(const UniValue& params, bool fHelp)
             "\nExamples:\n"
             + HelpExampleCli("putcandy", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 600 1")
             + HelpExampleCli("putcandy", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 600 1 \"This is a test\"")
-            + HelpExampleRpc("putcandy", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 600 1")
+            + HelpExampleRpc("putcandy", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\", 600, 1")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -681,7 +688,7 @@ UniValue getcandy(const UniValue& params, bool fHelp)
             if(!GetAddressAmountByHeight(nTxHeight, strAddress, nSafe))
                 continue;
 
-            if(nSafe <= 0 || nSafe > nTotalSafe)
+            if(nSafe < 1 * COIN || nSafe > nTotalSafe)
                 continue;
 
             CAmount nCandyAmount = (CAmount)(1.0 * nSafe / nTotalSafe * candyInfo.nAmount);
@@ -750,6 +757,33 @@ UniValue getcandy(const UniValue& params, bool fHelp)
                 ret.push_back(txData);
             }
         }
+
+        //erase candy
+        std::lock_guard<std::mutex> lock(g_mutexAllCandyInfo);
+        int size = gAllCandyInfoVec.size();
+        bool found = false;
+        for(int i=0;i<size;i++)
+        {
+            CCandy_BlockTime_Info& info = gAllCandyInfoVec[i];
+            if(assetId!=info.assetId)
+                continue;
+            if(candyInfo.nAmount!=info.candyinfo.nAmount)
+                continue;
+            if(candyInfo.nExpired!=info.candyinfo.nExpired)
+                continue;
+            if(assetIdCandyInfo.out.n!=info.outpoint.n)
+                continue;
+            if(assetIdCandyInfo.out.hash!=info.outpoint.hash)
+                continue;
+            if(nTxHeight!=info.nHeight)
+                continue;
+            found = true;
+            gAllCandyInfoVec.erase(gAllCandyInfoVec.begin()+i);
+            break;
+        }
+        if(!found){
+            LogPrintf("erase candy not found,height:%d,assetId:%s\n", nTxHeight,assetId.ToString());
+        }
     }
 
     return ret;
@@ -780,8 +814,8 @@ UniValue getassetinfo(const UniValue& params, bool fHelp)
             "    \"destoryTotalAmout\": \"xxxxx\"\n"
             "    \"candyExpired\": xxxxx\n"
             "    \"remarks\": \"xxxxx\"\n"
-            "    \"issuetime\": xxxxx\n"
-            "    \"AdminAddress\": \"xxxxx\"\n"
+            "    \"issueTime\": xxxxx\n"
+            "    \"adminSafeAddress\": \"xxxxx\"\n"
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getassetinfo", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\"")
@@ -892,8 +926,137 @@ UniValue getassetinfo(const UniValue& params, bool fHelp)
     ret.push_back(Pair("destoryTotalAmout", StrValueFromAmount(value, assetInfo.assetData.nDecimals)));
     ret.push_back(Pair("candyExpired", assetInfo.assetData.nCandyExpired));
     ret.push_back(Pair("remarks", assetInfo.assetData.strRemarks));
-    ret.push_back(Pair("issuetime", (int64_t)nTime));
-    ret.push_back(Pair("AdminAddress", assetInfo.strAdminAddress));
+    ret.push_back(Pair("issueTime", (int64_t)nTime));
+    ret.push_back(Pair("adminSafeAddress", assetInfo.strAdminAddress));
+
+    return ret;
+}
+
+UniValue getlocalassetinfo(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "getlocalassetinfo \"assetId\"\n"
+            "\nReturns asset information by specified asset id.\n"
+            "\nArguments:\n"
+            "1. \"assetId\"             (string, required) The asset id for information lookup\n"
+            "\nResult:\n"
+            "{\n"
+            "    \"assetShortName\": \"xxxxx\"\n"
+            "    \"assetName\": \"xxxxx\"\n"
+            "    \"assetDesc\": \"xxxxx\"\n"
+            "    \"assetUnit\": \"xxxxx\"\n"
+            "    \"assetDecimals\": xxxxx\n"
+            "    \"issueTime\": xxxxx\n"
+            "    \"assetAvailAmount\": \"xxxxx\"\n"
+            "    \"assetWaitAmount\": \"xxxxx\"\n"
+            "    \"assetLockAmount\": \"xxxxx\"\n"
+            "    \"assetLocalTotalAmount\": \"xxxxx\"\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getlocalassetinfo", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\"")
+            + HelpExampleRpc("getlocalassetinfo", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\"")
+        );
+
+    LOCK(cs_main);
+
+    uint256 assetId = uint256S(TrimString(params[0].get_str()));
+
+    CAssetId_AssetInfo_IndexValue assetInfo;
+    if (assetId.IsNull() || !GetAssetInfoByAssetId(assetId, assetInfo))
+        throw JSONRPCError(GET_ASSETINFO_FAILED, "No asset available about asset id");
+
+    bool found = false;
+    for(map<uint256, CWalletTx>::const_iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); it++)
+    {
+        const CWalletTx* pcoin = &(*it).second;
+        if (!pcoin->IsTrusted())
+            continue;
+        for(unsigned int i = 0; i < pcoin->vout.size(); i++)
+        {
+            if(pwalletMain->IsSpent(it->first, i))
+                continue;
+
+            const CTxOut& txout = pcoin->vout[i];
+            if(!txout.IsAsset())
+                continue;
+
+            CAppHeader header;
+            std::vector<unsigned char> vData;
+            if(!ParseReserve(txout.vReserve, header, vData))
+                continue;
+            if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd==CHANGE_ASSET_CMD || header.nAppCmd==TRANSFER_ASSET_CMD || header.nAppCmd==DESTORY_ASSET_CMD)
+            {
+                CCommonData commonData;
+                if(!ParseCommonData(vData, commonData))
+                    continue;
+                if(assetId != commonData.assetId)
+                    continue;
+                found = true;
+                break;
+            }else if(header.nAppCmd == GET_CANDY_CMD)
+            {
+                CGetCandyData getCandyData;
+                if(!ParseGetCandyData(vData,getCandyData))
+                    continue;
+                if(assetId != getCandyData.assetId)
+                    continue;
+                found = true;
+                break;
+            }else if(header.nAppCmd == ISSUE_ASSET_CMD)
+            {
+                CAssetData assetData;
+                if(!ParseIssueData(vData, assetData))
+                    continue;
+                if(assetData.GetHash()!=assetInfo.assetData.GetHash())
+                    continue;
+                found = true;
+                break;
+            }
+        }
+        if(found)
+            break;
+    }
+
+    if(!found)
+        throw JSONRPCError(NOT_OWN_ASSET, "Not own this asset");
+
+    uint32_t nTime = 0;
+    vector<COutPoint> vOut;
+    uint8_t nTxClass = (uint8_t)ISSUE_TXOUT;
+    if (GetTxInfoByAssetIdTxClass(assetId, nTxClass, vOut))
+    {
+        std::vector<uint256> vTx;
+        BOOST_FOREACH(const COutPoint& out, vOut)
+        {
+            if(find(vTx.begin(), vTx.end(), out.hash) == vTx.end())
+                vTx.push_back(out.hash);
+        }
+
+        if (!vTx.empty())
+        {
+            int nTxHeight = GetTxHeight(vTx[0]);
+            if (nTxHeight <= chainActive.Height())
+                nTime = chainActive[nTxHeight]->GetBlockTime();
+        }
+    }
+
+    CAmount amount = pwalletMain->GetBalance(true,&assetId);
+    CAmount unconfirmAmount = pwalletMain->GetUnconfirmedBalance(true,&assetId);
+    CAmount lockedAmount = pwalletMain->GetLockedBalance(true,&assetId);
+    CAmount totalAmount = amount+unconfirmAmount+lockedAmount;
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("assetShortName", assetInfo.assetData.strShortName));
+    ret.push_back(Pair("assetName", assetInfo.assetData.strAssetName));
+    ret.push_back(Pair("assetDesc", assetInfo.assetData.strAssetDesc));
+    ret.push_back(Pair("assetUnit", assetInfo.assetData.strAssetUnit));
+    ret.push_back(Pair("assetDecimals", assetInfo.assetData.nDecimals));
+    ret.push_back(Pair("issueTime", (int64_t)nTime));
+    ret.push_back(Pair("assetAvailAmount", StrValueFromAmount(amount, assetInfo.assetData.nDecimals)));
+    ret.push_back(Pair("assetWaitAmount", StrValueFromAmount(unconfirmAmount, assetInfo.assetData.nDecimals)));
+    ret.push_back(Pair("assetLockAmount", StrValueFromAmount(lockedAmount, assetInfo.assetData.nDecimals)));
+    ret.push_back(Pair("assetLocalTotalAmount", StrValueFromAmount(totalAmount, assetInfo.assetData.nDecimals)));
 
     return ret;
 }
@@ -917,7 +1080,7 @@ UniValue getassetidtxids(const UniValue& params, bool fHelp)
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getassetidtxids", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 1")
-            + HelpExampleRpc("getassetidtxids", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 3")
+            + HelpExampleRpc("getassetidtxids", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\", 3")
         );
 
     LOCK(cs_main);
@@ -967,7 +1130,7 @@ UniValue getaddrassettxids(const UniValue& params, bool fHelp)
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getaddrassettxids", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 1")
-            + HelpExampleRpc("getaddrassettxids", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 3")
+            + HelpExampleRpc("getaddrassettxids", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\", \"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\", 3")
         );
 
     LOCK(cs_main);
@@ -1016,7 +1179,7 @@ UniValue getaddrassetbalance(const UniValue& params, bool fHelp)
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getaddrassetbalance", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\"")
-            + HelpExampleRpc("getaddrassetbalance", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\"")
+            + HelpExampleRpc("getaddrassetbalance", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\", \"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\"")
         );
 
     LOCK(cs_main);
@@ -1151,6 +1314,7 @@ UniValue getassetdetails(const UniValue& params, bool fHelp)
             "    \"txData\":\n"
             "    [\n"
             "       {\n"
+            "           \"adminSafeAddress\": \"xxxxx\"\n"
             "           \"assetShortName\": \"xxxxx\"\n"
             "           \"assetName\": \"xxxxx\"\n"
             "           \"assetDesc\": \"xxxxx\"\n"
@@ -1165,7 +1329,7 @@ UniValue getassetdetails(const UniValue& params, bool fHelp)
             "           \"remarks\": \"xxxxx\"\n"
             "       }\n"
             "       ,{\n"
-            "           \"issueSafeAddress\": \"xxxxx\"\n"
+            "           \"adminSafeAddress\": \"xxxxx\"\n"
             "           \"assetId\": \"xxxxx\"\n"
             "           \"addAmount\": \"xxxxx\"\n"
             "           \"remarks\": \"xxxxx\"\n"
@@ -1231,7 +1395,7 @@ UniValue getassetdetails(const UniValue& params, bool fHelp)
                 if(ParseIssueData(vData, assetData))
                 {
                     UniValue issueData(UniValue::VOBJ);
-                    issueData.push_back(Pair("admin", strAddress));
+                    issueData.push_back(Pair("adminSafeAddress", strAddress));
                     issueData.push_back(Pair("assetShortName", assetData.strShortName));
                     issueData.push_back(Pair("assetName", assetData.strAssetName));
                     issueData.push_back(Pair("asetDesc", assetData.strAssetDesc));
@@ -1258,7 +1422,7 @@ UniValue getassetdetails(const UniValue& params, bool fHelp)
                         continue;
 
                     UniValue addData(UniValue::VOBJ);
-                    addData.push_back(Pair("issueSafeAddress", strAddress));
+                    addData.push_back(Pair("adminSafeAddress", strAddress));
                     addData.push_back(Pair("assetId", commonData.assetId.GetHex()));
                     addData.push_back(Pair("addAmount", StrValueFromAmount(commonData.nAmount, assetInfo.assetData.nDecimals)));
                     addData.push_back(Pair("remarks", commonData.strRemarks));
@@ -1415,7 +1579,7 @@ UniValue getassetlistbyaddress(const UniValue& params, bool fHelp)
         "}\n"
         "\nExamples:\n"
         + HelpExampleCli("getassetlistbyaddress", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\"")
-        + HelpExampleRpc("getassetlistbyaddress", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" ")
+        + HelpExampleRpc("getassetlistbyaddress", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\"")
     );
 
     LOCK(cs_main);
@@ -1450,11 +1614,11 @@ UniValue getaddressamountbyheight(const UniValue& params, bool fHelp)
             "\nResult:\n"
             "{\n"
             "   \"amount\": xxxxx\n"
-            "   \"totalamount\":xxxxx\n"
+            "   \"totalAmount\":xxxxx\n"
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getaddressamountbyheight", "700 \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\"")
-            + HelpExampleRpc("getaddressamountbyheight", "700 \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\"")
+            + HelpExampleRpc("getaddressamountbyheight", "700, \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\"")
         );
 
     LOCK(cs_main);
@@ -1474,7 +1638,7 @@ UniValue getaddressamountbyheight(const UniValue& params, bool fHelp)
 
     UniValue entry(UniValue::VOBJ);
     entry.push_back(Pair("amount", ValueFromAmount(nAmount)));
-    entry.push_back(Pair("totalamount", ValueFromAmount(nTotalAmount)));
+    entry.push_back(Pair("totalAmount", ValueFromAmount(nTotalAmount)));
 
     return entry;
 }
@@ -1525,24 +1689,23 @@ UniValue getaddresscandylist(const UniValue& params, bool fHelp)
             "2. \"safeAddress\"     (string, optional) The asset id for transaction lookup\n"
             "\nResult:\n"
             "{\n"
-            "   \"candyblocktime\":xxxxx\n"
+            "   \"candyBlockTime\":xxxxx\n"
             "   \"details\": \n"
             "   [\n"
-            "    \"address and candyamount list\":\n"
             "       {\n"
             "           \"safeAddress\": \"xxxxx\"\n"
-            "           \"candyamount\": \"xxxxx\"\n"
+            "           \"candyAmount\": \"xxxxx\"\n"
             "       }\n"
             "       ...\n"
             "       {\n"
             "           \"safeAddress\": \"xxxxx\"\n"
-            "           \"candyamount\": \"xxxxx\"\n"
+            "           \"candyAmount\": \"xxxxx\"\n"
             "       }\n"
             "   ]\n"
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getaddresscandylist", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\"")
-            + HelpExampleRpc("getaddresscandylist", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\"")
+            + HelpExampleRpc("getaddresscandylist", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\", \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\"")
         );
 
     LOCK(cs_main);
@@ -1567,7 +1730,7 @@ UniValue getaddresscandylist(const UniValue& params, bool fHelp)
                 continue;
 
             int64_t nTimeBegin = chainActive[nTxHeight]->GetBlockTime();
-            entry.push_back(Pair("candyblocktime", nTimeBegin));
+            entry.push_back(Pair("candyBlockTime", nTimeBegin));
 
             UniValue details(UniValue::VARR);
             std::vector<std::string>::iterator tempit = it->second.begin();
@@ -1579,7 +1742,7 @@ UniValue getaddresscandylist(const UniValue& params, bool fHelp)
 
                 UniValue addresscandyamount(UniValue::VOBJ);
                 addresscandyamount.push_back(Pair("safeAddress", *tempit));
-                addresscandyamount.push_back(Pair("candyamount", StrValueFromAmount(candyamount, assetInfo.assetData.nDecimals)));
+                addresscandyamount.push_back(Pair("candyAmount", StrValueFromAmount(candyamount, assetInfo.assetData.nDecimals)));
 
                 details.push_back(addresscandyamount);
             }
@@ -1604,7 +1767,7 @@ UniValue getaddresscandylist(const UniValue& params, bool fHelp)
                 continue;
 
             int64_t nTimeBegin = chainActive[nTxHeight]->GetBlockTime();
-            entry.push_back(Pair("candyblocktime", nTimeBegin));
+            entry.push_back(Pair("candyBlockTime", nTimeBegin));
             CAmount candyamount = 0;
 
             if (!GetGetCandyAmount(assetId, *it, strAddress, candyamount))
@@ -1613,7 +1776,7 @@ UniValue getaddresscandylist(const UniValue& params, bool fHelp)
             UniValue details(UniValue::VARR);
             UniValue addresscandyamount(UniValue::VOBJ);
             addresscandyamount.push_back(Pair("safeAddress", strAddress));
-            addresscandyamount.push_back(Pair("candyamount", StrValueFromAmount(candyamount, assetInfo.assetData.nDecimals)));
+            addresscandyamount.push_back(Pair("candyAmount", StrValueFromAmount(candyamount, assetInfo.assetData.nDecimals)));
 
             details.push_back(addresscandyamount);
             entry.push_back(Pair("details", details));
@@ -1621,4 +1784,166 @@ UniValue getaddresscandylist(const UniValue& params, bool fHelp)
     }
 
     return entry;
+}
+
+UniValue getavailablecandylist(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getavailablecandylist\n"
+            "\nReturns available candy list which can be gotten.\n"
+            "\nResult:\n"
+            "{\n"
+            "   \"candyList\": \n"
+            "   [\n"
+            "       {\n"
+            "           \"putTime\": \"xxxxx\"\n"
+            "           \"assetId\": \"xxxxx\"\n"
+            "           \"assetCandyAmount\": xxxxx\n"
+            "           \"candyExpired\": xxxxx\n"
+            "       }\n"
+            "       ...\n"
+            "       {\n"
+            "           \"putTime\": \"xxxxx\"\n"
+            "           \"assetId\": \"xxxxx\"\n"
+            "           \"assetCandyAmount\": xxxxx\n"
+            "           \"candyExpired\": xxxxx\n"
+            "       }\n"
+            "   ]\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getavailablecandylist", "")
+            + HelpExampleRpc("getavailablecandylist", "")
+        );
+
+    vector<CCandy_BlockTime_Info> tempAllCandyInfoVec;
+    {
+        std::lock_guard<std::mutex> lock(g_mutexAllCandyInfo);
+        tempAllCandyInfoVec.assign(gAllCandyInfoVec.begin(), gAllCandyInfoVec.end());
+    }
+
+    if(tempAllCandyInfoVec.empty())
+        throw JSONRPCError(COLLECTING_CANDYLIST, "Collecting available candy list, please wait...");
+
+    UniValue ret(UniValue::VOBJ);
+    UniValue candyList(UniValue::VARR);
+    for(unsigned int i = 0; i < tempAllCandyInfoVec.size(); i++)
+    {
+        const CCandy_BlockTime_Info& info = tempAllCandyInfoVec[i];
+
+        UniValue candyObj(UniValue::VOBJ);
+        candyObj.push_back(Pair("putTime", info.blocktime));
+        candyObj.push_back(Pair("assetId", info.assetId.GetHex()));
+        candyObj.push_back(Pair("assetCandyAmount", StrValueFromAmount(info.candyinfo.nAmount, info.assetData.nDecimals)));
+        candyObj.push_back(Pair("candyExpired", info.candyinfo.nExpired));
+        candyList.push_back(candyObj);
+    }
+
+    ret.push_back(Pair("candyList", candyList));
+    return ret;
+}
+
+UniValue getlocalassetlist(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getlocalassetlist\n"
+            "Returns an object that contains a local asset list.\n"
+            "\nResult:\n"
+            "{\n"
+            "   \"assetList\":\n"
+            "   [\n"
+            "       \"assetId\"   (string) The asset id\n"
+            "        ....\n"
+            "   ]\n"
+            "}\n"
+            + HelpExampleCli("getlocalassetlist", "")
+            + HelpExampleRpc("getlocalassetlist", "")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    std::vector<uint256> assetidlist;
+
+    for(map<uint256, CWalletTx>::const_iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); it++)
+    {
+        const CWalletTx* pcoin = &(*it).second;
+
+        if (!pcoin->IsTrusted())
+            continue;
+
+        for (unsigned int i = 0; i < pcoin->vout.size(); i++)
+        {
+            if(pwalletMain->IsSpent(it->first, i))
+                continue;
+
+            const CTxOut& txout = pcoin->vout[i];
+            if (!txout.IsAsset())
+                continue;
+
+            uint256 assetId;
+            CAppHeader header;
+            vector<unsigned char> vData;
+            if (ParseReserve(txout.vReserve, header, vData))
+            {
+                if (header.nAppCmd == ISSUE_ASSET_CMD)
+                {
+                    CAssetData assetData;
+                    if(ParseIssueData(vData, assetData))
+                        assetId = assetData.GetHash();
+                }
+                else if (header.nAppCmd == ADD_ASSET_CMD)
+                {
+                    CCommonData commonData;
+                    if (ParseCommonData(vData, commonData))
+                        assetId = commonData.assetId;
+                }
+                else if (header.nAppCmd == TRANSFER_ASSET_CMD)
+                {
+                    CCommonData commonData;
+                    if (ParseCommonData(vData, commonData))
+                        assetId = commonData.assetId;
+                }
+                else if (header.nAppCmd == DESTORY_ASSET_CMD)
+                {
+                    CCommonData commonData;
+                    if(ParseCommonData(vData, commonData))
+                        assetId = commonData.assetId;
+                }
+                else if (header.nAppCmd == CHANGE_ASSET_CMD)
+                {
+                    CCommonData commonData;
+                    if (ParseCommonData(vData, commonData))
+                        assetId = commonData.assetId;
+                }
+                else if (header.nAppCmd == PUT_CANDY_CMD)
+                {
+                    CPutCandyData candyData;
+                    if (ParsePutCandyData(vData, candyData))
+                        assetId = candyData.assetId;
+                }
+                else if (header.nAppCmd == GET_CANDY_CMD)
+                {
+                    CGetCandyData candyData;
+                    if (ParseGetCandyData(vData, candyData))
+                        assetId = candyData.assetId;
+                }
+
+                if (!assetId.IsNull())
+                {
+                    if (find(assetidlist.begin(), assetidlist.end(), assetId) == assetidlist.end())
+                        assetidlist.push_back(assetId);
+                }
+            }
+       }
+   }
+
+    UniValue ret(UniValue::VOBJ);
+    UniValue assetList(UniValue::VARR);
+    for (unsigned int i = 0; i < assetidlist.size(); i++)
+        assetList.push_back(assetidlist[i].GetHex());
+
+    ret.push_back(Pair("assetList", assetList));
+
+    return ret;
 }

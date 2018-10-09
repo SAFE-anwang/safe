@@ -40,13 +40,18 @@ AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
     ui->assetsCandyRatioSlider->initSlider(1,100,20);
     displayFirstDistribute(true);
 
-    ui->assetsNameEdit->setMaxLength(MAX_ASSETNAME_SIZE);
-
-    //cn en letter space
+    //first letter not num,allow cn en num,not allow space;
     QRegExp regExpShortNameEdit;
-    regExpShortNameEdit.setPattern("[\u4e00-\u9fa5 a-zA-Z]{1,20}");
+    regExpShortNameEdit.setPattern("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9\u4e00-\u9fa5]{1,20}");
     ui->assetsShortNameEdit->setValidator (new QRegExpValidator(regExpShortNameEdit, this));
     ui->assetsShortNameEdit->setMaxLength(MAX_SHORTNAME_SIZE);
+
+    //first letter not num,allow cn en num space;[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9\u4e00-\u9fa5 ]
+    QRegExp regExpAssetsNameEdit;
+    regExpAssetsNameEdit.setPattern("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9\u4e00-\u9fa5 ]{1,20}");
+    ui->assetsNameEdit->setValidator (new QRegExpValidator(regExpAssetsNameEdit, this));
+    ui->assetsNameEdit->setMaxLength(MAX_ASSETNAME_SIZE);
+
     ui->assetsUnitEdit->setMaxLength(MAX_ASSETUNIT_SIZE);
 
     QRegExp regExp;
@@ -80,6 +85,7 @@ AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
     ui->assetsNameComboBox->setCompleter(completer);
     ui->assetsNameComboBox->setEditable(true);
     ui->assetsNameComboBox->setStyleSheet("QComboBox{background-color:#FFFFFF;border:1px solid #82C3E6;font-size:12px;}");
+    connect(ui->assetsNameComboBox, SIGNAL(currentTextChanged(QString)), this, SLOT(handlerAssetsNameComboBoxTextChange(QString)));
 
     if(gInitByDefault)
     {
@@ -162,6 +168,59 @@ void AssetsDistribute::clearDisplay()
     connect(ui->firstAssetsEdit,SIGNAL(textChanged(QString)),this,SLOT(on_firstAssetsEdit_textChanged(QString)));
 }
 
+
+void AssetsDistribute::handlerAssetsNameComboBoxTextChange(const QString &text)
+{
+    bool firstDistribute = (ui->distributeComboBox->currentIndex()+1)==ASSETS_FIRST_DISTRIBUTE;
+    if (!firstDistribute)
+        updateTotalAssetsEdit();
+}
+
+void AssetsDistribute::updateTotalAssetsEdit()
+{
+    bool strAvailableAmountDisplay = true;
+    string strAssetName = ui->assetsNameComboBox->currentText().toStdString();
+    if(IsKeyWord(strAssetName))
+    {
+        strAvailableAmountDisplay = false;
+    }
+    if(strAssetName.empty())
+    {
+        strAvailableAmountDisplay = false;
+    }
+    if(strAssetName.size() > MAX_ASSETNAME_SIZE)
+    {
+        strAvailableAmountDisplay = false;
+    }
+    uint256 assetId;
+    if(!GetAssetIdByAssetName(strAssetName,assetId, false))
+    {
+        strAvailableAmountDisplay = false;
+    }
+    CAssetId_AssetInfo_IndexValue assetInfo;
+    if(!GetAssetInfoByAssetId(assetId, assetInfo, false))
+    {
+        strAvailableAmountDisplay = false;
+    }
+    int decimal = assetInfo.assetData.nDecimals;
+    CAmount addedAmount = GetAddedAmountByAssetId(assetId);
+    CAmount availableAmount = assetInfo.assetData.nTotalAmount - assetInfo.assetData.nFirstIssueAmount - addedAmount;
+    if(availableAmount==0)
+    {
+        strAvailableAmountDisplay = false;
+    }
+    if (strAvailableAmountDisplay)
+    {
+        QString strAvailableAmount = BitcoinUnits::formatWithUnit(decimal,availableAmount,false,BitcoinUnits::separatorAlways
+                                                         ,true,QString::fromStdString(assetInfo.assetData.strAssetUnit));
+        ui->totalAssetsEdit->setPlaceholderText(tr("Current can add:%1").arg(strAvailableAmount));
+    }
+    else
+    {
+        ui->totalAssetsEdit->setPlaceholderText(tr(""));
+    }
+}
+
 void AssetsDistribute::initWidget()
 {
     bool firstDistribute = (ui->distributeComboBox->currentIndex()+1)==ASSETS_FIRST_DISTRIBUTE;
@@ -172,7 +231,7 @@ void AssetsDistribute::initWidget()
     if(firstDistribute)
         ui->totalAssetsEdit->setPlaceholderText(tr("Between %1 ~ %2").arg(MIN_TOTALASSETS_VALUE).arg(MAX_TOTALASSETS_VALUE));
     else
-        ui->totalAssetsEdit->setPlaceholderText(tr(""));
+        updateTotalAssetsEdit();
     ui->firstAssetsEdit->setPlaceholderText(tr("Can not exceed the total assets"));
     ui->decimalEdit->setPlaceholderText(tr("Decimals %1 to %2,for example:8 represent negative 8 times 10").arg(MIN_ASSETDECIMALS_VALUE).arg(MAX_ASSETDECIMALS_VALUE));
     ui->assetsDescEdit->setPlaceholderText(tr("Maximum %1 characters").arg(MAX_ASSETDESC_SIZE));
@@ -219,6 +278,11 @@ void AssetsDistribute::updateCandyValue()
     int addDecimal = 3;//10% is 1,slider max 100 is 2,total 3
     int totalDecimal = decimal+addDecimal;
     int size = memoryCandyStr.size();
+    if(decimal==0||size==0)
+    {
+        ui->candyTotalValueLabel->clear();
+        return;
+    }
     if(size<=totalDecimal)
     {
         string resultStr = "0.";
@@ -583,6 +647,13 @@ bool AssetsDistribute::distributeAssets()
         return false;
     }
 
+    int nOffset = g_nChainHeight - g_nProtocolV2Height;
+    if (nOffset < 0)
+    {
+        QMessageBox::warning(assetsPage,msgboxTitle, tr("This feature is enabled when the block height is %1").arg(g_nProtocolV2Height),tr("Ok"));
+        return false;
+    }
+
     CAmount nCancelledValue = GetCancelledAmount(g_nChainHeight);
     if(!IsCancelledRange(nCancelledValue))
     {
@@ -633,7 +704,6 @@ bool AssetsDistribute::distributeAssets()
     QMessageBox box(QMessageBox::Question,  msgboxTitle ,str);
     QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
     box.addButton(tr("Cancel"),QMessageBox::NoRole);
-    box.setStyleSheet("QLabel{font-size:12px;} QPushButton{font-size:12px;}");
     box.exec();
     if ((QPushButton*)box.clickedButton() != okButton)
         return false;
@@ -682,7 +752,12 @@ bool AssetsDistribute::addAssets()
         QMessageBox::warning(assetsPage, msgboxTitle,tr("Asset name is internal reserved words, not allowed to use"),tr("Ok"));
         return false;
     }
-    if(strAssetName.empty() || strAssetName.size() > MAX_ASSETNAME_SIZE)
+    if(strAssetName.empty())
+    {
+        QMessageBox::warning(assetsPage, msgboxTitle,tr("Please select asset name"),tr("Ok"));
+        return false;
+    }
+    if(strAssetName.size() > MAX_ASSETNAME_SIZE)
     {
         QMessageBox::warning(assetsPage, msgboxTitle,tr("Asset name input too long"),tr("Ok"));
         return false;
@@ -690,7 +765,7 @@ bool AssetsDistribute::addAssets()
     uint256 assetId;
     if(!GetAssetIdByAssetName(strAssetName,assetId, false))
     {
-        QMessageBox::warning(assetsPage, msgboxTitle,tr("Asset name input too long"),tr("Ok"));
+        QMessageBox::warning(assetsPage, msgboxTitle,tr("Invalid asset name"),tr("Ok"));
         return false;
     }
     CAssetId_AssetInfo_IndexValue assetInfo;
@@ -771,11 +846,10 @@ bool AssetsDistribute::addAssets()
         return false;
     }
 
-    QString str = tr("Current can add:%1,you are going to add:%2,are you sure you wish to add distribute?").arg(strAvailableAmount).arg(strAddAmount);
+    QString str = tr("you are going to add:%1,are you sure you wish to add distribute?").arg(strAddAmount);
     QMessageBox box(QMessageBox::Question,  msgboxTitle ,str);
     QPushButton* okButton = box.addButton(tr("Yes"), QMessageBox::YesRole);
     box.addButton(tr("Cancel"),QMessageBox::NoRole);
-    box.setStyleSheet("QMessageBox{font-size:12px;} QPushButton{font-size:12px;}");
     box.exec();
     if ((QPushButton*)box.clickedButton() != okButton)
         return false;
@@ -853,6 +927,7 @@ void AssetsDistribute::on_distributeButton_clicked()
             {
                 QMessageBox::information(assetsPage, msgboxTitle,tr("Add assets distribute success!"),tr("Ok"));
                 clearDisplay();
+                updateTotalAssetsEdit();
             }
             return;
         }
@@ -860,6 +935,7 @@ void AssetsDistribute::on_distributeButton_clicked()
         {
             QMessageBox::information(assetsPage, msgboxTitle,tr("Add assets distribute success!"),tr("Ok"));
             clearDisplay();
+            updateTotalAssetsEdit();
         }
     }
 }

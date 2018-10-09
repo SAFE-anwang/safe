@@ -254,7 +254,7 @@ bool CCoinsViewCache::HaveInputs(const CTransaction& tx) const
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
             const COutPoint &prevout = tx.vin[i].prevout;
             const CCoins* coins = AccessCoins(prevout.hash);
-            if (!coins || !coins->IsAvailable(prevout.n)) {
+            if(!coins || !coins->IsAvailable(prevout.n)) {
                 return false;
             }
         }

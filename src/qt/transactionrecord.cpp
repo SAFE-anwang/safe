@@ -122,11 +122,13 @@ bool TransactionRecord::getReserveData(const CWallet *wallet,const CWalletTx &wt
         }else if(sub.appHeader.nAppCmd == ISSUE_ASSET_CMD)//assets
         {
             sub.bAssets = true;
+            sub.bIssueAsset = true;
             if(ParseIssueData(vData, sub.assetsData))
             {
                 sub.type = TransactionRecord::FirstDistribute;
                 AssetsDisplayInfo& displayInfo = assetNamesUnits[QString::fromStdString(sub.assetsData.strAssetName)];
-                displayInfo.bInMainChain = wtx.IsInMainChain();
+                if(!displayInfo.bInMainChain)
+                    displayInfo.bInMainChain = wtx.IsInMainChain();
                 displayInfo.strAssetsUnit = QString::fromStdString(sub.assetsData.strAssetUnit);
                 return true;
             }
@@ -135,7 +137,7 @@ bool TransactionRecord::getReserveData(const CWallet *wallet,const CWalletTx &wt
             sub.bAssets = true;
             sub.bSAFETransaction = false;
             if(ParseCommonData(vData, sub.commonData))
-            {                
+            {
                 if(sub.appHeader.nAppCmd == ADD_ASSET_CMD)
                     sub.type = TransactionRecord::AddDistribute;
                 CAssetId_AssetInfo_IndexValue assetInfo;
@@ -143,7 +145,8 @@ bool TransactionRecord::getReserveData(const CWallet *wallet,const CWalletTx &wt
                 {
                     sub.assetsData = assetInfo.assetData;
                     AssetsDisplayInfo& displayInfo = assetNamesUnits[QString::fromStdString(sub.assetsData.strAssetName)];
-                    displayInfo.bInMainChain = wtx.IsInMainChain();
+                    if(!displayInfo.bInMainChain)
+                        displayInfo.bInMainChain = wtx.IsInMainChain();
                     displayInfo.strAssetsUnit = QString::fromStdString(sub.assetsData.strAssetUnit);
                     return true;
                 }
@@ -173,7 +176,8 @@ bool TransactionRecord::getReserveData(const CWallet *wallet,const CWalletTx &wt
                 {
                     sub.assetsData = assetInfo.assetData;
                     AssetsDisplayInfo& displayInfo = assetNamesUnits[QString::fromStdString(sub.assetsData.strAssetName)];
-                    displayInfo.bInMainChain = wtx.IsInMainChain();
+                    if(!displayInfo.bInMainChain)
+                        displayInfo.bInMainChain = wtx.IsInMainChain();
                     displayInfo.strAssetsUnit = QString::fromStdString(sub.assetsData.strAssetUnit);
                     sub.type = TransactionRecord::GETCandy;
                     sub.bGetCandy = true;
@@ -205,6 +209,8 @@ void TransactionRecord::decomposeToMe(const CWallet *wallet, const CWalletTx &wt
                 sub.idx = parts.size(); // sequence number
                 sub.credit = txout.nValue;
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
+                if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), i))
+                    sub.bForbidDash = true;
                 bool getAddress = true;
                 if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address))
                 {
@@ -228,7 +234,7 @@ void TransactionRecord::decomposeToMe(const CWallet *wallet, const CWalletTx &wt
                 }
                 if(getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,nAssetDebit,getAddress))
                     parts.append(sub);
-                else if(sub.bSAFETransaction)
+                else if(sub.bSAFETransaction && !wallet->IsChange(txout))
                     parts.append(sub);
             }
             i++;
@@ -239,6 +245,8 @@ void TransactionRecord::decomposeToMe(const CWallet *wallet, const CWalletTx &wt
         {
             const CTxOut& txout = wtx.vout[nOut];
             TransactionRecord sub(hash, nTime);
+            if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut))
+                sub.bForbidDash = true;
             if(getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,nAssetDebit))
                 parts.append(sub);
         }
@@ -254,6 +262,8 @@ void TransactionRecord::decomposeToMe(const CWallet *wallet, const CWalletTx &wt
             if(mine)
             {
                 TransactionRecord sub(hash, nTime);
+                if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut))
+                    sub.bForbidDash = true;
                 CTxDestination address;
                 sub.idx = nOut;
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
@@ -301,6 +311,8 @@ void TransactionRecord::decomposeFromMeToMe(const CWallet *wallet, const CWallet
     // Payment to self by default
     sub.type = TransactionRecord::SendToSelf;
     sub.address = "";
+    if(wtx.IsForbid())
+        sub.bForbidDash = true;
 
     if(showType == SHOW_TX)
     {
@@ -318,6 +330,15 @@ void TransactionRecord::decomposeFromMeToMe(const CWallet *wallet, const CWallet
                 // Sent to IP, or other non-address transaction like OP_EVAL
                 sub.address = mapValue["to"];
             }
+
+            for(unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
+            {
+                const CTxOut& txout = wtx.vout[nOut];
+                if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
+                    sub.bForbidDash = true;
+                    break;
+                }
+            }
         }
         else
         {
@@ -325,29 +346,70 @@ void TransactionRecord::decomposeFromMeToMe(const CWallet *wallet, const CWallet
             std::string address = "";
             CAppHeader header;
             vector<unsigned char> vData;
+
+            bool fAllSafeOnly = true;
+            for(unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
+            {
+                const CTxOut& txout = wtx.vout[nOut];
+                if(txout.IsApp() || txout.IsAsset())
+                {
+                    fAllSafeOnly = false;
+                    break;
+                }
+            }
+
+            bool fAllCollateralAmount = true;
+            if(!wallet->IsCollateralAmount(nDebit))
+                fAllCollateralAmount = false;
+            else
+            {
+                for(unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
+                {
+                    const CTxOut& txout = wtx.vout[nOut];
+                    if(!txout.IsSafeOnly())
+                        continue;
+
+                    if(!wallet->IsCollateralAmount(txout.nValue))
+                    {
+                        fAllCollateralAmount = false;
+                        break;
+                    }
+                }
+            }
+
             for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
             {
                 const CTxOut& txout = wtx.vout[nOut];
                 sub.idx = parts.size();
-                if(txout.IsSafeOnly())
+                if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
+                    sub.bForbidDash = true;
+                }
+                if(fAllSafeOnly && txout.IsSafeOnly())
                 {
                     if(wallet->IsCollateralAmount(txout.nValue))
                         sub.type = TransactionRecord::PrivateSendMakeCollaterals;
                     if(wallet->IsDenominatedAmount(txout.nValue))
                         sub.type = TransactionRecord::PrivateSendCreateDenominations;
-                    if(nDebit - wtx.GetValueOut() == CPrivateSend::GetCollateralAmount())
+                    if(fAllCollateralAmount && (nDebit - wtx.GetValueOut() == CPrivateSend::GetCollateralAmount()))
                         sub.type = TransactionRecord::PrivateSendCollateralPayment;
                 }
                 CAmount assetDebit = 0;
-                getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,assetDebit,false);
+                getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,assetDebit,true);
                 if(txout.IsAsset()&& ParseReserve(txout.vReserve, header, vData) && (header.nAppCmd != CHANGE_ASSET_CMD))//&&!wallet->IsChange(txout)
                     totalAssetCredit+=sub.assetCredit;
                 if(nOut==0)
                     address = sub.address;
             }
             sub.assetCredit = totalAssetCredit;
-            //from me to me ,result shuld be 0;
-            sub.assetDebit = -totalAssetCredit;
+            if(header.nAppCmd == ADD_ASSET_CMD)
+            {
+                sub.assetDebit = 0;
+            }
+            else
+            {
+                //from me to me transaction,result shuld be 0;
+                sub.assetDebit = -totalAssetCredit;
+            }
             sub.address = address;
         }
 
@@ -371,6 +433,9 @@ void TransactionRecord::decomposeFromMeToMe(const CWallet *wallet, const CWallet
                     continue;
                 TransactionRecord sub(hash, nTime);
                 CAmount assetDebit = -nAssetDebit;
+                if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
+                    sub.bForbidDash = true;
+                }
                 if(getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,assetDebit))
                     parts.append(sub);
             }
@@ -387,13 +452,13 @@ void TransactionRecord::decomposeFromMeToMe(const CWallet *wallet, const CWallet
                     continue;
                 sub.idx = nOut;
                 sub.involvesWatchAddress = involvesWatchAddress;
-                if(wallet->IsCollateralAmount(txout.nValue)) sub.type = TransactionRecord::PrivateSendMakeCollaterals;
-                if(wallet->IsDenominatedAmount(txout.nValue)) sub.type = TransactionRecord::PrivateSendCreateDenominations;
-                if(nDebit - wtx.GetValueOut() == CPrivateSend::GetCollateralAmount()) sub.type = TransactionRecord::PrivateSendCollateralPayment;
                 sub.bLocked = true;
                 sub.nLockedAmount = txout.nValue;
                 sub.nUnlockedHeight = txout.nUnlockedHeight;
                 CAmount assetDebit = -nAssetDebit;
+                if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
+                    sub.bForbidDash = true;
+                }
                 if(getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,assetDebit))
                     parts.append(sub);
                 else if(sub.bSAFETransaction)
@@ -419,6 +484,9 @@ void TransactionRecord::decomposeFromMe(const CWallet *wallet, const CWalletTx &
         {
             const CTxOut& txout = wtx.vout[nOut];
             TransactionRecord sub(hash, nTime);
+            if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
+                sub.bForbidDash = true;
+            }
             sub.idx = parts.size();
             sub.involvesWatchAddress = involvesWatchAddress;
             if(wallet->IsMine(txout))
@@ -476,7 +544,9 @@ void TransactionRecord::decomposeFromMe(const CWallet *wallet, const CWalletTx &
                 if(!ExtractDestination(txout.scriptPubKey, dest))
                     continue;
                 TransactionRecord sub(hash, nTime);
-
+                if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
+                    sub.bForbidDash = true;
+                }
                 if(getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,assetDebit))
                     parts.append(sub);
             }
@@ -491,6 +561,9 @@ void TransactionRecord::decomposeFromMe(const CWallet *wallet, const CWalletTx &
                 if(txout.nUnlockedHeight <= 0)
                     continue;
                 TransactionRecord sub(hash, nTime);
+                if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
+                    sub.bForbidDash = true;
+                }
                 sub.idx = parts.size();
                 sub.involvesWatchAddress = involvesWatchAddress;
                 bool getAddress = true;
@@ -620,7 +693,18 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         {
             if(showType == SHOW_TX)
             {
-                parts.append(TransactionRecord(hash, nTime, TransactionRecord::PrivateSendDenominate, "", -nDebit, nCredit));
+                TransactionRecord sub(hash, nTime, TransactionRecord::PrivateSendDenominate, "", -nDebit, nCredit);
+                int nOut = 0;
+                BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+                {
+                    if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut))
+                    {
+                        sub.bForbidDash = true;
+                        break;
+                    }
+                    nOut++;
+                }
+                parts.append(sub);
                 parts.last().involvesWatchAddress = false;   // maybe pass to TransactionRecord as constructor argument
             }
         }
@@ -642,7 +726,10 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             //
             if(showType == SHOW_TX)
             {
-                parts.append(TransactionRecord(hash, nTime, TransactionRecord::Other, "", nNet, 0));
+                TransactionRecord sub(hash, nTime, TransactionRecord::Other, "", nNet, 0);
+                if(wtx.IsForbid())
+                    sub.bForbidDash = true;
+                parts.append(sub);
                 parts.last().involvesWatchAddress = involvesWatchAddress;
             }
         }
@@ -673,7 +760,7 @@ bool TransactionRecord::updateStatus(const CWalletTx &wtx)
     status.depth = wtx.GetDepthInMainChain();
     status.countsForBalance = wtx.IsTrusted() && !(wtx.GetBlocksToMaturity() > 0)&&status.depth>0;
     //first confirmed
-    if(lastDepth==0&&status.depth>0&&status.depth<RecommendedNumConfirmations){
+    if(lastDepth==0&&status.depth>0/*&&status.depth<RecommendedNumConfirmations*/){
         bFirstMoreThanOneConfirmed = true;
     }
     status.cur_num_blocks = chainActive.Height();

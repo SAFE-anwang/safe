@@ -222,6 +222,8 @@ extern UniValue setaccount(const UniValue& params, bool fHelp);
 extern UniValue getaccount(const UniValue& params, bool fHelp);
 extern UniValue getaddressesbyaccount(const UniValue& params, bool fHelp);
 extern UniValue sendtoaddress(const UniValue& params, bool fHelp);
+extern UniValue sendwithlock(const UniValue& params, bool fHelp);
+extern UniValue sendmanywithlock(const UniValue& params, bool fHelp);
 extern UniValue signmessage(const UniValue& params, bool fHelp);
 extern UniValue verifymessage(const UniValue& params, bool fHelp);
 extern UniValue getreceivedbyaddress(const UniValue& params, bool fHelp);
@@ -323,6 +325,7 @@ extern UniValue transferasset(const UniValue& params, bool fHelp);
 extern UniValue destoryasset(const UniValue& params, bool fHelp);
 extern UniValue putcandy(const UniValue& params, bool fHelp);
 extern UniValue getassetinfo(const UniValue& params, bool fHelp);
+extern UniValue getlocalassetinfo(const UniValue& params, bool fHelp);
 extern UniValue getassetidtxids(const UniValue& params, bool fHelp);
 extern UniValue getaddrassettxids(const UniValue& params, bool fHelp);
 extern UniValue getaddrassetbalance(const UniValue& params, bool fHelp);
@@ -333,6 +336,9 @@ extern UniValue getassetlistbyaddress(const UniValue& params, bool fHelp);
 extern UniValue getaddressamountbyheight(const UniValue& params, bool fHelp);
 extern UniValue getallcandyheight(const UniValue& params, bool fHelp);
 extern UniValue getaddresscandylist(const UniValue& params, bool fHelp);
+extern UniValue getavailablecandylist(const UniValue& params, bool fHelp);
+extern UniValue getlocalassetlist(const UniValue& params, bool fHelp);
+
 
 
 bool StartRPC();

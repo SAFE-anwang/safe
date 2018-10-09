@@ -27,6 +27,7 @@ foreverHidden(false)
         parent->installEventFilter(this);
         raise();
     }
+    ui->progressBar->setStyleSheet("QProgressBar {max-height:10px;}");
 
     blockProcessTime.clear();
     setVisible(false);
@@ -102,7 +103,7 @@ void ModalOverlay::tipUpdate(int count, const QDateTime& blockDate, double nVeri
             }
         }
         // show progress increase per hour
-        ui->progressIncreasePerH->setText(QString::number(progressPerHour * 100, 'f', 2)+"%");
+        ui->progressIncreasePerH->setText(QString::number(std::abs(progressPerHour) * 100, 'f', 2)+"%");
 
         // show expected remaining time
         if(remainingMSecs >= 0) {	

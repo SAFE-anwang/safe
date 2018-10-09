@@ -1644,6 +1644,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     if(!LoadCandyHeightToList())
         return error("Load candy height failed. Exiting.");
 
+    threadGroup.create_thread(boost::bind(&ThreadWriteChangeInfo));
+    threadGroup.create_thread(boost::bind(&ThreadCalculateAddressAmount));
+
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
@@ -2084,14 +2087,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         // Run a thread to flush wallet periodically
         threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
 
-        if(fHaveGUI)
-            threadGroup.create_thread(boost::bind(&ThreadGetAllCandyInfo));
+        // Run a thread to get available candy list
+        threadGroup.create_thread(boost::bind(&ThreadGetAllCandyInfo));
     }
 #endif
 
     threadGroup.create_thread(boost::bind(&ThreadSendAlert, boost::ref(connman)));
-    threadGroup.create_thread(boost::bind(&ThreadWriteChangeInfo));
-    threadGroup.create_thread(boost::bind(&ThreadCalculateAddressAmount));
 
     return !fRequestShutdown;
 }

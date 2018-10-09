@@ -260,7 +260,7 @@
     </message>
 </context>
 <context>
-	<name>TitleBar</name>
+    <name>TitleBar</name>
     <message>
         <source>&amp;File</source>
         <translation>文件(&amp;F)</translation>
@@ -1807,7 +1807,15 @@ http://www.anwang.com/</translation>
     </message>
 </context>
 <context>
-	<name>AssetsDistributeRecordView</name>
+    <name>AssetsDistributeRecordView</name>
+    <message>
+        <source>Range:</source>
+        <translation>范围：</translation>
+    </message>
+    <message>
+        <source>to</source>
+        <translation>到</translation>
+    </message>
     <message>
         <source>Confirmed</source>
         <translation>已确认</translation>
@@ -1821,7 +1829,7 @@ http://www.anwang.com/</translation>
         <translation>日期</translation>
     </message>
     <message>
-        <source>Assets Name</source>
+        <source>Asset Name</source>
         <translation>资产名称</translation>
     </message>
     <message>
@@ -1829,8 +1837,16 @@ http://www.anwang.com/</translation>
         <translation>类别</translation>
     </message>
     <message>
+        <source>Label</source>
+        <translation>标签</translation>
+    </message>
+    <message>
         <source>Address</source>
         <translation>地址</translation>
+    </message>
+    <message>
+        <source>Transaction ID</source>
+        <translation>交易ID</translation>
     </message>
     <message>
         <source>Exporting Failed</source>
@@ -1880,7 +1896,7 @@ http://www.anwang.com/</translation>
         <source>Min amount</source>
         <translation>最小金额</translation>
     </message>
-	<message>
+    <message>
         <source>Today</source>
         <translation>今天</translation>
     </message>
@@ -1904,7 +1920,7 @@ http://www.anwang.com/</translation>
         <source>Range...</source>
         <translation>范围...</translation>
     </message>
-	<message>
+    <message>
         <source>Abandon transaction</source>
         <translation>放弃的交易</translation>
     </message>
@@ -1948,9 +1964,29 @@ http://www.anwang.com/</translation>
         <source>Show transaction details</source>
         <translation>显示交易详情</translation>
     </message>
+    <message>
+        <source>unreasonable date range</source>
+        <translation>区间不合理</translation>
+    </message>
+    <message>
+        <source>Start date cannot be later than the end date.</source>
+        <translation>开始时间不能晚于结束时间。</translation>
+    </message>
+    <message>
+        <source>End date cannot be earlier than start date.</source>
+        <translation>结束时间不能早于开始时间。</translation>
+    </message>
 </context>
 <context>
-	<name>ApplicationsRegistRecordView</name>
+    <name>ApplicationsRegistRecordView</name>
+    <message>
+        <source>Range:</source>
+        <translation>范围：</translation>
+    </message>
+    <message>
+        <source>to</source>
+        <translation>到</translation>
+    </message>
     <message>
         <source>Confirmed</source>
         <translation>已确认</translation>
@@ -1966,6 +2002,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Application ID</source>
         <translation>应用ID</translation>
+    </message>
+    <message>
+        <source>Label</source>
+        <translation>标签</translation>
     </message>
     <message>
         <source>Admin Address</source>
@@ -2027,7 +2067,7 @@ http://www.anwang.com/</translation>
         <source>Manager address</source>
         <translation>管理员地址</translation>
     </message>
-	<message>
+    <message>
         <source>Today</source>
         <translation>今天</translation>
     </message>
@@ -2051,7 +2091,7 @@ http://www.anwang.com/</translation>
         <source>Range...</source>
         <translation>范围...</translation>
     </message>
-	<message>
+    <message>
         <source>Abandon transaction</source>
         <translation>放弃的交易</translation>
     </message>
@@ -2095,6 +2135,18 @@ http://www.anwang.com/</translation>
         <source>Show transaction details</source>
         <translation>显示交易详情</translation>
     </message>
+    <message>
+        <source>unreasonable date range</source>
+        <translation>区间不合理</translation>
+    </message>
+    <message>
+        <source>Start date cannot be later than the end date.</source>
+        <translation>开始时间不能晚于结束时间。</translation>
+    </message>
+    <message>
+        <source>End date cannot be earlier than start date.</source>
+        <translation>结束时间不能早于开始时间。</translation>
+    </message>
 </context>
 <context>
     <name>AssetsLogin</name>
@@ -2118,28 +2170,32 @@ http://www.anwang.com/</translation>
 <context>
     <name>ApplicationsRegistry</name>
     <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>该功能在区块高度为 %1 时启用</translation>
+    </message>
+    <message>
         <source>Personal name is internal reserved words, not allowed to use</source>
-        <translation>个人名称是内部保留字，不允许使用</translation>
+        <translation>输入的个人名称是内部保留字，不允许使用</translation>
     </message>
     <message>
         <source>Application name is internal reserved words, not allowed to use</source>
-        <translation>应用名称是内部保留字，不允许使用</translation>
+        <translation>输入的应用名称是内部保留字，不允许使用</translation>
     </message>
     <message>
         <source>Company name is internal reserved words, not allowed to use</source>
-        <translation>公司名称是内部保留字，不允许使用</translation>
+        <translation>输入的公司名称是内部保留字，不允许使用</translation>
     </message>
     <message>
         <source>Official URL is internal reserved words, not allowed to use</source>
-        <translation>官网URL是内部保留字，不允许使用</translation>
+        <translation>输入的官网URL是内部保留字，不允许使用</translation>
     </message>
     <message>
         <source>Application logo URL is internal reserved words, not allowed to use</source>
-        <translation>应用Logo URL是内部保留字，不允许使用</translation>
+        <translation>输入的应用Logo URL是内部保留字，不允许使用</translation>
     </message>
     <message>
         <source>Application cover URL is internal reserved words, not allowed to use</source>
-        <translation>应用封面URL是内部保留字，不允许使用</translation>
+        <translation>输入的应用封面URL是内部保留字，不允许使用</translation>
     </message>
     <message>
         <source>Invalid cancelled safe amount</source>
@@ -2307,22 +2363,26 @@ http://www.anwang.com/</translation>
     </message>
 </context>
 <context>
-	<name>AssetsDistribute</name>
+    <name>AssetsDistribute</name>
+    <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>该功能在区块高度为 %1 时启用</translation>
+    </message>
     <message>
         <source>Put candy max %1 times,current can put %2 times.</source>
         <translation>糖果发行最多%1次,当前可发行%2次. </translation>
     </message>
     <message>
         <source>Asset name is internal reserved words, not allowed to use</source>
-        <translation>资产名称是内部保留字,不允许使用</translation>
+        <translation>输入的资产名称是内部保留字,不允许使用</translation>
     </message>
     <message>
         <source>Asset short name is internal reserved words, not allowed to use</source>
-        <translation>资产简称是内部保留字,不允许使用</translation>
+        <translation>输入的资产简称是内部保留字,不允许使用</translation>
     </message>
     <message>
         <source>Asset unit is internal reserved words, not allowed to use</source>
-        <translation>资产单位是内部保留字,不允许使用</translation>
+        <translation>输入的资产单位是内部保留字,不允许使用</translation>
     </message>
     <message>
         <source>Invalid input information</source>
@@ -2377,12 +2437,16 @@ http://www.anwang.com/</translation>
         <translation>资产已全部发放，不可再追加</translation>
     </message>
     <message>
-        <source>Current can add:%1,you are going to add:%2,are you sure you wish to add distribute?</source>
-        <translation>可追加资产:%1,你将追加:%2,确定要追加吗?</translation>
+        <source>Current can add:%1</source>
+        <translation>最大可追加:%1</translation>
+    </message>
+    <message>
+        <source>you are going to add:%1,are you sure you wish to add distribute?</source>
+        <translation>当前将追加:%1,确定追加吗?</translation>
     </message>
     <message>
         <source>Current Available:%1,asset can not be added</source>
-        <translation>当前可用资产:%1,不足以继续追加</translation>
+        <translation>当前可追加资产:%1,不足以继续追加</translation>
     </message>
     <message>
         <source>Total amount of decimal no more than 19</source>
@@ -2445,7 +2509,7 @@ http://www.anwang.com/</translation>
         <translation>追加发行</translation>
     </message>
     <message>
-        <source>Assets Name:</source>
+        <source>Asset Name:</source>
         <translation>资产名称:</translation>
     </message>
     <message>
@@ -2577,6 +2641,14 @@ http://www.anwang.com/</translation>
         <translation>资产名称输入过长</translation>
     </message>
     <message>
+        <source>Invalid asset name</source>
+        <translation>无效的资产名称</translation>
+    </message>
+    <message>
+        <source>Please select asset name</source>
+        <translation>请选择资产名称</translation>
+    </message>
+    <message>
         <source>Existent asset name</source>
         <translation>资产名称已存在</translation>
     </message>
@@ -2657,8 +2729,8 @@ http://www.anwang.com/</translation>
         <translation>无效的资产总量</translation>
     </message>
     <message>
-    	<source>The total amount of add assets cannot be 0</source>
-	<translation>追加资产总量不能为0</translation>
+        <source>The total amount of add assets cannot be 0</source>
+    <translation>追加资产总量不能为0</translation>
     </message>
     <message>
         <source>Please enter the wallet passphrase with walletpassphrase first</source>
@@ -2675,13 +2747,21 @@ http://www.anwang.com/</translation>
         <source>Put candy max %1 times,current can put %2 times.Current distribute assets:%3,you are going put candy:%4,are you sure you wish to put candy?</source>
         <translation>糖果发行最多%1次,当前可发行%2次. 当前发行资产:%3,你将发放糖果:%4,确定要发放糖果吗?</translation>
     </message>
-	<message>
+    <message>
         <source>Get candy transaction height fail</source>
         <translation>领取失败,发行糖果高度获取失败</translation>
     </message>
     <message>
         <source>Get candy need wait about %1 hours %2 minutes</source>
         <translation>领取此糖果约需等待%1小时%2分钟</translation>
+    </message>
+    <message>
+        <source>Get candy need wait about %1 hours</source>
+        <translation>领取此糖果约需等待%1小时</translation>
+    </message>
+    <message>
+        <source>Get candy need wait about %1 minutes</source>
+        <translation>领取此糖果约需等待%1分钟</translation>
     </message>
     <message>
         <source>Invalid candy amount</source>
@@ -2762,6 +2842,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Synchronizing data</source>
         <translation>数据同步中</translation>
+    </message>
+    <message>
+        <source>Please select asset name</source>
+        <translation>请选择资产名称</translation>
     </message>
     <message>
         <source>Invalid asset name</source>
@@ -2894,7 +2978,7 @@ http://www.anwang.com/</translation>
     <message>
         <source>Assets Total 10%</source>
         <translation>资产总量的10%</translation>
-	</message>
+    </message>
     <message>
         <source>Comment:</source>
         <translation>备注:</translation>
@@ -2923,60 +3007,64 @@ http://www.anwang.com/</translation>
         <source>Get</source>
         <translation>领取</translation>
     </message>
+    <message>
+        <source>Getting candy, please wait.</source>
+        <translation>正在获取糖果，请稍后。</translation>
+    </message>
 </context>
 <context>
-	<name>AssetsDistributeRecordModel</name>
+    <name>AssetsDistributeRecordModel</name>
     <message>
         <source>Date</source>
         <translation>日期</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Type</source>
         <translation>类型</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Assets name</source>
         <translation>资产名称</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Address / Label</source>
         <translation>地址 / 标签</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Date and time that the assets was distributed.</source>
         <translation>资产发行日期。</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Assets name of distribute.</source>
         <translation>资产发行的名称。</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Type of assets distribute.</source>
         <translation>资产发行的类型。</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>User-defined intent/purpose of the assets distribute.</source>
         <translation>用户定义的意图和交易的目的。</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Amount removed from or added to balance.</source>
         <translation>从余额添加或移除的金额。</translation>
-	</message>
+    </message>
 </context>
 <context>
-	<name>ApplicationsRegistRecordModel</name>
-	<message>
+    <name>ApplicationsRegistRecordModel</name>
+    <message>
         <source>Date</source>
         <translation>日期</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Application ID</source>
         <translation>应用ID</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Manager Address</source>
         <translation>管理员地址</translation>
-	</message>
+    </message>
     <message>
         <source>Date and time that the application was registed.</source>
         <translation>应用的注册日期。</translation>
@@ -2991,19 +3079,19 @@ http://www.anwang.com/</translation>
     </message>
 </context>
 <context>
-	<name>CandyTableModel</name>
+    <name>CandyTableModel</name>
     <message>
         <source>Date</source>
         <translation>日期</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Assets name</source>
         <translation>资产名称</translation>
-	</message>
-	<message>
+    </message>
+    <message>
         <source>Address / Label</source>
         <translation>地址 / 标签</translation>
-	</message>
+    </message>
     <message>
         <source>Assets amount</source>
         <translation>资产金额</translation>
@@ -3026,7 +3114,15 @@ http://www.anwang.com/</translation>
     </message>
 </context>
 <context>
-	<name>CandyView</name>
+    <name>CandyView</name>
+    <message>
+        <source>Range:</source>
+        <translation>范围：</translation>
+    </message>
+    <message>
+        <source>to</source>
+        <translation>到</translation>
+    </message>
     <message>
         <source>Confirmed</source>
         <translation>已确认</translation>
@@ -3044,8 +3140,16 @@ http://www.anwang.com/</translation>
         <translation>资产名称</translation>
     </message>
     <message>
+        <source>Label</source>
+        <translation>标签</translation>
+    </message>
+    <message>
         <source>Address</source>
         <translation>地址</translation>
+    </message>
+    <message>
+        <source>Transaction ID</source>
+        <translation>交易ID</translation>
     </message>
     <message>
         <source>Export Get Candy History</source>
@@ -3087,7 +3191,7 @@ http://www.anwang.com/</translation>
         <source>Min amount</source>
         <translation>最小金额</translation>
     </message>
-	<message>
+    <message>
         <source>Today</source>
         <translation>今天</translation>
     </message>
@@ -3111,7 +3215,7 @@ http://www.anwang.com/</translation>
         <source>Range...</source>
         <translation>范围...</translation>
     </message>
-	<message>
+    <message>
         <source>Abandon transaction</source>
         <translation>放弃的交易</translation>
     </message>
@@ -3151,6 +3255,18 @@ http://www.anwang.com/</translation>
         <source>Show transaction details</source>
         <translation>显示交易详情</translation>
     </message>
+    <message>
+        <source>unreasonable date range</source>
+        <translation>区间不合理</translation>
+    </message>
+    <message>
+        <source>Start date cannot be later than the end date.</source>
+        <translation>开始时间不能晚于结束时间。</translation>
+    </message>
+    <message>
+        <source>End date cannot be earlier than start date.</source>
+        <translation>结束时间不能早于开始时间。</translation>
+    </message>
 </context>
 <context>
     <name>OverViewEntry</name>
@@ -3172,7 +3288,7 @@ http://www.anwang.com/</translation>
     </message>
 </context>
 <context>
-	<name>Notificator</name>
+    <name>Notificator</name>
     <message>
         <source>Yes</source>
         <translation>确定</translation>
@@ -3192,11 +3308,11 @@ http://www.anwang.com/</translation>
         <source>The displayed information may be out of date. Your wallet automatically synchronizes with the Safe network after a connection is established, but this process has not completed yet.</source>
         <translation>显示信息也许已过期。当与安网3网络连接后钱包程序会自动同步，但现在还未完成。</translation>
     </message>
-	<message>
+    <message>
         <source>Last PrivateSend message:</source>
         <translation>最新信息:</translation>
     </message>
-	<message>
+    <message>
         <source>Mixing</source>
         <translation>混币</translation>
     </message>
@@ -4199,10 +4315,10 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>ReceiveRequestDialog</name>
-	<message>
-		<source>Close</source>
-		<translation>关闭</translation>
-	</message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
     <message>
         <source>QR Code</source>
         <translation>二维码</translation>
@@ -4301,6 +4417,10 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>SendCoinsDialog</name>
+    <message>
+        <source>The transaction was rejected! The transaction (partial) amount has been sealed.</source>
+        <translation>交易被拒绝，该笔交易（部分）金额已被封存</translation>
+    </message>
     <message>
         <source>Invalid asset name</source>
         <translation>无效的资产名称</translation>
@@ -4977,7 +5097,7 @@ http://www.anwang.com/</translation>
     <name>TransactionDesc</name>
     <message>
         <source>Get Candy Amount</source>
-        <translation>领取糖果总量</translation>
+        <translation>领取糖果数量</translation>
     </message>
     <message>
         <source>Get Candy Address</source>
@@ -4988,11 +5108,11 @@ http://www.anwang.com/</translation>
         <translation>糖果资产ID</translation>
     </message>
     <message>
-        <source>Assets Name</source>
+        <source>Asset Name</source>
         <translation>资产名称</translation>
     </message>
     <message>
-        <source>Assets Short Name</source>
+        <source>Asset Short Name</source>
         <translation>资产简称</translation>
     </message>
     <message>
@@ -5439,11 +5559,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>PrivateSend Make Collateral Inputs</source>
-        <translation>匿名发送会产生附加费用</translation>
+        <translation>匿名发送产生附加费用</translation>
     </message>
     <message>
         <source>PrivateSend Create Denominations</source>
-        <translation>匿名发送会生成面值额度</translation>
+        <translation>匿名发送生成面值额度</translation>
     </message>
     <message>
         <source>PrivateSend</source>
@@ -5524,6 +5644,10 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>TransactionTableModel</name>
+    <message>
+        <source> [sealed]</source>
+        <translation> [已封存]</translation>
+    </message>
     <message>
         <source>Application Id</source>
         <translation>应用名称</translation>
@@ -5662,11 +5786,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>PrivateSend Make Collateral Inputs</source>
-        <translation>匿名发送会产生附加费用</translation>
+        <translation>匿名发送产生附加费用</translation>
     </message>
     <message>
         <source>PrivateSend Create Denominations</source>
-        <translation>匿名发送会生成面值额度</translation>
+        <translation>匿名发送生成面值额度</translation>
     </message>
     <message>
         <source>PrivateSend</source>
@@ -5797,11 +5921,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>PrivateSend Make Collateral Inputs</source>
-        <translation>匿名发送会产生附加费用</translation>
+        <translation>匿名发送产生附加费用</translation>
     </message>
     <message>
         <source>PrivateSend Create Denominations</source>
-        <translation>匿名发送会生成面值额度</translation>
+        <translation>匿名发送生成面值额度</translation>
     </message>
     <message>
         <source>PrivateSend Denominate</source>
@@ -5904,8 +6028,12 @@ http://www.anwang.com/</translation>
         <translation>地址</translation>
     </message>
     <message>
-        <source>ID</source>
-        <translation>ID</translation>
+        <source>Asset Name</source>
+        <translation>资产名称</translation>
+    </message>
+    <message>
+        <source>Transaction ID</source>
+        <translation>交易ID</translation>
     </message>
     <message>
         <source>Exporting Failed</source>
@@ -6079,6 +6207,10 @@ http://www.anwang.com/</translation>
         <translation>类别</translation>
     </message>
     <message>
+        <source>Asset Name</source>
+        <translation>资产名称</translation>
+    </message>
+    <message>
         <source>Label</source>
         <translation>标签</translation>
     </message>
@@ -6087,8 +6219,8 @@ http://www.anwang.com/</translation>
         <translation>地址</translation>
     </message>
     <message>
-        <source>ID</source>
-        <translation>ID</translation>
+        <source>Transaction ID</source>
+        <translation>交易ID</translation>
     </message>
     <message>
         <source>Exporting Failed</source>
@@ -6235,7 +6367,11 @@ http://www.anwang.com/</translation>
     <name>safe-core</name>
     <message>
         <source>Reach the current change limit,please try again later.</source>
-        <translation>达到当前零钱使用上限,请稍后再试。</translation>
+        <translation>达到当前SAFE零钱使用上限,请稍后再试。</translation>
+    </message>
+    <message>
+        <source>Reach the current asset change limit,please try again later.</source>
+        <translation>达到当前资产零钱使用上限,请稍后再试。</translation>
     </message>
     <message>
         <source>Bind to given address and always listen on it. Use [host]:port notation for IPv6</source>
@@ -6372,6 +6508,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Do you want to rebuild the block database now?</source>
         <translation>您想要现在重建区块资料库吗？</translation>
+    </message>
+    <message>
+        <source>detail.dat is corrupted, please restart with -reindex=1 or set reindex=1 in safe.conf if you want to repaire it.</source>
+        <translation>detail.dat文件受损, 如果您想修复它, 请通过设置-reindex=1或在safe.conf中设置reindex=1的方法重启程序.</translation>
     </message>
     <message>
         <source>Done loading</source>
@@ -6867,7 +7007,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Submitted to masternode, waiting in queue %s</source>
-        <translation>已经提交到主节点，在队列 %s 中等待 </translation>
+        <translation>已经提交到主节点，在队列中等待%s</translation>
     </message>
     <message>
         <source>Synchroning blockchain...</source>
@@ -7083,7 +7223,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>PrivateSend uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.</source>
-        <translation>匿名发送邀请使用准确的已除名资金来发送，您可能需要再匿名处理一些资金。</translation>
+        <translation>匿名发送要求使用准确的已除名资金来发送，您可能需要再匿名处理一些资金。</translation>
     </message>
     <message>
         <source>Provide liquidity to PrivateSend by infrequently mixing coins on a continual basis (0-100, default: %u, 1=very frequent, high fees, 100=very infrequent, low fees)</source>
@@ -7135,7 +7275,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Unable to locate enough PrivateSend denominated funds for this transaction.</source>
-        <translation>在本次交易中，无法找到足够的匿名发送已出资金。</translation>
+        <translation>在本次交易中，无法找到足够的匿名发送已除名资金。</translation>
     </message>
     <message>
         <source>Unable to locate enough PrivateSend non-denominated funds for this transaction that are not equal 1000 SAFE.</source>
@@ -7566,8 +7706,8 @@ http://www.anwang.com/</translation>
         <translation>交易额过小</translation>
     </message>
     <message>
-        <source>Must sync block first</source>
-        <translation>需先同步区块</translation>
+        <source>Synchronizing block data</source>
+        <translation>正在同步区块数据, 请稍后...</translation>
     </message>
     <message>
         <source>Transaction amounts must be positive</source>

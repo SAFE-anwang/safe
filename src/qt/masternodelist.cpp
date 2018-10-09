@@ -49,13 +49,14 @@ MasternodeList::MasternodeList(const PlatformStyle *platformStyle, QWidget *pare
     ui->tableWidgetMyMasternodes->setColumnWidth(3, columnStatusWidth);
     ui->tableWidgetMyMasternodes->setColumnWidth(4, columnActiveWidth);
     ui->tableWidgetMyMasternodes->setColumnWidth(5, columnLastSeenWidth);
+    ui->tableWidgetMyMasternodes->setStyleSheet("font-size:12px");
 
     ui->tableWidgetMasternodes->setColumnWidth(0, columnAddressWidth);
     ui->tableWidgetMasternodes->setColumnWidth(1, columnProtocolWidth);
     ui->tableWidgetMasternodes->setColumnWidth(2, columnStatusWidth);
     ui->tableWidgetMasternodes->setColumnWidth(3, columnActiveWidth);
     ui->tableWidgetMasternodes->setColumnWidth(4, columnLastSeenWidth);
-
+    ui->tableWidgetMasternodes->setStyleSheet("font-size:12px");
     ui->tableWidgetMyMasternodes->setContextMenuPolicy(Qt::CustomContextMenu);
 
     QAction *startAliasAction = new QAction(tr("Start alias"), this);

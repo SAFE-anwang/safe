@@ -65,7 +65,7 @@
      <item row="1" column="0">
       <widget class="QLabel" name="assetsNameLabel">
        <property name="text">
-        <string>Assets Name:</string>
+        <string>Asset Name:</string>
        </property>
       </widget>
      </item>
@@ -86,7 +86,7 @@
      <item row="2" column="0">
       <widget class="QLabel" name="addAssetsNameLabel">
        <property name="text">
-        <string>Assets Name:</string>
+        <string>Asset Name:</string>
        </property>
       </widget>
      </item>

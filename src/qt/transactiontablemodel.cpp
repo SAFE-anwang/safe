@@ -126,7 +126,7 @@ void TransactionTablePriv::updateWallet(const uint256 &hash, int status, bool sh
                 {
                     cachedWallet.insert(insert_idx, rec);
                     insert_idx += 1;
-                    if((rec.bAssets||rec.bGetCandy)&&!rec.bSAFETransaction)
+                    if((rec.bAssets||rec.bGetCandy||rec.bPutCandy)&&!rec.bSAFETransaction)
                     {
                         bUpdateAssets = true;
                         strAssetName = QString::fromStdString(rec.assetsData.strAssetName);
@@ -201,8 +201,8 @@ TransactionRecord* TransactionTablePriv::index(int idx)
                                 displayInfo.bNewAssets = false;
                             }
                         }
-                        //transform assets,get candy,put candy need to update overview and they history view
-                        if(rec->bAssets||rec->bGetCandy||rec->bPutCandy)
+                        //transform assets,get candy,put candy,issue asset need to update overview and they history view
+                        if(rec->bAssets||rec->bGetCandy||rec->bPutCandy || rec->bIssueAsset || (rec->bSAFETransaction&&rec->address==g_strCancelledSafeAddress))
                             parent->emitUpdateAsset(false,newConfirmedAssets,strAssetName);
                     }
                 }
@@ -534,40 +534,53 @@ QString TransactionTableModel::lookupAddress(const std::string &address, bool to
 
 QString TransactionTableModel::formatTxType(const TransactionRecord *wtx) const
 {
+    QString ret = "";
     switch(wtx->type)
     {
     case TransactionRecord::RecvWithAddress:
-        return tr("Received with");
+        ret = tr("Received with");
+        break;
     case TransactionRecord::RecvFromOther:
     case TransactionRecord::GETCandy:
-        return tr("Received from");
+        ret = tr("Received from");
+        break;
     case TransactionRecord::RecvWithPrivateSend:
-        return tr("Received via PrivateSend");
+        ret = tr("Received via PrivateSend");
+        break;
     case TransactionRecord::SendToAddress:
     case TransactionRecord::SendToOther:
     case TransactionRecord::FirstDistribute:
     case TransactionRecord::AddDistribute:
     case TransactionRecord::PUTCandy:
-        return tr("Sent to");
+        ret = tr("Sent to");
+        break;
     case TransactionRecord::SendToSelf:
-        return tr("Payment to yourself");
+        ret = tr("Payment to yourself");
+        break;
     case TransactionRecord::Generated:
-        return tr("Mined");
-
+        ret = tr("Mined");
+        break;
     case TransactionRecord::PrivateSendDenominate:
-        return tr("PrivateSend Denominate");
+        ret = tr("PrivateSend Denominate");
+        break;
     case TransactionRecord::PrivateSendCollateralPayment:
-        return tr("PrivateSend Collateral Payment");
+        ret = tr("PrivateSend Collateral Payment");
+        break;
     case TransactionRecord::PrivateSendMakeCollaterals:
-        return tr("PrivateSend Make Collateral Inputs");
+        ret = tr("PrivateSend Make Collateral Inputs");
+        break;
     case TransactionRecord::PrivateSendCreateDenominations:
-        return tr("PrivateSend Create Denominations");
+        ret = tr("PrivateSend Create Denominations");
+        break;
     case TransactionRecord::PrivateSend:
-        return tr("PrivateSend");
-
+        ret = tr("PrivateSend");
+        break;
     default:
-        return QString();
+        break;
     }
+    if(wtx->bForbidDash)
+        ret.append(tr(" [sealed]"));
+    return ret;
 }
 
 QVariant TransactionTableModel::txAddressDecoration(const TransactionRecord *wtx) const
@@ -762,7 +775,10 @@ QVariant TransactionTableModel::data(const QModelIndex &index, int role) const
         case TransactionColumnDate:
             return formatTxDate(rec);
         case TransactionColumnType:
-            return formatTxType(rec);
+        {
+            QString result = formatTxType(rec);
+            return result;
+        }
         case TransactionColumnToAddress:
             return formatTxToAddress(rec, false);
         case TransactionColumnAssetsName:

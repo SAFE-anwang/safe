@@ -20,6 +20,7 @@
 #define TRANSFER_TXOUT          7
 #define PUT_CANDY_TXOUT         8
 #define GET_CANDY_TXOUT         9
+#define CHANGE_ASSET_TXOUT      10
 
 #define REGISTER_APP_CMD        100
 #define ADD_AUTH_CMD            101
@@ -97,6 +98,7 @@ enum AppRpcError
     GET_TXID_FAILED                 = -525,
     GET_APPINFO_FAILED              = -526,
     SYNCING_BLOCK                   = -527,
+    COLLECTING_CANDYLIST            = -528,
 
     //! asset errors
     INVALID_SHORTNAME_SIZE          = -600,
@@ -126,6 +128,7 @@ enum AppRpcError
     INVALID_TOTAL_SAFE              = -624,
     GET_ASSETINFO_FAILED            = -625,
     GET_ALL_CANDY_HEIGHT_FAILED     = -626,
+    NOT_OWN_ASSET                      = -627,
 };
 
 extern uint16_t g_nAppHeaderVersion;

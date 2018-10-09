@@ -107,7 +107,7 @@ int LogPrintStr(const std::string &str);
     template<TINYFORMAT_ARGTYPES(n)>                                          \
     static inline int LogPrint(const char* category, const char* format, TINYFORMAT_VARARGS(n))  \
     {                                                                         \
-        if(!LogAcceptCategory(category)) return 0;                            \
+        if(!LogAcceptCategory(category)) return 0;                       \
         return LogPrintStr(tfm::format(format, TINYFORMAT_PASSARGS(n))); \
     }                                                                         \
     /**   Log error and return false */                                        \

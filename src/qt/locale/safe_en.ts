@@ -5069,6 +5069,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <location line="+1"/>
+        <source>detail.dat is corrupted, please restart with -reindex=1 or set reindex=1 in safe.conf if you want to repaire it.</source>
+        <translation>detail.dat is corrupted, please restart with -reindex=1 or set reindex=1 in safe.conf if you want to repaire it.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>Done loading</source>
         <translation>Done loading</translation>
     </message>

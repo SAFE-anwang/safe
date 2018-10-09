@@ -1588,6 +1588,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
                     return false;
                 }
             }
+            
         } else if (strCommand == NetMsgType::DSTX) {
             vRecv >> dstx;
             tx = dstx.tx;

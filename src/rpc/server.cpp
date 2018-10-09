@@ -159,7 +159,7 @@ UniValue ValueFromAmount(const CAmount& amount, const uint8_t& nDecimals)
         case 10:
             return UniValue(UniValue::VNUM, strprintf("%s%lld.%010lld", sign ? "-" : "", quotient, remainder));
     }
-    
+
     return UniValue(UniValue::VNUM, strprintf("%s%lld.%08lld", sign ? "-" : "", quotient, remainder));
 }
 
@@ -469,6 +469,8 @@ static const CRPCCommand vRPCCommands[] =
     { "wallet",             "sendfrom",               &sendfrom,                    false },
     { "wallet",             "sendmany",               &sendmany,                    false },
     { "wallet",             "sendtoaddress",          &sendtoaddress,               false },
+    { "wallet",             "sendwithlock",           &sendwithlock,                false },
+    { "wallet",             "sendmanywithlock",       &sendmanywithlock,            false },
     { "wallet",             "setaccount",             &setaccount,                  true  },
     { "wallet",             "settxfee",               &settxfee,                    true  },
     { "wallet",             "signmessage",            &signmessage,                 true  },
@@ -497,6 +499,7 @@ static const CRPCCommand vRPCCommands[] =
     { "asset",              "destoryasset",           &destoryasset,                true  },
     { "asset",              "putcandy",               &putcandy,                    true  },
     { "asset",              "getassetinfo",           &getassetinfo,                true  },
+    { "asset",              "getlocalassetinfo",        &getlocalassetinfo,                true  },
     { "asset",              "getassetidtxids",        &getassetidtxids,             true  },
     { "asset",              "getaddrassettxids",      &getaddrassettxids,           true  },
     { "asset",              "getaddrassetbalance",    &getaddrassetbalance,         true  },
@@ -506,7 +509,9 @@ static const CRPCCommand vRPCCommands[] =
     { "asset",              "getassetlistbyaddress",  &getassetlistbyaddress,       true  },
     { "asset",            "getaddressamountbyheight", &getaddressamountbyheight,    true  },
     { "asset",              "getallcandyheight",      &getallcandyheight,           true  },
-	{ "asset",              "getaddresscandylist",    &getaddresscandylist,         true  },
+    { "asset",              "getaddresscandylist",    &getaddresscandylist,         true  },
+    { "asset",              "getavailablecandylist",  &getavailablecandylist,       true  },
+    { "asset",              "getlocalassetlist",      &getlocalassetlist,           true  },
 
 #endif // ENABLE_WALLET
 };

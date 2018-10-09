@@ -45,7 +45,7 @@ UniValue registerapp(const UniValue& params, bool fHelp)
             "\nExamples:\n"
             + HelpExampleCli("registerapp", "\"gold\" \"Gold is an app\" 2 \"Andy.Le\"")
             + HelpExampleCli("registerapp", "\"gold\" \"Gold is an app\" 1 \"Bankledger\" \"http://www.anwang.com/\" \"http://www.anwang.com/\" \"http://www.anwang.com/\"")
-            + HelpExampleRpc("registerapp", "\"gold\" \"Gold is an app\" 1 \"Bankledger\" \"http://www.anwang.com/\" \"http://www.anwang.com/\" \"http://www.anwang.com/\"")
+            + HelpExampleRpc("registerapp", "\"gold\", \"Gold is an app\", 1, \"Bankledger\", \"http://www.anwang.com/\", \"http://www.anwang.com/\", \"http://www.anwang.com/\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -111,6 +111,10 @@ UniValue registerapp(const UniValue& params, bool fHelp)
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
+    int nOffset = g_nChainHeight - g_nProtocolV2Height;
+    if (nOffset < 0)
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height));
+
     CAmount nCancelledValue = GetCancelledAmount(g_nChainHeight);
     if(!IsCancelledRange(nCancelledValue))
         throw JSONRPCError(INVALID_CANCELLED_SAFE, "Invalid cancelled safe amount");
@@ -174,7 +178,7 @@ UniValue setappauth(const UniValue& params, bool fHelp)
             "\nExamples:\n"
             + HelpExampleCli("setappauth", "1 \"19429c79dbbaabaffe99535273ae3864df0de857780dcb7982262efface6afdd\" \"ALL_USER\" 1000")
             + HelpExampleCli("setappauth", "2 \"19429c79dbbaabaffe99535273ae3864df0de857780dcb7982262efface6afdd\" \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" 1000")
-            + HelpExampleRpc("setappauth", "2 \"19429c79dbbaabaffe99535273ae3864df0de857780dcb7982262efface6afdd\" \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" 1000")
+            + HelpExampleRpc("setappauth", "2, \"19429c79dbbaabaffe99535273ae3864df0de857780dcb7982262efface6afdd\", \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\", 1000")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -290,7 +294,7 @@ UniValue createextenddatatx(const UniValue& params, bool fHelp)
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("createextenddatatx", "1 \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"19429c79dbbaabaffe99535273ae3864df0de857780dcb7982262efface6afdd\" 1000 \"1231fad##33\"")
-            + HelpExampleRpc("createextenddatatx", "2 \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"19429c79dbbaabaffe99535273ae3864df0de857780dcb7982262efface6afdd\" 1002 \"1231fad##33\"")
+            + HelpExampleRpc("createextenddatatx", "2, \"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\", \"19429c79dbbaabaffe99535273ae3864df0de857780dcb7982262efface6afdd\", 1002, \"1231fad##33\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -509,8 +513,8 @@ UniValue getapptxids(const UniValue& params, bool fHelp)
             "\nReturns list of transactions by specified app id.\n"
             "\nArguments:\n"
             "1. \"appId\"           (string, required) The app id for transaction lookup\n"
-            "2. \"appIdtype\"       (numeric, optional) The app type for transaction lookup\n"
-            "3. \"setType\"         (numeric, optional) The set type\n"
+            "2. \"appOperType\"     (numeric, optional) The app operator type, 1=all, 2=register, 3=setauth, 4=createextendatatx \n"
+            "3. \"setType\"         (numeric, optional) The set auth type, it is valid when appOperType is 3\n"
             "\nResult:\n"
             "{\n"
             "    \"txList\":\n"
@@ -528,24 +532,24 @@ UniValue getapptxids(const UniValue& params, bool fHelp)
 
     uint256 appId = uint256S(TrimString(params[0].get_str()));
 
-    int appIdtype = -1;
+    int appOperType = -1;
     int setType = -1;
 
     if (params.size() == 2)
     {
-        appIdtype = params[1].get_int();
-        if (appIdtype < 1 ||appIdtype > 4)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid type of transaction");
+        appOperType = params[1].get_int();
+        if (appOperType < 1 ||appOperType > 4)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid type of app transaction");
     }
     else if (params.size() == 3)
     {
-        appIdtype = params[1].get_int();
-        if (appIdtype != 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid type of transaction");
+        appOperType = params[1].get_int();
+        if (appOperType != 3)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid type of app transaction");
 
         setType = params[2].get_int();
         if(setType < MIN_SETTYPE_VALUE || setType > sporkManager.GetSporkValue(SPORK_102_SET_TYPE_MAX_VALUE))
-            throw JSONRPCError(INVALID_SETTYPE, "Invalid set type");
+            throw JSONRPCError(INVALID_SETTYPE, "Invalid set auth type");
     }
 
     vector<COutPoint> vOut;
@@ -562,13 +566,13 @@ UniValue getapptxids(const UniValue& params, bool fHelp)
     UniValue ret(UniValue::VOBJ);
     UniValue transactionList(UniValue::VARR);
 
-    if (params.size() == 1 || appIdtype == 1)
+    if (params.size() == 1 || appOperType == 1)
     {
         for(unsigned int i = 0; i < vTx.size(); i++)
             transactionList.push_back(vTx[i].GetHex());
         ret.push_back(Pair("txList", transactionList));
     }
-    else if (appIdtype == 2)
+    else if (appOperType == 2)
     {
         std::vector<uint256>::iterator it = vTx.begin();
         for (; it != vTx.end(); it++)
@@ -598,7 +602,7 @@ UniValue getapptxids(const UniValue& params, bool fHelp)
 
         ret.push_back(Pair("txList", transactionList));
     }
-    else if (appIdtype == 3)
+    else if (appOperType == 3)
     {
         if (setType == 1)
         {
@@ -661,7 +665,7 @@ UniValue getapptxids(const UniValue& params, bool fHelp)
             ret.push_back(Pair("txList", transactionList));
         }
     }
-    else if (appIdtype == 4)
+    else if (appOperType == 4)
     {
         std::vector<uint256>::iterator it = vTx.begin();
         for (; it != vTx.end(); it++)
@@ -704,8 +708,8 @@ UniValue getaddressapptxids(const UniValue& params, bool fHelp)
             "\nArguments:\n"
             "1. \"safeAddress\"     (string, required) The Safe address for transaction lookup\n"
             "2. \"appId\"           (string, required) The app id for transaction lookup\n"
-            "3. \"appIdtype\"       (numeric, optional) The app type for transaction lookup\n"
-            "4. \"setType\"         (numeric, optional) The set type\n"
+            "3. \"appOperType\"     (numeric, optional) The app operator type, 1=all, 2=register, 3=setauth, 4=createextendatatx \n"
+            "4. \"setType\"         (numeric, optional) The set auth type, it is valid when appOperType is 3\n"
             "\nResult:\n"
             "{\n"
             "    \"txList\":\n"
@@ -716,7 +720,7 @@ UniValue getaddressapptxids(const UniValue& params, bool fHelp)
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getaddressapptxids", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"d12271779b72ae64d338c0a9efb176f9eb7352af2ce0ac2c76ee8cd240d2596a\"")
-            + HelpExampleRpc("getaddressapptxids", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" \"d12271779b72ae64d338c0a9efb176f9eb7352af2ce0ac2c76ee8cd240d2596a\"")
+            + HelpExampleRpc("getaddressapptxids", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\", \"d12271779b72ae64d338c0a9efb176f9eb7352af2ce0ac2c76ee8cd240d2596a\"")
         );
 
     LOCK(cs_main);
@@ -727,24 +731,24 @@ UniValue getaddressapptxids(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid address");
     uint256 appId = uint256S(TrimString(params[1].get_str()));
 
-    int appIdtype = -1;
+    int appOperType = -1;
     int setType = -1;
 
     if (params.size() == 3)
     {
-        appIdtype = params[2].get_int();
-        if (appIdtype < 1 ||appIdtype > 4)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid type of transaction");
+        appOperType = params[2].get_int();
+        if (appOperType < 1 ||appOperType > 4)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid type of app transaction");
     }
     else if (params.size() == 4)
     {
-        appIdtype = params[2].get_int();
-        if (appIdtype != 3)
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid type of transaction");
+        appOperType = params[2].get_int();
+        if (appOperType != 3)
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid type of app transaction");
 
         setType = params[3].get_int();
         if(setType < MIN_SETTYPE_VALUE || setType > sporkManager.GetSporkValue(SPORK_102_SET_TYPE_MAX_VALUE))
-            throw JSONRPCError(INVALID_SETTYPE, "Invalid set type");
+            throw JSONRPCError(INVALID_SETTYPE, "Invalid set auth type");
     }
 
     vector<COutPoint> vOut;
@@ -761,13 +765,13 @@ UniValue getaddressapptxids(const UniValue& params, bool fHelp)
     UniValue ret(UniValue::VOBJ);
     UniValue transactionList(UniValue::VARR);
 
-    if (params.size() == 2 || appIdtype == 1)
+    if (params.size() == 2 || appOperType == 1)
     {
         for(unsigned int i = 0; i < vTx.size(); i++)
             transactionList.push_back(vTx[i].GetHex());
         ret.push_back(Pair("txList", transactionList));
     }
-    else if (appIdtype == 2)
+    else if (appOperType == 2)
     {
         std::vector<uint256>::iterator it = vTx.begin();
         for (; it != vTx.end(); it++)
@@ -797,7 +801,7 @@ UniValue getaddressapptxids(const UniValue& params, bool fHelp)
 
         ret.push_back(Pair("txList", transactionList));
     }
-    else if (appIdtype == 3)
+    else if (appOperType == 3)
     {
         if (setType == 1)
         {
@@ -860,7 +864,7 @@ UniValue getaddressapptxids(const UniValue& params, bool fHelp)
             ret.push_back(Pair("txList", transactionList));
         }
     }
-    else if (appIdtype == 4)
+    else if (appOperType == 4)
     {
         std::vector<uint256>::iterator it = vTx.begin();
         for (; it != vTx.end(); it++)
@@ -947,7 +951,7 @@ UniValue getapplistbyaddress(const UniValue& params, bool fHelp)
             "}\n"
             "\nExamples:\n"
             + HelpExampleCli("getapplistbyaddress", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\"")
-            + HelpExampleRpc("getapplistbyaddress", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\" ")
+            + HelpExampleRpc("getapplistbyaddress", "\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\"")
     );
 
     LOCK(cs_main);
@@ -991,6 +995,7 @@ UniValue getappdetails(const UniValue& params, bool fHelp)
             "           \"webUrl\": \"xxxxx\"\n"
             "           \"appLogoUrl\": \"xxxxx\"\n"
             "           \"appCoverUrl\": \"xxxxx\"\n"
+            "           \"adminSafeAddress\": \"xxxxx\"\n"
             "       }\n"
             "       ,{\n"
             "           \"setType\": xxxxx\n"
@@ -1056,6 +1061,7 @@ UniValue getappdetails(const UniValue& params, bool fHelp)
                     registerapp.push_back(Pair("webUrl", appData.strWebUrl));
                     registerapp.push_back(Pair("appLogoUrl", appData.strLogoUrl));
                     registerapp.push_back(Pair("appCoverUrl", appData.strCoverUrl));
+                    registerapp.push_back(Pair("adminSafeAddress", strAddress));
 
                     txData.push_back(registerapp);
                 }
@@ -1117,8 +1123,8 @@ UniValue getauthlist(const UniValue& params, bool fHelp)
             "  ],\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("getauthlist", "\"d12271779b72ae64d338c0a9efb176f9eb7352af2ce0ac2c76ee8cd240d2596a\" \"Xp8AEzDHagYzwpm3NcRqt8kmSpiUa3JNc2\" ")
-            + HelpExampleRpc("getauthlist", "\"d12271779b72ae64d338c0a9efb176f9eb7352af2ce0ac2c76ee8cd240d2596a\" \"Xp8AEzDHagYzwpm3NcRqt8kmSpiUa3JNc2\" ")
+            + HelpExampleCli("getauthlist", "\"d12271779b72ae64d338c0a9efb176f9eb7352af2ce0ac2c76ee8cd240d2596a\" \"Xp8AEzDHagYzwpm3NcRqt8kmSpiUa3JNc2\"")
+            + HelpExampleRpc("getauthlist", "\"d12271779b72ae64d338c0a9efb176f9eb7352af2ce0ac2c76ee8cd240d2596a\", \"Xp8AEzDHagYzwpm3NcRqt8kmSpiUa3JNc2\"")
         );
 
     LOCK(cs_main);

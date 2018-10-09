@@ -83,6 +83,7 @@ AssetsDistributeRecordView::AssetsDistributeRecordView(const PlatformStyle *plat
     dateWidget->addItem(tr("This year"), ThisYear);
     dateWidget->addItem(tr("Range..."), Range);
     dateWidget->setCurrentIndex(settings.value("transactionDate").toInt());
+    dateWidget->setStyleSheet("QComboBox{font-size:12px;}");
     hlayout->addWidget(dateWidget);
 
     assetsNameWidget = new QLineEdit(this);
@@ -108,6 +109,7 @@ AssetsDistributeRecordView::AssetsDistributeRecordView(const PlatformStyle *plat
     typeWidget->addItem(tr("First Distribute"), TransactionFilterProxy::TYPE(TransactionRecord::FirstDistribute));
     typeWidget->addItem(tr("Add Distribute"), TransactionFilterProxy::TYPE(TransactionRecord::AddDistribute));
     typeWidget->setCurrentIndex(settings.value("distributeRecordType").toInt());
+    typeWidget->setStyleSheet("QComboBox{font-size:12px;}");
     hlayout->addWidget(typeWidget);
 
     addressWidget = new QLineEdit(this);
@@ -329,7 +331,8 @@ void AssetsDistributeRecordView::chooseDate(int idx)
         break;
     case Range:
         dateRangeWidget->setVisible(true);
-        dateRangeChanged();
+        dateFromRangeChanged();
+        dateToRangeChanged();
         break;
     }
     // Persist new date settings
@@ -402,11 +405,12 @@ void AssetsDistributeRecordView::exportClicked()
     if (model && model->haveWatchOnly())
         writer.addColumn(tr("Watch-only"), TransactionTableModel::TransactionColumnWatchonly);
     writer.addColumn(tr("Date"), 0, TransactionTableModel::DateRole);
-    writer.addColumn(tr("Assets Name"), 0, TransactionTableModel::AssetsNameRole);
+    writer.addColumn(tr("Asset Name"), 0, TransactionTableModel::AssetsNameRole);
     writer.addColumn(tr("Type"), AssetsDistributeRecordModel::AssetsDistributeColumnType, Qt::EditRole);
+    writer.addColumn(tr("Label"), 0, TransactionTableModel::LabelRole);
     writer.addColumn(tr("Address"), 0, TransactionTableModel::AddressRole);
     writer.addColumn(BitcoinUnits::getAmountColumnTitle(model->getOptionsModel()->getDisplayUnit()), 0, TransactionTableModel::FormattedAmountRole);
-    writer.addColumn(tr("ID"), 0, TransactionTableModel::TxIDRole);
+    writer.addColumn(tr("Transaction ID"), 0, TransactionTableModel::TxIDRole);
 
     if(!writer.write()) {
         Q_EMIT message(tr("Exporting Failed"), tr("There was an error trying to save the assets distribute history to %1.").arg(filename),
@@ -615,7 +619,8 @@ QWidget *AssetsDistributeRecordView::createDateRangeWidget()
     dateFrom->setCalendarPopup(true);
     dateFrom->setMinimumWidth(100);
     // Load persisted FROM date
-    dateFrom->setDate(QDate::fromString(settings.value("transactionDateFrom", defaultDateFrom).toString(), PERSISTENCE_DATE_FORMAT));
+//    dateFrom->setDate(QDate::fromString(settings.value("transactionDateFrom", defaultDateFrom).toString(), PERSISTENCE_DATE_FORMAT));
+    dateFrom->setDate(QDate::currentDate());
 
     layout->addWidget(dateFrom);
     layout->addWidget(new QLabel(tr("to")));
@@ -624,7 +629,8 @@ QWidget *AssetsDistributeRecordView::createDateRangeWidget()
     dateTo->setCalendarPopup(true);
     dateTo->setMinimumWidth(100);
     // Load persisted TO date
-    dateTo->setDate(QDate::fromString(settings.value("transactionDateTo", defaultDateTo).toString(), PERSISTENCE_DATE_FORMAT));
+//    dateTo->setDate(QDate::fromString(settings.value("transactionDateTo", defaultDateTo).toString(), PERSISTENCE_DATE_FORMAT));
+    dateTo->setDate(QDate::currentDate().addDays(1));
 
     layout->addWidget(dateTo);
     layout->addStretch();
@@ -633,16 +639,61 @@ QWidget *AssetsDistributeRecordView::createDateRangeWidget()
     dateRangeWidget->setVisible(false);
 
     // Notify on change
-    connect(dateFrom, SIGNAL(dateChanged(QDate)), this, SLOT(dateRangeChanged()));
-    connect(dateTo, SIGNAL(dateChanged(QDate)), this, SLOT(dateRangeChanged()));
+    connect(dateFrom, SIGNAL(dateChanged(QDate)), this, SLOT(dateFromRangeChanged()));
+    connect(dateTo, SIGNAL(dateChanged(QDate)), this, SLOT(dateToRangeChanged()));
 
     return dateRangeWidget;
 }
 
-void AssetsDistributeRecordView::dateRangeChanged()
+void AssetsDistributeRecordView::dateFromRangeChanged()
 {
     if(!transactionProxyModel)
         return;
+
+    if (dateTo->dateTime() < dateFrom->dateTime())
+    {
+        if (!dateFrom->hasFocus())
+        {
+            dateFrom->setFocus();
+            dateFrom->setDateTime(dateTo->dateTime().addDays(-1));
+            return;
+        }
+        QMessageBox::warning(this, tr("unreasonable date range"),
+                             tr("Start date cannot be later than the end date."));
+        dateFrom->setDateTime(dateTo->dateTime().addDays(-1));
+        return;
+    }
+
+    // Persist new date range
+    QSettings settings;
+    settings.setValue("transactionDateFrom", dateFrom->date().toString(PERSISTENCE_DATE_FORMAT));
+    settings.setValue("transactionDateTo", dateTo->date().toString(PERSISTENCE_DATE_FORMAT));
+
+    transactionProxyModel->setDateRange(
+            QDateTime(dateFrom->date()),
+            QDateTime(dateTo->date()));
+}
+
+void AssetsDistributeRecordView::dateToRangeChanged()
+{
+    if(!transactionProxyModel)
+        return;
+
+    if (dateTo->dateTime() < dateFrom->dateTime())
+    {
+        if (!dateTo->hasFocus())
+        {
+            dateTo->setFocus();
+            dateTo->setDateTime(dateFrom->dateTime().addDays(1));
+            return;
+        }
+
+        QMessageBox::warning(this, tr("unreasonable date range"),
+                             tr("End date cannot be earlier than start date."));
+
+        dateTo->setDateTime(dateFrom->dateTime().addDays(1));
+        return;
+    }
 
     // Persist new date range
     QSettings settings;

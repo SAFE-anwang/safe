@@ -849,6 +849,16 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
         }
     }
 
+
+    //get unspent vec
+    std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> > unspentOutputs;
+    for (std::vector<std::pair<uint160, int> >::iterator it = addresses.begin(); it != addresses.end(); it++) {
+        if (!GetAddressUnspent((*it).first, (*it).second, unspentOutputs)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
+        }
+    }
+
+
     CAmount balance = 0;
     CAmount received = 0;
     CAmount lockamount = 0;
@@ -859,10 +869,38 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
         }
         balance += it->second;
 
+        if (it->first.spending)
+            continue;
+
         CTransaction tx;
         uint256 hashBlock = uint256();
         if (GetTransaction(it->first.txhash, tx, Params().GetConsensus(), hashBlock, true))
         {
+            CWalletTx walletTx(pwalletMain,tx);
+            walletTx.hashBlock = hashBlock;
+            walletTx.nIndex = it->first.txindex;
+            if(walletTx.IsForbid()&&!pwalletMain->IsSpent(walletTx.GetHash(), it->first.index))
+            {
+                bool found = false;
+                for (std::vector<std::pair<CAddressUnspentKey, CAddressUnspentValue> >::const_iterator it_unspent=unspentOutputs.begin(); it_unspent!=unspentOutputs.end(); it_unspent++)
+                {
+                    const CAddressUnspentKey& key = it_unspent->first;
+                    if(key.txhash == it->first.txhash)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if(found)
+                {
+                    if (it->second > 0) {
+                        received -= it->second;
+                    }
+                    balance -= it->second;
+                }
+            }
+
             if (it->first.index >= tx.vout.size())
                 continue;
 
