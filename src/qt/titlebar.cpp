@@ -157,6 +157,11 @@ void TitleBar::initConnections()
     connect(closeButton, SIGNAL(clicked()), this, SLOT(onCloseButtonClicked()));
 }
 
+void TitleBar::setFullScreen()
+{
+    onMaxButtonClicked();
+}
+
 void TitleBar::setQSS()
 {
     iconLabel->setPixmap(QIcon(":/icons/bitcoin").pixmap(20, 20));

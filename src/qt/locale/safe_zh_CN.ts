@@ -313,8 +313,8 @@
         <translation>安网3核心</translation>
     </message>
     <message>
-        <source>Wallet</source>
-        <translation>钱包</translation>
+        <source>Wallet (v2.0.0 Safe_Dev2)</source>
+        <translation>钱包 (v2.0.0 Safe_Dev2)</translation>
     </message>
     <message>
         <source>Node</source>
@@ -2056,6 +2056,10 @@ http://www.anwang.com/</translation>
         <translation>输入应用id进行搜索</translation>
     </message>
     <message>
+        <source>Enter application name to search</source>
+        <translation>输入应用名称进行搜索</translation>
+    </message>
+    <message>
         <source>Enter manager address to search</source>
         <translation>输入管理员地址进行搜索</translation>
     </message>
@@ -2550,11 +2554,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Destroyed</source>
-        <translation>是否可销毁</translation>
+        <translation>可销毁</translation>
     </message>
     <message>
         <source>Distribute Candy</source>
-        <translation>是否分发糖果</translation>
+        <translation>分发糖果</translation>
     </message>
     <message>
         <source>Candy Expire Time:</source>
@@ -3058,6 +3062,10 @@ http://www.anwang.com/</translation>
         <translation>日期</translation>
     </message>
     <message>
+        <source>Application Name</source>
+        <translation>应用名称</translation>
+    </message>
+    <message>
         <source>Application ID</source>
         <translation>应用ID</translation>
     </message>
@@ -3068,6 +3076,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Date and time that the application was registed.</source>
         <translation>应用的注册日期。</translation>
+    </message>
+    <message>
+        <source>Application Name of assets regist.</source>
+        <translation>应用的注册名称。</translation>
     </message>
     <message>
         <source>Application ID of assets regist.</source>
@@ -5074,8 +5086,8 @@ http://www.anwang.com/</translation>
         <translation>安网3核心</translation>
     </message>
     <message>
-        <source>Version %1</source>
-        <translation>版本 %1</translation>
+        <source>Version %1 Safe_Dev2</source>
+        <translation>版本 %1 Safe_Dev2</translation>
     </message>
     <message>
         <source>The Dash Core developers</source>
@@ -5145,11 +5157,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Assets Destory</source>
-        <translation>是否可销毁</translation>
+        <translation>可销毁</translation>
     </message>
     <message>
         <source>Pay Candy</source>
-        <translation>是否分发糖果</translation>
+        <translation>分发糖果</translation>
     </message>
     <message>
         <source>Yes</source>

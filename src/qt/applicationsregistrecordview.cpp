@@ -82,6 +82,18 @@ ApplicationsRegistRecordView::ApplicationsRegistRecordView(const PlatformStyle *
     dateWidget->setStyleSheet("QComboBox{font-size:12px;}");
     hlayout->addWidget(dateWidget);
 
+    applicationNameWidget = new QLineEdit(this);
+#if QT_VERSION >= 0x040700
+    applicationNameWidget->setPlaceholderText(tr("Enter application name to search"));
+#endif
+    applicationNameWidget->setObjectName("applicationNameWidget");
+    if (platformStyle->getUseExtraSpacing()) {
+        applicationNameWidget->setFixedWidth(APPLICATION_NAME_COLUMN_WIDTH);
+    } else {
+        applicationNameWidget->setFixedWidth(APPLICATION_NAME_COLUMN_WIDTH-1);
+    }
+    hlayout->addWidget(applicationNameWidget);
+
     applicationIdWidget = new QLineEdit(this);
 #if QT_VERSION >= 0x040700
     applicationIdWidget->setPlaceholderText(tr("Enter application id to search"));
@@ -160,6 +172,7 @@ ApplicationsRegistRecordView::ApplicationsRegistRecordView(const PlatformStyle *
     // Connect actions
     connect(mapperThirdPartyTxUrls, SIGNAL(mapped(QString)), this, SLOT(openThirdPartyTxUrl(QString)));
     connect(applicationIdWidget,SIGNAL(textChanged(QString)), this, SLOT(changedApplicationId(QString)));
+    connect(applicationNameWidget,SIGNAL(textChanged(QString)), this, SLOT(changedApplicationName(QString)));
     connect(dateWidget, SIGNAL(activated(int)), this, SLOT(chooseDate(int)));
     connect(watchOnlyWidget, SIGNAL(activated(int)), this, SLOT(chooseWatchonly(int)));
     connect(managerAddressWidget, SIGNAL(textChanged(QString)), this, SLOT(changedPrefix(QString)));
@@ -207,6 +220,7 @@ void ApplicationsRegistRecordView::setModel(WalletModel *model)
         applicationsView->setColumnWidth(ApplicationsRegistRecordModel::ApplicationsRegistColumnStatus, GUIUtil::STATUS_COLUMN_WIDTH);
         applicationsView->setColumnWidth(ApplicationsRegistRecordModel::ApplicationsRegistColumnWatchonly, GUIUtil::WATCHONLY_COLUMN_WIDTH);
         applicationsView->setColumnWidth(ApplicationsRegistRecordModel::ApplicationsRegistColumnDate, APPLICATION_DATE_COLUMN_WIDTH);
+        applicationsView->setColumnWidth(ApplicationsRegistRecordModel::ApplicationsRegistColumnApplicationName, APPLICATION_NAME_COLUMN_WIDTH);
         applicationsView->setColumnWidth(ApplicationsRegistRecordModel::ApplicationsRegistColumnApplicationId, APPLICATION_ID_COLUMN_WIDTH);
         applicationsView->setStyleSheet("QTableView{padding-left:5px;}");
         // Note: it's a good idea to connect this signal AFTER the model is set
@@ -301,6 +315,13 @@ void ApplicationsRegistRecordView::chooseDate(int idx)
     }
 }
 
+void ApplicationsRegistRecordView::changedApplicationName(const QString &applicationName)
+{
+    if(!transactionProxyModel)
+        return;
+    transactionProxyModel->setApplicationsNamePrefix(applicationName);
+}
+
 void ApplicationsRegistRecordView::changedApplicationId(const QString &applicationId)
 {
     if(!transactionProxyModel)
@@ -361,6 +382,7 @@ void ApplicationsRegistRecordView::exportClicked()
     if (model && model->haveWatchOnly())
         writer.addColumn(tr("Watch-only"), TransactionTableModel::WatchonlyRole);
     writer.addColumn(tr("Date"), 0, TransactionTableModel::DateRole);
+    writer.addColumn(tr("Application Name"), 0, TransactionTableModel::ApplicationsNameRole);
     writer.addColumn(tr("Application ID"), 0, TransactionTableModel::ApplicationsIdRole);
     writer.addColumn(tr("Label"), 0, TransactionTableModel::LabelRole);
     writer.addColumn(tr("Admin Address"), 0, TransactionTableModel::AddressRole);

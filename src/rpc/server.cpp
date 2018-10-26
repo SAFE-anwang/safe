@@ -499,7 +499,7 @@ static const CRPCCommand vRPCCommands[] =
     { "asset",              "destoryasset",           &destoryasset,                true  },
     { "asset",              "putcandy",               &putcandy,                    true  },
     { "asset",              "getassetinfo",           &getassetinfo,                true  },
-    { "asset",              "getlocalassetinfo",        &getlocalassetinfo,                true  },
+    { "asset",              "getlocalassetinfo",      &getlocalassetinfo,           true  },
     { "asset",              "getassetidtxids",        &getassetidtxids,             true  },
     { "asset",              "getaddrassettxids",      &getaddrassettxids,           true  },
     { "asset",              "getaddrassetbalance",    &getaddrassetbalance,         true  },
@@ -512,6 +512,8 @@ static const CRPCCommand vRPCCommands[] =
     { "asset",              "getaddresscandylist",    &getaddresscandylist,         true  },
     { "asset",              "getavailablecandylist",  &getavailablecandylist,       true  },
     { "asset",              "getlocalassetlist",      &getlocalassetlist,           true  },
+    { "asset",              "transfermanyasset",      &transfermanyasset,           true  },
+    { "asset",              "getassetlocaltxlist",    &getassetlocaltxlist,         true  },
 
 #endif // ENABLE_WALLET
 };

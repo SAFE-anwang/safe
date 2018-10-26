@@ -29,6 +29,9 @@ extern std::string g_strCancelledSafeAddress;
 extern std::string g_strCancelledAssetAddress;
 extern std::string g_strPutCandyAddress;
 
+extern int g_nStartAddamountHeight;
+extern CAmount g_nCriticalEffective;
+
 inline bool IsCriticalHeight(int nHeight) { return nHeight == g_nCriticalHeight; }
 
 inline bool IsLockedMonthRange(int nMonth) { return (nMonth >= 1 && nMonth <= 120); }

@@ -181,16 +181,16 @@ public:
     TransactionTableModel *getAssetsRegistTableModel();
     RecentRequestsTableModel *getRecentRequestsTableModel();
 
-    CAmount getBalance(const CCoinControl *coinControl = NULL,const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
-    CAmount getUnconfirmedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
-    CAmount getImmatureBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
-    CAmount getLockedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
-    CAmount getAnonymizedBalance() const;
+    CAmount getBalance(const CCoinControl *coinControl = NULL,const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
+    CAmount getUnconfirmedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
+    CAmount getImmatureBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
+    CAmount getLockedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
+    CAmount getAnonymizedBalance(bool bLock=true) const;
     bool haveWatchOnly() const;
-    CAmount getWatchBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
-    CAmount getWatchUnconfirmedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
-    CAmount getWatchImmatureBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
-    CAmount getWatchLockedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL) const;
+    CAmount getWatchBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
+    CAmount getWatchUnconfirmedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
+    CAmount getWatchImmatureBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
+    CAmount getWatchLockedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
     EncryptionStatus getEncryptionStatus() const;
 
     void getAssetsNames(bool needInMainChain,QStringList& lst);
@@ -303,15 +303,10 @@ private:
     int cachedNumBlocks;
     int cachedTxLocks;
     int cachedPrivateSendRounds;
-    QThread* updateConfirmThread;
-    UpdateConfirmWorker* updateConfirmWorker;
-
-
-    QTimer *pollTimer;
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
-    void checkBalanceChanged();
+    void checkBalanceChanged(bool copyTmp=false);
 
 Q_SIGNALS:
     // Signal that balance in wallet changed
@@ -351,7 +346,7 @@ public Q_SLOTS:
     void updateWatchOnlyFlag(bool fHaveWatchonly);
     /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
     void pollBalanceChanged();
-    void updateBalanceChanged();
+    void updateAllBalanceChanged(bool copyTmp=false);
 };
 
 class EncryptWorker: public QObject {
@@ -369,21 +364,6 @@ public Q_SLOTS:
 private:
     WalletModel *model;
     SecureString passphrase;
-};
-
-class UpdateConfirmWorker: public QObject {
-    Q_OBJECT
-public:
-    UpdateConfirmWorker(WalletModel *m) {model = m; }
-
-Q_SIGNALS:
-    void updateChange();
-
-public Q_SLOTS:
-    void updateConfirmChanged();
-
-private:
-    WalletModel *model;
 };
 
 #endif // BITCOIN_QT_WALLETMODEL_H

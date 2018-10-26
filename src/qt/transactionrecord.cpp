@@ -760,7 +760,7 @@ bool TransactionRecord::updateStatus(const CWalletTx &wtx)
     status.depth = wtx.GetDepthInMainChain();
     status.countsForBalance = wtx.IsTrusted() && !(wtx.GetBlocksToMaturity() > 0)&&status.depth>0;
     //first confirmed
-    if(lastDepth==0&&status.depth>0/*&&status.depth<RecommendedNumConfirmations*/){
+    if(lastDepth==0&&status.depth>0&&status.depth<RecommendedNumConfirmations*2){
         bFirstMoreThanOneConfirmed = true;
     }
     status.cur_num_blocks = chainActive.Height();

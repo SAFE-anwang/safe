@@ -46,9 +46,6 @@ void CInstantSend::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataSt
     if(fLiteMode) return; // disable all Safe specific functionality
     if(!sporkManager.IsSporkActive(SPORK_2_INSTANTSEND_ENABLED)) return;
 
-    // Ignore any InstantSend messages until masternode list is synced
-    if(!masternodeSync.IsMasternodeListSynced()) return;
-
     // NOTE: NetMsgType::TXLOCKREQUEST is handled via ProcessMessage() in main.cpp
 
     if (strCommand == NetMsgType::TXLOCKVOTE) // InstantSend Transaction Lock Consensus Votes
@@ -58,16 +55,20 @@ void CInstantSend::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataSt
         CTxLockVote vote;
         vRecv >> vote;
 
+
+        uint256 nVoteHash = vote.GetHash();
+
+        pfrom->setAskFor.erase(nVoteHash);
+
+        // Ignore any InstantSend messages until masternode list is synced
+        if(!masternodeSync.IsMasternodeListSynced()) return;
+
         LOCK(cs_main);
 #ifdef ENABLE_WALLET
         if (pwalletMain)
             LOCK(pwalletMain->cs_wallet);
 #endif
         LOCK(cs_instantsend);
-
-        uint256 nVoteHash = vote.GetHash();
-
-        pfrom->setAskFor.erase(nVoteHash);
 
         if(mapTxLockVotes.count(nVoteHash)) return;
         mapTxLockVotes.insert(std::make_pair(nVoteHash, vote));
@@ -116,15 +117,11 @@ bool CInstantSend::ProcessTxLockRequest(const CTxLockRequest& txLockRequest, CCo
     }
     LogPrintf("CInstantSend::ProcessTxLockRequest -- accepted, txid=%s\n", txHash.ToString());
 
-    std::map<uint256, CTxLockCandidate>::iterator itLockCandidate = mapTxLockCandidates.find(txHash);
-    CTxLockCandidate& txLockCandidate = itLockCandidate->second;
-    Vote(txLockCandidate, connman);
-    ProcessOrphanTxLockVotes(connman);
-
     // Masternodes will sometimes propagate votes before the transaction is known to the client.
     // If this just happened - lock inputs, resolve conflicting locks, update transaction status
     // forcing external script notification.
-    TryToFinalizeLockCandidate(txLockCandidate);
+    std::map<uint256, CTxLockCandidate>::iterator itLockCandidate = mapTxLockCandidates.find(txHash);
+    TryToFinalizeLockCandidate(itLockCandidate->second);
 
     return true;
 }
@@ -176,6 +173,18 @@ void CInstantSend::CreateEmptyTxLockCandidate(const uint256& txHash)
     mapTxLockCandidates.insert(std::make_pair(txHash, CTxLockCandidate(txLockRequest)));
 }
 
+void CInstantSend::Vote(const uint256& txHash, CConnman& connman)
+{
+    AssertLockHeld(cs_main);
+    LOCK(cs_instantsend);
+
+    std::map<uint256, CTxLockCandidate>::iterator itLockCandidate = mapTxLockCandidates.find(txHash);
+    if (itLockCandidate == mapTxLockCandidates.end()) return;
+    Vote(itLockCandidate->second, connman);
+    // Let's see if our vote changed smth
+    TryToFinalizeLockCandidate(itLockCandidate->second);
+}
+
 void CInstantSend::Vote(CTxLockCandidate& txLockCandidate, CConnman& connman)
 {
     if(!fMasterNode) return;
@@ -184,6 +193,8 @@ void CInstantSend::Vote(CTxLockCandidate& txLockCandidate, CConnman& connman)
     LOCK2(cs_main, cs_instantsend);
 
     uint256 txHash = txLockCandidate.GetHash();
+    // We should never vote on a Transaction Lock Request that was not (yet) accepted by the mempool
+    if(mapLockRequestAccepted.find(txHash) == mapLockRequestAccepted.end()) return;
     // check if we need to vote on this candidate's outpoints,
     // it's possible that we need to vote for several of them
     std::map<COutPoint, COutPointLock>::iterator itOutpointLock = txLockCandidate.mapOutPointLocks.begin();
@@ -935,17 +946,6 @@ bool CTxLockRequest::IsValid() const
     }
 
     CAmount nValueIn = 0;
-    CAmount nValueOut = 0;
-
-    BOOST_FOREACH(const CTxOut& txout, vout) {
-        // InstantSend supports normal scripts and unspendable (i.e. data) scripts.
-        // TODO: Look into other script types that are normal and can be included
-        if(!txout.scriptPubKey.IsNormalPaymentScript() && !txout.scriptPubKey.IsUnspendable()) {
-            LogPrint("instantsend", "CTxLockRequest::IsValid -- Invalid Script %s", ToString());
-            return false;
-        }
-        nValueOut += txout.nValue;
-    }
 
     BOOST_FOREACH(const CTxIn& txin, vin) {
 
@@ -975,6 +975,8 @@ bool CTxLockRequest::IsValid() const
         LogPrint("instantsend", "CTxLockRequest::IsValid -- Transaction value too high: nValueIn=%d, tx=%s", nValueIn, ToString());
         return false;
     }
+
+    CAmount nValueOut = GetValueOut();
 
     if(nValueIn - nValueOut < GetMinFee()) {
         LogPrint("instantsend", "CTxLockRequest::IsValid -- did not include enough fees in transaction: fees=%d, tx=%s", nValueOut - nValueIn, ToString());

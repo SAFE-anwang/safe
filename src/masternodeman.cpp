@@ -772,7 +772,6 @@ std::pair<CService, std::set<uint256> > CMasternodeMan::PopScheduledMnbRequestCo
 void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv, CConnman& connman)
 {
     if(fLiteMode) return; // disable all Safe specific functionality
-    if(!masternodeSync.IsBlockchainSynced()) return;
 
     if (strCommand == NetMsgType::MNANNOUNCE) { //Masternode Broadcast
 
@@ -780,6 +779,8 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         vRecv >> mnb;
 
         pfrom->setAskFor.erase(mnb.GetHash());
+
+        if(!masternodeSync.IsBlockchainSynced()) return;
 
         LogPrint("masternode", "MNANNOUNCE -- Masternode announce, masternode=%s\n", mnb.vin.prevout.ToStringShort());
 
@@ -803,6 +804,8 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         uint256 nHash = mnp.GetHash();
 
         pfrom->setAskFor.erase(nHash);
+
+        if(!masternodeSync.IsBlockchainSynced()) return;
 
         LogPrint("masternode", "MNPING -- Masternode ping, masternode=%s\n", mnp.vin.prevout.ToStringShort());
 
@@ -879,14 +882,15 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
             LogPrint("masternode", "DSEG -- Sending Masternode entry: masternode=%s  addr=%s\n", mnpair.first.ToStringShort(), mnpair.second.addr.ToString());
             CMasternodeBroadcast mnb = CMasternodeBroadcast(mnpair.second);
-            uint256 hash = mnb.GetHash();
-            pfrom->PushInventory(CInv(MSG_MASTERNODE_ANNOUNCE, hash));
-            pfrom->PushInventory(CInv(MSG_MASTERNODE_PING, mnpair.second.lastPing.GetHash()));
+            CMasternodePing mnp = mnpair.second.lastPing;
+            uint256 hashMNB = mnb.GetHash();
+            uint256 hashMNP = mnp.GetHash();
+            pfrom->PushInventory(CInv(MSG_MASTERNODE_ANNOUNCE, hashMNB));
+            pfrom->PushInventory(CInv(MSG_MASTERNODE_PING, hashMNP));
             nInvCount++;
 
-            if (!mapSeenMasternodeBroadcast.count(hash)) {
-                mapSeenMasternodeBroadcast.insert(std::make_pair(hash, std::make_pair(GetTime(), mnb)));
-            }
+            mapSeenMasternodeBroadcast.insert(std::make_pair(hashMNB, std::make_pair(GetTime(), mnb)));
+            mapSeenMasternodePing.insert(std::make_pair(hashMNP, mnp));
 
             if (vin.prevout == mnpair.first) {
                 LogPrintf("DSEG -- Sent 1 Masternode inv to peer %d\n", pfrom->id);
@@ -909,6 +913,10 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
         CMasternodeVerification mnv;
         vRecv >> mnv;
+
+        pfrom->setAskFor.erase(mnv.GetHash());
+
+        if(!masternodeSync.IsMasternodeListSynced()) return;
 
         if(mnv.vchSig1.empty()) {
             // CASE 1: someone asked me to verify myself /IP we are using/
@@ -1202,6 +1210,7 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
                     }
 
                     mWeAskedForVerification[pnode->addr] = mnv;
+                    mapSeenMasternodeVerification.insert(std::make_pair(mnv.GetHash(), mnv));
                     mnv.Relay();
 
                 } else {
@@ -1222,11 +1231,12 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
         // increase ban score for everyone else
         BOOST_FOREACH(CMasternode* pmn, vpMasternodesToBan) {
             pmn->IncreasePoSeBanScore();
-            LogPrint("masternode", "CMasternodeMan::ProcessVerifyBroadcast -- increased PoSe ban score for %s addr %s, new score %d\n",
+            LogPrint("masternode", "CMasternodeMan::ProcessVerifyReply -- increased PoSe ban score for %s addr %s, new score %d\n",
                         prealMasternode->vin.prevout.ToStringShort(), pnode->addr.ToString(), pmn->nPoSeBanScore);
         }
-        LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- PoSe score increased for %d fake masternodes, addr %s\n",
-                    (int)vpMasternodesToBan.size(), pnode->addr.ToString());
+        if(!vpMasternodesToBan.empty())
+            LogPrintf("CMasternodeMan::ProcessVerifyReply -- PoSe score increased for %d fake masternodes, addr %s\n",
+                        (int)vpMasternodesToBan.size(), pnode->addr.ToString());
     }
 }
 
@@ -1297,16 +1307,16 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
         }
 
         if(pmn1->addr != mnv.addr) {
-            LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- addr %s do not match %s\n", mnv.addr.ToString(), pnode->addr.ToString());
+            LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- addr %s does not match %s\n", mnv.addr.ToString(), pmn1->addr.ToString());
             return;
         }
 
-        if(CMessageSigner::VerifyMessage(pmn1->pubKeyMasternode, mnv.vchSig1, strMessage1, strError)) {
+        if(!CMessageSigner::VerifyMessage(pmn1->pubKeyMasternode, mnv.vchSig1, strMessage1, strError)) {
             LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- VerifyMessage() for masternode1 failed, error: %s\n", strError);
             return;
         }
 
-        if(CMessageSigner::VerifyMessage(pmn2->pubKeyMasternode, mnv.vchSig2, strMessage2, strError)) {
+        if(!CMessageSigner::VerifyMessage(pmn2->pubKeyMasternode, mnv.vchSig2, strMessage2, strError)) {
             LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- VerifyMessage() for masternode2 failed, error: %s\n", strError);
             return;
         }
@@ -1317,7 +1327,7 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
         mnv.Relay();
 
         LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- verified masternode %s for addr %s\n",
-                    pmn1->vin.prevout.ToStringShort(), pnode->addr.ToString());
+                    pmn1->vin.prevout.ToStringShort(), pmn1->addr.ToString());
 
         // increase ban score for everyone else with the same addr
         int nCount = 0;
@@ -1328,8 +1338,9 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
             LogPrint("masternode", "CMasternodeMan::ProcessVerifyBroadcast -- increased PoSe ban score for %s addr %s, new score %d\n",
                         mnpair.first.ToStringShort(), mnpair.second.addr.ToString(), mnpair.second.nPoSeBanScore);
         }
-        LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- PoSe score incresed for %d fake masternodes, addr %s\n",
-                    nCount, pnode->addr.ToString());
+        if(nCount)
+            LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- PoSe score increased for %d fake masternodes, addr %s\n",
+                        nCount, pmn1->addr.ToString());
     }
 }
 

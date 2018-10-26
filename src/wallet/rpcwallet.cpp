@@ -2924,8 +2924,8 @@ UniValue sendmanywithlock(const UniValue& params, bool fHelp)
             "\nResult:\n"
             "\"transactionid\"  (string) The locked transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("sendmanywithlock", "\"[{\\\"safeaddress\\\":\\\"myaddress\\\",\\\"amount\\\":0.1,\\\"month\\\":6}]\"")
-            + HelpExampleRpc("sendmanywithlock", "\"[{\\\"safeaddress\\\":\\\"myaddress\\\",\\\"amount\\\":0.1,\\\"month\\\":6}]\"")
+            + HelpExampleCli("sendmanywithlock", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"amount\\\":0.1,\\\"month\\\":6},{\\\"safeaddress\\\":\\\"XuQQkwA4FYkq2XERzMY2CiAZhJTEDAbtcg\\\",\\\"amount\\\":0.1,\\\"month\\\":6}]\"")
+            + HelpExampleRpc("sendmanywithlock", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"amount\\\":0.1,\\\"month\\\":6},{\\\"safeaddress\\\":\\\"XuQQkwA4FYkq2XERzMY2CiAZhJTEDAbtcg\\\",\\\"amount\\\":0.1,\\\"month\\\":6}]\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -2957,9 +2957,7 @@ UniValue sendmanywithlock(const UniValue& params, bool fHelp)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Safe address");
 
         const UniValue& vamount = find_value(o, "amount");
-        if (!vamount.isNum())
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing amount key");
-        CAmount nLockAmount = AmountFromValue(vamount.get_int());
+        CAmount nLockAmount = AmountFromValue(vamount);
         if (nLockAmount <= 0 || nLockAmount > MAX_MONEY)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid locked amount, minimum: 0.00000001 SAFE, maximum: 37000000 SAFE");
 

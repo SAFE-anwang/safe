@@ -192,6 +192,8 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         else retarget = DIFF_BTC;
     }
 
+    retarget = DIFF_BTC;
+
     // Bitcoin style retargeting
     if (retarget == DIFF_BTC)
     {

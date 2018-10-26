@@ -13,6 +13,8 @@
 #include "wallet/wallet.h"
 #include "main.h"
 #include "masternode-sync.h"
+#include <boost/regex.hpp>
+
 
 using namespace std;
 
@@ -53,8 +55,9 @@ UniValue registerapp(const UniValue& params, bool fHelp)
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
+    boost::regex regappname("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9\u4e00-\u9fa5 ]{1,50}");
     string strAppName = TrimString(params[0].get_str());
-    if(strAppName.empty() || strAppName.size() > MAX_APPNAME_SIZE)
+    if(strAppName.empty() || strAppName.size() > MAX_APPNAME_SIZE || !boost::regex_match(strAppName, regappname))
         throw JSONRPCError(INVALID_APPNAME_SIZE, "Invalid app name");
 
     if(IsKeyWord(strAppName))
@@ -86,16 +89,17 @@ UniValue registerapp(const UniValue& params, bool fHelp)
         if(params.size() != 7)
             throw JSONRPCError(RPC_INVALID_PARAMS, "Need more company information");
 
+        boost::regex regurl("^((http[s]?):\\/\\/)[\\s\\S]+");
         strWebUrl = TrimString(params[4].get_str());
-        if(strWebUrl.empty() || strWebUrl.size() > MAX_WEBURL_SIZE || !IsValidUrl(strWebUrl))
+        if(strWebUrl.empty() || strWebUrl.size() > MAX_WEBURL_SIZE || !boost::regex_match(strWebUrl, regurl))
             throw JSONRPCError(INVALID_WEBURL_SIZE, "Invalid web url");
 
         strLogoUrl = TrimString(params[5].get_str());
-        if(strLogoUrl.empty() || strLogoUrl.size() > MAX_LOGOURL_SIZE || !IsValidUrl(strLogoUrl))
+        if(strLogoUrl.empty() || strLogoUrl.size() > MAX_LOGOURL_SIZE || !boost::regex_match(strLogoUrl, regurl))
             throw JSONRPCError(INVALID_LOGOURL_SIZE, "Invalid app logo url");
 
         strCoverUrl = TrimString(params[6].get_str());
-        if(strCoverUrl.empty() || strCoverUrl.size() > MAX_COVERURL_SIZE || !IsValidUrl(strCoverUrl))
+        if(strCoverUrl.empty() || strCoverUrl.size() > MAX_COVERURL_SIZE || !boost::regex_match(strCoverUrl, regurl))
             throw JSONRPCError(INVALID_COVERURL_SIZE, "Invalid app cover url");
     }
 

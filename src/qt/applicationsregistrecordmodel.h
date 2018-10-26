@@ -15,8 +15,9 @@ public:
         ApplicationsRegistColumnStatus = 0,
         ApplicationsRegistColumnWatchonly = 1,
         ApplicationsRegistColumnDate = 2,
-        ApplicationsRegistColumnApplicationId=3,
-        ApplicationsRegistColumnManagerAddress=4
+        ApplicationsRegistColumnApplicationName=3,
+        ApplicationsRegistColumnApplicationId=4,
+        ApplicationsRegistColumnManagerAddress=5
     };
 
     virtual QVariant data(const QModelIndex &index, int role) const;

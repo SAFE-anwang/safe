@@ -80,7 +80,7 @@ const QString BitcoinGUI::DEFAULT_WALLET = "~Default";
 #define BORDER_SIZE     1
 
 BitcoinGUI::BitcoinGUI(const PlatformStyle *platformStyle, const NetworkStyle *networkStyle, QWidget *parent) :
-    FramelessWidget(parent),
+    QMainWindow(parent),
     clientModel(0),
     walletFrame(0),
     labelCopyRight(0),
@@ -134,7 +134,7 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *platformStyle, const NetworkStyle *n
     spinnerFrame(0),
     platformStyle(platformStyle)
 {
-    //setWindowFlags(Qt::FramelessWindowHint | Qt::WindowMinimizeButtonHint);
+    setWindowFlags(Qt::FramelessWindowHint | Qt::WindowMinimizeButtonHint);
     /* Open CSS when configured */
     this->setStyleSheet(GUIUtil::loadStyleSheet());
 
@@ -290,6 +290,9 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *platformStyle, const NetworkStyle *n
     }
     setMouseTracking(true);
 #endif
+    if (QApplication::desktop()->screenGeometry().width() < this->width() ||
+            QApplication::desktop()->screenGeometry().height() < this->height())
+        titlebar->setFullScreen();
 }
 
 BitcoinGUI::~BitcoinGUI()
@@ -593,7 +596,7 @@ void BitcoinGUI::createActions()
 void BitcoinGUI::createTitleBar()
 {
     titlebar = new TitleBar(this);
-    titlebar->setContent(tr("Safe Core") + "-" + tr("Wallet"));
+    titlebar->setContent(tr("Safe Core") + "-" + tr("Wallet (v2.1.0 Safe_Dev2)"));
     titlebar->setButtonType(MIN_MAX_BUTTON);
     titlebar->setWidth(this->width() - 2 * BORDER_SIZE);
     titlebar->setBorderWidth(2 * BORDER_SIZE);
@@ -1766,7 +1769,7 @@ void BitcoinGUI::onRestoreButtonClicked()
     titlebar->getRestoreInfo(windowPos, windowSize);
     this->setFixedSize(windowSize);
     this->move(windowPos);
-    bMaximum = false;
+//    bMaximum = false;
 }
 
 void BitcoinGUI::onMaxButtonClicked()
@@ -1780,7 +1783,7 @@ void BitcoinGUI::onMaxButtonClicked()
 
     this->setFixedSize(windowSize);
     this->move(windowPos);
-    bMaximum = true;
+//    bMaximum = true;
 }
 
 void BitcoinGUI::onCloseButtonClicked()

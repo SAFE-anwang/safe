@@ -164,7 +164,9 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "getapptxids", 1},
     { "getapptxids", 2},
     { "getaddressamountbyheight", 0},
-    { "sendmanywithlock", 0 },
+    { "sendmanywithlock", 0},
+    { "transfermanyasset", 1},
+    { "getassetlocaltxlist", 1},
 };
 
 class CRPCConvertTable

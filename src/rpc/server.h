@@ -338,6 +338,8 @@ extern UniValue getallcandyheight(const UniValue& params, bool fHelp);
 extern UniValue getaddresscandylist(const UniValue& params, bool fHelp);
 extern UniValue getavailablecandylist(const UniValue& params, bool fHelp);
 extern UniValue getlocalassetlist(const UniValue& params, bool fHelp);
+extern UniValue transfermanyasset(const UniValue& params, bool fHelp);
+extern UniValue getassetlocaltxlist(const UniValue& params, bool fHelp);
 
 
 
