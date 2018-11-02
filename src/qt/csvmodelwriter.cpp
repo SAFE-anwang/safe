@@ -71,9 +71,10 @@ bool CSVModelWriter::write()
     writeNewline(out);
 
     // Data rows
+    int columnSize = columns.size();
     for(int j=0; j<numRows; ++j)
     {
-        for(int i=0; i<columns.size(); ++i)
+        for(int i=0; i<columnSize; ++i)
         {
             if(i!=0)
             {

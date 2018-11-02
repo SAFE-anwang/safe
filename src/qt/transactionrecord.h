@@ -125,14 +125,14 @@ public:
     TransactionRecord():
         hash(), time(0), type(Other), address(""), debit(0), assetDebit(0),credit(0),assetCredit(0),bSAFETransaction(true),bLocked(false), nLockedAmount(0),nLastLockStatus(false),nUnlockedHeight(0)
         ,bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),appHeader(),bIssueAsset(false),transferSafeData()
-        ,bForbidDash(false),idx(0)
+        ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth("")
     {
     }
 
     TransactionRecord(uint256 hash, qint64 time):
             hash(hash), time(time), type(Other), address(""), debit(0),assetDebit(0),credit(0),assetCredit(0),bSAFETransaction(true), bLocked(false), nLockedAmount(0),nLastLockStatus(false),nUnlockedHeight(0)
             ,bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),appHeader(),bIssueAsset(false),transferSafeData()
-            ,bForbidDash(false),idx(0)
+            ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth("")
     {
     }
 
@@ -141,7 +141,7 @@ public:
                 const CAmount& debit, const CAmount& credit):
             hash(hash), time(time), type(type), address(address), debit(debit), assetDebit(0),credit(credit),assetCredit(0),bSAFETransaction(true),bLocked(false), nLockedAmount(0),nLastLockStatus(false)
             ,nUnlockedHeight(0),bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),bIssueAsset(false),appHeader(),transferSafeData()
-            ,bForbidDash(false),idx(0)
+            ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth("")
     {
     }
 
@@ -195,6 +195,9 @@ public:
     /** Subtransaction index, for sort key */
     int idx;
 
+    int64_t nTxHeight;
+    QString strLockedMonth;
+
     /** Status: can change with block chain update */
     TransactionStatus status;
 
@@ -214,6 +217,8 @@ public:
     /** Return whether a status update is needed.
      */
     bool statusUpdateNeeded();
+
+    void updateLockedMonth();
 };
 
 #endif // BITCOIN_QT_TRANSACTIONRECORD_H

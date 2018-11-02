@@ -15,6 +15,7 @@
 #include "instantx.h"
 #include "privatesend.h"
 #include "app/app.h"
+#include "main.h"
 
 #include <stdint.h>
 #include <vector>
@@ -253,6 +254,7 @@ void TransactionRecord::decomposeToMe(const CWallet *wallet, const CWalletTx &wt
     }
     else if(showType==SHOW_LOCKED_TX)
     {
+        int nTxHeight = GetTxHeight(wtx.GetHash());
         for(unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
         {
             const CTxOut& txout = wtx.vout[nOut];
@@ -290,6 +292,8 @@ void TransactionRecord::decomposeToMe(const CWallet *wallet, const CWalletTx &wt
                 sub.bLocked = true;
                 sub.nLockedAmount = txout.nValue;
                 sub.nUnlockedHeight = txout.nUnlockedHeight;
+                sub.nTxHeight = nTxHeight;
+                sub.updateLockedMonth();
                 if(getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,nAssetDebit,getAddress))
                     parts.append(sub);
                 else if(sub.bSAFETransaction)
@@ -445,6 +449,7 @@ void TransactionRecord::decomposeFromMeToMe(const CWallet *wallet, const CWallet
     {
         if(mapValue["DS"] != "1")
         {
+            int nTxHeight = GetTxHeight(wtx.GetHash());
             for(unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
             {
                 const CTxOut& txout = wtx.vout[nOut];
@@ -455,6 +460,8 @@ void TransactionRecord::decomposeFromMeToMe(const CWallet *wallet, const CWallet
                 sub.bLocked = true;
                 sub.nLockedAmount = txout.nValue;
                 sub.nUnlockedHeight = txout.nUnlockedHeight;
+                sub.nTxHeight = nTxHeight;
+                sub.updateLockedMonth();
                 CAmount assetDebit = -nAssetDebit;
                 if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
                     sub.bForbidDash = true;
@@ -555,6 +562,7 @@ void TransactionRecord::decomposeFromMe(const CWallet *wallet, const CWalletTx &
     {
         if(mapValue["DS"] != "1")
         {
+            int nTxHeight = GetTxHeight(wtx.GetHash());
             for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
             {
                 const CTxOut& txout = wtx.vout[nOut];
@@ -593,6 +601,8 @@ void TransactionRecord::decomposeFromMe(const CWallet *wallet, const CWalletTx &
                 sub.bLocked = true;
                 sub.nLockedAmount = txout.nValue;
                 sub.nUnlockedHeight = txout.nUnlockedHeight;
+                sub.nTxHeight = nTxHeight;
+                sub.updateLockedMonth();
                 if(getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,assetDebit))
                     parts.append(sub);
                 else if(sub.bSAFETransaction)
@@ -760,7 +770,7 @@ bool TransactionRecord::updateStatus(const CWalletTx &wtx)
     status.depth = wtx.GetDepthInMainChain();
     status.countsForBalance = wtx.IsTrusted() && !(wtx.GetBlocksToMaturity() > 0)&&status.depth>0;
     //first confirmed
-    if(lastDepth==0&&status.depth>0/*&&status.depth<RecommendedNumConfirmations*/){
+    if(lastDepth==0&&status.depth>0&&status.depth<RecommendedNumConfirmations*2){
         bFirstMoreThanOneConfirmed = true;
     }
     status.cur_num_blocks = chainActive.Height();
@@ -859,5 +869,17 @@ QString TransactionRecord::getTxID() const
 QString TransactionRecord::formatSubTxId(const uint256 &hash, int vout)
 {
     return QString::fromStdString(hash.ToString() + strprintf("-%03d", vout));
+}
+
+void TransactionRecord::updateLockedMonth()
+{
+    if(nUnlockedHeight > 0)
+    {
+        int m1 = (nUnlockedHeight - nTxHeight) / BLOCKS_PER_MONTH;
+        int m2 = (nUnlockedHeight - nTxHeight) % BLOCKS_PER_MONTH;
+        if(m2 != 0)
+            m1++;
+        strLockedMonth = QString::number(m1);
+    }
 }
 
