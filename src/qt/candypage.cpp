@@ -509,7 +509,9 @@ void CandyPage::getCandy()
         {
             AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
             dlg.setModel(model);
-            dlg.exec();
+            int iresult = dlg.exec();
+            if (iresult == 0)
+                return;
             isUnlockByGlobal = true;
         }
         getCandy(btn);
