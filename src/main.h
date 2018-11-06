@@ -48,7 +48,12 @@ int GetTxHeight(const uint256& txHash, uint256* pBlockHash = NULL);
 
 bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout);
 
+bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout);
+
 int GetLockedMonth(const uint256& txHash, const CTxOut& txout);
+
+int GetLockedMonthByHeight(const int& nheight, const CTxOut& txout);
+
 
 CAmount GetCancelledAmount(const int& nHeight);
 

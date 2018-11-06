@@ -3121,6 +3121,13 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
             if(pcoin->IsForbid())
                 continue;
 
+            //only for test
+            int nBlockHeight = g_nChainHeight + 1;
+			if (nDepth > 0)
+			{
+				nBlockHeight = g_nChainHeight - nDepth + 1;
+			}
+
             // do not use IX for inputs that have less then INSTANTSEND_CONFIRMATIONS_REQUIRED blockchain confirmations
             if (fUseInstantSend && nDepth < INSTANTSEND_CONFIRMATIONS_REQUIRED)
                 continue;
@@ -3144,7 +3151,8 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
             }
 
             for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
-                if(!fContainLockedTxOut && IsLockedTxOut(wtxid, pcoin->vout[i]) && nCoinType != ONLY_1000)
+                //if(!fContainLockedTxOut && IsLockedTxOut(wtxid, pcoin->vout[i]) && nCoinType != ONLY_1000)
+                if(!fContainLockedTxOut && IsLockedTxOutByHeight(nBlockHeight, pcoin->vout[i]) && nCoinType != ONLY_1000)
                     continue;
 
                 if((fAsset && !pcoin->vout[i].IsAsset()) || (!fAsset && pcoin->vout[i].IsAsset()))
@@ -3206,13 +3214,16 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
                 if(nCoinType == ONLY_DENOMINATED) {
                     found = IsDenominatedAmount(pcoin->vout[i].nValue);
                 } else if(nCoinType == ONLY_NOT1000IFMN) {
-                    found = !(fMasterNode && pcoin->vout[i].nValue == 1000*COIN && GetLockedMonth(wtxid, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH);
+                    //found = !(fMasterNode && pcoin->vout[i].nValue == 1000*COIN && GetLockedMonth(wtxid, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH);
+                    found = !(fMasterNode && pcoin->vout[i].nValue == 1000*COIN && GetLockedMonthByHeight(nBlockHeight, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH);
                 } else if(nCoinType == ONLY_NONDENOMINATED_NOT1000IFMN) {
                     if (IsCollateralAmount(pcoin->vout[i].nValue)) continue; // do not use collateral amounts
                     found = !IsDenominatedAmount(pcoin->vout[i].nValue);
-                    if(found && fMasterNode) found = !(pcoin->vout[i].nValue == 1000*COIN && GetLockedMonth(wtxid, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH); // do not use Hot MN funds
+                    //if(found && fMasterNode) found = !(pcoin->vout[i].nValue == 1000*COIN && GetLockedMonth(wtxid, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH); // do not use Hot MN funds
+                    if(found && fMasterNode) found = !(pcoin->vout[i].nValue == 1000*COIN && GetLockedMonthByHeight(nBlockHeight, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH); // do not use Hot MN funds
                 } else if(nCoinType == ONLY_1000) {
-                    found = (pcoin->vout[i].nValue == 1000*COIN && GetLockedMonth(wtxid, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH);
+                    //found = (pcoin->vout[i].nValue == 1000*COIN && GetLockedMonth(wtxid, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH);
+                    found = (pcoin->vout[i].nValue == 1000*COIN && GetLockedMonthByHeight(nBlockHeight, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH);
                 } else if(nCoinType == ONLY_PRIVATESEND_COLLATERAL) {
                     found = IsCollateralAmount(pcoin->vout[i].nValue);
                 } else {
