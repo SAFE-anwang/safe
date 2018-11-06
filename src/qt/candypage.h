@@ -56,6 +56,9 @@ private:
     void updateCurrentPage();
     void eraseCandy(int rowNum);
 
+Q_SIGNALS:
+    void stopThread();
+
 public Q_SLOTS:
     void handlerGetCandyResult(const bool result, const QString errorStr, const int rowNum, const CAmount nFeeRequired);
 
@@ -101,7 +104,7 @@ private:
     int nPageCount;
     int nCurrPage;
     std::vector<CCandy_BlockTime_Info> tmpAllCandyInfoVec;
-    QThread getCandyThread;
+    QThread* getCandyThread;
     GetCandyWorker *candyWorker;
     QMessageBox *msgbox;
 

@@ -327,6 +327,7 @@ void ThreadUpdateBalanceChanged(BitcoinApplication* app)
     RenameThread("updateBalanceChangedThread");
     while(true)
     {
+        boost::this_thread::interruption_point();
         WalletModel* wm = app->getWalletModel();
         if(wm!=NULL)
             wm->updateAllBalanceChanged(true);
