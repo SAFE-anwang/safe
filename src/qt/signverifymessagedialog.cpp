@@ -32,6 +32,9 @@ SignVerifyMessageDialog::SignVerifyMessageDialog(const PlatformStyle *platformSt
 
 #if QT_VERSION >= 0x040700
     ui->signatureOut_SM->setPlaceholderText(tr("Click \"Sign Message\" to generate signature"));
+    ui->messageIn_SM->setPlaceholderText(tr("Message to be signed"));
+    ui->messageIn_VM->setPlaceholderText(tr("Input message"));
+    ui->signatureIn_VM->setPlaceholderText(tr("Input signature"));
 #endif
 
     QString theme = GUIUtil::getThemeName();

@@ -7,31 +7,102 @@
     <x>0</x>
     <y>0</y>
     <width>491</width>
-    <height>302</height>
+    <height>323</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_4">
+  <layout class="QGridLayout" name="gridLayout_5">
+   <item row="1" column="0">
+    <layout class="QGridLayout" name="gridLayout_3">
+     <item row="0" column="1">
+      <widget class="QPushButton" name="registerButton">
+       <property name="text">
+        <string>Register</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <spacer name="horizontalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="0" column="0">
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>78</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
    <item row="0" column="0">
     <layout class="QGridLayout" name="gridLayout_2">
-     <item row="0" column="0">
-      <widget class="QLabel" name="label">
+     <item row="4" column="1">
+      <widget class="QLineEdit" name="logoURLEdit"/>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="logoURLLabel">
        <property name="text">
-        <string>Application Name:</string>
+        <string>Application Logo URL:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLineEdit" name="coverURLEdit">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="QLabel" name="companyNameLabel">
+         <property name="text">
+          <string>Company Name:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="personalNameLabel">
+         <property name="text">
+          <string>Personal Name:</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="urlEdit"/>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="devNameEdit"/>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="coverURLLabel">
+       <property name="text">
+        <string>Application Cover URL:</string>
        </property>
       </widget>
      </item>
      <item row="0" column="1">
       <widget class="QLineEdit" name="applicationNameEdit"/>
-     </item>
-     <item row="0" column="2">
-      <widget class="QPushButton" name="detectExistButton">
-       <property name="text">
-        <string>Detect exist</string>
-       </property>
-      </widget>
      </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_6">
@@ -54,60 +125,8 @@
        </item>
       </widget>
      </item>
-     <item row="2" column="0">
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="0" column="0">
-        <widget class="QLabel" name="companyNameLabel">
-         <property name="text">
-          <string>Company Name:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="personalNameLabel">
-         <property name="text">
-          <string>Personal Name:</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="devNameEdit"/>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="urlLabel">
-       <property name="text">
-        <string>Official URL:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="1">
-      <widget class="QLineEdit" name="urlEdit"/>
-     </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="logoURLLabel">
-       <property name="text">
-        <string>Application Logo URL:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="1">
-      <widget class="QLineEdit" name="logoURLEdit"/>
-     </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="coverURLLabel">
-       <property name="text">
-        <string>Application Cover URL:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QLineEdit" name="coverURLEdit">
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
+     <item row="6" column="1">
+      <widget class="QLineEdit" name="applicationDescEdit"/>
      </item>
      <item row="6" column="0">
       <widget class="QLabel" name="label_5">
@@ -116,15 +135,52 @@
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
-      <widget class="QLineEdit" name="applicationDescEdit"/>
+     <item row="3" column="0">
+      <widget class="QLabel" name="urlLabel">
+       <property name="text">
+        <string>Official URL:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Application Name:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="detectExistButton">
+       <property name="text">
+        <string>Detect exist</string>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
-   <item row="1" column="0">
-    <layout class="QGridLayout" name="gridLayout_3">
+   <item row="2" column="0">
+    <layout class="QGridLayout" name="gridLayout_4">
+     <property name="topMargin">
+      <number>15</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <item row="0" column="2">
+      <spacer name="horizontalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
      <item row="0" column="0">
-      <spacer name="horizontalSpacer">
+      <spacer name="horizontalSpacer_2">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -136,25 +192,36 @@
        </property>
       </spacer>
      </item>
-     <item row="0" column="1">
-      <widget class="QPushButton" name="registerButton">
-       <property name="text">
-        <string>Register</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="2">
-      <spacer name="horizontalSpacer_4">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
+     <item row="0" column="1" alignment="Qt::AlignHCenter">
+      <widget class="QLabel" name="registerHelp">
+       <property name="minimumSize">
         <size>
-         <width>40</width>
-         <height>20</height>
+         <width>86</width>
+         <height>0</height>
         </size>
        </property>
-      </spacer>
+       <property name="maximumSize">
+        <size>
+         <width>400</width>
+         <height>21</height>
+        </size>
+       </property>
+       <property name="baseSize">
+        <size>
+         <width>86</width>
+         <height>200</height>
+        </size>
+       </property>
+       <property name="lineWidth">
+        <number>0</number>
+       </property>
+       <property name="text">
+        <string>registerHelp</string>
+       </property>
+       <property name="margin">
+        <number>-1</number>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>

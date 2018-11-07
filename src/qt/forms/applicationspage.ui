@@ -21,7 +21,7 @@
      </property>
      <widget class="QWidget" name="tabDistribute">
       <attribute name="title">
-       <string>Applications Regist</string>
+       <string>Regist</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_3">
        <item row="0" column="0">
@@ -85,98 +85,10 @@
        <string>Regist Record</string>
       </attribute>
      </widget>
-     <widget class="QWidget" name="tabAppInstruction">
-      <attribute name="title">
-       <string>Application instructions</string>
-      </attribute>
-      <layout class="QGridLayout" name="gridLayout_5">
-       <item row="0" column="0">
-        <widget class="QFrame" name="frame">
-         <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Raised</enum>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_4">
-          <item row="0" column="0">
-           <layout class="QHBoxLayout" name="horizontalLayout">
-            <item>
-             <layout class="QVBoxLayout" name="verticalLayout_2">
-              <item>
-               <widget class="QLabel" name="label_step_1">
-                <property name="text">
-                 <string>1)The first step is to register the application through the &quot;Applications Register&quot; interface. After successful, query the application ID through &quot;Regist Record&quot;, as shown below.</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="picture">
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="pixmap">
-                 <pixmap resource="../safe.qrc">:/images/light/regist_record</pixmap>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                </property>
-                <property name="margin">
-                 <number>0</number>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="label_step_2">
-                <property name="text">
-                 <string>2)The second step is to set the permissions for the users in the application, and set them through RPC interface setappauth. For the specific use method, refer to the RPC interface document of the security network;</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="label_step_3">
-                <property name="text">
-                 <string>3)The third step is to write the application data to the Safe Core, and write the data through the RPC interface createextenddatatx. The specific usage method refers to the RPC interface document of the Safe Core;</string>
-                </property>
-                <property name="wordWrap">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </item>
-          <item row="1" column="0">
-           <spacer name="verticalSpacer_2">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>317</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </widget>
-       </item>
-      </layout>
-     </widget>
     </widget>
    </item>
   </layout>
  </widget>
- <resources>
-  <include location="../safe.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>
