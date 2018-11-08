@@ -50,6 +50,7 @@ ApplicationsRegistry::ApplicationsRegistry(ApplicationsPage *applicationPage):
     ui->coverURLEdit->setMaxLength(MAX_COVERURL_SIZE);
     ui->applicationDescEdit->setMaxLength(MAX_APPDESC_SIZE);
     ui->devTypeComboBox->setStyleSheet("QComboBox{font-size:12px;}");
+    ui->registerHelp->setOpenExternalLinks(true);
     ui->registerHelp->setText(tr("* Application Use Reference <a href=https://www.anwang.com/download/API.pdf>Safe3 Application Protocol</a>"));
     ui->registerHelp->setWordWrap(false);
 
