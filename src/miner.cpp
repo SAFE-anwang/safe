@@ -468,7 +468,8 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                     {
                         {
                             srand((unsigned int)time(NULL));
-                            int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", 24)) * 1000;
+                            //int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", 24)) * 1000;
+                            int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", chainparams.GetConsensus().nPowTargetSpacing)) * 1000;
                             MilliSleep(nTime);
                         }
                         // Found a solution

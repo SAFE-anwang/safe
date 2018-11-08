@@ -141,10 +141,14 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0x000d8b21044326f9b58110404510ce2b4ee30af5d97dd7de30d551c34dfdc9a2"));
         assert(genesis.hashMerkleRoot == uint256S("0xe0028eb9648db56b1ac77cf090b99048a8007e2bb64b68f092c03c7f56a662c7"));
 
-        vSeeds.push_back(CDNSSeedData("47.74.249.6", "47.74.249.6"));
-        vSeeds.push_back(CDNSSeedData("47.74.249.237", "47.74.249.237"));
-        vSeeds.push_back(CDNSSeedData("47.74.245.187", "47.74.245.187"));
-        vSeeds.push_back(CDNSSeedData("47.74.249.150", "47.74.249.150"));
+        vSeeds.push_back(CDNSSeedData("123.207.33.176", "123.207.33.176"));
+        vSeeds.push_back(CDNSSeedData("115.159.235.177", "115.159.235.177"));
+        vSeeds.push_back(CDNSSeedData("123.206.90.90", "123.206.90.90"));
+        vSeeds.push_back(CDNSSeedData("119.29.66.245", "119.29.66.245"));
+        vSeeds.push_back(CDNSSeedData("119.29.216.77", "119.29.216.77"));
+        vSeeds.push_back(CDNSSeedData("119.29.161.75", "119.29.161.75"));
+        vSeeds.push_back(CDNSSeedData("119.29.99.238", "119.29.99.238"));
+        vSeeds.push_back(CDNSSeedData("119.29.220.213", "119.29.220.213"));
 
         // Safe addresses start with 'X'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,76);
