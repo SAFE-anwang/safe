@@ -1163,8 +1163,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             vRecv >> LIMITED_STRING(strSubVer, MAX_SUBVERSION_LENGTH);
         }
 
-
-        if(strSubVer=="/Safe Core:1.0.0/"||strSubVer=="/Safe Core:1.0.1/")
+        if(strSubVer.find("Safe Core:1.0.0")!=string::npos||strSubVer.find("Safe Core:1.0.1")!=string::npos)
         {
             // disconnect from peers older
             LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
