@@ -5012,7 +5012,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Click &quot;Sign Message&quot; to generate signature</source>
-        <translation>单击&quot;签名消息&quot;产生签名。</translation>
+        <translation>单击&quot;消息签名&quot;产生签名。</translation>
     </message>
     <message>
         <source>Message to be signed</source>
