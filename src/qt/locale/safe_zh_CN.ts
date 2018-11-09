@@ -382,7 +382,7 @@
     </message>
     <message>
         <source>  A&amp;pplications</source>
-        <translation>  应用(&amp;P)</translation>
+        <translation>  应用注册(&amp;P)</translation>
     </message>
     <message>
         <source>  &amp;Candy</source>
@@ -4992,7 +4992,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Enter the receiver&apos;s address, message (ensure you copy line breaks, spaces, tabs, etc. exactly) and signature below to verify the message. Be careful not to read more into the signature than what is in the signed message itself, to avoid being tricked by a man-in-the-middle attack. Note that this only proves the signing party receives with the address, it cannot prove sendership of any transaction!</source>
-        <translation>请输入接收地址，消息(请确定完整复制了所包含的换行，空格，跳位符号等)，以及签名来验证消息。请注意，除了消息外，不要对签名本身过度解读，以避免诈骗。此验证仅证明前名方接收地址，不用于证明任何交易的发送人！</translation>
+        <translation>请输入接收地址，消息(请确定完整复制了所包含的换行，空格，跳位符号等)，以及签名来验证消息。请注意，除了消息外，不要对签名本身过度解读，以避免诈骗。此验证仅证明签名方接收地址，不用于证明任何交易的发送人！</translation>
     </message>
     <message>
         <source>The Safe address the message was signed with</source>

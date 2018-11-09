@@ -382,7 +382,7 @@
     </message>
     <message>
         <source>  A&amp;pplications</source>
-        <translation>  應用(&amp;P)</translation>
+        <translation>  應用註冊(&amp;P)</translation>
     </message>
     <message>
         <source>  &amp;Candy</source>
