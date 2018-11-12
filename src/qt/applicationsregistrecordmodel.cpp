@@ -11,6 +11,7 @@ static int column_alignments_for_applications_regist[] = {
         Qt::AlignLeft|Qt::AlignVCenter, /* watchonly */
         Qt::AlignLeft|Qt::AlignVCenter, /* date */
         Qt::AlignLeft|Qt::AlignVCenter, /* application name */
+        Qt::AlignLeft|Qt::AlignVCenter, /* application id */
         Qt::AlignLeft|Qt::AlignVCenter, /* manager address */
     };
 
