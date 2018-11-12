@@ -1949,7 +1949,7 @@ min-width:400px;
 
 QWidget#ApplicationsRegistry .QLabel {
 qproperty-alignment: 'AlignVCenter | AlignRight';
-min-width:160px;*/
+min-width:160px;
 /*min-height:27px;*/
 font-size:12px;
 background-color:none;
