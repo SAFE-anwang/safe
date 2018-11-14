@@ -58,12 +58,11 @@ CandyPage::CandyPage():
     connect(ui->expireLineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(handlerExpireLineEditTextChange(const QString &)));
     connect(ui->assetsComboBox,SIGNAL(currentTextChanged(QString)),this,SLOT(updateCandyInfo(QString)));
     ui->candyRatioSlider->initSlider(1,100,20);
-    sliderFixedHeight = 15;
+    sliderFixedHeight = 10;
     nPageCount = nCandyPageCount;
     nCurrPage = 1;
     ui->spinBox->setValue(1);
     ui->candyRatioSlider->initLabel(sliderFixedHeight);
-    ui->candyRatioSlider->setSize(400,50);
     ui->labelTotal->setVisible(false);
     isUnlockByGlobal = false;
 
