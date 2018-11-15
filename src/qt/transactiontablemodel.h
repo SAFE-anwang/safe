@@ -148,6 +148,8 @@ public:
     QList<TransactionRecord>& getTransactionRecord();
     QMap<QString,AssetsDisplayInfo>& getAssetsNamesUnits();
     void emitUpdateAsset(bool updateAll,bool bConfirmedNewAssets,const QString& strAssetName);
+    void setUpdatingWallet(bool updatingWallet);
+    bool getUpdatingWallet();
 
 private:
     CWallet* wallet;
@@ -160,6 +162,7 @@ private:
     int columnStatus;
     int columnToAddress;
     int columnAmount;
+    bool fUpdatingWallet;
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
