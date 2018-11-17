@@ -2111,6 +2111,7 @@ CAmount CWalletTx::GetLockedCredit(const bool fAsset, const uint256* pAssetId, c
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
+    int txHeight = GetTxHeight(hashTx);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         if (pwallet->IsSpent(hashTx, i))
@@ -2126,7 +2127,7 @@ CAmount CWalletTx::GetLockedCredit(const bool fAsset, const uint256* pAssetId, c
                 continue;
         }
 
-        if(!IsLockedTxOut(hashTx, txout)) // unlocked txout
+        if(!IsLockedTxOutByHeight(txHeight,txout)) // unlocked txout
             continue;
 
         if((fAsset && !txout.IsAsset()) || (!fAsset && txout.IsAsset()))
@@ -2207,6 +2208,7 @@ CAmount CWalletTx::GetAvailableCredit(const bool fAsset, const uint256* pAssetId
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
+    int txHeight = GetTxHeight(hashTx);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         if (pwallet->IsSpent(hashTx, i))
@@ -2222,7 +2224,7 @@ CAmount CWalletTx::GetAvailableCredit(const bool fAsset, const uint256* pAssetId
                 continue;
         }
 
-        if(IsLockedTxOut(hashTx, txout)) // locked txout
+        if(IsLockedTxOutByHeight(txHeight,txout)) // locked txout
             continue;
 
         if((fAsset && !txout.IsAsset()) || (!fAsset && txout.IsAsset()))
@@ -2310,6 +2312,7 @@ CAmount CWalletTx::GetLockedWatchOnlyCredit(const bool fAsset, const uint256* pA
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
+    int txHeight = GetTxHeight(hashTx);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         if (pwallet->IsSpent(hashTx, i))
@@ -2325,7 +2328,7 @@ CAmount CWalletTx::GetLockedWatchOnlyCredit(const bool fAsset, const uint256* pA
                 continue;
         }
 
-        if(!IsLockedTxOut(hashTx, txout)) // unlocked txout
+        if(!IsLockedTxOutByHeight(txHeight,txout)) // unlocked txout
             continue;
 
         if((fAsset && !txout.IsAsset()) || (!fAsset && txout.IsAsset()))
@@ -2406,6 +2409,7 @@ CAmount CWalletTx::GetAvailableWatchOnlyCredit(const bool fAsset, const uint256*
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
+    int txHeight = GetTxHeight(hashTx);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         if (pwallet->IsSpent(hashTx, i))
@@ -2421,7 +2425,7 @@ CAmount CWalletTx::GetAvailableWatchOnlyCredit(const bool fAsset, const uint256*
                 continue;
         }
 
-        if(IsLockedTxOut(hashTx, txout)) // locked txout
+        if(IsLockedTxOutByHeight(txHeight,txout)) // locked txout
             continue;
 
         if((fAsset && !txout.IsAsset()) || (!fAsset && txout.IsAsset()))
@@ -2510,12 +2514,13 @@ CAmount CWalletTx::GetAnonymizedCredit(bool fUseCache) const
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
+    int txHeight = GetTxHeight(hashTx);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         const CTxOut &txout = vout[i];
         const COutPoint outpoint = COutPoint(hashTx, i);
 
-        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOut(hashTx, txout) || txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE || !pwallet->IsDenominated(outpoint)) continue;
+        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOutByHeight(txHeight,txout) || txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE || !pwallet->IsDenominated(outpoint)) continue;
 
         const int nRounds = pwallet->GetOutpointPrivateSendRounds(outpoint);
         if(nRounds >= privateSendClient.nPrivateSendRounds){
@@ -2554,11 +2559,12 @@ CAmount CWalletTx::GetDenominatedCredit(bool unconfirmed, bool fUseCache) const
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
+    int txHeight = GetTxHeight(hashTx);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         const CTxOut &txout = vout[i];
 
-        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOut(hashTx, txout) || txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE || !pwallet->IsDenominatedAmount(vout[i].nValue)) continue;
+        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOutByHeight(txHeight,txout) || txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE || !pwallet->IsDenominatedAmount(vout[i].nValue)) continue;
 
         nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE,false);
         if (!MoneyRange(nCredit))
