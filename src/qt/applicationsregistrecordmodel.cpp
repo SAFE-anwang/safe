@@ -11,6 +11,7 @@ static int column_alignments_for_applications_regist[] = {
         Qt::AlignLeft|Qt::AlignVCenter, /* watchonly */
         Qt::AlignLeft|Qt::AlignVCenter, /* date */
         Qt::AlignLeft|Qt::AlignVCenter, /* application name */
+        Qt::AlignLeft|Qt::AlignVCenter, /* application id */
         Qt::AlignLeft|Qt::AlignVCenter, /* manager address */
     };
 
@@ -18,7 +19,7 @@ ApplicationsRegistRecordModel::ApplicationsRegistRecordModel(const PlatformStyle
     TransactionTableModel(platformStyle,wallet,showType,parent)
 {
     columns.clear();
-    columns << QString() << QString() << tr("Date") << tr("Application ID") << tr("Manager Address");
+    columns << QString() << QString() << tr("Date") << tr("Application Name") << tr("Application ID") << tr("Manager Address");
     columnStatus = ApplicationsRegistRecordModel::ApplicationsRegistColumnStatus;
     columnToAddress = -1;
     columnAmount = -1;
@@ -58,6 +59,8 @@ QVariant ApplicationsRegistRecordModel::data(const QModelIndex &index, int role)
         {
         case ApplicationsRegistRecordModel::ApplicationsRegistColumnDate:
             return formatTxDate(rec);
+        case ApplicationsRegistRecordModel::ApplicationsRegistColumnApplicationName:
+            return QString::fromStdString(rec->appData.strAppName);
         case ApplicationsRegistRecordModel::ApplicationsRegistColumnApplicationId:
             return QString::fromStdString(rec->appData.GetHash().GetHex());
         case ApplicationsRegistRecordModel::ApplicationsRegistColumnManagerAddress:
@@ -187,6 +190,8 @@ QVariant ApplicationsRegistRecordModel::headerData(int section, Qt::Orientation 
             {
             case ApplicationsRegistColumnDate:
                 return tr("Date and time that the application was registed.");
+            case ApplicationsRegistColumnApplicationName:
+                return tr("Application Name of assets regist.");
             case ApplicationsRegistColumnApplicationId:
                 return tr("Application ID of assets regist.");
             case ApplicationsRegistColumnManagerAddress:

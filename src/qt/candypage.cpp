@@ -58,12 +58,11 @@ CandyPage::CandyPage():
     connect(ui->expireLineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(handlerExpireLineEditTextChange(const QString &)));
     connect(ui->assetsComboBox,SIGNAL(currentTextChanged(QString)),this,SLOT(updateCandyInfo(QString)));
     ui->candyRatioSlider->initSlider(1,100,20);
-    sliderFixedHeight = 15;
+    sliderFixedHeight = 10;
     nPageCount = nCandyPageCount;
     nCurrPage = 1;
     ui->spinBox->setValue(1);
     ui->candyRatioSlider->initLabel(sliderFixedHeight);
-    ui->candyRatioSlider->setSize(400,50);
     ui->labelTotal->setVisible(false);
     isUnlockByGlobal = false;
 
@@ -92,15 +91,18 @@ CandyPage::CandyPage():
     msgbox = new QMessageBox(QMessageBox::Information, tr("Get Candy"), tr("Getting candy, please wait."));
     msgbox->setStandardButtons(QMessageBox::NoButton);
     candyWorker = new GetCandyWorker(this);
-    candyWorker->moveToThread(&getCandyThread);
+    getCandyThread = new QThread;
+    candyWorker->moveToThread(getCandyThread);
     connect(this, SIGNAL(runGetCandy()), candyWorker, SLOT(doGetCandy()));
-    connect(&getCandyThread, &QThread::finished, candyWorker, &QObject::deleteLater);
+    connect(getCandyThread, &QThread::finished, candyWorker, &QObject::deleteLater);
+    connect(this, SIGNAL(stopThread()), getCandyThread, SLOT(quit()));
     connect(candyWorker, SIGNAL(resultReady(bool, QString, int, CAmount)), this, SLOT(handlerGetCandyResult(bool, QString, int, CAmount)));
 }
 
 CandyPage::~CandyPage()
 {
-
+    Q_EMIT stopThread();
+    getCandyThread->wait();
 }
 
 void CandyPage::clear()
@@ -296,9 +298,10 @@ void CandyPage::getCandy(QPushButton *btn)
         return;
     }
 
+    GetAddAmountByHeight(nTxHeight, nTotalSafe);
     //Put get candy operation into the thread to prevent the main thread from being suspended.
     candyWorker->init(assetId, out, nTxHeight, nTotalSafe, candyInfo, assetInfo,rowNum);
-    getCandyThread.start();
+    getCandyThread->start();
     Q_EMIT runGetCandy();
     msgbox->show();
 }
@@ -508,7 +511,9 @@ void CandyPage::getCandy()
         {
             AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
             dlg.setModel(model);
-            dlg.exec();
+            int iresult = dlg.exec();
+            if (iresult == 0)
+                return;
             isUnlockByGlobal = true;
         }
         getCandy(btn);

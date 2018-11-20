@@ -76,8 +76,7 @@ bool CSVModelWriter::write()
     {
         for(int i=0; i<columnSize; ++i)
         {
-            if(i!=0)
-            {
+            if(i!=0){
                 writeSep(out);
             }
             QVariant data = model->index(j, columns[i].column).data(columns[i].role);

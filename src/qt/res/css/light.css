@@ -1923,9 +1923,13 @@ QWidget#ApplicationsRegistry QPushButton#registerButton {
 min-width:90px;
 max-width:90px;
 margin-top:30px;
-margin-left:10px;
 padding-top:1px;
 padding-bottom:1px;
+margin-right:43px;
+}
+
+QWidget#ApplicationsRegistry QLabel#registerHelp {
+margin-right:50px;
 }
 
 QWidget#ApplicationsRegistry QPushButton#detectExistButton { 

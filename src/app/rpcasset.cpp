@@ -16,6 +16,7 @@
 #include "main.h"
 #include "masternode-sync.h"
 #include "txmempool.h"
+#include <boost/regex.hpp>
 
 using namespace std;
 
@@ -65,8 +66,9 @@ UniValue issueasset(const UniValue& params, bool fHelp)
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
+    boost::regex regname("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9\u4e00-\u9fa5]{1,20}");
     string strShortName = TrimString(params[0].get_str());
-    if(strShortName.empty() || strShortName.size() > MAX_SHORTNAME_SIZE ||IsContainSpace(strShortName))
+    if(strShortName.empty() || strShortName.size() > MAX_SHORTNAME_SIZE || IsContainSpace(strShortName) || !boost::regex_match(strShortName, regname))
         throw JSONRPCError(INVALID_SHORTNAME_SIZE, "Invalid asset short name");
 
     if(IsKeyWord(strShortName))
@@ -76,7 +78,7 @@ UniValue issueasset(const UniValue& params, bool fHelp)
         throw JSONRPCError(EXISTENT_SHORTNAME, "Existent asset short name");
 
     string strAssetName = TrimString(params[1].get_str());
-    if(strAssetName.empty() || strAssetName.size() > MAX_ASSETNAME_SIZE)
+    if(strAssetName.empty() || strAssetName.size() > MAX_ASSETNAME_SIZE || !boost::regex_match(strAssetName, regname))
         throw JSONRPCError(INVALID_ASSETNAME_SIZE, "Invalid asset name");
 
     if(IsKeyWord(strAssetName))
@@ -89,8 +91,9 @@ UniValue issueasset(const UniValue& params, bool fHelp)
     if(strAssetDesc.empty() || strAssetDesc.size() > MAX_ASSETDESC_SIZE)
         throw JSONRPCError(INVALID_ASSETDESC_SIZE, "Invalid asset description");
 
+    boost::regex regunit("[a-zA-Z\u4e00-\u9fa5]+");
     string strAssetUnit = TrimString(params[3].get_str());
-    if(strAssetUnit.empty() || strAssetUnit.size() > MAX_ASSETUNIT_SIZE)
+    if(strAssetUnit.empty() || strAssetUnit.size() > MAX_ASSETUNIT_SIZE || !boost::regex_match(strAssetUnit, regunit))
         throw JSONRPCError(INVALID_ASSETUNIT_SIZE, "Invalid asset unit");
     if(IsKeyWord(strAssetUnit))
         throw JSONRPCError(INVALID_ASSETUNIT_SIZE, "Asset unit is internal reserved words, not allowed to use");
@@ -301,7 +304,7 @@ UniValue transferasset(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 4 || params.size() > 5)
+    if (fHelp || params.size() < 3 || params.size() > 5)
         throw runtime_error(
             "transferasset \"safeAddress\" \"assetId\" assetAmount lockTime \"remarks\"\n"
             "\nTransfer asset to someone.\n"
@@ -309,7 +312,7 @@ UniValue transferasset(const UniValue& params, bool fHelp)
             "1. \"safeAddress\"     (string, required) The receiver's address\n"
             "2. \"assetId\"         (string, required) The asset id\n"
             "3. assetAmount         (numeric, required) The asset amount\n"
-            "4. lockTime            (numeric, required) The locked monthes\n"
+            "4. lockTime            (numeric, optional) The locked monthes\n"
             "5. \"remarks\"         (string, optional) The remarks\n"
             "\nResult:\n"
             "{\n"
@@ -339,16 +342,21 @@ UniValue transferasset(const UniValue& params, bool fHelp)
     if(nAmount <= 0)
         throw JSONRPCError(INVALID_ASSET_AMOUNT, "Invalid asset amount");
 
-    int nLockedMonth = params[3].get_int();
-    if(nLockedMonth != 0 && !IsLockedMonthRange(nLockedMonth))
-        throw JSONRPCError(INVALID_LOCKEDMONTH, "Invalid locked month (min: 0, max: 120)");
-
+    int nLockedMonth = 0;
     string strRemarks = "";
-    if(params.size() > 4)
+
+    if (params.size() > 3)
     {
-        strRemarks = TrimString(params[4].get_str());
-        if(strRemarks.size() > MAX_REMARKS_SIZE)
-            throw JSONRPCError(INVALID_REMARKS_SIZE, "Invalid remarks");
+        nLockedMonth = params[3].get_int();
+        if (nLockedMonth != 0 && !IsLockedMonthRange(nLockedMonth))
+            throw JSONRPCError(INVALID_LOCKEDMONTH, "Invalid locked month (min: 0, max: 120)");
+
+        if (params.size() > 4)
+        {
+            strRemarks = TrimString(params[4].get_str());
+            if(strRemarks.size() > MAX_REMARKS_SIZE)
+                throw JSONRPCError(INVALID_REMARKS_SIZE, "Invalid remarks");
+        }
     }
 
     CAppHeader appHeader(g_nAppHeaderVersion, uint256S(g_strSafeAssetId), TRANSFER_ASSET_CMD);
@@ -366,7 +374,7 @@ UniValue transferasset(const UniValue& params, bool fHelp)
         throw JSONRPCError(INSUFFICIENT_ASSET, "Insufficient asset funds");
 
     vector<CRecipient> vecSend;
-    CRecipient recvRecipient = {GetScriptForDestination(recvAddress.Get()), nAmount, nLockedMonth, false, true};
+    CRecipient recvRecipient = {GetScriptForDestination(recvAddress.Get()), nAmount, nLockedMonth, false, true, strRemarks};
     vecSend.push_back(recvRecipient);
 
     CWalletTx wtx;
@@ -668,6 +676,7 @@ UniValue getcandy(const UniValue& params, bool fHelp)
                 return ret;
         }
 
+        GetAddAmountByHeight(nTxHeight, nTotalSafe);
         CAppHeader appHeader(g_nAppHeaderVersion, uint256S(g_strSafeAssetId), GET_CANDY_CMD);
         CPutCandy_IndexKey assetIdCandyInfo;
         assetIdCandyInfo.assetId = assetId;
@@ -958,7 +967,7 @@ UniValue getlocalassetinfo(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getlocalassetinfo", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\"")
         );
 
-    LOCK(cs_main);
+    LOCK2(cs_main, pwalletMain->cs_wallet);
 
     uint256 assetId = uint256S(TrimString(params[0].get_str()));
 
@@ -1636,6 +1645,8 @@ UniValue getaddressamountbyheight(const UniValue& params, bool fHelp)
     if(!GetAddressAmountByHeight(nHeight, strAddress, nAmount) || !GetTotalAmountByHeight(nHeight, nTotalAmount))
         throw JSONRPCError(RPC_INVALID_PARAMETER, "No safe or total safe available about specified address and height");
 
+    if (nTotalAmount > 0)
+        GetAddAmountByHeight(nHeight, nTotalAmount);
     UniValue entry(UniValue::VOBJ);
     entry.push_back(Pair("amount", ValueFromAmount(nAmount)));
     entry.push_back(Pair("totalAmount", ValueFromAmount(nTotalAmount)));
@@ -1944,6 +1955,190 @@ UniValue getlocalassetlist(const UniValue& params, bool fHelp)
         assetList.push_back(assetidlist[i].GetHex());
 
     ret.push_back(Pair("assetList", assetList));
+
+    return ret;
+}
+
+UniValue transfermanyasset(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() != 2)
+        throw runtime_error(
+            "transfermanyasset \"assetId\" [{\"safeAddress\":\"xxx\",\"assetAmount\":xxxx, \"lockTime\":xxxx, \"remarks\":xxx},...]\n"
+            "\nTransfer asset to multiple people.\n"
+            "\nArguments:\n"
+            "1. \"assetId\"            (string, required) The asset id for transfer\n"
+            "2. \"receiveinfo\"        (string, required) A json array of json objects\n"
+            "     [\n"
+            "       {\n"
+            "         \"safeAddress\":\"xxx\",          (string, required) The receiver's address\n"
+            "         \"assetAmount\":,                 (numeric, required) The asset amount\n"
+            "         \"lockTime\":n,                   (numeric, optional) The locked monthes\n"
+            "         \"remarks\":                      (string, optional) The remarks\n"
+            "       }\n"
+            "       ,...\n"
+            "     ]\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"txId\": \"xxxxx\"  (string) The transaction id\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("transfermanyasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" \"[{\\\"safeAddress\\\":\\\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\\\",\\\"assetAmount\\\":1000,\\\"lockTime\\\":6,\\\"remarks\\\":\\\"This is a test\\\"},{\\\"safeAddress\\\":\\\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\\\",\\\"assetAmount\\\":1000,\\\"lockTime\\\":6,\\\"remarks\\\":\\\"This is a test\\\"}]\"")
+            + HelpExampleCli("transfermanyasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" \"[{\\\"safeAddress\\\":\\\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\\\",\\\"assetAmount\\\":1000},{\\\"safeAddress\\\":\\\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\\\",\\\"assetAmount\\\":1000}]\"")
+            + HelpExampleRpc("transfermanyasset", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\", \"[{\\\"safeAddress\\\":\\\"Xg1wCDXKuv4rEfsR9Ldv2qmUHSS9Ds1VCL\\\",\\\"assetAmount\\\":1000,\\\"lockTime\\\":6,\\\"remarks\\\":\\\"This is a test\\\"},{\\\"safeAddress\\\":\\\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\\\",\\\"assetAmount\\\":1000,\\\"lockTime\\\":6,\\\"remarks\\\":\\\"This is a test\\\"}]\"")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    if(!masternodeSync.IsBlockchainSynced())
+        throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
+    uint256 assetId = uint256S(TrimString(params[0].get_str()));
+    CAssetId_AssetInfo_IndexValue assetInfo;
+    if(assetId.IsNull() || !GetAssetInfoByAssetId(assetId, assetInfo, false))
+        throw JSONRPCError(NONEXISTENT_ASSETID, "Non-existent asset id");
+
+    UniValue receiveinfo = params[1].get_array();
+    CAmount totalassetamount = 0;
+    string strtempRemarks = "";
+
+    vector<CRecipient> vecSend;
+    for (unsigned int i = 0; i < receiveinfo.size(); i++)
+    {
+        const UniValue& input = receiveinfo[i];
+        const UniValue& o = input.get_obj();
+
+        const UniValue& vsafeaddress = find_value(o, "safeAddress");
+        if (!vsafeaddress.isStr())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing safeAddress key");
+
+        string strAddress = vsafeaddress.get_str();
+        CBitcoinAddress address(strAddress);
+        if (!address.IsValid())
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Safe address");
+
+        const UniValue& vamount = find_value(o, "assetAmount");
+        CAmount nAmount = AmountFromValue(vamount, assetInfo.assetData.nDecimals, true);
+        if (nAmount <= 0)
+            throw JSONRPCError(INVALID_ASSET_AMOUNT, "Invalid asset amount");
+        totalassetamount += nAmount;
+
+        const UniValue& vlockmonth = find_value(o, "lockTime");
+        int nLockedMonth = 0;
+        if (!vlockmonth.isNull())
+        {
+            if (!vlockmonth.isNum())
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter:lockTime");
+            nLockedMonth = vlockmonth.get_int();
+            if (nLockedMonth != 0 && !IsLockedMonthRange(nLockedMonth))
+                throw JSONRPCError(INVALID_LOCKEDMONTH, "Invalid locked month (min: 0, max: 120)");
+        }
+
+        string strRemarks = "";
+        const UniValue& vremarks = find_value(o, "remarks");
+        if (!vremarks.isNull())
+        {
+            if (!vremarks.isStr())
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter:remarks");
+
+            if (!vremarks.get_str().empty())
+                strRemarks = vremarks.get_str();
+        }
+
+        CRecipient recvRecipient = {GetScriptForDestination(address.Get()), nAmount, nLockedMonth, false, true, strRemarks};
+        vecSend.push_back(recvRecipient);
+    }
+
+    CAppHeader appHeader(g_nAppHeaderVersion, uint256S(g_strSafeAssetId), TRANSFER_ASSET_CMD);
+    CCommonData transferData(assetId, totalassetamount, strtempRemarks);
+
+    EnsureWalletIsUnlocked();
+
+    if (pwalletMain->GetBroadcastTransactions() && !g_connman)
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+    if(pwalletMain->GetBalance() <= 0)
+        throw JSONRPCError(INSUFFICIENT_SAFE, "Insufficient safe funds");
+
+    if(pwalletMain->GetBalance(true, &assetId) < totalassetamount)
+        throw JSONRPCError(INSUFFICIENT_ASSET, "Insufficient asset funds");
+
+    CWalletTx wtx;
+    CReserveKey reservekey(pwalletMain);
+    CAmount nFeeRequired;
+    int nChangePosRet = -1;
+    string strError;
+    if(!pwalletMain->CreateAssetTransaction(&appHeader, &transferData, vecSend, NULL, NULL, wtx, reservekey, nFeeRequired, nChangePosRet, strError, NULL, true, ALL_COINS))
+    {
+        if(nFeeRequired > pwalletMain->GetBalance())
+            strError = strprintf("Error: Insufficient safe funds, this transaction requires a transaction fee of at least %1!", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+    if(!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: Transfer asset failed, please check your wallet and try again later!");
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("txId", wtx.GetHash().GetHex()));
+
+    return ret;
+}
+
+UniValue getassetlocaltxlist(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 2)
+        throw runtime_error(
+            "getassetlocaltxlist \"assetId\" txClass\n"
+            "\nReturns list of local transactions by specified asset id and transaction type.\n"
+            "\nArguments:\n"
+            "1. \"assetId\"             (string, required) The asset id for transaction lookup\n"
+            "2. txClass                 (numeric, required) The transaction type (1=all, 2=normal, 3=locked,4=issue,5=addissue,6=destory)\n"
+            "\nResult:\n"
+            "{\n"
+            "    \"txList\":\n"
+            "    [\n"
+            "        \"txId\"\n"
+            "        ,...\n"
+            "    ]\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getassetlocaltxlist", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\" 1")
+            + HelpExampleRpc("getassetlocaltxlist", "\"723468197263af02cdf836aa12033864df0de857780dcb7982262efface6afdd\", 3")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    uint256 assetId = uint256S(TrimString(params[0].get_str()));
+    uint8_t nTxClass = (uint8_t)params[1].get_int();
+    if(nTxClass < 1 || nTxClass > sporkManager.GetSporkValue(SPORK_105_TX_CLASS_MAX_VALUE))
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid type of transaction");
+
+    vector<COutPoint> vOut;
+    if(!GetTxInfoByAssetIdTxClass(assetId, nTxClass, vOut))
+        throw JSONRPCError(GET_TXID_FAILED, "No transaction available about asset");
+
+    std::vector<uint256> vTx;
+    BOOST_FOREACH(const COutPoint& out, vOut)
+    {
+        if(find(vTx.begin(), vTx.end(), out.hash) == vTx.end())
+            vTx.push_back(out.hash);
+    }
+
+    std::vector<uint256> vlocalTx;
+    std::vector<uint256>::iterator it = vTx.begin();
+    for (; it != vTx.end(); it++)
+    {
+        std::map<uint256, CWalletTx>::iterator tempit = pwalletMain->mapWallet.find(*it);
+        if (tempit != pwalletMain->mapWallet.end())
+            vlocalTx.push_back(*it);
+    }
+
+    UniValue ret(UniValue::VOBJ);
+    UniValue transactionList(UniValue::VARR);
+    for(unsigned int i = 0; i < vlocalTx.size(); i++)
+        transactionList.push_back(vlocalTx[i].GetHex());
+    ret.push_back(Pair("txList", transactionList));
 
     return ret;
 }

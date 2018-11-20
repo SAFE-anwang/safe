@@ -152,8 +152,8 @@
         <translation>只用于混合via即时发送</translation>
     </message>
     <message>
-        <source>Enter the new passphrase to the wallet.&lt;br/&gt;Please use a passphrase of &lt;b&gt;ten or more random characters&lt;/b&gt;, or &lt;b&gt;eight or more words&lt;/b&gt;.</source>
-        <translation>输入钱包的新密码。&lt;br/&gt;使用的密码请至少包含&lt;b&gt;10个以上随机字符&lt;/&gt;，或者是&lt;b&gt;8个以上的单词&lt;/b&gt;。</translation>
+        <source>Enter the new passphrase to the wallet.&lt;br/&gt;Suggest use a passphrase of &lt;b&gt;ten or more random characters&lt;/b&gt;, or &lt;b&gt;eight or more words&lt;/b&gt;.</source>
+        <translation>输入钱包的新密码。&lt;br/&gt;建议使用的密码至少包含&lt;b&gt;10个以上随机字符&lt;/&gt;，或者是&lt;b&gt;8个以上的单词&lt;/b&gt;。</translation>
     </message>
     <message>
         <source>Encrypt wallet</source>
@@ -382,7 +382,7 @@
     </message>
     <message>
         <source>  A&amp;pplications</source>
-        <translation>  应用(&amp;P)</translation>
+        <translation>  应用注册(&amp;P)</translation>
     </message>
     <message>
         <source>  &amp;Candy</source>
@@ -1767,28 +1767,12 @@ http://www.anwang.com/</translation>
 <context>
     <name>ApplicationsPage</name>
     <message>
-        <source>Applications Regist</source>
-        <translation>应用注册</translation>
+        <source>Regist</source>
+        <translation>注册</translation>
     </message>
     <message>
         <source>Regist Record</source>
-        <translation>注册应用记录</translation>
-    </message>
-    <message>
-        <source>Application instructions</source>
-        <translation>应用使用说明</translation>
-    </message>
-    <message>
-        <source>1)The first step is to register the application through the "Applications Register" interface. After successful, query the application ID through "Regist Record", as shown below.</source>
-        <translation>1）第一步，通过“注册应用”界面注册应用，成功后通过“注册应用记录”查询应用ID，如下图：</translation>
-    </message>
-    <message>
-        <source>2)The second step is to set the permissions for the users in the application, and set them through RPC interface setappauth. For the specific use method, refer to the RPC interface document of the security network;</source>
-        <translation>2）第二步，为应用内的用户设置权限，通过安网3RPC接口setappauth进行设置，具体使用方法参照安网3RPC接口文档；</translation>
-    </message>
-    <message>
-        <source>3)The third step is to write the application data to the Safe Core, and write the data through the RPC interface createextenddatatx. The specific usage method refers to the RPC interface document of the Safe Core;</source>
-        <translation>3）第三步，写入应用数据到安网3，通过安网3RPC接口createextenddatatx写入数据，具体使用方法参照安网3RPC接口文档；</translation>
+        <translation>注册记录</translation>
     </message>
 </context>
 <context>
@@ -2054,6 +2038,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Enter application id to search</source>
         <translation>输入应用id进行搜索</translation>
+    </message>
+    <message>
+        <source>Enter application name to search</source>
+        <translation>输入应用名称进行搜索</translation>
     </message>
     <message>
         <source>Enter manager address to search</source>
@@ -2361,6 +2349,10 @@ http://www.anwang.com/</translation>
         <source>Register</source>
         <translation>注册</translation>
     </message>
+    <message>
+        <source>* Application Use Reference &lt;a href=https://www.anwang.com/download/API.pdf&gt;Safe3 Application Protocol&lt;/a&gt;</source>
+        <translation>* 应用使用参见 &lt;a href = https://www.anwang.com/download/API.pdf &gt;安网3应用协议&lt;/a&gt;</translation>
+    </message>
 </context>
 <context>
     <name>AssetsDistribute</name>
@@ -2550,11 +2542,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Destroyed</source>
-        <translation>是否可销毁</translation>
+        <translation>可销毁</translation>
     </message>
     <message>
         <source>Distribute Candy</source>
-        <translation>是否分发糖果</translation>
+        <translation>分发糖果</translation>
     </message>
     <message>
         <source>Candy Expire Time:</source>
@@ -3058,6 +3050,10 @@ http://www.anwang.com/</translation>
         <translation>日期</translation>
     </message>
     <message>
+        <source>Application Name</source>
+        <translation>应用名称</translation>
+    </message>
+    <message>
         <source>Application ID</source>
         <translation>应用ID</translation>
     </message>
@@ -3068,6 +3064,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Date and time that the application was registed.</source>
         <translation>应用的注册日期。</translation>
+    </message>
+    <message>
+        <source>Application Name of assets regist.</source>
+        <translation>应用的注册名称。</translation>
     </message>
     <message>
         <source>Application ID of assets regist.</source>
@@ -4992,7 +4992,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Enter the receiver&apos;s address, message (ensure you copy line breaks, spaces, tabs, etc. exactly) and signature below to verify the message. Be careful not to read more into the signature than what is in the signed message itself, to avoid being tricked by a man-in-the-middle attack. Note that this only proves the signing party receives with the address, it cannot prove sendership of any transaction!</source>
-        <translation>请输入接收地址地址址，消息(请确定完整复制了所包含的换行，空格，跳位符号等等)，以及签名，来验证这个消息。请小心，除了消息外，不要对签名本身过度解读，以避免「中间人攻击法」诈骗。请注意，这仅是证明签名方接收的地址，他不能证明任何交易的发送人！</translation>
+        <translation>请输入接收地址，消息(请确定完整复制了所包含的换行，空格，跳位符号等)，以及签名来验证消息。请注意，除了消息外，不要对签名本身过度解读，以避免诈骗。此验证仅证明签名方接收地址，不用于证明任何交易的发送人！</translation>
     </message>
     <message>
         <source>The Safe address the message was signed with</source>
@@ -5012,7 +5012,19 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Click &quot;Sign Message&quot; to generate signature</source>
-        <translation>单击&quot;签名消息&quot;产生签名。</translation>
+        <translation>单击&quot;消息签名&quot;产生签名。</translation>
+    </message>
+    <message>
+        <source>Message to be signed</source>
+        <translation>待签名的消息</translation>
+    </message>
+    <message>
+        <source>Input message</source>
+        <translation>输入信息</translation>
+    </message>
+    <message>
+        <source>Input signature</source>
+        <translation>输入签名</translation>
     </message>
     <message>
         <source>The entered address is invalid.</source>
@@ -5145,11 +5157,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Assets Destory</source>
-        <translation>是否可销毁</translation>
+        <translation>可销毁</translation>
     </message>
     <message>
         <source>Pay Candy</source>
-        <translation>是否分发糖果</translation>
+        <translation>分发糖果</translation>
     </message>
     <message>
         <source>Yes</source>
@@ -6290,7 +6302,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Applications</source>
-        <translation>应用</translation>
+        <translation>应用注册</translation>
     </message>
     <message>
         <source>Candy</source>

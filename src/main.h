@@ -29,6 +29,9 @@ extern std::string g_strCancelledSafeAddress;
 extern std::string g_strCancelledAssetAddress;
 extern std::string g_strPutCandyAddress;
 
+extern int g_nStartAddamountHeight;
+extern CAmount g_nCriticalEffective;
+
 inline bool IsCriticalHeight(int nHeight) { return nHeight == g_nCriticalHeight; }
 
 inline bool IsLockedMonthRange(int nMonth) { return (nMonth >= 1 && nMonth <= 120); }
@@ -45,7 +48,12 @@ int GetTxHeight(const uint256& txHash, uint256* pBlockHash = NULL);
 
 bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout);
 
+bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout);
+
 int GetLockedMonth(const uint256& txHash, const CTxOut& txout);
+
+int GetLockedMonthByHeight(const int& nheight, const CTxOut& txout);
+
 
 CAmount GetCancelledAmount(const int& nHeight);
 

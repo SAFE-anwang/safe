@@ -140,6 +140,7 @@ OverviewPage::OverviewPage(const PlatformStyle *platformStyle, QWidget *parent) 
     currentWatchImmatureBalance(-1),
     currentWatchLockedBalance(-1),
     txdelegate(new TxViewDelegate(platformStyle, this)),
+    timer(nullptr),
     platformStyle(platformStyle)
     //columnResizingFixer(0)
 {
@@ -251,7 +252,7 @@ void OverviewPage::handleOutOfSyncWarningClicks()
 
 OverviewPage::~OverviewPage()
 {
-    if(!fLiteMode && !fMasterNode) disconnect(timer, SIGNAL(timeout()), this, SLOT(privateSendStatus()));
+    if(timer) disconnect(timer, SIGNAL(timeout()), this, SLOT(privateSendStatus()));
     delete ui;
 }
 
@@ -904,6 +905,6 @@ void OverviewPage::initTableView()
 //    tableView->setColumnWidth(RecentRequestsTableModel::Message,AMOUNT_MINIMUM_COLUMN_WIDTH);
 
 //    connect(tableView->selectionModel(),SIGNAL(selectionChanged(QItemSelection, QItemSelection)), this,SLOT(recentRequestsView_selectionChanged(QItemSelection, QItemSelection)));
-    // Last 2 columns are set by the columnResizingFixer, when the table geometry is ready.
+    // Last 2 columns are set by the columnResizingFixer, when the table geometry is ready.,XJTODO
     //columnResizingFixer = new GUIUtil::TableViewLastColumnResizingFixer(tableView, AMOUNT_MINIMUM_COLUMN_WIDTH, DATE_COLUMN_WIDTH, this);
 }

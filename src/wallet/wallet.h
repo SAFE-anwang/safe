@@ -754,6 +754,7 @@ public:
     }
 
     std::map<uint256, CWalletTx> mapWallet;
+    std::map<uint256, CWalletTx> mapWallet_tmp;
     std::list<CAccountingEntry> laccentries;
 
     typedef std::pair<CWalletTx*, CAccountingEntry*> TxPair;
@@ -888,17 +889,17 @@ public:
     void ReacceptWalletTransactions();
     void ResendWalletTransactions(int64_t nBestBlockTime, CConnman* connman);
     std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime, CConnman* connman);
-    CAmount GetBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
-    CAmount GetUnconfirmedBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
-    CAmount GetImmatureBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
-    CAmount GetLockedBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
-    CAmount GetWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
-    CAmount GetUnconfirmedWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
-    CAmount GetImmatureWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
-    CAmount GetLockedWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL) const;
+    CAmount GetBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
+    CAmount GetUnconfirmedBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
+    CAmount GetImmatureBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
+    CAmount GetLockedBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
+    CAmount GetWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
+    CAmount GetUnconfirmedWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
+    CAmount GetImmatureWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
+    CAmount GetLockedWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
 
     CAmount GetAnonymizableBalance(bool fSkipDenominated = false, bool fSkipUnconfirmed = true) const;
-    CAmount GetAnonymizedBalance() const;
+    CAmount GetAnonymizedBalance(bool bLock=true) const;
     float GetAverageAnonymizedRounds() const;
     CAmount GetNormalizedAnonymizedBalance() const;
     CAmount GetNeedsToBeAnonymizedBalance(CAmount nMinBalance = 0) const;

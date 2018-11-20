@@ -49,6 +49,7 @@ public:
 
     enum ColumnWidths {
         APPLICATION_DATE_COLUMN_WIDTH = 140,
+        APPLICATION_NAME_COLUMN_WIDTH = 220,
         APPLICATION_ID_COLUMN_WIDTH = 220,
         MINIMUM_COLUMN_WIDTH = 23
     };
@@ -59,6 +60,7 @@ private:
     QTableView *applicationsView;
     QComboBox *dateWidget;
     QComboBox *watchOnlyWidget;
+    QLineEdit *applicationNameWidget;
     QLineEdit *applicationIdWidget;
     QLineEdit *managerAddressWidget;
 
@@ -107,7 +109,8 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     void chooseDate(int idx);
-    void changedApplicationId(const QString &assetsName);
+    void changedApplicationName(const QString &applicationName);
+    void changedApplicationId(const QString &applicationId);
     void chooseWatchonly(int idx);
     void changedPrefix(const QString &prefix);
     void changedAmount(const QString &amount);

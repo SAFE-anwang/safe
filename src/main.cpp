@@ -16,6 +16,10 @@ std::string g_strCancelledSafeAddress = "XagqqFetxiDb9wbartKDrXgnqLah9fKoTx"; //
 std::string g_strCancelledAssetAddress = "XagqqFetxiDb9wbartKDrXgnqLahHSe2VE"; // asset's black hold address (hash160: 0x0000...02)
 std::string g_strPutCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLahUovwfs"; // candy's black hold address (hash160: 0x0000...03)
 
+int g_nStartAddamountHeight = 990663;
+CAmount g_nCriticalEffective = 63337198836315;
+
+
 CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)
 {
     CBlock block;
@@ -129,6 +133,21 @@ bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout)
     return true;
 }
 
+bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout)
+{
+    if(txout.nUnlockedHeight <= 0)
+        return false;
+
+    if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
+        return false;
+
+    int64_t nOffset = txout.nUnlockedHeight - nheight;
+    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
+        return false;
+
+    return true;
+}
+
 int GetLockedMonth(const uint256& txHash, const CTxOut& txout)
 {
     if(txout.nUnlockedHeight <= 0)
@@ -140,6 +159,25 @@ int GetLockedMonth(const uint256& txHash, const CTxOut& txout)
 
     int m1 = (txout.nUnlockedHeight - nHeight) / BLOCKS_PER_MONTH;
     int m2 = (txout.nUnlockedHeight - nHeight) % BLOCKS_PER_MONTH;
+    if(m2 != 0)
+        m1++;
+
+    if(!IsLockedMonthRange(m1))
+        throw std::runtime_error("GetLockMonth() : locked month out of range");
+
+    return m1;
+}
+
+int GetLockedMonthByHeight(const int& nheight, const CTxOut& txout)
+{
+    if(txout.nUnlockedHeight <= 0)
+        return 0;
+
+    if(txout.nUnlockedHeight < nheight)
+        return 0;
+
+    int m1 = (txout.nUnlockedHeight - nheight) / BLOCKS_PER_MONTH;
+    int m2 = (txout.nUnlockedHeight - nheight) % BLOCKS_PER_MONTH;
     if(m2 != 0)
         m1++;
 

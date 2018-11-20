@@ -39,6 +39,7 @@ public:
 
     void saveRestoreInfo(const QPoint point, const QSize size);
     void getRestoreInfo(QPoint& point, QSize& size);
+    void setFullScreen();
 
 private:
     void paintEvent(QPaintEvent *event);

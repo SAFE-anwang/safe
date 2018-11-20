@@ -203,7 +203,10 @@ TransactionRecord* TransactionTablePriv::index(int idx)
                         }
                         //transform assets,get candy,put candy,issue asset need to update overview and they history view
                         if(rec->bAssets||rec->bGetCandy||rec->bPutCandy || rec->bIssueAsset || (rec->bSAFETransaction&&rec->address==g_strCancelledSafeAddress))
-                            parent->emitUpdateAsset(false,newConfirmedAssets,strAssetName);
+                        {
+                            if(!parent->getUpdatingWallet())
+                                parent->emitUpdateAsset(false,newConfirmedAssets,strAssetName);
+                        }
                     }
                 }
             }
@@ -289,7 +292,9 @@ void TransactionTableModel::updateTransaction(const QString &hash, int status, b
 
     bool bUpdateAssets = false;
     QString strAssetName = "";
+    setUpdatingWallet(true);
     priv->updateWallet(updated, status, showTransaction,bUpdateAssets,strAssetName);
+    setUpdatingWallet(false);
     //transform assets,get candy,issue assets(with candy) need update overview,transaction/locked... dialog
     if(bUpdateAssets&&(showType==SHOW_CANDY_TX||showType==SHOW_TX||showType==SHOW_LOCKED_TX)){
         emitUpdateAsset(false,false,strAssetName);
@@ -1074,4 +1079,14 @@ void TransactionTableModel::emitUpdateAsset(bool updateAll, bool bConfirmedNewAs
         Q_EMIT updateAssets(SHOW_ALL,bConfirmedNewAssets,strAssetName);
     else
         Q_EMIT updateAssets(showType,bConfirmedNewAssets,strAssetName);
+}
+
+void TransactionTableModel::setUpdatingWallet(bool updatingWallet)
+{
+    fUpdatingWallet = updatingWallet;
+}
+
+bool TransactionTableModel::getUpdatingWallet()
+{
+    return fUpdatingWallet;
 }

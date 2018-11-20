@@ -298,7 +298,6 @@
         <file alias="splash">res/images/light/splash.png</file>
         <file alias="splash_testnet">res/images/light/splash_testnet.png</file>
         <file alias="drkblue_list">res/images/light/drkblue_list.png</file>
-        <file alias="regist_record">res/images/light/regist_record.png</file>
     </qresource>
     <qresource prefix="/images/trad">
         <file alias="about">res/images/trad/about.png</file>

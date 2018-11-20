@@ -182,6 +182,7 @@ public Q_SLOTS:
     void initialize();
     void shutdown();
     void restart(QStringList args);
+    void updateBalanceChanged();
 
 Q_SIGNALS:
     void initializeResult(int retval);
@@ -231,6 +232,8 @@ public:
     /// Get window identifier of QMainWindow (BitcoinGUI)
     WId getMainWinId() const;
 
+    WalletModel* getWalletModel();
+
 public Q_SLOTS:
     void initializeResult(int retval);
     void shutdownResult(int retval);
@@ -243,6 +246,7 @@ Q_SIGNALS:
     void requestedShutdown();
     void stopThread();
     void splashFinished(QWidget *window);
+    void updateBalanceChanged();
 
 private:
     QThread *coreThread;
@@ -312,6 +316,29 @@ void BitcoinCore::restart(QStringList args)
             handleRunawayException(NULL);
         }
     }
+}
+
+void ThreadUpdateBalanceChanged(BitcoinApplication* app)
+{
+    static bool fOneThread;
+    if(fOneThread) return;
+    fOneThread = true;
+
+    RenameThread("updateBalanceChangedThread");
+    while(true)
+    {
+        boost::this_thread::interruption_point();
+        WalletModel* wm = app->getWalletModel();
+        if(wm!=NULL)
+            wm->updateAllBalanceChanged(true);
+        MilliSleep(MODEL_UPDATE_DELAY);
+    }
+}
+
+void BitcoinCore::updateBalanceChanged()
+{
+    BitcoinApplication* app = (BitcoinApplication*)sender();
+    threadGroup.create_thread(boost::bind(&ThreadUpdateBalanceChanged, app));
 }
 
 void BitcoinCore::shutdown()
@@ -431,6 +458,7 @@ void BitcoinApplication::startThread()
     connect(this, SIGNAL(requestedInitialize()), executor, SLOT(initialize()));
     connect(this, SIGNAL(requestedShutdown()), executor, SLOT(shutdown()));
     connect(window, SIGNAL(requestedRestart(QStringList)), executor, SLOT(restart(QStringList)));
+    connect(this,SIGNAL(updateBalanceChanged()),executor,SLOT(updateBalanceChanged()));
     /*  make sure executor object is deleted in its own thread */
     connect(this, SIGNAL(stopThread()), executor, SLOT(deleteLater()));
     connect(this, SIGNAL(stopThread()), coreThread, SLOT(quit()));
@@ -527,6 +555,8 @@ void BitcoinApplication::initializeResult(int retval)
         connect(paymentServer, SIGNAL(message(QString,QString,unsigned int)),
                          window, SLOT(message(QString,QString,unsigned int)));
         QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
+
+        Q_EMIT updateBalanceChanged();
 #endif
     } else {
         quit(); // Exit main loop
@@ -543,6 +573,11 @@ void BitcoinApplication::handleRunawayException(const QString &message)
 {
     QMessageBox::critical(0, "Runaway exception", BitcoinGUI::tr("A fatal error occurred. Safe Core can no longer continue safely and will quit.") + QString("\n\n") + message);
     ::exit(EXIT_FAILURE);
+}
+
+WalletModel* BitcoinApplication::getWalletModel()
+{
+    return walletModel;
 }
 
 WId BitcoinApplication::getMainWinId() const

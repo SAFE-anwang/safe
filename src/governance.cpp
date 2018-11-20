@@ -149,19 +149,19 @@ void CGovernanceManager::ProcessMessage(CNode* pfrom, std::string& strCommand, C
     {
         // MAKE SURE WE HAVE A VALID REFERENCE TO THE TIP BEFORE CONTINUING
 
+        CGovernanceObject govobj;
+        vRecv >> govobj;
+
+        uint256 nHash = govobj.GetHash();
+
+        pfrom->setAskFor.erase(nHash);
 
         if(!masternodeSync.IsMasternodeListSynced()) {
             LogPrint("gobject", "MNGOVERNANCEOBJECT -- masternode list not synced\n");
             return;
         }
 
-        CGovernanceObject govobj;
-        vRecv >> govobj;
-
-        uint256 nHash = govobj.GetHash();
         std::string strHash = nHash.ToString();
-
-        pfrom->setAskFor.erase(nHash);
 
         LogPrint("gobject", "MNGOVERNANCEOBJECT -- Received object: %s\n", strHash);
 
@@ -233,21 +233,22 @@ void CGovernanceManager::ProcessMessage(CNode* pfrom, std::string& strCommand, C
     // A NEW GOVERNANCE OBJECT VOTE HAS ARRIVED
     else if (strCommand == NetMsgType::MNGOVERNANCEOBJECTVOTE)
     {
+        CGovernanceVote vote;
+        vRecv >> vote;
+
+        uint256 nHash = vote.GetHash();
+
+        pfrom->setAskFor.erase(nHash);
+
         // Ignore such messages until masternode list is synced
         if(!masternodeSync.IsMasternodeListSynced()) {
             LogPrint("gobject", "MNGOVERNANCEOBJECTVOTE -- masternode list not synced\n");
             return;
         }
 
-        CGovernanceVote vote;
-        vRecv >> vote;
-
         LogPrint("gobject", "MNGOVERNANCEOBJECTVOTE -- Received vote: %s\n", vote.ToString());
 
-        uint256 nHash = vote.GetHash();
         std::string strHash = nHash.ToString();
-
-        pfrom->setAskFor.erase(nHash);
 
         if(!AcceptVoteMessage(nHash)) {
             LogPrint("gobject", "MNGOVERNANCEOBJECTVOTE -- Received unrequested vote object: %s, hash: %s, peer = %d\n",
@@ -740,7 +741,7 @@ void CGovernanceManager::Sync(CNode* pfrom, const uint256& nProp, const CBloomFi
     */
 
     // do not provide any data until our node is synced
-    if(fMasterNode && !masternodeSync.IsSynced()) return;
+    if(!masternodeSync.IsSynced()) return;
 
     int nObjCount = 0;
     int nVoteCount = 0;
@@ -796,10 +797,10 @@ void CGovernanceManager::Sync(CNode* pfrom, const uint256& nProp, const CBloomFi
 
             std::vector<CGovernanceVote> vecVotes = govobj.GetVoteFile().GetVotes();
             for(size_t i = 0; i < vecVotes.size(); ++i) {
-                if(!vecVotes[i].IsValid(true)) {
+                if(filter.contains(vecVotes[i].GetHash())) {
                     continue;
                 }
-                if(filter.contains(vecVotes[i].GetHash())) {
+                if(!vecVotes[i].IsValid(true)) {
                     continue;
                 }
                 pfrom->PushInventory(CInv(MSG_GOVERNANCE_OBJECT_VOTE, vecVotes[i].GetHash()));

@@ -44,6 +44,7 @@ bool TransactionFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex &
     QDateTime datetime = index.data(TransactionTableModel::DateRole).toDateTime();
     bool involvesWatchAddress = index.data(TransactionTableModel::WatchonlyRole).toBool();
     QString address = index.data(TransactionTableModel::AddressRole).toString();
+    QString applicationsName = index.data(TransactionTableModel::ApplicationsNameRole).toString();
     QString applicationsId = index.data(TransactionTableModel::ApplicationsIdRole).toString();
     QString label = index.data(TransactionTableModel::LabelRole).toString();
     qint64 amount = llabs(index.data(TransactionTableModel::AmountRole).toLongLong());
@@ -78,6 +79,8 @@ bool TransactionFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex &
         return false;
     if (!applicationsId.contains(applicationsIdPrefix, Qt::CaseInsensitive) && !label.contains(applicationsIdPrefix, Qt::CaseInsensitive))
         return false;
+    if (!applicationsName.contains(applicationsNamePrefix, Qt::CaseInsensitive) && !label.contains(applicationsNamePrefix, Qt::CaseInsensitive))
+        return false;
     if (!assetsName.contains(assetsNamePrefix, Qt::CaseInsensitive))
         return false;
     if(bSAFETransaction)
@@ -109,6 +112,12 @@ void TransactionFilterProxy::setAddressPrefix(const QString &addrPrefix)
 void TransactionFilterProxy::setAssetsNamePrefix(const QString &assetsNamePrefix)
 {
     this->assetsNamePrefix = assetsNamePrefix;
+    invalidateFilter();
+}
+
+void TransactionFilterProxy::setApplicationsNamePrefix(const QString &applicationsNamePrefix)
+{
+    this->applicationsNamePrefix = applicationsNamePrefix;
     invalidateFilter();
 }
 

@@ -152,8 +152,8 @@
         <translation>僅用於通過匿名發送淮行混合</translation>
     </message>
     <message>
-        <source>Enter the new passphrase to the wallet.&lt;br/&gt;Please use a passphrase of &lt;b&gt;ten or more random characters&lt;/b&gt;, or &lt;b&gt;eight or more words&lt;/b&gt;.</source>
-        <translation>輸入錢包的新密碼。&lt;br/&gt;密碼請用&lt;b&gt;10 個以上的字元&lt;/b&gt;，或是&lt;b&gt;8 個以上的字詞&lt;/b&gt;。</translation>
+        <source>Enter the new passphrase to the wallet.&lt;br/&gt;Suggest use a passphrase of &lt;b&gt;ten or more random characters&lt;/b&gt;, or &lt;b&gt;eight or more words&lt;/b&gt;.</source>
+        <translation>輸入錢包的新密碼。&lt;br/&gt;建議密碼用&lt;b&gt;10 個以上的字元&lt;/b&gt;，或是&lt;b&gt;8 個以上的字詞&lt;/b&gt;。</translation>
     </message>
     <message>
         <source>Encrypt wallet</source>
@@ -382,7 +382,7 @@
     </message>
     <message>
         <source>  A&amp;pplications</source>
-        <translation>  應用(&amp;P)</translation>
+        <translation>  應用註冊(&amp;P)</translation>
     </message>
     <message>
         <source>  &amp;Candy</source>
@@ -1767,28 +1767,12 @@ http://www.anwang.com/</translation>
 <context>
     <name>ApplicationsPage</name>
     <message>
-        <source>Applications Regist</source>
-        <translation>應用註冊</translation>
+        <source>Regist</source>
+        <translation>註冊</translation>
     </message>
     <message>
         <source>Regist Record</source>
-        <translation>註冊應用記錄</translation>
-    </message>
-    <message>
-        <source>Application instructions</source>
-        <translation>應用使用說明</translation>
-    </message>
-    <message>
-        <source>1)The first step is to register the application through the "Applications Register" interface. After successful, query the application ID through "Regist Record", as shown below.</source>
-        <translation>1）第壹步，通過“註冊應用”界面註冊應用，成功後通過“註冊應用記錄”查詢應用ID，如下圖：</translation>
-    </message>
-    <message>
-        <source>2)The second step is to set the permissions for the users in the application, and set them through RPC interface setappauth. For the specific use method, refer to the RPC interface document of the security network;</source>
-        <translation>2）第二步，為應用內的用戶設置權限，通過安網3RPC接口setappauth進行設置，具體使用方法參照安網3RPC接口文檔；</translation>
-    </message>
-    <message>
-        <source>3)The third step is to write the application data to the Safe Core, and write the data through the RPC interface createextenddatatx. The specific usage method refers to the RPC interface document of the Safe Core;</source>
-        <translation>3）第三步，寫入應用數據到安網3，通過安網3RPC接口createextenddatatx寫入數據，具體使用方法參照安網3RPC接口文檔；</translation>
+        <translation>註冊記錄</translation>
     </message>
 </context>
 <context>
@@ -2054,6 +2038,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Enter application id to search</source>
         <translation>輸入應用id進行搜索</translation>
+    </message>
+    <message>
+        <source>Enter application name to search</source>
+        <translation>輸入應用名稱進行搜索</translation>
     </message>
     <message>
         <source>Enter manager address to search</source>
@@ -2368,6 +2356,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Register</source>
         <translation>註冊</translation>
+    </message>  
+    <message>
+        <source>* Application Use Reference &lt;a href=https://www.anwang.com/download/API.pdf>Safe3 Application Protocol&lt;/a&gt;</source>
+        <translation>* 應用使用參見 &lt;a href = https://www.anwang.com/download/API.pdf >安網3 應用協議&lt;/a&gt;</translation>
     </message>
 </context>
 <context>
@@ -2562,11 +2554,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Destroyed</source>
-        <translation>是否可銷燬</translation>
+        <translation>可銷燬</translation>
     </message>
     <message>
         <source>Distribute Candy</source>
-        <translation>是否頒發糖果</translation>
+        <translation>頒發糖果</translation>
     </message>
     <message>
         <source>Candy Expire Time:</source>
@@ -3070,6 +3062,10 @@ http://www.anwang.com/</translation>
         <translation>日期</translation>
     </message>
     <message>
+        <source>Application Name</source>
+        <translation>應用名稱</translation>
+    </message>
+    <message>
         <source>Application ID</source>
         <translation>應用ID</translation>
     </message>
@@ -3080,6 +3076,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Date and time that the application was registed.</source>
         <translation>應用的註冊日期。</translation>
+    </message>
+    <message>
+        <source>Application Name of assets regist.</source>
+        <translation>應用的註冊名稱。</translation>
     </message>
     <message>
         <source>Application ID of assets regist.</source>
@@ -5027,6 +5027,18 @@ http://www.anwang.com/</translation>
         <translation>請按一下&quot;簽署訊息&quot;來產生簽章</translation>
     </message>
     <message>
+        <source>Message to be signed</source>
+        <translation>待簽名的消息</translation>
+    </message>
+    <message>
+        <source>Input message</source>
+        <translation>輸入信息</translation>
+    </message>
+    <message>
+        <source>Input signature</source>
+        <translation>輸入簽名</translation>
+    </message>
+    <message>
         <source>The entered address is invalid.</source>
         <translation>輸入的位址無效。</translation>
     </message>
@@ -5157,11 +5169,11 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Assets Destory</source>
-        <translation>是否可銷燬</translation>
+        <translation>可銷燬</translation>
     </message>
     <message>
         <source>Pay Candy</source>
-        <translation>是否頒發糖果</translation>
+        <translation>頒發糖果</translation>
     </message>
     <message>
         <source>Yes</source>
@@ -6311,7 +6323,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Applications</source>
-        <translation>應用</translation>
+        <translation>應用註冊</translation>
     </message>
     <message>
         <source>Candy</source>
