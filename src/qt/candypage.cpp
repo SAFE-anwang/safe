@@ -298,7 +298,6 @@ void CandyPage::getCandy(QPushButton *btn)
         return;
     }
 
-    GetAddAmountByHeight(nTxHeight, nTotalSafe);
     //Put get candy operation into the thread to prevent the main thread from being suspended.
     candyWorker->init(assetId, out, nTxHeight, nTotalSafe, candyInfo, assetInfo,rowNum);
     getCandyThread->start();

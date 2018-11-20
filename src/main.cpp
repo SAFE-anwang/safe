@@ -16,9 +16,6 @@ std::string g_strCancelledSafeAddress = "XagqqFetxiDb9wbartKDrXgnqLah9fKoTx"; //
 std::string g_strCancelledAssetAddress = "XagqqFetxiDb9wbartKDrXgnqLahHSe2VE"; // asset's black hold address (hash160: 0x0000...02)
 std::string g_strPutCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLahUovwfs"; // candy's black hold address (hash160: 0x0000...03)
 
-int g_nStartAddamountHeight = 2000;
-CAmount g_nCriticalEffective = 63337198836315;
-
 
 CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)
 {

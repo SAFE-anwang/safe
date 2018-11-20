@@ -1299,8 +1299,6 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
 bool GetAddressAmountByHeight(const int& nHeight, const std::string& strAddress, CAmount& nAmount);
 bool GetTotalAmountByHeight(const int& nHeight, CAmount& nTotalAmount);
 
-void GetAddAmountByHeight(const int& nHeight, CAmount& nTotalAmount);
-
 class CBlockFileInfo
 {
 public:
