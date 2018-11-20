@@ -1893,7 +1893,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                 return state.DoS(10, false, REJECT_INVALID, strprintf("get_candy: invalid total safe amount at %d", nPrevTxHeight));
             }
 
-            GetAddAmountByHeight(nPrevTxHeight, nTotalSafe);
             if(nTotalSafe < nSafe)
             {
                 LogPrint("asset", "check-getcandy: safe amount of address[%s] is more than total safe amount at %d\n", strAddress, nPrevTxHeight);
@@ -6911,12 +6910,6 @@ bool GetTotalAmountByHeight(const int& nHeight, CAmount& nTotalAmount)
     return pblocktree->Read_CandyHeight_TotalAmount_Index(nHeight, nTotalAmount);
 }
 
-void GetAddAmountByHeight(const int& nHeight, CAmount& nTotalAmount)
-{
-    if (nHeight >= g_nStartAddamountHeight )
-        nTotalAmount += g_nCriticalEffective;
-}
-
 bool GetCOutPointAddress(const uint256& assetId, std::map<COutPoint, std::vector<std::string>> &moutpointaddress)
 {
     if (assetId.IsNull())
@@ -7056,8 +7049,6 @@ static bool GetAllCandyInfo()
 
         if (nTotalSafe <= 0)
             continue;
-
-        GetAddAmountByHeight(nTxHeight, nTotalSafe);
 
         bool relust = false;
         int addressSize = vaddress.size();

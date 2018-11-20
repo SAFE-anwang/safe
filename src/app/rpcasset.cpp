@@ -676,7 +676,6 @@ UniValue getcandy(const UniValue& params, bool fHelp)
                 return ret;
         }
 
-        GetAddAmountByHeight(nTxHeight, nTotalSafe);
         CAppHeader appHeader(g_nAppHeaderVersion, uint256S(g_strSafeAssetId), GET_CANDY_CMD);
         CPutCandy_IndexKey assetIdCandyInfo;
         assetIdCandyInfo.assetId = assetId;
@@ -1645,8 +1644,6 @@ UniValue getaddressamountbyheight(const UniValue& params, bool fHelp)
     if(!GetAddressAmountByHeight(nHeight, strAddress, nAmount) || !GetTotalAmountByHeight(nHeight, nTotalAmount))
         throw JSONRPCError(RPC_INVALID_PARAMETER, "No safe or total safe available about specified address and height");
 
-    if (nTotalAmount > 0)
-        GetAddAmountByHeight(nHeight, nTotalAmount);
     UniValue entry(UniValue::VOBJ);
     entry.push_back(Pair("amount", ValueFromAmount(nAmount)));
     entry.push_back(Pair("totalAmount", ValueFromAmount(nTotalAmount)));
