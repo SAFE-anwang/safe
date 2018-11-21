@@ -1351,7 +1351,7 @@ void CTxMemPool::add_GetCandyCount_Index(const CTxMemPoolEntry& entry, const CCo
                             CGetCandyCount_IndexKey key(candyData.assetId,txin.prevout);
                             CGetCandyCount_IndexValue& value = mapGetCandyCount[key];
                             value.nGetCandyCount += candyData.nAmount;
-                            getCandyCount_inserted.push_back(std::make_pair(key,CGetCandyCount_IndexValue(candyData.nAmount,0)));
+                            getCandyCount_inserted.push_back(std::make_pair(key,CGetCandyCount_IndexValue(candyData.nAmount)));
                         }
                     }
                 }
