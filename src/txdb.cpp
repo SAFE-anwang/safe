@@ -1206,18 +1206,17 @@ bool CBlockTreeDB::Erase_GetCandyCount_Index(const CGetCandyCount_IndexKey &key)
     return WriteBatch(batch);
 }
 
-bool CBlockTreeDB::Read_GetCandyCount_Index(const CGetCandyCount_IndexKey &candyCountKey,CGetCandyCount_IndexValue& getCandyCountvalue)
+bool CBlockTreeDB::Read_GetCandyCount_Index(const uint256& assetId, const COutPoint& out,CGetCandyCount_IndexValue& getCandyCountvalue)
 {
     boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
-
-    pcursor->Seek(make_pair(DB_GETCANDYCOUNT_INDEX, candyCountKey));
+    pcursor->Seek(make_pair(DB_GETCANDYCOUNT_INDEX, CGetCandyCount_IndexKey(assetId, out)));
 
     bool ret = false;
     while (pcursor->Valid())
     {
         boost::this_thread::interruption_point();
         std::pair<std::string, CGetCandyCount_IndexKey> key;
-        if (pcursor->GetKey(key) && key.first == DB_GETCANDYCOUNT_INDEX && key.second == candyCountKey)
+        if (pcursor->GetKey(key) && key.first == DB_GETCANDYCOUNT_INDEX && key.second.assetId == assetId && key.second.out == out)
         {
             if(pcursor->GetValue(getCandyCountvalue))
             {

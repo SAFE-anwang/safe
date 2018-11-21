@@ -653,10 +653,9 @@ struct CGetCandyCount_IndexKey
 struct CGetCandyCount_IndexValue
 {
     CAmount nGetCandyCount;
-    CAmount nCandyTotal;
 
-    CGetCandyCount_IndexValue(const CAmount& nGetCandyCount = 0, const CAmount& nCandyTotal = 0)
-        : nGetCandyCount(nGetCandyCount), nCandyTotal(nCandyTotal) {
+    CGetCandyCount_IndexValue(const CAmount& nGetCandyCount = 0)
+        : nGetCandyCount(nGetCandyCount) {
     }
 
     ADD_SERIALIZE_METHODS;
@@ -665,7 +664,6 @@ struct CGetCandyCount_IndexValue
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
     {
         READWRITE(nGetCandyCount);
-        READWRITE(nCandyTotal);
     }
 };
 
@@ -1479,6 +1477,7 @@ bool GetAssetIdByAddress(const std::string & strAddress, std::vector<uint256> &a
 bool GetAssetIdCandyInfo(const uint256& assetId, std::map<COutPoint, CCandyInfo>& mapCandyInfo);
 bool GetAssetIdCandyInfo(const uint256& assetId, const COutPoint& out, CCandyInfo& candyInfo);
 bool GetGetCandyAmount(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& amount, const bool fWithMempool = true);
+bool GetGetCandyCountAmount(const uint256& assetId, const COutPoint& out, CGetCandyCount_IndexValue& candyCountValue, const bool fWithMempool = true);
 bool GetAssetListInfo(std::vector<uint256> &vAssetId, const bool fWithMempool = true);
 bool GetIssueAssetInfo(std::map<uint256, CAssetData> &mapissueassetinfo);
 CAmount GetAddedAmountByAssetId(const uint256& assetId, const bool fWithMempool = true);

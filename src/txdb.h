@@ -152,7 +152,7 @@ public:
 
     bool Write_GetCandyCount_Index(const CGetCandyCount_IndexKey& key,const CGetCandyCount_IndexValue& value);
     bool Erase_GetCandyCount_Index(const CGetCandyCount_IndexKey& key);
-    bool Read_GetCandyCount_Index(const CGetCandyCount_IndexKey& candyCountKey,CGetCandyCount_IndexValue& getCandyCountvalue);
+    bool Read_GetCandyCount_Index(const uint256& assetId, const COutPoint& out,CGetCandyCount_IndexValue& getCandyCountvalue);
 };
 
 #endif // BITCOIN_TXDB_H

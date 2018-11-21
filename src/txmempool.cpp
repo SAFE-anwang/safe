@@ -1228,6 +1228,13 @@ bool CGetCandy_IndexKeyCompare::operator()(const CGetCandy_IndexKey& a, const CG
     return a.assetId < b.assetId;
 }
 
+bool CGetCandyCount_IndexKeyCompare::operator ()(const CGetCandyCount_IndexKey& a, const CGetCandyCount_IndexKey& b) const
+{
+    if(a.assetId == b.assetId)
+        return a.out < b.out;
+    return a.assetId < b.assetId;
+}
+
 void CTxMemPool::add_GetCandy_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view)
 {
     LOCK(cs);
@@ -1308,6 +1315,96 @@ bool CTxMemPool::remove_GetCandy_Index(const uint256& txhash)
     return true;
 }
 
+void CTxMemPool::add_GetCandyCount_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view)
+{
+    LOCK(cs);
+    const CTransaction& tx = entry.GetTx();
+    std::vector<std::pair<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> > getCandyCount_inserted;
+
+    uint256 txhash = tx.GetHash();
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CAppHeader header;
+        std::vector<unsigned char> vData;
+        if(ParseReserve(txout.vReserve, header, vData))
+        {
+            CTxDestination dest;
+            if(!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+            if(header.nAppCmd == GET_CANDY_CMD)
+            {
+                CGetCandyData candyData;
+                if(ParseGetCandyData(vData, candyData))
+                {
+                    for(unsigned int m = 0; m < tx.vin.size(); m++)
+                    {
+                        const CTxIn& txin = tx.vin[m];
+                        const CTxOut& in_txout = view.GetOutputFor(txin);
+                        CTxDestination in_dest;
+                        if(!ExtractDestination(in_txout.scriptPubKey, in_dest))
+                            continue;
+                        if(CBitcoinAddress(in_dest).ToString() == g_strPutCandyAddress)
+                        {
+                            //XJTODO test
+                            CGetCandyCount_IndexKey key(candyData.assetId,txin.prevout);
+                            CGetCandyCount_IndexValue& value = mapGetCandyCount[key];
+                            value.nGetCandyCount += candyData.nAmount;
+                            getCandyCount_inserted.push_back(std::make_pair(key,CGetCandyCount_IndexValue(candyData.nAmount,0)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    mapGetCandyCount_Inserted.insert(make_pair(txhash, getCandyCount_inserted));
+}
+
+bool CTxMemPool::get_GetCandyCount_Index(const uint256 &assetId, const COutPoint &out, CGetCandyCount_IndexValue &value)
+{
+    LOCK(cs);
+    for(mapGetCandyCount_Index::const_iterator it = mapGetCandyCount.begin(); it != mapGetCandyCount.end(); it++)
+    {
+        const CGetCandyCount_IndexKey& key = it->first;
+        if(key.assetId == assetId && key.out == out)
+        {
+            const CGetCandyCount_IndexValue& poolValue = it->second;
+            value.nGetCandyCount = poolValue.nGetCandyCount;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool CTxMemPool::remove_GetCandyCount_Index(const uint256& txhash)
+{
+    LOCK(cs);
+    mapGetCandyCount_IndexInserted::iterator it = mapGetCandyCount_Inserted.find(txhash);
+
+    if(it != mapGetCandyCount_Inserted.end())
+    {
+        std::vector<std::pair<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> > keys = (*it).second;
+        for(std::vector<std::pair<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> >::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            //XJTODO test
+            const CGetCandyCount_IndexKey& key = mit->first;
+            if(mapGetCandyCount.find(key) != mapGetCandyCount.end())
+            {
+                CGetCandyCount_IndexValue& value = mapGetCandyCount[key];
+                value.nGetCandyCount -= mit->second.nGetCandyCount;
+                if(value.nGetCandyCount==0)
+                    mapGetCandyCount.erase(key);
+            }
+        }
+        mapGetCandyCount_Inserted.erase(it);
+    }
+
+    return true;
+}
+
 void CTxMemPool::removeUnchecked(txiter it)
 {
     const uint256 hash = it->GetTx().GetHash();
@@ -1329,6 +1426,7 @@ void CTxMemPool::removeUnchecked(txiter it)
     removeAssetInfoIndex(hash);
     remove_AssetTx_Index(hash);
     remove_GetCandy_Index(hash);
+    remove_GetCandyCount_Index(hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
