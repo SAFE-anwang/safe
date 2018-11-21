@@ -395,8 +395,6 @@ void GetCandyWorker::doGetCandy()
             Q_EMIT resultReady(false, errorStr, rowNum, uselessArg);
             return;
         }
-
-        nNowGetCandyTotalAmount += nCandyAmount;
         
         if(nCandyAmount < amount)
             continue;
@@ -411,6 +409,8 @@ void GetCandyWorker::doGetCandy()
         CBitcoinAddress recvAddress(*addit);
         CRecipient recvRecipient = {GetScriptForDestination(recvAddress.Get()), nCandyAmount, 0, false, true,""};
         vecSend.push_back(recvRecipient);
+
+        nNowGetCandyTotalAmount += nCandyAmount;
     }
 
     if (nNowGetCandyTotalAmount + nGetCandyAmount > candyInfo.nAmount)
