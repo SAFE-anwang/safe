@@ -708,6 +708,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
     // check vout
     map<uint256, int> mapAppId;
     map<uint256, int> mapAssetId;
+    std::vector<std::string> voutaddress;
+    
     uint256 appId;
     for(unsigned int i = 0; i < tx.vout.size(); i++)
     {
@@ -779,6 +781,15 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == GET_CANDY_CMD)
         {
+            string strAddress = "";
+            if(!GetTxOutAddress(txout, &strAddress))
+                return state.DoS(10, false, REJECT_INVALID, "invalid txout address, " + txout.ToString());
+
+            if (find(voutaddress.begin(), voutaddress.end(), strAddress) == voutaddress.end())
+                voutaddress.push_back(strAddress);
+            else
+               return state.DoS(50, false, REJECT_INVALID, "get_candy: the output address already exists."); 
+            
             CGetCandyData getData;
             if(!ParseGetCandyData(vData, getData))
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse getcandy txout reserve failed");
@@ -921,11 +932,14 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
 
     int nTxHeight = GetTxHeight(tx.GetHash());
 
+    map<CPutCandy_IndexKey, CAmount> mapAssetGetCandy;
+
     for(unsigned int i = 0; i < tx.vout.size(); i++)
     {
         const CTxOut txout = tx.vout[i];
         CAppHeader header;
         vector<unsigned char> vData;
+
         if(!ParseReserve(txout.vReserve, header, vData)) // safe txout
             continue;
 
@@ -1905,6 +1919,21 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                 LogPrint("asset", "check-getcandy: candy-height: %d, address: %s, total_safe: %lld, user_safe: %lld, total_candy_amount: %lld, can_get_candy_amount: %lld, out: %s\n", nPrevTxHeight, strAddress, nTotalSafe, nSafe, candyInfo.nAmount, nCandyAmount, out.ToString());
                 return state.DoS(10, false, REJECT_INVALID, "get_candy: candy amount which can be gotten is too little");
             }
+
+            CGetCandyCount_IndexValue candyCountValue;
+            if (!GetGetCandyTotalAmount(candyData.assetId, out, candyCountValue, fWithMempool))
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: failed to get the number of candy already received");
+
+            CAmount nGetCandyAmount = candyCountValue.nGetCandyCount;
+            CAmount nGetCandyTotalAmount = nCandyAmount + nGetCandyAmount;
+            CPutCandy_IndexKey tempkey(candyData.assetId, out, candyInfo);
+            CAmount nmapgetcandyamount = 0;
+            if (!CompareGetCandyPutCandyTotal(mapAssetGetCandy, tempkey, nGetCandyTotalAmount, candyInfo.nAmount, nmapgetcandyamount))
+            {
+                LogPrint("asset", "check-getcandy: get_candy_this_time_total_amount: %lld, already_get_candy_total_amount: %lld, total_candy_amount: %lld\n", nmapgetcandyamount, nGetCandyTotalAmount, candyInfo.nAmount);
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: more than the total number of candy issued");
+            }
+
             if(txout.nValue != nCandyAmount)
             {
                 LogPrint("asset", "check-getcandy: candy-height: %d, address: %s, total_safe: %lld, user_safe: %lld, total_candy_amount: %lld, can_get_candy_amount: %lld, out: %s\n", nPrevTxHeight, strAddress, nTotalSafe, nSafe, candyInfo.nAmount, nCandyAmount, out.ToString());
@@ -6835,14 +6864,25 @@ bool GetGetCandyAmount(const uint256& assetId, const COutPoint& out, const std::
     return pblocktree->Read_GetCandy_Index(assetId, out, strAddress, amount);
 }
 
-bool GetGetCandyCountAmount(const uint256 &assetId, const COutPoint &out, CGetCandyCount_IndexValue &candyCountValue, const bool fWithMempool)
+bool GetGetCandyTotalAmount(const uint256 &assetId, const COutPoint &out, CGetCandyCount_IndexValue &candyCountValue, const bool fWithMempool)
 {
-    if(fWithMempool)
+    CGetCandyCount_IndexValue dbcandyCountValue;
+    if (pblocktree->Is_Exists_GetCandyCount_Key(assetId, out))
     {
-        if(mempool.get_GetCandyCount_Index(assetId,out,candyCountValue))
-            return true;
+        if (!pblocktree->Read_GetCandyCount_Index(assetId, out, dbcandyCountValue))
+            return false;
     }
-    return pblocktree->Read_GetCandyCount_Index(assetId,out,candyCountValue);
+
+    candyCountValue.nGetCandyCount = dbcandyCountValue.nGetCandyCount;
+
+    if (fWithMempool)
+    {
+        CGetCandyCount_IndexValue memcandyCountValue;
+        mempool.get_GetCandyCount_Index(assetId, out, memcandyCountValue);
+        candyCountValue.nGetCandyCount += memcandyCountValue.nGetCandyCount;
+    }
+
+    return true;
 }
 
 bool GetAssetListInfo(std::vector<uint256> &vAssetId, const bool fWithMempool)
@@ -7092,6 +7132,13 @@ static bool GetAllCandyInfo()
         const COutPoint& out = candyInfoIndex.out;
         const CCandyInfo& candyInfo = candyInfoIndex.candyInfo;
 
+        CGetCandyCount_IndexValue candyCountValue;
+        if (!GetGetCandyTotalAmount(assetId, out, candyCountValue))
+            continue;
+
+        CAmount nGetCandyAmount =  candyCountValue.nGetCandyCount;
+        CAmount nNowGetCandyTotalAmount = 0;
+
         if (candyInfo.nAmount <= 0)
             continue;
 
@@ -7135,7 +7182,12 @@ static bool GetAllCandyInfo()
                 relust = true;
                 break;
             }
+
+            nNowGetCandyTotalAmount += nCandyAmount;
         }
+
+        if (nNowGetCandyTotalAmount + nGetCandyAmount > candyInfo.nAmount)
+            continue;
 
         if (relust)
         {
@@ -8544,5 +8596,26 @@ bool VerifyDetailFile()
     }
 
     fclose(pFile);
+    return true;
+}
+
+bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ngetcandytotalamount, const CAmount &nputcandytotalamount, CAmount &nmapgetcandyamount)
+{
+    map<CPutCandy_IndexKey, CAmount>::iterator tempit = mapAssetGetCandy.find(key);
+    if (tempit != mapAssetGetCandy.end())
+    {
+        nmapgetcandyamount = tempit->second;
+        if (nmapgetcandyamount + ngetcandytotalamount > nputcandytotalamount)
+            return false;
+
+        mapAssetGetCandy[key] = nmapgetcandyamount + ngetcandytotalamount;
+    }
+    else
+    {
+        if (ngetcandytotalamount > nputcandytotalamount)
+            return false;
+
+        mapAssetGetCandy[key] = ngetcandytotalamount;
+    }
     return true;
 }

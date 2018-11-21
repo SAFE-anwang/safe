@@ -2732,6 +2732,14 @@ http://www.anwang.com/</translation>
 <context>
     <name>CandyPage</name>
     <message>
+        <source>Failed to get the number of candy already received</source>
+        <translation>获取已领糖果数量失败</translation>
+    </message>
+    <message>
+        <source>The candy has been picked up</source>
+        <translation>糖果已经被领完</translation>
+    </message>
+    <message>
         <source>Put candy times used up</source>
         <translation>糖果发行次数已用完</translation>
     </message>

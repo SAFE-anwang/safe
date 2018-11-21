@@ -1477,7 +1477,7 @@ bool GetAssetIdByAddress(const std::string & strAddress, std::vector<uint256> &a
 bool GetAssetIdCandyInfo(const uint256& assetId, std::map<COutPoint, CCandyInfo>& mapCandyInfo);
 bool GetAssetIdCandyInfo(const uint256& assetId, const COutPoint& out, CCandyInfo& candyInfo);
 bool GetGetCandyAmount(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& amount, const bool fWithMempool = true);
-bool GetGetCandyCountAmount(const uint256& assetId, const COutPoint& out, CGetCandyCount_IndexValue& candyCountValue, const bool fWithMempool = true);
+bool GetGetCandyTotalAmount(const uint256& assetId, const COutPoint& out, CGetCandyCount_IndexValue& candyCountValue, const bool fWithMempool = true);
 bool GetAssetListInfo(std::vector<uint256> &vAssetId, const bool fWithMempool = true);
 bool GetIssueAssetInfo(std::map<uint256, CAssetData> &mapissueassetinfo);
 CAmount GetAddedAmountByAssetId(const uint256& assetId, const bool fWithMempool = true);
@@ -1505,5 +1505,7 @@ std::string mulstring(std::string numAStr, std::string numBStr);
 std::string numtofloatstring(std::string numstr, int32_t Decimals);
 
 bool ExistForbidTxin(const int nHeight, const std::vector<int>& prevheights);
+
+bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ngetcandytotalamount, const CAmount &nputcandytotalamount, CAmount &nmapgetcandyamount);
 
 #endif // BITCOIN_VALIDATION_H

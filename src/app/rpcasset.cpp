@@ -681,6 +681,13 @@ UniValue getcandy(const UniValue& params, bool fHelp)
         assetIdCandyInfo.assetId = assetId;
         assetIdCandyInfo.out = out;
 
+        CGetCandyCount_IndexValue candyCountValue;
+        if (!GetGetCandyTotalAmount(assetId, out, candyCountValue))
+            throw JSONRPCError(GET_GET_CANDY_TOTAL_FAILED, "Error: Failed to get the number of candy already received");
+
+        CAmount nGetCandyAmount =  candyCountValue.nGetCandyCount;
+        CAmount nNowGetCandyTotalAmount = 0;
+
         vector<CRecipient> vecSend;
         for(unsigned int i = 0; i < vKeyID.size(); i++)
         {
@@ -703,10 +710,18 @@ UniValue getcandy(const UniValue& params, bool fHelp)
             if(nCandyAmount < AmountFromValue("0.0001", assetInfo.assetData.nDecimals, true))
                 continue;
 
+            if (nCandyAmount + nGetCandyAmount > candyInfo.nAmount)
+                throw JSONRPCError(EXCEED_PUT_CANDY_TOTAL_AMOUNT, "Error: The candy has been picked up");
+
+            nNowGetCandyTotalAmount += nCandyAmount;
+
             LogPrint("asset", "rpc-getcandy: candy-height: %d, address: %s, total_safe: %lld, user_safe: %lld, total_candy_amount: %lld, can_get_candy_amount: %lld, out: %s\n", nTxHeight, strAddress, nTotalSafe, nSafe, candyInfo.nAmount, nCandyAmount, out.ToString());
             CRecipient recvRecipient = {GetScriptForDestination(recvAddress.Get()), nCandyAmount, 0, false, true};
             vecSend.push_back(recvRecipient);
         }
+
+        if (nNowGetCandyTotalAmount + nGetCandyAmount > candyInfo.nAmount)
+            throw JSONRPCError(EXCEED_PUT_CANDY_TOTAL_AMOUNT, "Error: The candy has been picked up");
 
         if(vecSend.size() == 0)
             continue;
