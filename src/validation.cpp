@@ -1858,7 +1858,7 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                 return state.DoS(10, false, REJECT_INVALID, "get_candy: current user got candy already, " + out.ToString());
 
             int nPrevTxHeight = GetTxHeight(out.hash);
-            if(fWithMempool)
+            //if(fWithMempool)
             {
                 if(nPrevTxHeight >= nTxHeight)
                     return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy txin");
