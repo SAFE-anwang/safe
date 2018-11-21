@@ -3362,6 +3362,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     std::vector<std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue> > putCandy_index;
     std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> > getCandy_index;
     std::vector<std::pair<CAssetTx_IndexKey, int> > assetTx_index;
+    std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> getCandyCount_index;
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
@@ -3641,6 +3642,9 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                     CGetCandyData candyData;
                     if(ParseGetCandyData(vData, candyData))
                     {
+                        CGetCandyCount_IndexKey key(candyData.assetId,tx.vin.back().prevout);
+                        CGetCandyCount_IndexValue& value = getCandyCount_index[key];
+                        value.nGetCandyCount += candyData.nAmount;
                         getCandy_index.push_back(make_pair(CGetCandy_IndexKey(candyData.assetId, tx.vin.back().prevout, strAddress), CGetCandy_IndexValue()));
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, GET_CANDY_TXOUT, COutPoint(hash, m)), -1));
                     }
@@ -3696,6 +3700,31 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
     if(assetTx_index.size() && !pblocktree->Erase_AssetTx_Index(assetTx_index))
         return AbortNode(state, "Failed to delete assetTx index");
+
+    if(getCandyCount_index.size())
+    {
+        std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue>::const_iterator iter = getCandyCount_index.begin();
+        while(iter != getCandyCount_index.end())
+        {
+            const CGetCandyCount_IndexKey& key = iter->first;
+            const CGetCandyCount_IndexValue& deltaValue = iter->second;
+            CGetCandyCount_IndexValue value;
+            if(pblocktree->Read_GetCandyCount_Index(key,value))
+            {
+                value.nGetCandyCount -= deltaValue.nGetCandyCount;
+                if(value.nGetCandyCount < 0)
+                {
+                    LogPrintf("disconnect getCandyAmountError:currCount:%d,deltaCount:%d",value.nGetCandyCount,deltaValue.nGetCandyCount);
+                    value.nGetCandyCount = 0;
+                }
+                if(!pblocktree->Erase_GetCandyCount_Index(key))
+                    return AbortNode(state, "Failed to erase getCandyCount index");
+                if(!pblocktree->Write_GetCandyCount_Index(key,value))
+                    return AbortNode(state, "Failed to write getCandyCount index");
+            }
+            ++iter;
+        }
+    }
 
     return fClean;
 }
@@ -4269,6 +4298,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     CPutCandyData candyData;
                     if(ParsePutCandyData(vData, candyData))
                     {
+                        CGetCandyCount_IndexKey key(candyData.assetId,tx.vin.back().prevout);
+                        CGetCandyCount_IndexValue value(0,candyData.nAmount);
+                        pblocktree->Write_GetCandyCount_Index(key,value);
+
                         putCandy_index.push_back(make_pair(CPutCandy_IndexKey(candyData.assetId, COutPoint(txhash, m), CCandyInfo(candyData.nAmount, candyData.nExpired)), CPutCandy_IndexValue(pindex->nHeight, blockHash, i)));
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, PUT_CANDY_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
 
@@ -4282,6 +4315,22 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     CGetCandyData candyData;
                     if(ParseGetCandyData(vData, candyData))
                     {
+                        //update get candy count
+                        CGetCandyCount_IndexKey key(candyData.assetId,tx.vin.back().prevout);
+                        CGetCandyCount_IndexValue value;
+                        pblocktree->Read_GetCandyCount_Index(key,value);
+                        if(value.nCandyTotal==0)
+                        {
+                            CCandyInfo putCandyInfo;
+                            if(pblocktree->Read_PutCandy_Index(candyData.assetId,key.out,putCandyInfo))
+                               value.nCandyTotal = putCandyInfo.nAmount;
+
+                        }
+
+                        pblocktree->Erase_GetCandyCount_Index(key);
+                        value.nGetCandyCount += candyData.nAmount;
+                        pblocktree->Write_GetCandyCount_Index(key,value);
+
                         getCandy_index.push_back(make_pair(CGetCandy_IndexKey(candyData.assetId, tx.vin.back().prevout, strAddress), CGetCandy_IndexValue(candyData.nAmount, pindex->nHeight, blockHash, i)));
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, GET_CANDY_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
                     }

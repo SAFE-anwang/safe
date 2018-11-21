@@ -619,6 +619,56 @@ struct CIterator_IdOutKey
     }
 };
 
+struct CGetCandyCount_IndexKey
+{
+    uint256 assetId;
+    COutPoint out;
+
+    CGetCandyCount_IndexKey(const uint256& assetId = uint256(), const COutPoint& out = COutPoint())
+        : assetId(assetId), out(out){
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(assetId);
+        READWRITE(out);
+    }
+
+    friend bool operator==(const CGetCandyCount_IndexKey& a, const CGetCandyCount_IndexKey& b)
+    {
+        return (a.assetId == b.assetId && a.out == b.out);
+    }
+
+    friend bool operator<(const CGetCandyCount_IndexKey& a, const CGetCandyCount_IndexKey& b)
+    {
+        if(a.assetId == b.assetId)
+            return a.out < b.out;
+        return a.assetId < b.assetId;
+    }
+};
+
+struct CGetCandyCount_IndexValue
+{
+    CAmount nGetCandyCount;
+    CAmount nCandyTotal;
+
+    CGetCandyCount_IndexValue(const CAmount& nGetCandyCount = 0, const CAmount& nCandyTotal = 0)
+        : nGetCandyCount(nGetCandyCount), nCandyTotal(nCandyTotal) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nGetCandyCount);
+        READWRITE(nCandyTotal);
+    }
+};
+
 struct CGetCandy_IndexKey
 {
     uint256 assetId;

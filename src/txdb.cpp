@@ -46,6 +46,7 @@ static const string DB_PUTCANDY_INDEX = "putcandy";
 static const string DB_GETCANDY_INDEX = "getcandy";
 static const string DB_CANDYHEIGHT_TOTALAMOUNT_INDEX = "candyheight_totalamount";
 static const string DB_CANDYHEIGHT_INDEX = "candyheight";
+static const string DB_GETCANDYCOUNT_INDEX = "getcandycount";
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {
@@ -1189,4 +1190,50 @@ bool CBlockTreeDB::Read_CandyHeight_Index(std::vector<int> &vHeight)
     }
 
     return vHeight.size();
+}
+
+bool CBlockTreeDB::Write_GetCandyCount_Index(const CGetCandyCount_IndexKey& key,const CGetCandyCount_IndexValue& value)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Write(make_pair(DB_GETCANDYCOUNT_INDEX, key), value);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_GetCandyCount_Index(const CGetCandyCount_IndexKey &key)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Erase(make_pair(DB_GETCANDYCOUNT_INDEX, key));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_GetCandyCount_Index(const CGetCandyCount_IndexKey &candyCountKey,CGetCandyCount_IndexValue& getCandyCountvalue)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+
+    pcursor->Seek(make_pair(DB_GETCANDYCOUNT_INDEX, candyCountKey));
+
+    bool ret = false;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CGetCandyCount_IndexKey> key;
+        if (pcursor->GetKey(key) && key.first == DB_GETCANDYCOUNT_INDEX && key.second == candyCountKey)
+        {
+            if(pcursor->GetValue(getCandyCountvalue))
+            {
+                ret = true;
+                break;
+            }
+            else
+            {
+                return error("failed to get getcandy index value");
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return ret;
 }
