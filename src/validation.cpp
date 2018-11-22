@@ -1924,11 +1924,10 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             if (!GetGetCandyTotalAmount(candyData.assetId, out, candyCountValue, fWithMempool))
                 return state.DoS(10, false, REJECT_INVALID, "get_candy: failed to get the number of candy already received");
 
-            CAmount nGetCandyAmount = candyCountValue.nGetCandyCount;
-            CAmount nGetCandyTotalAmount = nCandyAmount + nGetCandyAmount;
+            CAmount nGetCandyTotalAmount = candyCountValue.nGetCandyCount;
             CPutCandy_IndexKey tempkey(candyData.assetId, out, candyInfo);
             CAmount nmapgetcandyamount = 0;
-            if (!CompareGetCandyPutCandyTotal(mapAssetGetCandy, tempkey, nGetCandyTotalAmount, candyInfo.nAmount, nmapgetcandyamount))
+            if (!CompareGetCandyPutCandyTotal(mapAssetGetCandy, tempkey, nGetCandyTotalAmount, candyInfo.nAmount, nCandyAmount, nmapgetcandyamount))
             {
                 LogPrint("asset", "check-getcandy: get_candy_this_time_total_amount: %lld, already_get_candy_total_amount: %lld, total_candy_amount: %lld\n", nmapgetcandyamount, nGetCandyTotalAmount, candyInfo.nAmount);
                 return state.DoS(10, false, REJECT_INVALID, "get_candy: more than the total number of candy issued");
@@ -8604,19 +8603,22 @@ bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAsse
     map<CPutCandy_IndexKey, CAmount>::iterator tempit = mapAssetGetCandy.find(key);
     if (tempit != mapAssetGetCandy.end())
     {
-        nmapgetcandyamount = tempit->second;
-        if (nmapgetcandyamount + ngetcandytotalamount > nputcandytotalamount)
+        CAmount ntempmapgetcandyamount = tempit->second;
+        if (ntempmapgetcandyamount + nCandyAmount + ngetcandytotalamount > nputcandytotalamount)
         {
-            nmapgetcandyamount += nCandyAmount;
+            nmapgetcandyamount = nCandyAmount + ntempmapgetcandyamount;
             return false;
         }    
 
-        mapAssetGetCandy[key] = nmapgetcandyamount + nCandyAmount;
+        mapAssetGetCandy[key] = ntempmapgetcandyamount + nCandyAmount;
     }
     else
     {
-        if (ngetcandytotalamount > nputcandytotalamount)
+        if (nCandyAmount + ngetcandytotalamount > nputcandytotalamount)
+        {
+            nmapgetcandyamount = nCandyAmount;
             return false;
+        }
 
         mapAssetGetCandy[key] = nCandyAmount;
     }
