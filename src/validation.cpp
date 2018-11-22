@@ -8599,23 +8599,28 @@ bool VerifyDetailFile()
     return true;
 }
 
-bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ngetcandytotalamount, const CAmount &nputcandytotalamount, CAmount &nmapgetcandyamount)
+bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ngetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount)
 {
     map<CPutCandy_IndexKey, CAmount>::iterator tempit = mapAssetGetCandy.find(key);
     if (tempit != mapAssetGetCandy.end())
     {
         nmapgetcandyamount = tempit->second;
         if (nmapgetcandyamount + ngetcandytotalamount > nputcandytotalamount)
+        {
+            nmapgetcandyamount += nCandyAmount;
             return false;
+        }    
 
-        mapAssetGetCandy[key] = nmapgetcandyamount + ngetcandytotalamount;
+        mapAssetGetCandy[key] = nmapgetcandyamount + nCandyAmount;
     }
     else
     {
         if (ngetcandytotalamount > nputcandytotalamount)
             return false;
 
-        mapAssetGetCandy[key] = ngetcandytotalamount;
+        mapAssetGetCandy[key] = nCandyAmount;
     }
+
+    nmapgetcandyamount = mapAssetGetCandy[key];
     return true;
 }
