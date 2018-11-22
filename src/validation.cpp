@@ -7176,13 +7176,12 @@ static bool GetAllCandyInfo()
 
             CAmount nTempAmount = 0;
             CAmount nCandyAmount = (CAmount)(1.0 * nSafe / nTotalSafe * candyInfo.nAmount);
+            //add all nCandyAmount to judge whether more than candyInfo.nAmount
             if (nCandyAmount >= AmountFromValue("0.0001", assetInfo.assetData.nDecimals, true) && !GetGetCandyAmount(assetId, out, vaddress[addrCount], nTempAmount))
             {
                 relust = true;
-                break;
+                nNowGetCandyTotalAmount += nCandyAmount;
             }
-
-            nNowGetCandyTotalAmount += nCandyAmount;
         }
 
         if (nNowGetCandyTotalAmount + nGetCandyAmount > candyInfo.nAmount)
