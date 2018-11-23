@@ -700,10 +700,13 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
     return true;
 }
 
-bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view, const bool fWithMempool)
+bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view, map<CPutCandy_IndexKey, CAmount>& mapAssetGetCandy, const bool fWithMempool)
 {
     if(tx.IsCoinBase())
         return true;
+
+    if (fWithMempool)
+        mapAssetGetCandy.clear();
 
     // check vout
     map<uint256, int> mapAppId;
@@ -931,8 +934,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         return state.DoS(50, false, REJECT_INVALID, "asset_tx: vin can contain 1 asset only, " + tx.GetHash().GetHex());
 
     int nTxHeight = GetTxHeight(tx.GetHash());
-
-    map<CPutCandy_IndexKey, CAmount> mapAssetGetCandy;
 
     for(unsigned int i = 0; i < tx.vout.size(); i++)
     {
@@ -2272,6 +2273,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         if(ExistForbidTxin( (uint32_t)g_nChainHeight + 1, prevheights))
             return state.DoS(50, error("%s: contain forbidden transaction(%s) txin", __func__, hash.GetHex()), REJECT_INVALID, "bad-txns-forbid");
 
+        map<CPutCandy_IndexKey, CAmount> mapAssetGetCandy;
         if(!CheckAppTransaction(tx, state, view, true))
             return false;
 
@@ -4024,12 +4026,13 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     bool fDIP0001Active_context = (VersionBitsState(pindex->pprev, chainparams.GetConsensus(), Consensus::DEPLOYMENT_DIP0001, versionbitscache) == THRESHOLD_ACTIVE);
 
+    map<CPutCandy_IndexKey, CAmount> mapAssetGetCandy;
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction& tx = block.vtx[i];
         const uint256& txhash = tx.GetHash();
 
-        if(!fJustCheck && !CheckAppTransaction(tx, state, view, false))
+        if(!fJustCheck && !CheckAppTransaction(tx, state, view, mapAssetGetCandy, false))
             return error("ConnectBlock(): CheckAppTransaction on %s failed with %s", txhash.ToString(), FormatStateMessage(state));
 
         nInputs += tx.vin.size();
