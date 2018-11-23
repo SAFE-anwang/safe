@@ -3730,6 +3730,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     if(assetTx_index.size() && !pblocktree->Erase_AssetTx_Index(assetTx_index))
         return AbortNode(state, "Failed to delete assetTx index");
 
+    bool eraseFail=false,writeFail=true;
     if(getCandyCount_index.size())
     {
         std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue>::const_iterator iter = getCandyCount_index.begin();
@@ -3747,14 +3748,17 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                     value.nGetCandyCount = 0;
                 }
                 if(!pblocktree->Erase_GetCandyCount_Index(key))
-                    return AbortNode(state, "Failed to erase getCandyCount index");
+                    eraseFail = true;
                 if(!pblocktree->Write_GetCandyCount_Index(key,value))
-                    return AbortNode(state, "Failed to write getCandyCount index");
+                    writeFail = true;
             }
             ++iter;
         }
     }
-
+    if(eraseFail)
+        return AbortNode(state, "Failed to erase getCandyCount index");
+    if(writeFail)
+        return AbortNode(state, "Failed to write getCandyCount index");
     return fClean;
 }
 
