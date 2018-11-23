@@ -6877,12 +6877,14 @@ bool GetGetCandyTotalAmount(const uint256 &assetId, const COutPoint &out, CGetCa
     }
 
     candyCountValue.nGetCandyCount = dbcandyCountValue.nGetCandyCount;
+    LogPrint("asset", "GetGetCandyTotalAmount: get_candy_db_amount: %lld\n", dbcandyCountValue.nGetCandyCount);
 
     if (fWithMempool)
     {
         CGetCandyCount_IndexValue memcandyCountValue;
         mempool.get_GetCandyCount_Index(assetId, out, memcandyCountValue);
         candyCountValue.nGetCandyCount += memcandyCountValue.nGetCandyCount;
+        LogPrint("asset", "GetGetCandyTotalAmount: get_candy_mem_amount: %lld\n", memcandyCountValue.nGetCandyCount);
     }
 
     return true;
