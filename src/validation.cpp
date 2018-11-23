@@ -2274,7 +2274,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
             return state.DoS(50, error("%s: contain forbidden transaction(%s) txin", __func__, hash.GetHex()), REJECT_INVALID, "bad-txns-forbid");
 
         map<CPutCandy_IndexKey, CAmount> mapAssetGetCandy;
-        if(!CheckAppTransaction(tx, state, view, true))
+        if(!CheckAppTransaction(tx, state, view, mapAssetGetCandy, true))
             return false;
 
         CTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, chainActive.Height(), pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOps, lp);
