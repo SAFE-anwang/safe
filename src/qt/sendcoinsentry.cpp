@@ -64,8 +64,6 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *platformStyle, QWidget *pare
     connect(ui->deleteButton, SIGNAL(clicked()), this, SLOT(deleteClicked()));
     connect(ui->deleteButton_is, SIGNAL(clicked()), this, SLOT(deleteClicked()));
     connect(ui->deleteButton_s, SIGNAL(clicked()), this, SLOT(deleteClicked()));
-    connect(ui->memoLineEdit, SIGNAL(textChanged(QString)), this, SLOT(on_memo_textChanged(QString)));
-    connect(ui->addAsLabel, SIGNAL(textChanged(QString)), this, SLOT(on_addLabel_textChanged(QString)));
 
     QRegExp addExpReqLabelEdit;
     addExpReqLabelEdit.setPattern("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9-+*/。，$%^&*,!?.()#_\u4e00-\u9fa5 ]{1,150}");
@@ -103,13 +101,13 @@ void SendCoinsEntry::on_payTo_textChanged(const QString &address)
     updateLabel(address);
 }
 
-void SendCoinsEntry::on_addLabel_textChanged(const QString &address)
+void SendCoinsEntry::on_addAsLabel_textChanged(const QString &/*address*/)
 {
     while(ui->addAsLabel->text().toStdString().size() > MAX_ADRESS_LABEL_SIZE)
         ui->addAsLabel->setText(ui->addAsLabel->text().left(ui->addAsLabel->text().length()-1));
 }
 
-void SendCoinsEntry::on_memo_textChanged(const QString &address)
+void SendCoinsEntry::on_memoLineEdit_textChanged(const QString &/*address*/)
 {
     while(ui->memoLineEdit->text().toStdString().size() > MAX_REMARKS_SIZE)
         ui->memoLineEdit->setText(ui->memoLineEdit->text().left(ui->memoLineEdit->text().length()-1));
