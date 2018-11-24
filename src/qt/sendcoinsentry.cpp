@@ -104,13 +104,13 @@ void SendCoinsEntry::on_payTo_textChanged(const QString &address)
 void SendCoinsEntry::on_addAsLabel_textChanged(const QString &/*address*/)
 {
     if(ui->addAsLabel->text().toStdString().size() > MAX_ADRESS_LABEL_SIZE)
-        ui->addAsLabel->setText(ui->addAsLabel->text().left(MAX_ADRESS_LABEL_SIZE);
+        ui->addAsLabel->setText(ui->addAsLabel->text().left(MAX_ADRESS_LABEL_SIZE));
 }
 
 void SendCoinsEntry::on_memoLineEdit_textChanged(const QString &/*address*/)
 {
     if(ui->memoLineEdit->text().toStdString().size() > MAX_REMARKS_SIZE)
-        ui->memoLineEdit->setText(ui->memoLineEdit->text().left(MAX_REMARKS_SIZE);
+        ui->memoLineEdit->setText(ui->memoLineEdit->text().left(MAX_REMARKS_SIZE));
 }
 
 void SendCoinsEntry::setModel(WalletModel *model)
