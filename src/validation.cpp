@@ -3732,7 +3732,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     if(assetTx_index.size() && !pblocktree->Erase_AssetTx_Index(assetTx_index))
         return AbortNode(state, "Failed to delete assetTx index");
 
-    bool eraseFail=false,writeFail=true;
+    bool eraseFail=false,writeFail=false;
     if(getCandyCount_index.size())
     {
         std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue>::const_iterator iter = getCandyCount_index.begin();
