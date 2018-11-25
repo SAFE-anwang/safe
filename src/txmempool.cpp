@@ -1352,6 +1352,8 @@ void CTxMemPool::add_GetCandyCount_Index(const CTxMemPoolEntry& entry, const CCo
                             CGetCandyCount_IndexValue& value = mapGetCandyCount[key];
                             value.nGetCandyCount += candyData.nAmount;
                             getCandyCount_inserted.push_back(std::make_pair(key,CGetCandyCount_IndexValue(candyData.nAmount)));
+                            LogPrint("asset","check-getcandy:mempool_add_get_candy:%s,%s,currAmount:%d,totalAmount:%d\n",key.assetId.ToString(),key.out.ToString()
+                                      ,candyData.nAmount,value.nGetCandyCount);
                         }
                     }
                 }
@@ -1395,6 +1397,8 @@ bool CTxMemPool::remove_GetCandyCount_Index(const uint256& txhash)
             {
                 CGetCandyCount_IndexValue& value = mapGetCandyCount[key];
                 value.nGetCandyCount -= mit->second.nGetCandyCount;
+                LogPrint("asset","check-getcandy:mempool_remove_candy:%s,%s,currAmount:%d,totalAmount:%d\n",key.assetId.ToString(),key.out.ToString()
+                          ,mit->second.nGetCandyCount,value.nGetCandyCount);
                 if(value.nGetCandyCount==0)
                     mapGetCandyCount.erase(key);
             }

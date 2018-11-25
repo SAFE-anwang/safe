@@ -4492,6 +4492,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             if(!pblocktree->Write_GetCandyCount_Index(key,value))
                 return AbortNode(state, "Failed to write getCandyCount index");
             ++iter;
+            LogPrint("asset","check-getcandy:leveldb_add_candy:%s,%s,currAmount:%d,totalAmount:%d\n",key.assetId.ToString(),key.out.ToString()
+                      ,deltaValue.nGetCandyCount,value.nGetCandyCount);
         }
     }
 
