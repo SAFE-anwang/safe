@@ -6876,6 +6876,7 @@ bool GetGetCandyAmount(const uint256& assetId, const COutPoint& out, const std::
 
 bool GetGetCandyTotalAmount(const uint256 &assetId, const COutPoint &out, CGetCandyCount_IndexValue &candyCountValue, const bool fWithMempool)
 {
+    LogPrint("asset", "get_candy:: assetid: %s, out: %s\n", assetId.GetHex(), out.ToString());
     CGetCandyCount_IndexValue dbcandyCountValue;
     if (pblocktree->Is_Exists_GetCandyCount_Key(assetId, out))
     {
