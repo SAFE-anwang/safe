@@ -17,6 +17,8 @@ static const unsigned char REJECT_NONSTANDARD = 0x40;
 static const unsigned char REJECT_DUST = 0x41;
 static const unsigned char REJECT_INSUFFICIENTFEE = 0x42;
 static const unsigned char REJECT_CHECKPOINT = 0x43;
+static const unsigned char SEND_GETCADNY_TX_SUCCESS = 0x61;
+
 
 /** Capture information about block/transaction validation */
 class CValidationState {

@@ -681,11 +681,12 @@ UniValue getcandy(const UniValue& params, bool fHelp)
         assetIdCandyInfo.assetId = assetId;
         assetIdCandyInfo.out = out;
 
-        CGetCandyCount_IndexValue candyCountValue;
-        if (!GetGetCandyTotalAmount(assetId, out, candyCountValue))
+        CAmount dbamount = 0;
+        CAmount memamount = 0;
+        if (!GetGetCandyTotalAmount(assetId, out, dbamount, memamount))
             throw JSONRPCError(GET_GET_CANDY_TOTAL_FAILED, "Error: Failed to get the number of candy already received");
 
-        CAmount nGetCandyAmount =  candyCountValue.nGetCandyCount;
+        CAmount nGetCandyAmount =  dbamount + memamount;
         CAmount nNowGetCandyTotalAmount = 0;
 
         vector<CRecipient> vecSend;
