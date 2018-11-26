@@ -1984,6 +1984,10 @@ http://www.anwang.com/</translation>
         <translation>日期</translation>
     </message>
     <message>
+        <source>Application Name</source>
+        <translation>应用名称</translation>
+    </message>
+    <message>
         <source>Application ID</source>
         <translation>应用ID</translation>
     </message>
@@ -2813,7 +2817,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Get candy success</source>
-        <translation>领取糖果成功</translation>
+        <translation>已发送领取糖果交易，可能领取成功</translation>
     </message>
     <message>
         <source>Create candy transaction fail</source>
