@@ -352,15 +352,16 @@ void GetCandyWorker::doGetCandy()
     assetIdCandyInfo.assetId = assetId;
     assetIdCandyInfo.out = out;
 
-    CGetCandyCount_IndexValue candyCountValue;
-    if (!GetGetCandyTotalAmount(assetId, out, candyCountValue))
+    CAmount dbamount = 0;
+    CAmount memamount = 0;
+    if (!GetGetCandyTotalAmount(assetId, out, dbamount, memamount))
     {
         QString errorStr = tr("Failed to get the number of candy already received");
         Q_EMIT resultReady(false, errorStr, rowNum, uselessArg);
         return;
     }
 
-    CAmount nGetCandyAmount = candyCountValue.nGetCandyCount;
+    CAmount nGetCandyAmount = dbamount + memamount;
     CAmount nNowGetCandyTotalAmount = 0;
 
     vector<CRecipient> vecSend;

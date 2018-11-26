@@ -7161,7 +7161,7 @@ static bool GetAllCandyInfo()
 
         CAmount dbamount = 0;
         CAmount memamount = 0;
-        if (!GetGetCandyTotalAmount(assetId, out, dbamount,memamount))
+        if (!GetGetCandyTotalAmount(assetId, out, dbamount, memamount))
             continue;
 
         CAmount nGetCandyAmount =  dbamount + memamount;
