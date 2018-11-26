@@ -2828,8 +2828,8 @@ http://www.anwang.com/</translation>
         <translation>無效的糖果</translation>
     </message>
     <message>
-        <source>Get candy success</source>
-        <translation>已發送領取糖果交易,可能領取成功</translation>
+        <source>Send candy transaction successfully</source>
+        <translation>發送領取糖果交易成功</translation>
     </message>
     <message>
         <source>Create candy transaction fail</source>
