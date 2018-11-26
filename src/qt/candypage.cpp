@@ -325,7 +325,7 @@ void CandyPage::handlerGetCandyResult(const bool result, const QString errorStr,
         return;
     }
 
-    QMessageBox::information(this, strGetCandy,tr("Get candy success"),tr("Ok"));
+    QMessageBox::information(this, strGetCandy,tr("Send candy transaction successfully"),tr("Ok"));
     eraseCandy(rowNum);
 
 }
