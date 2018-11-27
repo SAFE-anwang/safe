@@ -313,8 +313,8 @@
         <translation>安網3核心</translation>
     </message>
     <message>
-        <source>Wallet</source>
-        <translation>錢包</translation>
+        <source>Wallet (v2.0.0 Safe_Dev2)</source>
+        <translation>錢包 (v2.0.0 Safe_Dev2)</translation>
     </message>
     <message>
         <source>Node</source>
@@ -5110,8 +5110,8 @@ http://www.anwang.com/</translation>
         <translation>安網3核心</translation>
     </message>
     <message>
-        <source>Version %1</source>
-        <translation>版本 %1</translation>
+        <source>Version %1 Safe_Dev2</source>
+        <translation>版本 %1 Safe_Dev2</translation>
     </message>
     <message>
         <source>The Dash Core developers</source>

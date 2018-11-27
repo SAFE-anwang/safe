@@ -34,6 +34,7 @@
 #define PUT_CANDY_CMD           205
 #define GET_CANDY_CMD           206
 #define TRANSFER_SAFE_CMD       300
+#define CREATE_VIRUTAL_ACCOUNT_CMD  400
 
 #define MAX_ADDRESS_SIZE        34
 
@@ -131,6 +132,13 @@ enum AppRpcError
     NOT_OWN_ASSET                   = -627,
     EXCEED_PUT_CANDY_TOTAL_AMOUNT   = -628,
     GET_GET_CANDY_TOTAL_FAILED      = -629,
+
+    //virtual account errors
+    INVALID_VIRTUAL_ACCOUNT_NAME_SIZE   = -700,
+    EXISTENT_VIRTUAL_ACCOUNT            = -701,
+    EXISTENT_VIRTUAL_ACCOUNT_ID         = -702,
+    EXISTENT_VIRTUAL_ACCOUNT_NAME       = -703,
+    NO_VIRTUAL_ACCOUNT_EXIST            = -704,
 };
 
 extern uint16_t g_nAppHeaderVersion;
@@ -576,6 +584,7 @@ bool IsKeyWord(const std::string& strValue);
 bool IsContainSpace(const std::string& strValue);
 bool IsValidUrl(const std::string& strUrl);
 
+void FillHeader(const CAppHeader& header, std::vector<unsigned char>& vHeader);
 std::vector<unsigned char> FillRegisterData(const std::string& strAdminAddress, const CAppHeader& header, const CAppData& appData);
 std::vector<unsigned char> FillAuthData(const std::string& strAdminAddress, const CAppHeader& header, const CAuthData& authData);
 std::vector<unsigned char> FillExtendData(const CAppHeader& header, const CExtendData& extendData);
@@ -600,5 +609,8 @@ bool ExistAppId(const uint256& appId, const bool fWithMempool = true);
 bool ExistShortName(const std::string& strShortName, const bool fWithMempool = true);
 bool ExistAssetName(const std::string& strAssetName, const bool fWithMempool = true);
 bool ExistAssetId(const uint256& assetId, const bool fWithMempool = true);
+
+bool ExistVirtualAccountName(const std::string& strVirtualAccountName, const bool fWithMempool = true);
+bool ExistVirtualAccountId(const uint256& virtualAccountId, const bool fWithMempool = true);
 
 #endif // APP_H

@@ -40,6 +40,7 @@
 #include "main.h"
 #include "rpc/server.h"
 #include "masternode-sync.h"
+#include "contract/contract_db.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -2561,6 +2562,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         pool.add_AssetTx_Index(entry, view);
         pool.add_GetCandy_Index(entry, view);
         pool.add_GetCandyCount_Index(entry,view);
+        pool.addVirtualAccountInfoIndex(entry, view);
 
         // trim mempool and check if tx was trimmed
         if (!fOverrideMempoolLimit) {
@@ -3411,6 +3413,9 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> > getCandy_index;
     std::vector<std::pair<CAssetTx_IndexKey, int> > assetTx_index;
     std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> getCandyCount_index;
+    std::vector<std::pair<uint256, CVirtualAccountId_Accountinfo_IndexValue> > virtualAccountId_accountInfo_index;
+    std::vector<std::pair<std::string, CName_Id_IndexValue> > virtualAccountName_accountId_index;
+    std::vector<std::pair<std::string, CName_Id_IndexValue> > safeAdress_accountId_index;
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
@@ -3697,6 +3702,16 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, GET_CANDY_TXOUT, COutPoint(hash, m)), -1));
                     }
                 }
+                else if(header.nAppCmd == CREATE_VIRUTAL_ACCOUNT_CMD)
+                {
+                    CVirtualAccountData virtualAccountData;
+                    if(contract_db.ParseVirtualAccountData(vData, virtualAccountData))
+                    {
+                        virtualAccountId_accountInfo_index.push_back(make_pair(header.appId, CVirtualAccountId_Accountinfo_IndexValue(virtualAccountData, pindex->nHeight)));
+                        virtualAccountName_accountId_index.push_back(make_pair(virtualAccountData.strVirtualAccountName, CName_Id_IndexValue(header.appId, pindex->nHeight)));
+                        safeAdress_accountId_index.push_back(make_pair(virtualAccountData.strSafeAddress, CName_Id_IndexValue(header.appId, pindex->nHeight)));
+                    }
+                }
             }
         }
     }
@@ -3748,7 +3763,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
     if(assetTx_index.size() && !pblocktree->Erase_AssetTx_Index(assetTx_index))
         return AbortNode(state, "Failed to delete assetTx index");
-
+    
     bool eraseFail=false,writeFail=false;
     if(getCandyCount_index.size())
     {
@@ -3778,6 +3793,16 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         return AbortNode(state, "Failed to erase getCandyCount index");
     if(writeFail)
         return AbortNode(state, "Failed to write getCandyCount index");
+
+    if(virtualAccountId_accountInfo_index.size() && !contract_db.Erase_VirtualAccountId_Accountinfo_Index(virtualAccountId_accountInfo_index))
+        return AbortNode(state, "Failed to write virtualAccountId_accountInfo index");
+
+    if(virtualAccountName_accountId_index.size() && !contract_db.Erase_VirtualAccountName_AccountId_Index(virtualAccountName_accountId_index))
+        return AbortNode(state, "Failed to write virtualAccountName_accountId index");
+
+    if(safeAdress_accountId_index.size() && !contract_db.Erase_SafeAdress_AccountId_Index(safeAdress_accountId_index))
+        return AbortNode(state, "Failed to write safeAdress_accountId index");
+
     return fClean;
 }
 
@@ -4038,6 +4063,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> > getCandy_index;
     std::vector<std::pair<CAssetTx_IndexKey, int> > assetTx_index;
     std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> getCandyCount_index;
+    std::vector<std::pair<uint256, CVirtualAccountId_Accountinfo_IndexValue> > virtualAccountId_accountInfo_index;
+    std::vector<std::pair<std::string, CName_Id_IndexValue> > virtualAccountName_accountId_index;
+    std::vector<std::pair<std::string, CName_Id_IndexValue> > safeAdress_accountId_index;
 
     map<string, CAmount> mapAddressAmount;
 
@@ -4372,6 +4400,16 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, GET_CANDY_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
                     }
                 }
+                else if(header.nAppCmd == CREATE_VIRUTAL_ACCOUNT_CMD)
+                {
+                    CVirtualAccountData virtualAccountData;
+                    if(contract_db.ParseVirtualAccountData(vData, virtualAccountData))
+                    {
+                        virtualAccountId_accountInfo_index.push_back(make_pair(header.appId, CVirtualAccountId_Accountinfo_IndexValue(virtualAccountData, pindex->nHeight)));
+                        virtualAccountName_accountId_index.push_back(make_pair(virtualAccountData.strVirtualAccountName, CName_Id_IndexValue(header.appId, pindex->nHeight)));
+                        safeAdress_accountId_index.push_back(make_pair(virtualAccountData.strSafeAddress, CName_Id_IndexValue(header.appId, pindex->nHeight)));
+                    }
+                }
             }
         }
 
@@ -4510,6 +4548,15 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                       ,deltaValue.nGetCandyCount,value.nGetCandyCount);
         }
     }
+
+    if (virtualAccountId_accountInfo_index.size() && !contract_db.Write_VirtualAccountId_Accountinfo_Index(virtualAccountId_accountInfo_index))
+        return AbortNode(state, "Failed to write virtualAccountId_accountInfo index");
+
+    if(virtualAccountName_accountId_index.size() && !contract_db.Write_VirtualAccountName_AccountId_Index(virtualAccountName_accountId_index))
+        return AbortNode(state, "Failed to write virtualAccountName_accountId index");
+
+    if(safeAdress_accountId_index.size() && !contract_db.Write_SafeAdress_AccountId_Index(safeAdress_accountId_index))
+        return AbortNode(state, "Failed to write safeAdress_accountId index");
 
     while(GetChangeInfoListSize() >= g_nListChangeInfoLimited)
     {
@@ -5477,6 +5524,7 @@ static bool CheckIndexAgainstCheckpoint(const CBlockIndex* pindexPrev, CValidati
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex * const pindexPrev)
 {
     const Consensus::Params& consensusParams = Params().GetConsensus();
+    /*
     int nHeight = pindexPrev->nHeight + 1;
     // Check proof of work
     if(Params().NetworkIDString() == CBaseChainParams::MAIN && nHeight <= 68589){
@@ -5493,6 +5541,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
             return state.DoS(100, error("%s : incorrect proof of work at %d", __func__, nHeight),
                             REJECT_INVALID, "bad-diffbits");
     }
+    */
 
     // Check timestamp against prev
     if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast())
@@ -8675,4 +8724,47 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
     }
 
     return true;
+}
+
+bool GetVirtualInfoByVirtualAccountId(const uint256& virtualAccountId, CVirtualAccountId_Accountinfo_IndexValue& virtualAccountInfo, const bool fWithMempool)
+{
+    if(contract_db.Read_VirtualAccountId_Accountinfo_Index(virtualAccountId, virtualAccountInfo))
+        return true;
+    return fWithMempool && mempool.getVirtualInfoByVirtualAccountId(virtualAccountId, virtualAccountInfo);
+}
+
+bool GetVirtualAccountIdByAccountName(const string& strVirtualAccountName, uint256& virtualAccountId, const bool fWithMempool)
+{
+    CName_Id_IndexValue value;
+    if(contract_db.Read_VirtualAccountName_AccountId_Index(strVirtualAccountName, value))
+    {
+        virtualAccountId = value.id;
+        return true;
+    }
+
+    if(fWithMempool && mempool.getVirtualAccountIdByAccountName(strVirtualAccountName, value))
+    {
+        virtualAccountId = value.id;
+        return true;
+    }
+
+    return false;
+}
+
+bool GetAccountIdBySafeAddress(const std::string& strSafeAddress, uint256& virtualAccountId, const bool fWithMempool)
+{
+    CName_Id_IndexValue value;
+    if(contract_db.Read_SafeAdress_AccountId_Index(strSafeAddress, value))
+    {
+        virtualAccountId = value.id;
+        return true;
+    }
+
+    if(fWithMempool && mempool.getVirtualAccountIdBySafeAddress(strSafeAddress, value))
+    {
+        virtualAccountId = value.id;
+        return true;
+    }
+
+    return false;
 }

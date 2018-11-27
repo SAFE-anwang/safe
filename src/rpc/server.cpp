@@ -516,6 +516,8 @@ static const CRPCCommand vRPCCommands[] =
     { "asset",              "getassetlocaltxlist",    &getassetlocaltxlist,         true  },
 
 #endif // ENABLE_WALLET
+    { "contract",           "createvirtualaccount",   &createvirtualaccount,        true  },
+    { "contract",           "getvirtualaccount",      &getvirtualaccount,           true  },
 };
 
 CRPCTable::CRPCTable()

@@ -34,6 +34,7 @@ struct CGetCandy_IndexKey;
 struct CGetCandy_IndexValue;
 struct CGetCandyCount_IndexKey;
 struct CGetCandyCount_IndexValue;
+struct CVirtualAccountId_Accountinfo_IndexValue;
 
 inline double AllowFreeThreshold()
 {
@@ -521,6 +522,24 @@ private:
     typedef std::map<uint256, std::vector<std::pair<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> > > mapGetCandyCount_IndexInserted;
     mapGetCandyCount_IndexInserted mapGetCandyCount_Inserted;
 
+    typedef std::map<uint256, CVirtualAccountId_Accountinfo_IndexValue> mapVirtualAccountId_virtualAccountInfo_Index;
+    mapVirtualAccountId_virtualAccountInfo_Index mapVirtualAccountId_VirtualAccountInfo;
+
+    typedef std::map<uint256, std::vector<uint256> > mapVirtualAccountId_virtualAccountInfo_IndexInserted;
+    mapVirtualAccountId_virtualAccountInfo_IndexInserted mapVirtualAccountId_virtualAccountInfo_Inserted;
+
+    typedef std::map<std::string, CName_Id_IndexValue> mapVirtualAccountName_virtualAccountId_Index;
+    mapVirtualAccountName_virtualAccountId_Index mapVirtualAccountName_virtualAccountId;
+
+    typedef std::map<uint256, std::vector<std::string> > mapVirtualAccountName_virtualAccountId_IndexInserted;
+    mapVirtualAccountName_virtualAccountId_IndexInserted mapVirtualAccountName_virtualAccountId_Inserted;
+
+    typedef std::map<std::string, CName_Id_IndexValue> mapSafeAddress_virtualAccountId_Index;
+    mapSafeAddress_virtualAccountId_Index mapSafeAddress_virtualAccountId;
+
+    typedef std::map<uint256, std::vector<std::string> > mapSafeAddress_virtualAccountId_IndexInserted;
+    mapSafeAddress_virtualAccountId_IndexInserted mapSafeAddress_virtualAccountId_Inserted;
+
     void UpdateParent(txiter entry, txiter parent, bool add);
     void UpdateChild(txiter entry, txiter child, bool add);
 
@@ -621,6 +640,12 @@ public:
     void PrioritiseTransaction(const uint256 hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta);
     void ApplyDeltas(const uint256 hash, double &dPriorityDelta, CAmount &nFeeDelta) const;
     void ClearPrioritisation(const uint256 hash);
+
+    void addVirtualAccountInfoIndex(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
+    bool getVirtualInfoByVirtualAccountId(const uint256& virtualAccountId, CVirtualAccountId_Accountinfo_IndexValue& virtualAccountInfo);
+    bool getVirtualAccountIdByAccountName(const std::string& strVirtualAccountName, CName_Id_IndexValue& value);
+    bool getVirtualAccountIdBySafeAddress(const std::string& strSafeAddress, CName_Id_IndexValue& value);
+    bool removeVirtualAccountInfoIndex(const uint256& txhash);
 
 public:
     /** Remove a set of transactions from the mempool.

@@ -201,7 +201,9 @@ BITCOIN_CORE_H = \
   zmq/zmqpublishnotifier.h \
   main.h \
   app/app.pb.h \
-  app/app.h
+  app/app.h \
+  contract/virtual_account.h \
+  contract/contract_db.h
 
 
 obj/build.h: FORCE
@@ -264,6 +266,8 @@ libbitcoin_server_a_SOURCES = \
   app/app.cpp \
   app/rpcapp.cpp \
   app/rpcasset.cpp \
+  app/rpcvirtualaccount.cpp \
+  contract/contract_db.cpp \
   $(BITCOIN_CORE_H)
 
 if ENABLE_ZMQ

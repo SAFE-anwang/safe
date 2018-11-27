@@ -47,6 +47,9 @@ static const string DB_GETCANDY_INDEX = "getcandy";
 static const string DB_CANDYHEIGHT_TOTALAMOUNT_INDEX = "candyheight_totalamount";
 static const string DB_CANDYHEIGHT_INDEX = "candyheight";
 static const string DB_GETCANDYCOUNT_INDEX = "getcandycount";
+static const string DB_VIRTUALACCOUNTID_ACCOUNTINFO_INDEX = "virtualaccountid_accountinfo";
+static const string DB_VIRTUALACCOUNTNAME_ACCOUNTID_INDEX = "virtualaccountname_accountid";
+static const string DB_SAFEADRESS_ACCOUNTID_INDEX = "safeadress_accountid";
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {
@@ -1259,4 +1262,68 @@ bool CBlockTreeDB::Read_GetCandyCount_Index(const uint256& assetId, const COutPo
     }
 
     return ret;
+}
+
+bool CBlockTreeDB::Read_VirtualAccountName_AccountId_Index(const std::string& strVirtualAccountName, CName_Id_IndexValue& value)
+{
+    return Read(make_pair(DB_VIRTUALACCOUNTNAME_ACCOUNTID_INDEX, ToLower(strVirtualAccountName)), value) && g_nChainHeight >= value.nHeight;
+}
+
+bool CBlockTreeDB::Read_VirtualAccountId_Accountinfo_Index(const uint256& virtualAccountId, CVirtualAccountId_Accountinfo_IndexValue& virtualAccountInfo)
+{
+    return Read(make_pair(DB_VIRTUALACCOUNTID_ACCOUNTINFO_INDEX, virtualAccountId),virtualAccountInfo) && g_nChainHeight >= virtualAccountInfo.nHeight;
+}
+
+bool CBlockTreeDB::Read_SafeAdress_AccountId_Index(const std::string& safeAddress, CName_Id_IndexValue& value)
+{
+    return Read(make_pair(DB_SAFEADRESS_ACCOUNTID_INDEX, safeAddress),value) && g_nChainHeight >= value.nHeight;
+}
+
+bool CBlockTreeDB::Write_VirtualAccountName_AccountId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Write(make_pair(DB_VIRTUALACCOUNTNAME_ACCOUNTID_INDEX, ToLower(it->first)), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_VirtualAccountName_AccountId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Erase(make_pair(DB_VIRTUALACCOUNTNAME_ACCOUNTID_INDEX, ToLower(it->first)));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Write_VirtualAccountId_Accountinfo_Index(const std::vector<std::pair<uint256, CVirtualAccountId_Accountinfo_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<uint256, CVirtualAccountId_Accountinfo_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Write(make_pair(DB_VIRTUALACCOUNTID_ACCOUNTINFO_INDEX, it->first), it->second);
+    return WriteBatch(batch);
+}
+
+
+bool CBlockTreeDB::Erase_VirtualAccountId_Accountinfo_Index(const std::vector<std::pair<uint256, CVirtualAccountId_Accountinfo_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<uint256, CVirtualAccountId_Accountinfo_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Erase(make_pair(DB_VIRTUALACCOUNTID_ACCOUNTINFO_INDEX, it->first));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Write_SafeAdress_AccountId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Write(make_pair(DB_SAFEADRESS_ACCOUNTID_INDEX, it->first), it->second);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_SafeAdress_AccountId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> > &vect)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it=vect.begin(); it!=vect.end(); it++)
+        batch.Erase(make_pair(DB_SAFEADRESS_ACCOUNTID_INDEX, it->first));
+    return WriteBatch(batch);
 }

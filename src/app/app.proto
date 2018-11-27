@@ -71,3 +71,10 @@ message TransferSafeData {
     required bytes version = 1;             // uint16_t
     required bytes remarks = 2;             // string
 }
+
+message VirturalAccountData {
+    required bytes accountName = 1;     // string
+    required bytes safeAddress = 2;     // string
+    optional bytes owner = 3;           // string
+    optional bytes active = 4 [default = ""]; // string
+}

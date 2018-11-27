@@ -341,6 +341,9 @@ extern UniValue getlocalassetlist(const UniValue& params, bool fHelp);
 extern UniValue transfermanyasset(const UniValue& params, bool fHelp);
 extern UniValue getassetlocaltxlist(const UniValue& params, bool fHelp);
 
+//contract
+extern UniValue createvirtualaccount(const UniValue& params, bool fHelp);
+extern UniValue getvirtualaccount(const UniValue& params, bool fHelp);
 
 
 bool StartRPC();

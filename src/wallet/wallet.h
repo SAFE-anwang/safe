@@ -924,6 +924,8 @@ public:
                            std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend=false);
     bool CreateAssetTransaction(const CAppHeader* pHeader, const void* pBody, const std::vector<CRecipient>& vecSend, const CBitcoinAddress* pSafeAddress, const CBitcoinAddress* pAssetAddress, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,
                            std::string& strFailReason, const CCoinControl* coinControl = NULL, bool sign = true, AvailableCoinsType nCoinType=ALL_COINS);
+    bool CreateVirtualAccountTransaction(const CAppHeader* pHeader, const void* pBody, const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,
+                           std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend=false);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, std::string strCommand="tx");
 
     bool CreateCollateralTransaction(CMutableTransaction& txCollateral, std::string& strReason);

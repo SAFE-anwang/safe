@@ -154,6 +154,16 @@ public:
     bool Erase_GetCandyCount_Index(const CGetCandyCount_IndexKey& key);
     bool Read_GetCandyCount_Index(const uint256& assetId, const COutPoint& out,CGetCandyCount_IndexValue& getCandyCountvalue);
     bool Is_Exists_GetCandyCount_Key(const uint256& assetId, const COutPoint& out);
+
+    bool Read_VirtualAccountName_AccountId_Index(const std::string& strVirtualAccountName, CName_Id_IndexValue& value);
+    bool Read_VirtualAccountId_Accountinfo_Index(const uint256& virtualAccountId, CVirtualAccountId_Accountinfo_IndexValue& appInfo);
+    bool Read_SafeAdress_AccountId_Index(const std::string& safeAddress, CName_Id_IndexValue& value);
+    bool Write_VirtualAccountName_AccountId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> >& vect);
+    bool Erase_VirtualAccountName_AccountId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> >& vect);
+    bool Write_VirtualAccountId_Accountinfo_Index(const std::vector<std::pair<uint256, CVirtualAccountId_Accountinfo_IndexValue> >& vect);
+    bool Erase_VirtualAccountId_Accountinfo_Index(const std::vector<std::pair<uint256, CVirtualAccountId_Accountinfo_IndexValue> >& vect);
+    bool Write_SafeAdress_AccountId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> >& vect);
+    bool Erase_SafeAdress_AccountId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> >& vect);
 };
 
 #endif // BITCOIN_TXDB_H

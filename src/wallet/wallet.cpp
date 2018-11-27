@@ -36,6 +36,8 @@
 
 #include "main.h"
 #include "app/app.h"
+#include "contract/virtual_account.h"
+#include "contract/contract_db.h"
 
 #include <assert.h>
 
@@ -5314,6 +5316,332 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
     return true;
 }
 
+bool CWallet::CreateVirtualAccountTransaction(const CAppHeader* pHeader, const void* pBody, const vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
+                                int& nChangePosRet, std::string& strFailReason, const CCoinControl* coinControl, bool sign, AvailableCoinsType nCoinType, bool fUseInstantSend)
+{
+    if(!masternodeSync.IsBlockchainSynced())
+    {
+        strFailReason = _("Synchronizing block data");
+        return false;
+    }
+
+    CAmount nFeePay = fUseInstantSend ? CTxLockRequest().GetMinFee() : 0;
+
+    CAmount nValue = 0;
+    BOOST_FOREACH (const CRecipient& recipient, vecSend)
+    {
+        if (nValue < 0 || recipient.nAmount < 0)
+        {
+            strFailReason = _("Transaction amounts must be positive");
+            return false;
+        }
+        nValue += recipient.nAmount;
+    }
+    if (vecSend.empty() || nValue < 0)
+    {
+        strFailReason = _("Transaction amounts must be positive");
+        return false;
+    }
+
+    wtxNew.fTimeReceivedIsTxTime = true;
+    wtxNew.BindWallet(this);
+    CMutableTransaction txNew;
+
+    // Discourage fee sniping.
+    //
+    // For a large miner the value of the transactions in the best block and
+    // the mempool can exceed the cost of deliberately attempting to mine two
+    // blocks to orphan the current best block. By setting nLockTime such that
+    // only the next block can include the transaction, we discourage this
+    // practice as the height restricted and limited blocksize gives miners
+    // considering fee sniping fewer options for pulling off this attack.
+    //
+    // A simple way to think about this is from the wallet's point of view we
+    // always want the blockchain to move forward. By setting nLockTime this
+    // way we're basically making the statement that we only want this
+    // transaction to appear in the next block; we don't want to potentially
+    // encourage reorgs by allowing transactions to appear at lower heights
+    // than the next block in forks of the best chain.
+    //
+    // Of course, the subsidy is high enough, and transaction volume low
+    // enough, that fee sniping isn't a problem yet, but by implementing a fix
+    // now we ensure code won't be written that makes assumptions about
+    // nLockTime that preclude a fix later.
+
+    txNew.nLockTime = chainActive.Height();
+
+    // Secondly occasionally randomly pick a nLockTime even further back, so
+    // that transactions that are delayed after signing for whatever reason,
+    // e.g. high-latency mix networks and some CoinJoin implementations, have
+    // better privacy.
+    if (GetRandInt(10) == 0)
+        txNew.nLockTime = std::max(0, (int)txNew.nLockTime - GetRandInt(100));
+
+    assert(txNew.nLockTime <= (unsigned int)chainActive.Height());
+    assert(txNew.nLockTime < LOCKTIME_THRESHOLD);
+
+    {
+        LOCK2(cs_main, cs_wallet);
+        {
+            nFeeRet = 0;
+            if(nFeePay > 0) nFeeRet = nFeePay;
+            // Start with no fee and loop until there is enough fee
+            while (true)
+            {
+                txNew.vin.clear();
+                txNew.vout.clear();
+                wtxNew.fFromMe = true;
+                nChangePosRet = -1;
+
+                CAmount nValueToSelect = nValue + nFeeRet;
+                double dPriority = 0;
+                // vouts to the payees
+                BOOST_FOREACH (const CRecipient& recipient, vecSend)
+                {
+                    if(recipient.scriptPubKey == CScript())
+                        continue;
+
+                    CTxOut txout(recipient.nAmount, recipient.scriptPubKey, 0);
+
+                    if (txout.IsDust(::minRelayTxFee))
+                    {
+                        strFailReason = _("Transaction amount too small");
+                        return false;
+                    }
+                    txNew.vout.push_back(txout);
+                }
+
+                // Choose coins to use
+                set<pair<const CWalletTx*,unsigned int> > setCoins;
+                CAmount nValueIn = 0;
+
+                if (!SelectCoins(nValueToSelect, setCoins, nValueIn, coinControl, nCoinType, fUseInstantSend))
+                {
+                    if (nCoinType == ONLY_NOT1000IFMN) {
+                        strFailReason = _("Unable to locate enough funds for this transaction that are not equal 1000 SAFE.");
+                    } else if (nCoinType == ONLY_NONDENOMINATED_NOT1000IFMN) {
+                        strFailReason = _("Unable to locate enough PrivateSend non-denominated funds for this transaction that are not equal 1000 SAFE.");
+                    } else if (nCoinType == ONLY_DENOMINATED) {
+                        strFailReason = _("Unable to locate enough PrivateSend denominated funds for this transaction.");
+                        strFailReason += " " + _("PrivateSend uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.");
+                    } else if (nValueIn < nValueToSelect) {
+                        strFailReason = _("Insufficient funds.");
+                        if (fUseInstantSend) // could be not true but most likely that's the reason
+                            strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED);
+                        else if (GetBalance() >= nValueToSelect)
+                            strFailReason = _("Reach the current change limit,please try again later.");
+                    }
+
+                    if (fUseInstantSend && nValueIn > sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE)*COIN)
+                        strFailReason = strprintf(_("InstantSend doesn't support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE."), sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE));
+
+                    return false;
+                }
+
+                if (fUseInstantSend && nValueIn > sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE)*COIN) {
+                    strFailReason = strprintf(_("InstantSend doesn't support sending high values of transaction inputs yet. Values of transaction inputs are currently limited to %1 SAFE."), sporkManager.GetSporkValue(SPORK_5_INSTANTSEND_MAX_VALUE));
+                    return false;
+                }
+
+                BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
+                {
+                    CAmount nCredit = pcoin.first->vout[pcoin.second].nValue;
+                    //The coin age after the next block (depth+1) is used instead of the current,
+                    //reflecting an assumption the user would accept a bit more delay for
+                    //a chance at a free transaction.
+                    //But mempool inputs might still be in the mempool, so their age stays 0
+                    int age = pcoin.first->GetDepthInMainChain();
+                    assert(age >= 0);
+                    if (age != 0)
+                        age += 1;
+                    dPriority += (double)nCredit * age;
+                }
+
+                const CAmount nChange = nValueIn - nValueToSelect;
+                CTxOut newTxOut;
+
+                if (nChange > 0)
+                {
+                    // Fill a vout to ourself
+                    // TODO: pass in scriptChange instead of reservekey so
+                    // change transaction isn't always pay-to-safe-address
+                    CScript scriptChange;
+
+                    // coin control: send change to custom address
+                    if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
+                        scriptChange = GetScriptForDestination(coinControl->destChange);
+                    else
+                    {
+                        // Reserve a new key pair from key pool
+                        CPubKey vchPubKey;
+                        if (!reservekey.GetReservedKey(vchPubKey, true)) {
+                            strFailReason = _("Keypool ran out, please call keypoolrefill first.");
+                            return false;
+                        }
+                        scriptChange = GetScriptForDestination(vchPubKey.GetID());
+                    }
+
+                    newTxOut = CTxOut(nChange, scriptChange);
+
+                    // Never create dust outputs; if we would, just
+                    // add the dust to the fee.
+                    if (newTxOut.IsDust(::minRelayTxFee))
+                    {
+                        nFeeRet += nChange;
+                        reservekey.ReturnKey();
+                    }
+                    else
+                    {
+                        // Insert change txn at random position:
+                        nChangePosRet = GetRandInt(txNew.vout.size()+1);
+                        vector<CTxOut>::iterator position = txNew.vout.begin()+nChangePosRet;
+                        txNew.vout.insert(position, newTxOut);
+                    }
+                }
+                else
+                    reservekey.ReturnKey();
+
+                // Fill vin
+                //
+                // Note how the sequence number is set to max()-1 so that the
+                // nLockTime set above actually works.
+                BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins){
+                    CTxIn txin = CTxIn(coin.first->GetHash(),coin.second,CScript(),
+                                              std::numeric_limits<unsigned int>::max()-1);
+                    txin.prevPubKey = coin.first->vout[coin.second].scriptPubKey;
+                    txNew.vin.push_back(txin);
+                }
+
+                sort(txNew.vin.begin(), txNew.vin.end(), CompareInputBIP69());
+
+                if (pHeader->nAppCmd == CREATE_VIRUTAL_ACCOUNT_CMD) 
+                {
+                    int nCount = 0;
+                    BOOST_FOREACH(const CRecipient& recipient, vecSend)
+                    {
+                        if(recipient.scriptPubKey == CScript())
+                        {
+                            nCount++;
+                            if(nCount > 1)
+                            {
+                                strFailReason = _("Only one virtual account can be registered at a time.");
+                                return false;
+                            }
+
+                            CTxOut txout(recipient.nAmount, txNew.vin[0].prevPubKey, 0);
+
+                            CTxDestination dest;
+                            if(!ExtractDestination(txout.scriptPubKey, dest))
+                            {
+                                strFailReason = _("Cannot get admin address");
+                                return false;
+                            }
+                            txout.vReserve = contract_db.FillVirtualAccountData(*pHeader, *(const CVirtualAccountData*)pBody);
+                            txNew.vout.push_back(txout);
+                        }
+                    }
+                }
+                else 
+                {
+                    strFailReason = _("app cmd not support.");
+                    return false;
+                }
+
+                sort(txNew.vout.begin(), txNew.vout.end(), CompareOutputBIP69());
+
+                // If there was change output added before, we must update its position now
+                if (nChangePosRet != -1) {
+                    int i = 0;
+                    BOOST_FOREACH(const CTxOut& txOut, txNew.vout)
+                    {
+                        if (txOut == newTxOut)
+                        {
+                            nChangePosRet = i;
+                            break;
+                        }
+                        i++;
+                    }
+                }
+
+                // Sign
+                int nIn = 0;
+                CTransaction txNewConst(txNew);
+                BOOST_FOREACH(const CTxIn& txin, txNew.vin)
+                {
+                    bool signSuccess;
+                    const CScript& scriptPubKey = txin.prevPubKey;
+                    CScript& scriptSigRes = txNew.vin[nIn].scriptSig;
+                    if (sign)
+                        signSuccess = ProduceSignature(TransactionSignatureCreator(this, &txNewConst, nIn, SIGHASH_ALL), scriptPubKey, scriptSigRes);
+                    else
+                        signSuccess = ProduceSignature(DummySignatureCreator(this), scriptPubKey, scriptSigRes);
+
+                    if (!signSuccess)
+                    {
+                        strFailReason = _("Signing transaction failed");
+                        return false;
+                    }
+                    nIn++;
+                }
+
+                unsigned int nBytes = ::GetSerializeSize(txNew, SER_NETWORK, PROTOCOL_VERSION);
+
+                // Remove scriptSigs if we used dummy signatures for fee calculation
+                if (!sign) {
+                    BOOST_FOREACH (CTxIn& txin, txNew.vin)
+                        txin.scriptSig = CScript();
+                }
+
+                // Embed the constructed transaction data in wtxNew.
+                *static_cast<CTransaction*>(&wtxNew) = CTransaction(txNew);
+
+                // Limit size
+                if (nBytes >= MAX_STANDARD_TX_SIZE)
+                {
+                    strFailReason = _("Transaction too large");
+                    return false;
+                }
+
+                dPriority = wtxNew.ComputePriority(dPriority, nBytes);
+
+                CAmount nFeeNeeded = max(nFeePay, GetMinimumFee(nBytes, nTxConfirmTarget, mempool));
+                if (coinControl && nFeeNeeded > 0 && coinControl->nMinimumTotalFee > nFeeNeeded) {
+                    nFeeNeeded = coinControl->nMinimumTotalFee;
+                }
+                if(fUseInstantSend) {
+                    nFeeNeeded = std::max(nFeeNeeded, CTxLockRequest(txNew).GetMinFee());
+                }
+
+                CAmount nAdditionalFee = GetTxAdditionalFee(txNew);
+                if(nAdditionalFee < 0)
+                {
+                    strFailReason = _("Transaction reserver is too large");
+                    return false;
+                }
+                // printf("before: %.8f\n", 1.0 * nFeeNeeded / COIN);
+                nFeeNeeded += nAdditionalFee;
+                // printf("after: %.8f\n", 1.0 * nFeeNeeded / COIN);
+
+                // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
+                // because we must be at the maximum allowed fee.
+                if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes))
+                {
+                    strFailReason = _("Transaction too large for fee policy");
+                    return false;
+                }
+
+                if (nFeeRet >= nFeeNeeded)
+                    break; // Done, enough fee included.
+
+                // Include more fee and try again.
+                nFeeRet = nFeeNeeded;
+                continue;
+            }
+        }
+    }
+
+    return true;
+}
 
 
 /**

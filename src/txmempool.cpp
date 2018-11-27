@@ -20,6 +20,8 @@
 #include "base58.h"
 #include "main.h"
 #include "app/app.h"
+#include "contract/virtual_account.h"
+#include "contract/contract_db.h"
 
 using namespace std;
 
@@ -1431,6 +1433,7 @@ void CTxMemPool::removeUnchecked(txiter it)
     remove_AssetTx_Index(hash);
     remove_GetCandy_Index(hash);
     remove_GetCandyCount_Index(hash);
+    removeVirtualAccountInfoIndex(hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -2011,4 +2014,122 @@ void CTxMemPool::TrimToSize(size_t sizelimit, std::vector<uint256>* pvNoSpendsRe
 
     if (maxFeeRateRemoved > CFeeRate(0))
         LogPrint("mempool", "Removed %u txn, rolling minimum fee bumped to %s\n", nTxnRemoved, maxFeeRateRemoved.ToString());
+}
+
+bool CTxMemPool::getVirtualInfoByVirtualAccountId(const uint256& virtualAccountId, CVirtualAccountId_Accountinfo_IndexValue& virtualAccountInfo)
+{
+    LOCK(cs);
+    mapVirtualAccountId_virtualAccountInfo_Index::iterator it = mapVirtualAccountId_VirtualAccountInfo.find(virtualAccountId);
+    if(it == mapVirtualAccountId_VirtualAccountInfo.end())
+        return false;
+
+    virtualAccountInfo = it->second;
+    return true;
+}
+
+bool CTxMemPool::getVirtualAccountIdByAccountName(const std::string& strVirtualAccountName, CName_Id_IndexValue& value)
+{
+    LOCK(cs);
+    mapVirtualAccountName_virtualAccountId_Index::iterator it = mapVirtualAccountName_virtualAccountId.find(strVirtualAccountName);
+    if(it == mapVirtualAccountName_virtualAccountId.end())
+        return false;
+
+    value = it->second;
+    return true;
+}
+
+bool CTxMemPool::getVirtualAccountIdBySafeAddress(const std::string& strSafeAddress, CName_Id_IndexValue& value)
+{
+    LOCK(cs);
+    mapSafeAddress_virtualAccountId_Index::iterator it = mapSafeAddress_virtualAccountId.find(strSafeAddress);
+    if(it == mapSafeAddress_virtualAccountId.end())
+        return false;
+
+    value = it->second;
+    return true;
+}
+
+void CTxMemPool::addVirtualAccountInfoIndex(const CTxMemPoolEntry& entry, const CCoinsViewCache& view)
+{
+    LOCK(cs);
+    const CTransaction& tx = entry.GetTx();
+    std::vector<uint256> vitrualAccountId_inserted;
+    std::vector<std::string> virtualAccountName_inserted;
+    std::vector<std::string> safeAddress_inserted;
+
+    uint256 txhash = tx.GetHash();
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CAppHeader header;
+        std::vector<unsigned char> vData;
+        if(ParseReserve(txout.vReserve, header, vData))
+        {
+            CTxDestination dest;
+            if(!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+
+            if(header.nAppCmd == CREATE_VIRUTAL_ACCOUNT_CMD)
+            {
+                CVirtualAccountData virtualAccountData;
+                if(contract_db.ParseVirtualAccountData(vData, virtualAccountData))
+                {
+                    mapVirtualAccountId_VirtualAccountInfo.insert(make_pair(header.appId, CVirtualAccountId_Accountinfo_IndexValue(virtualAccountData)));
+                    vitrualAccountId_inserted.push_back(header.appId);
+
+                    mapVirtualAccountName_virtualAccountId.insert(make_pair(ToLower(virtualAccountData.strVirtualAccountName), CName_Id_IndexValue(header.appId)));
+                    virtualAccountName_inserted.push_back(ToLower(virtualAccountData.strVirtualAccountName));
+
+                    mapSafeAddress_virtualAccountId.insert(make_pair(virtualAccountData.strSafeAddress, CName_Id_IndexValue(header.appId)));
+                    safeAddress_inserted.push_back(virtualAccountData.strSafeAddress);
+                }
+            }
+        }
+    }
+
+    mapVirtualAccountId_virtualAccountInfo_Inserted.insert(make_pair(txhash, vitrualAccountId_inserted));
+    mapVirtualAccountName_virtualAccountId_Inserted.insert(make_pair(txhash, virtualAccountName_inserted));
+    mapSafeAddress_virtualAccountId_Inserted.insert(make_pair(txhash, safeAddress_inserted));
+}
+
+bool CTxMemPool::removeVirtualAccountInfoIndex(const uint256& txhash)
+{
+    LOCK(cs);
+    mapVirtualAccountId_virtualAccountInfo_IndexInserted::iterator it = mapVirtualAccountId_virtualAccountInfo_Inserted.find(txhash);
+    if(it != mapVirtualAccountId_virtualAccountInfo_Inserted.end())
+    {
+        std::vector<uint256> keys = (*it).second;
+        for(std::vector<uint256>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapVirtualAccountId_VirtualAccountInfo.find(*mit) != mapVirtualAccountId_VirtualAccountInfo.end())
+                mapVirtualAccountId_VirtualAccountInfo.erase(*mit);
+        }
+        mapVirtualAccountId_virtualAccountInfo_Inserted.erase(it);
+    }
+
+    mapVirtualAccountName_virtualAccountId_IndexInserted::iterator it2 = mapVirtualAccountName_virtualAccountId_Inserted.find(txhash);
+    if(it2 != mapVirtualAccountName_virtualAccountId_Inserted.end())
+    {
+        std::vector<std::string> keys = (*it2).second;
+        for(std::vector<std::string>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapVirtualAccountName_virtualAccountId.find(*mit) != mapVirtualAccountName_virtualAccountId.end())
+                mapVirtualAccountName_virtualAccountId.erase(*mit);
+        }
+        mapVirtualAccountName_virtualAccountId_Inserted.erase(it2);
+    }
+
+    mapSafeAddress_virtualAccountId_IndexInserted::iterator it3 = mapSafeAddress_virtualAccountId_Inserted.find(txhash);
+    if(it2 != mapSafeAddress_virtualAccountId_Inserted.end())
+    {
+        std::vector<std::string> keys = (*it3).second;
+        for(std::vector<std::string>::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            if(mapSafeAddress_virtualAccountId.find(*mit) != mapSafeAddress_virtualAccountId.end())
+                mapSafeAddress_virtualAccountId.erase(*mit);
+        }
+        mapSafeAddress_virtualAccountId_Inserted.erase(it3);
+    }
+    return true;
 }

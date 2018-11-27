@@ -80,7 +80,7 @@ bool IsValidUrl(const string& strUrl)
     return ((strUrl.find("http://") == 0) || (strUrl.find("https://") == 0));
 }
 
-static void FillHeader(const CAppHeader& header, vector<unsigned char>& vHeader)
+void FillHeader(const CAppHeader& header, vector<unsigned char>& vHeader)
 {
     // 1. flag: safe
     vHeader.push_back('s');
@@ -501,4 +501,16 @@ bool ExistAssetId(const uint256& assetId, const bool fWithMempool)
 {
     CAssetId_AssetInfo_IndexValue assetInfo;
     return GetAssetInfoByAssetId(assetId, assetInfo, fWithMempool);
+}
+
+bool ExistVirtualAccountName(const string& strVirtualAccountName, const bool fWithMempool)
+{
+    uint256 virtualAccountId;
+    return GetVirtualAccountIdByAccountName(strVirtualAccountName, virtualAccountId, fWithMempool);
+}
+
+bool ExistVirtualAccountId(const uint256& virtualAccountId, const bool fWithMempool)
+{
+    CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    return GetVirtualInfoByVirtualAccountId(virtualAccountId, virtualAccountInfo, fWithMempool);
 }

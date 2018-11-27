@@ -21,6 +21,7 @@
 #include "versionbits.h"
 #include "spentindex.h"
 #include "app/app.h"
+#include "contract/virtual_account.h"
 
 #include <algorithm>
 #include <exception>
@@ -1194,6 +1195,25 @@ struct CDiskTxPos : public CDiskBlockPos
     }
 };
 
+struct CVirtualAccountId_Accountinfo_IndexValue
+{
+    CVirtualAccountData virtualAcountData;
+    int nHeight;
+
+    CVirtualAccountId_Accountinfo_IndexValue(const CVirtualAccountData& virtualAcountData = CVirtualAccountData(), const int& nHeight = 0)
+        : virtualAcountData(virtualAcountData), nHeight(nHeight) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(virtualAcountData);
+        READWRITE(nHeight);
+    }
+};
+
 
 /**
  * Count ECDSA signature operations the old-fashioned (pre-0.6) way
@@ -1508,6 +1528,9 @@ bool ExistForbidTxin(const int nHeight, const std::vector<int>& prevheights);
 
 bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ngetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
 bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ndbgetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
+    
 
-
+bool GetVirtualInfoByVirtualAccountId(const uint256& virtualAccountId, CVirtualAccountId_Accountinfo_IndexValue& virtualAccountInfo, const bool fWithMempool=true);
+bool GetVirtualAccountIdByAccountName(const std::string& strVirtualAccountName, uint256& virtualAccountId, const bool fWithMempool=true);
+bool GetAccountIdBySafeAddress(const std::string& strSafeAddress, uint256& virtualAccountId, const bool fWithMempool=true);
 #endif // BITCOIN_VALIDATION_H
