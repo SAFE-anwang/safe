@@ -325,7 +325,7 @@ void CandyPage::handlerGetCandyResult(const bool result, const QString errorStr,
         return;
     }
 
-    QMessageBox::information(this, strGetCandy,tr("Get candy success"),tr("Ok"));
+    QMessageBox::information(this, strGetCandy,tr("Send candy transaction successfully"),tr("Ok"));
     eraseCandy(rowNum);
 
 }
@@ -349,8 +349,20 @@ void GetCandyWorker::doGetCandy()
 
     CAppHeader appHeader(g_nAppHeaderVersion, uint256S(g_strSafeAssetId), GET_CANDY_CMD);
     CPutCandy_IndexKey assetIdCandyInfo;
-    assetIdCandyInfo.assetId =assetId;
+    assetIdCandyInfo.assetId = assetId;
     assetIdCandyInfo.out = out;
+
+    CAmount dbamount = 0;
+    CAmount memamount = 0;
+    if (!GetGetCandyTotalAmount(assetId, out, dbamount, memamount))
+    {
+        QString errorStr = tr("Failed to get the number of candy already received");
+        Q_EMIT resultReady(false, errorStr, rowNum, uselessArg);
+        return;
+    }
+
+    CAmount nGetCandyAmount = dbamount + memamount;
+    CAmount nNowGetCandyTotalAmount = 0;
 
     vector<CRecipient> vecSend;
     std::vector<std::string>::iterator addit = vaddress.begin();
@@ -377,6 +389,14 @@ void GetCandyWorker::doGetCandy()
 
             return;
         }
+
+        if (nCandyAmount + nGetCandyAmount > candyInfo.nAmount)
+        {
+            QString errorStr = tr("The candy has been picked up");
+            Q_EMIT resultReady(false, errorStr, rowNum, uselessArg);
+            return;
+        }
+        
         if(nCandyAmount < amount)
             continue;
         if(GetGetCandyAmount(assetId, out, *addit, nTempAmount))
@@ -390,6 +410,15 @@ void GetCandyWorker::doGetCandy()
         CBitcoinAddress recvAddress(*addit);
         CRecipient recvRecipient = {GetScriptForDestination(recvAddress.Get()), nCandyAmount, 0, false, true,""};
         vecSend.push_back(recvRecipient);
+
+        nNowGetCandyTotalAmount += nCandyAmount;
+    }
+
+    if (nNowGetCandyTotalAmount + nGetCandyAmount > candyInfo.nAmount)
+    {
+        QString errorStr = tr("The candy has been picked up");
+        Q_EMIT resultReady(false, errorStr, rowNum, uselessArg);
+        return;
     }
 
     if(vecSend.size() == 0)

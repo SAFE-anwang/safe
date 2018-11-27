@@ -1984,6 +1984,10 @@ http://www.anwang.com/</translation>
         <translation>日期</translation>
     </message>
     <message>
+        <source>Application Name</source>
+        <translation>應用名稱</translation>
+    </message>
+    <message>
         <source>Application ID</source>
         <translation>應用ID</translation>
     </message>
@@ -2744,6 +2748,14 @@ http://www.anwang.com/</translation>
 <context>
     <name>CandyPage</name>
     <message>
+        <source>Failed to get the number of candy already received</source>
+        <translation>獲取已領糖果數量失敗</translation>
+    </message>
+    <message>
+        <source>The candy has been picked up</source>
+        <translation>糖果已經被領完</translation>
+    </message>
+    <message>
         <source>Put candy times used up</source>
         <translation>糖果發行次數已用完</translation>
     </message>
@@ -2816,8 +2828,8 @@ http://www.anwang.com/</translation>
         <translation>無效的糖果</translation>
     </message>
     <message>
-        <source>Get candy success</source>
-        <translation>領取糖果成功</translation>
+        <source>Send candy transaction successfully</source>
+        <translation>發送領取糖果交易成功</translation>
     </message>
     <message>
         <source>Create candy transaction fail</source>

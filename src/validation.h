@@ -619,6 +619,54 @@ struct CIterator_IdOutKey
     }
 };
 
+struct CGetCandyCount_IndexKey
+{
+    uint256 assetId;
+    COutPoint out;
+
+    CGetCandyCount_IndexKey(const uint256& assetId = uint256(), const COutPoint& out = COutPoint())
+        : assetId(assetId), out(out){
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(assetId);
+        READWRITE(out);
+    }
+
+    friend bool operator==(const CGetCandyCount_IndexKey& a, const CGetCandyCount_IndexKey& b)
+    {
+        return (a.assetId == b.assetId && a.out == b.out);
+    }
+
+    friend bool operator<(const CGetCandyCount_IndexKey& a, const CGetCandyCount_IndexKey& b)
+    {
+        if(a.assetId == b.assetId)
+            return a.out < b.out;
+        return a.assetId < b.assetId;
+    }
+};
+
+struct CGetCandyCount_IndexValue
+{
+    CAmount nGetCandyCount;
+
+    CGetCandyCount_IndexValue(const CAmount& nGetCandyCount = 0)
+        : nGetCandyCount(nGetCandyCount) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nGetCandyCount);
+    }
+};
+
 struct CGetCandy_IndexKey
 {
     uint256 assetId;
@@ -1429,6 +1477,7 @@ bool GetAssetIdByAddress(const std::string & strAddress, std::vector<uint256> &a
 bool GetAssetIdCandyInfo(const uint256& assetId, std::map<COutPoint, CCandyInfo>& mapCandyInfo);
 bool GetAssetIdCandyInfo(const uint256& assetId, const COutPoint& out, CCandyInfo& candyInfo);
 bool GetGetCandyAmount(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& amount, const bool fWithMempool = true);
+bool GetGetCandyTotalAmount(const uint256& assetId, const COutPoint& out, CAmount& dbamount, CAmount& memamount, const bool fWithMempool = true);
 bool GetAssetListInfo(std::vector<uint256> &vAssetId, const bool fWithMempool = true);
 bool GetIssueAssetInfo(std::map<uint256, CAssetData> &mapissueassetinfo);
 CAmount GetAddedAmountByAssetId(const uint256& assetId, const bool fWithMempool = true);
@@ -1456,5 +1505,9 @@ std::string mulstring(std::string numAStr, std::string numBStr);
 std::string numtofloatstring(std::string numstr, int32_t Decimals);
 
 bool ExistForbidTxin(const int nHeight, const std::vector<int>& prevheights);
+
+bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ngetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
+bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ndbgetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
+
 
 #endif // BITCOIN_VALIDATION_H

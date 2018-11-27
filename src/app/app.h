@@ -128,7 +128,9 @@ enum AppRpcError
     INVALID_TOTAL_SAFE              = -624,
     GET_ASSETINFO_FAILED            = -625,
     GET_ALL_CANDY_HEIGHT_FAILED     = -626,
-    NOT_OWN_ASSET                      = -627,
+    NOT_OWN_ASSET                   = -627,
+    EXCEED_PUT_CANDY_TOTAL_AMOUNT   = -628,
+    GET_GET_CANDY_TOTAL_FAILED      = -629,
 };
 
 extern uint16_t g_nAppHeaderVersion;

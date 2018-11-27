@@ -32,6 +32,8 @@ struct CPutCandy_IndexKey;
 struct CPutCandy_IndexValue;
 struct CGetCandy_IndexKey;
 struct CGetCandy_IndexValue;
+struct CGetCandyCount_IndexKey;
+struct CGetCandyCount_IndexValue;
 
 inline double AllowFreeThreshold()
 {
@@ -291,6 +293,11 @@ struct CGetCandy_IndexKeyCompare
     bool operator()(const CGetCandy_IndexKey& a, const CGetCandy_IndexKey& b) const;
 };
 
+struct CGetCandyCount_IndexKeyCompare
+{
+    bool operator()(const CGetCandyCount_IndexKey& a, const CGetCandyCount_IndexKey& b) const;
+};
+
 class CBlockPolicyEstimator;
 
 /** An inpoint - a combination of a transaction and an index n into its vin */
@@ -509,6 +516,11 @@ private:
     typedef std::map<uint256, std::vector<CGetCandy_IndexKey> > mapGetCandy_IndexInserted;
     mapGetCandy_IndexInserted mapGetCandy_Inserted;
 
+    typedef std::map<CGetCandyCount_IndexKey, CGetCandyCount_IndexValue, CGetCandyCount_IndexKeyCompare> mapGetCandyCount_Index;
+    mapGetCandyCount_Index mapGetCandyCount;
+    typedef std::map<uint256, std::vector<std::pair<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> > > mapGetCandyCount_IndexInserted;
+    mapGetCandyCount_IndexInserted mapGetCandyCount_Inserted;
+
     void UpdateParent(txiter entry, txiter parent, bool add);
     void UpdateChild(txiter entry, txiter child, bool add);
 
@@ -581,6 +593,10 @@ public:
     void add_GetCandy_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
     bool get_GetCandy_Index(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& nAmount);
     bool remove_GetCandy_Index(const uint256& txhash);
+
+    void add_GetCandyCount_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
+    bool get_GetCandyCount_Index(const uint256& assetId, const COutPoint& out,CGetCandyCount_IndexValue& value);
+    bool remove_GetCandyCount_Index(const uint256& txhash);
 
     int get_PutCandy_count(const uint256& assetId);
 

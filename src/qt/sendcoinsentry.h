@@ -63,8 +63,8 @@ private Q_SLOTS:
     void on_pasteButton_clicked();
     void updateDisplayUnit();
     void on_lockedMonthCheckBox_clicked();
-    void on_memo_textChanged(const QString &address);
-    void on_addLabel_textChanged(const QString &address);
+    void on_memoLineEdit_textChanged(const QString &address);
+    void on_addAsLabel_textChanged(const QString &address);
 
 private:
     SendCoinsRecipient recipient;

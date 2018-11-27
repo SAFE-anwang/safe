@@ -261,6 +261,8 @@ TransactionTableModel::TransactionTableModel(const PlatformStyle *platformStyle,
     connect(walletModel->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
 
     subscribeToCoreSignals();
+
+    qRegisterMetaType<QVector<int> >("QVector<int>");
 }
 
 TransactionTableModel::~TransactionTableModel()
