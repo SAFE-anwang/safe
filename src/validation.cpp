@@ -4497,10 +4497,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             {
                 if(!pblocktree->Read_GetCandyCount_Index(key.assetId,key.out,value))
                     return AbortNode(state, "Failed to get getCandyCount index");
+                if(!pblocktree->Erase_GetCandyCount_Index(key))
+                    return AbortNode(state, "Failed to erase getCandyCount index");
             }
             value.nGetCandyCount += deltaValue.nGetCandyCount;
-            if(!pblocktree->Erase_GetCandyCount_Index(key))
-                return AbortNode(state, "Failed to erase getCandyCount index");
             if(!pblocktree->Write_GetCandyCount_Index(key,value))
                 return AbortNode(state, "Failed to write getCandyCount index");
             ++iter;
