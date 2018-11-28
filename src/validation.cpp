@@ -3743,7 +3743,6 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     if(assetTx_index.size() && !pblocktree->Erase_AssetTx_Index(assetTx_index))
         return AbortNode(state, "Failed to delete assetTx index");
 
-    bool eraseFail=false,writeFail=false;
     if(getCandyCount_index.size())
     {
         std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue>::const_iterator iter = getCandyCount_index.begin();
@@ -3752,8 +3751,11 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
             const CGetCandyCount_IndexKey& key = iter->first;
             const CGetCandyCount_IndexValue& deltaValue = iter->second;
             CGetCandyCount_IndexValue value;
-            if(pblocktree->Read_GetCandyCount_Index(key.assetId,key.out,value))
+            if(pblocktree->Is_Exists_GetCandyCount_Key(key.assetId,key.out))
             {
+                if(!pblocktree->Read_GetCandyCount_Index(key.assetId,key.out,value)){
+                    return AbortNode(state, "Failed to read getCandyCount index");
+                }
                 value.nGetCandyCount -= deltaValue.nGetCandyCount;
                 if(value.nGetCandyCount < 0)
                 {
@@ -3761,17 +3763,13 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                     value.nGetCandyCount = 0;
                 }
                 if(!pblocktree->Erase_GetCandyCount_Index(key))
-                    eraseFail = true;
+                    return AbortNode(state, "Failed to erase getCandyCount index");
                 if(!pblocktree->Write_GetCandyCount_Index(key,value))
-                    writeFail = true;
+                    return AbortNode(state, "Failed to write getCandyCount index");
             }
             ++iter;
         }
     }
-    if(eraseFail)
-        return AbortNode(state, "Failed to erase getCandyCount index");
-    if(writeFail)
-        return AbortNode(state, "Failed to write getCandyCount index");
     return fClean;
 }
 
