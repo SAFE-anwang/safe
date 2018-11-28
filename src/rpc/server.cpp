@@ -518,6 +518,7 @@ static const CRPCCommand vRPCCommands[] =
 #endif // ENABLE_WALLET
     { "contract",           "createvirtualaccount",   &createvirtualaccount,        true  },
     { "contract",           "getvirtualaccount",      &getvirtualaccount,           true  },
+    { "contract",           "sendtovirtualaccount",   &sendtovirtualaccount,        true  },
 };
 
 CRPCTable::CRPCTable()

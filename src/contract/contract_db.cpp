@@ -63,9 +63,9 @@ bool CDBBaseImpl::Read_VirtualAccountName_AccountId_Index(const std::string& str
     return pblocktree->Read_VirtualAccountName_AccountId_Index(strVirtualAccountName, value);
 }
 
-bool CDBBaseImpl::Read_VirtualAccountId_Accountinfo_Index(const uint256& virtualAccountId, CVirtualAccountId_Accountinfo_IndexValue& appInfo)
+bool CDBBaseImpl::Read_VirtualAccountId_Accountinfo_Index(const uint256& virtualAccountId, CVirtualAccountId_Accountinfo_IndexValue& virtualAccountInfo)
 {
-    return pblocktree->Read_VirtualAccountId_Accountinfo_Index(virtualAccountId, appInfo);
+    return pblocktree->Read_VirtualAccountId_Accountinfo_Index(virtualAccountId, virtualAccountInfo);
 }
 
 bool CDBBaseImpl::Read_SafeAdress_AccountId_Index(const std::string& safeAddress, CName_Id_IndexValue& value)

@@ -344,6 +344,7 @@ extern UniValue getassetlocaltxlist(const UniValue& params, bool fHelp);
 //contract
 extern UniValue createvirtualaccount(const UniValue& params, bool fHelp);
 extern UniValue getvirtualaccount(const UniValue& params, bool fHelp);
+extern UniValue sendtovirtualaccount(const UniValue& params, bool fHelp);
 
 
 bool StartRPC();

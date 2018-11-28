@@ -193,9 +193,58 @@ UniValue getvirtualaccount(const UniValue& params, bool fHelp)
 
 
     UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("safeAddress", virtualAccountInfo.virtualAcountData.strSafeAddress));
     ret.push_back(Pair("virtualAccountName", virtualAccountInfo.virtualAcountData.strVirtualAccountName));
     ret.push_back(Pair("owner", virtualAccountInfo.virtualAcountData.owner));
     ret.push_back(Pair("active", virtualAccountInfo.virtualAcountData.active));
 
     return ret;
+}
+
+UniValue sendtovirtualaccount(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() < 2 || params.size() > 7)
+        throw runtime_error(
+            "sendtovirtualaccount \"virtualAccount\" amount ( \"comment\" \"comment-to\" subtractfeefromamount use_is use_ps )\n"
+            "\nSend an amount to a given address.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"virtualAccount\" (string, required) The virtual account to send to.\n"
+            "2. \"amount\"      (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "3. \"comment\"     (string, optional) A comment used to store what the transaction is for. \n"
+            "                             This is not part of the transaction, just kept in your wallet.\n"
+            "4. \"comment-to\"  (string, optional) A comment to store the name of the person or organization \n"
+            "                             to which you're sending the transaction. This is not part of the \n"
+            "                             transaction, just kept in your wallet.\n"
+            "5. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "                             The recipient will receive less amount of Safe than you enter in the amount field.\n"
+            "6. \"use_is\"      (bool, optional) Send this transaction as InstantSend (default: false)\n"
+            "7. \"use_ps\"      (bool, optional) Use anonymized funds only (default: false)\n"
+            "\nResult:\n"
+            "\"transactionid\"  (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("sendtovirtualaccount", "\"lily\" 0.1")
+            + HelpExampleCli("sendtovirtualaccount", "\"joy\" 0.1 \"donation\" \"seans outpost\"")
+            + HelpExampleCli("sendtovirtualaccount", "\"joy\" 0.1 \"\" \"\" true")
+            + HelpExampleRpc("sendtovirtualaccount", "\"joy\", 0.1, \"donation\", \"seans outpost\"")
+        );
+
+    UniValue p(UniValue::VARR);
+    std::string vaccount = params[0].get_str();
+    uint256 accountId;
+    if(!GetVirtualAccountIdByAccountName(vaccount, accountId))
+        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
+        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+
+    p.push_back(virtualAccountInfo.virtualAcountData.strSafeAddress);
+    for (unsigned int idx = 1; idx < params.size(); ++idx) {
+        p.push_back(params[idx]);
+    }
+
+    return sendtoaddress(p, false);
 }
