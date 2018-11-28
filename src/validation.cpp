@@ -705,12 +705,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
     if(tx.IsCoinBase())
         return true;
 
-    if (fWithMempool)
-    {
-        mapAssetGetCandy.clear();
-        map<CPutCandy_IndexKey, CAmount>().swap(mapAssetGetCandy);
-    }
-
     // check vout
     map<uint256, int> mapAppId;
     map<uint256, int> mapAssetId;
@@ -4499,7 +4493,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             const CGetCandyCount_IndexKey& key = iter->first;
             const CGetCandyCount_IndexValue& deltaValue = iter->second;
             CGetCandyCount_IndexValue value;
-            pblocktree->Read_GetCandyCount_Index(key.assetId,key.out,value);
+            if(pblocktree->Is_Exists_GetCandyCount_Key(key.assetId,key.out))
+            {
+                if(!pblocktree->Read_GetCandyCount_Index(key.assetId,key.out,value))
+                    return AbortNode(state, "Failed to get getCandyCount index");
+            }
             value.nGetCandyCount += deltaValue.nGetCandyCount;
             if(!pblocktree->Erase_GetCandyCount_Index(key))
                 return AbortNode(state, "Failed to erase getCandyCount index");
