@@ -970,8 +970,9 @@ void restoreWindowGeometry(const QString& strSetting, const QSize& defaultSize, 
     if ((!pos.x() && !pos.y()) || (QApplication::desktop()->screenNumber(parent) == -1))
     {
         QRect screen = QApplication::desktop()->screenGeometry();
+        //defaultPos cannot be calculated with defaultsize, because the final size may be larger than defaultsize
         QPoint defaultPos = screen.center() -
-            QPoint(defaultSize.width() / 2, defaultSize.height() / 2);
+            QPoint(MAIN_WINDOW_NORMAL_WIDTH / 2, MAIN_WINDOW_NORMAL_HEIGHT / 2);
         parent->resize(defaultSize);
         parent->move(defaultPos);
     }
