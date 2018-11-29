@@ -16,6 +16,11 @@ static const int MAX_PASSPHRASE_SIZE = 1024;
 /* SafeGUI -- Size of icons in status bar */
 static const int STATUSBAR_ICONSIZE = 16;
 
+
+/* SafeGUI -- main Window normal size */
+static const int MAIN_WINDOW_NORMAL_WIDTH = 1148;
+static const int MAIN_WINDOW_NORMAL_HEIGHT = 785;
+
 static const bool DEFAULT_SPLASHSCREEN = true;
 
 /* Invalid field background style */

@@ -290,9 +290,14 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *platformStyle, const NetworkStyle *n
     }
     setMouseTracking(true);
 #endif
-    if (QApplication::desktop()->screenGeometry().width() < this->width() ||
-            QApplication::desktop()->screenGeometry().height() < this->height())
-        titlebar->setFullScreen();
+    //if (QApplication::desktop()->screenGeometry().width() < this->width() || 
+            //QApplication::desktop()->screenGeometry().height() < this->height())
+    //The final window size may be larger than (this->width, this->height),So use macros to define the final size
+    if (QApplication::desktop()->screenGeometry().width() < MAIN_WINDOW_NORMAL_WIDTH ||
+            QApplication::desktop()->screenGeometry().height() < MAIN_WINDOW_NORMAL_HEIGHT)
+        onMaxButtonClicked();
+
+
 }
 
 BitcoinGUI::~BitcoinGUI()
