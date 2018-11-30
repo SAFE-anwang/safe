@@ -519,6 +519,7 @@ static const CRPCCommand vRPCCommands[] =
     { "contract",           "createvirtualaccount",   &createvirtualaccount,        true  },
     { "contract",           "getvirtualaccount",      &getvirtualaccount,           true  },
     { "contract",           "sendtovirtualaccount",   &sendtovirtualaccount,        true  },
+    { "contract",           "sendfromvirtualaccount", &sendfromvirtualaccount,      true  },
 };
 
 CRPCTable::CRPCTable()

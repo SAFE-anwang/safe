@@ -37,7 +37,7 @@ bool CDBBaseImpl::ParseVirtualAccountData(const std::vector<unsigned char>& vVir
     virtualAccountData.strSafeAddress = data.safeaddress();
     virtualAccountData.strVirtualAccountName = data.accountname();
     virtualAccountData.owner = data.owner();
-    virtualAccountData.active = data.owner();
+    virtualAccountData.active = data.active();
 
     return true;
 

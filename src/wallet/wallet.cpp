@@ -3209,8 +3209,8 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
                     std::vector<unsigned char> vData;
                     if(ParseReserve(pcoin->vout[i].vReserve, header, vData))
                     {
-                        if(header.nAppCmd == REGISTER_APP_CMD || header.nAppCmd == ADD_AUTH_CMD || header.nAppCmd == DELETE_AUTH_CMD || header.nAppCmd == CREATE_EXTEND_TX_CMD)
-                        {
+                        if (header.nAppCmd == REGISTER_APP_CMD || header.nAppCmd == ADD_AUTH_CMD || header.nAppCmd == DELETE_AUTH_CMD || 
+                            header.nAppCmd == CREATE_EXTEND_TX_CMD || header.nAppCmd == CREATE_VIRUTAL_ACCOUNT_CMD) {
                             if(nDepth <= 0)
                                 continue;
                         }
@@ -4030,7 +4030,8 @@ bool CWallet::ConvertList(std::vector<CTxIn> vecTxIn, std::vector<CAmount>& vecA
 }
 
 bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
-                                int& nChangePosRet, std::string& strFailReason, const CCoinControl* coinControl, bool sign, AvailableCoinsType nCoinType, bool fUseInstantSend)
+                                int& nChangePosRet, std::string& strFailReason, const CCoinControl* coinControl, bool sign, AvailableCoinsType nCoinType, 
+                                bool fUseInstantSend, const CBitcoinAddress *pFixedSrcAddress)
 {
     if(!masternodeSync.IsBlockchainSynced())
     {
@@ -4160,7 +4161,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 set<pair<const CWalletTx*,unsigned int> > setCoins;
                 CAmount nValueIn = 0;
 
-                if (!SelectCoins(nValueToSelect, setCoins, nValueIn, coinControl, nCoinType, fUseInstantSend))
+                if (!SelectCoins(nValueToSelect, setCoins, nValueIn, coinControl, nCoinType, fUseInstantSend, pFixedSrcAddress))
                 {
                     if (nCoinType == ONLY_NOT1000IFMN) {
                         strFailReason = _("Unable to locate enough funds for this transaction that are not equal 1000 SAFE.");
@@ -4170,6 +4171,16 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         strFailReason = _("Unable to locate enough PrivateSend denominated funds for this transaction.");
                         strFailReason += " " + _("PrivateSend uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.");
                     } else if (nValueIn < nValueToSelect) {
+                        if (pFixedSrcAddress) {
+                            if (GetBalance(false, NULL, pFixedSrcAddress) < nValueToSelect)
+                                strFailReason = strprintf(_("Insufficient amount on the address(%s)."), pFixedSrcAddress->ToString());
+                            else if(fUseInstantSend)
+                                strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED);
+                            else
+                                strFailReason = _("Reach the current change limit,please try again later.");
+                            return false;
+                        }
+
                         strFailReason = _("Insufficient funds.");
                         if (fUseInstantSend) // could be not true but most likely that's the reason
                             strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED);

@@ -16,6 +16,7 @@
 #include "main.h"
 #include "masternode-sync.h"
 #include "txmempool.h"
+#include "coincontrol.h"
 #include "../contract/virtual_account.h"
 #include <boost/regex.hpp>
 
@@ -60,7 +61,7 @@ UniValue createvirtualaccount(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() != 4)
+    if (fHelp || params.size() < 3 || params.size() > 4 )
         throw runtime_error(
             "createvirtualaccount \"safeaddress\" \"virtualaccountname\" \"ownerkey\" \"activekey\"\n"
             "\nreturn transaction id.\n"
@@ -68,7 +69,7 @@ UniValue createvirtualaccount(const UniValue& params, bool fHelp)
             "1. \"safeaddress\"      (string, required) The Safe address associated with the virtual account\n"
             "2. \"virtualaccountname\"           (string, required) The virtual account name\n"
             "3. \"ownerkey\"           (string, required) public key that represents the virtual account owner\n"
-            "4. \"activekey\"           (string, required) active key value\n"
+            "4. \"activekey\"           (string, optional) active key value\n"
             "\nResult:\n"
             "{\n"
             "  \"txId\": \"xxxxx\"  (string) The transaction id\n"
@@ -104,9 +105,13 @@ UniValue createvirtualaccount(const UniValue& params, bool fHelp)
     if (!_isAddressOrPubKey(ownerks))
         throw JSONRPCError(INVALID_ADDRESS, "Invalid owner key.");
 
-    string activeks = TrimString(params[3].get_str());
-    if (activeks.size() != 0 && !_isAddressOrPubKey(activeks))
-        throw JSONRPCError(INVALID_ADDRESS, "Invalid active key.");
+    string activeks;
+    if (params.size() > 3)
+    {
+        string activeks = TrimString(params[3].get_str());
+        if (activeks.size() != 0 && !_isAddressOrPubKey(activeks))
+            throw JSONRPCError(INVALID_ADDRESS, "Invalid active key.");
+    }
 
     // if(IsKeyWord(strAppName))
         // throw JSONRPCError(INVALID_APPNAME_SIZE, "Application name is internal reserved words, not allowed to use");
@@ -153,10 +158,7 @@ UniValue createvirtualaccount(const UniValue& params, bool fHelp)
     if(!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Create virtual account failed, please check your wallet and try again later!");
 
-    UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("txId", wtx.GetHash().GetHex()));
-
-    return ret;
+    return wtx.GetHash().GetHex();
 }
 
 UniValue getvirtualaccount(const UniValue& params, bool fHelp)
@@ -247,4 +249,132 @@ UniValue sendtovirtualaccount(const UniValue& params, bool fHelp)
     }
 
     return sendtoaddress(p, false);
+}
+
+static void SendMoneyFromAddress(const CBitcoinAddress *pSafeAddress, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, bool fUseInstantSend=false, bool fUsePrivateSend=false)
+{
+    CAmount curBalance = pwalletMain->GetBalance(false, NULL, pSafeAddress);
+
+    // Check amount
+    if (nValue <= 0)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
+
+    if (nValue > curBalance)
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient amount on the address(" + pSafeAddress->ToString() + ")");
+
+    if (pwalletMain->GetBroadcastTransactions() && !g_connman)
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+    // Parse Safe address
+    CScript scriptPubKey = GetScriptForDestination(address);
+
+    // Create and send the transaction
+    CReserveKey reservekey(pwalletMain);
+    CAmount nFeeRequired;
+    std::string strError;
+    vector<CRecipient> vecSend;
+    int nChangePosRet = -1;
+    CRecipient recipient = {scriptPubKey, nValue, 0, fSubtractFeeFromAmount};
+    vecSend.push_back(recipient);
+
+    CCoinControl coinControl;
+    coinControl.destChange = pSafeAddress->Get();
+    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet,
+                                         strError, &coinControl, true, fUsePrivateSend ? ONLY_DENOMINATED : ALL_COINS, fUseInstantSend, pSafeAddress)) {
+        if (!fSubtractFeeFromAmount && nValue + nFeeRequired > pwalletMain->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+    if (!pwalletMain->CommitTransaction(wtxNew, reservekey, g_connman.get(), fUseInstantSend ? NetMsgType::TXLOCKREQUEST : NetMsgType::TX))
+    {
+        std::vector<int> prevheights;
+        BOOST_FOREACH(const CTxIn &txin, wtxNew.vin)
+            prevheights.push_back(GetTxHeight(txin.prevout.hash));
+
+        if(ExistForbidTxin((uint32_t)g_nChainHeight + 1, prevheights))
+            throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! The transaction (partial) amount has been sealed.");
+        else
+            throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+    }
+}
+
+UniValue sendfromvirtualaccount(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() < 3 || params.size() > 8)
+        throw runtime_error(
+            "sendfromvirtualaccount \"virtualAccount\" amount ( \"comment\" \"comment-to\" subtractfeefromamount use_is use_ps )\n"
+            "\nSend an amount to a given address.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"virtualAccount\" (string, required) The virtual account to send coins.\n"
+            "2. \"safeaddress\" (string, required) The safe address to send to.\n"
+            "3. \"amount\"      (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "4. \"comment\"     (string, optional) A comment used to store what the transaction is for. \n"
+            "                             This is not part of the transaction, just kept in your wallet.\n"
+            "5. \"comment-to\"  (string, optional) A comment to store the name of the person or organization \n"
+            "                             to which you're sending the transaction. This is not part of the \n"
+            "                             transaction, just kept in your wallet.\n"
+            "6. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "                             The recipient will receive less amount of Safe than you enter in the amount field.\n"
+            "7. \"use_is\"      (bool, optional) Send this transaction as InstantSend (default: false)\n"
+            "8. \"use_ps\"      (bool, optional) Use anonymized funds only (default: false)\n"
+            "\nResult:\n"
+            "\"transactionid\"  (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("sendfromvirtualaccount", "safe.hello \"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\" 0.1")
+            + HelpExampleCli("sendfromvirtualaccount", "safe.hello \"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\" 0.1 \"donation\" \"seans outpost\"")
+            + HelpExampleCli("sendfromvirtualaccount", "safe.hello \"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\" 0.1 \"\" \"\" true")
+            + HelpExampleRpc("sendfromvirtualaccount", "safe.hello \"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\", 0.1, \"donation\", \"seans outpost\"")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    std::string vaccount = params[0].get_str();
+    uint256 accountId;
+    if(!GetVirtualAccountIdByAccountName(vaccount, accountId))
+        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
+        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+
+    if(!masternodeSync.IsBlockchainSynced())
+        throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
+    CBitcoinAddress address(params[1].get_str());
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Safe address");
+
+    // Amount
+    CAmount nAmount = AmountFromValue(params[2]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+
+    // Wallet comments
+    CWalletTx wtx;
+    if (params.size() > 3 && !params[3].isNull() && !params[3].get_str().empty())
+        wtx.mapValue["comment"] = params[3].get_str();
+    if (params.size() > 4 && !params[4].isNull() && !params[4].get_str().empty())
+        wtx.mapValue["to"]      = params[4].get_str();
+
+    bool fSubtractFeeFromAmount = false;
+    if (params.size() > 5)
+        fSubtractFeeFromAmount = params[5].get_bool();
+
+    bool fUseInstantSend = false;
+    bool fUsePrivateSend = false;
+    if (params.size() > 6)
+        fUseInstantSend = params[6].get_bool();
+    if (params.size() > 7)
+        fUsePrivateSend = params[7].get_bool();
+
+    EnsureWalletIsUnlocked();
+
+    CBitcoinAddress safeAddress(virtualAccountInfo.virtualAcountData.strSafeAddress);
+    if (!safeAddress.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Safe address");
+    SendMoneyFromAddress(&safeAddress, address.Get(), nAmount, fSubtractFeeFromAmount, wtx, fUseInstantSend, fUsePrivateSend);
+
+    return wtx.GetHash().GetHex();
 }

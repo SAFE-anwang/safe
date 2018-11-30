@@ -23,7 +23,7 @@ public:
     }
 
     CVirtualAccountData(const std::string& strSafeAddressIn,
-        const std::string& strVirtualAccountNameIn, const std::string &ownerIn, const std::string activeIn)
+        const std::string& strVirtualAccountNameIn, const std::string &ownerIn, const std::string &activeIn)
         : strVirtualAccountName(strVirtualAccountNameIn),
           strSafeAddress(strSafeAddressIn),
           owner(ownerIn), 
@@ -46,6 +46,8 @@ public:
     {
         strVirtualAccountName.clear();
         strSafeAddress.clear();
+        owner.clear();
+        active.clear();
     }
 
     ADD_SERIALIZE_METHODS;
@@ -55,6 +57,8 @@ public:
     {
         READWRITE(LIMITED_STRING(strSafeAddress, MAX_ADDRESS_SIZE));
         READWRITE(LIMITED_STRING(strVirtualAccountName, MAX_VIRTAUL_ACCOUNT_NAME_SIZE));
+        READWRITE(LIMITED_STRING(owner, MAX_ADDRESS_SIZE));
+        READWRITE(LIMITED_STRING(active, MAX_ADDRESS_SIZE));
     }
 
     uint256 GetHash()
