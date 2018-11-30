@@ -171,6 +171,7 @@ UniValue getvirtualaccount(const UniValue& params, bool fHelp)
             "1. \"safeaddress\"      (string, required) The Safe address associated with the virtual account\n"
             "\nResult:\n"
             "{\n"
+            "  \"safeAddress\": \"xxxxx\"  (string) The Safe address associated with the virtual account\n"
             "  \"virtualAccountName\": \"xxxxx\"  (string) The virtual account name associated with the virtual account\n"
             "  \"owner\": \"xxxxx\"  (string) owner key\n"
             "  \"active\": \"xxxxx\"  (string) active key\n"
@@ -192,6 +193,45 @@ UniValue getvirtualaccount(const UniValue& params, bool fHelp)
     CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
     if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
         throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, "There is no corresponding virtual account for this address!");
+
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("safeAddress", virtualAccountInfo.virtualAcountData.strSafeAddress));
+    ret.push_back(Pair("virtualAccountName", virtualAccountInfo.virtualAcountData.strVirtualAccountName));
+    ret.push_back(Pair("owner", virtualAccountInfo.virtualAcountData.owner));
+    ret.push_back(Pair("active", virtualAccountInfo.virtualAcountData.active));
+
+    return ret;
+}
+
+UniValue getvirtualaccountbyname(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "getvirtualaccountbyname \"virtualaccountname\"\n"
+            "\nreturn virtual account info.\n"
+            "\nArguments:\n"
+            "1. \"virtualaccountname\"      (string, required) The virtual account name associated with the virtual account\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"safeAddress\": \"xxxxx\"  (string) The Safe address associated with the virtual account\n"
+            "  \"virtualAccountName\": \"xxxxx\"  (string) The virtual account name associated with the virtual account\n"
+            "  \"owner\": \"xxxxx\"  (string) owner key\n"
+            "  \"active\": \"xxxxx\"  (string) active key\n"
+            "}\n"
+            "\nExamples:\n" +
+            HelpExampleCli("getvirtualaccountbyname", "\"jack\"")
+            );
+
+    LOCK(cs_main);
+
+    std::string vaccount = params[0].get_str();
+    uint256 accountId;
+    if(!GetVirtualAccountIdByAccountName(vaccount, accountId))
+        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
+        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
 
 
     UniValue ret(UniValue::VOBJ);
