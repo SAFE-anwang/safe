@@ -518,13 +518,13 @@ void PrintExceptionContinue(const std::exception* pex, const char* pszThread)
 boost::filesystem::path GetDefaultDataDir()
 {
     namespace fs = boost::filesystem;
-    // Windows < Vista: C:\Documents and Settings\Username\Application Data\Safe_Dev2
-    // Windows >= Vista: C:\Users\Username\AppData\Roaming\Safe_Dev2
-    // Mac: ~/Library/Application Support/Safe_Dev2
-    // Unix: ~/.safe_dev2
+    // Windows < Vista: C:\Documents and Settings\Username\Application Data\Safe_Spos2
+    // Windows >= Vista: C:\Users\Username\AppData\Roaming\Safe_Spos2
+    // Mac: ~/Library/Application Support/Safe_Spos2
+    // Unix: ~/.safe_spos2
 #ifdef WIN32
     // Windows
-    return GetSpecialFolderPath(CSIDL_APPDATA) / "Safe_Dev2";
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "Safe_Spos2";
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -534,10 +534,10 @@ boost::filesystem::path GetDefaultDataDir()
         pathRet = fs::path(pszHome);
 #ifdef MAC_OSX
     // Mac
-    return pathRet / "Library/Application Support/Safe_Dev2";
+    return pathRet / "Library/Application Support/Safe_Spos2";
 #else
     // Unix
-    return pathRet / ".safe_dev2";
+    return pathRet / ".safe_spos2";
 #endif
 #endif
 }

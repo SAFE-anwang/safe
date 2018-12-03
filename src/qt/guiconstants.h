@@ -55,7 +55,7 @@ static const int MAX_URI_LENGTH = 650;
 /* Number of frames in spinner animation */
 #define SPINNER_FRAMES 36
 
-#define QAPP_ORG_NAME "Safe_Dev2"
+#define QAPP_ORG_NAME "Safe_Spos2"
 #define QAPP_ORG_DOMAIN "www.anwang.com"
 #define QAPP_APP_NAME_DEFAULT "Safe-Qt"
 #define QAPP_APP_NAME_TESTNET "Safe-Qt-testnet"

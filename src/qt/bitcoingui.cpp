@@ -601,7 +601,7 @@ void BitcoinGUI::createActions()
 void BitcoinGUI::createTitleBar()
 {
     titlebar = new TitleBar(this);
-    titlebar->setContent(tr("Safe Core") + "-" + tr("Wallet (v2.1.0 Safe_Dev2)"));
+    titlebar->setContent(tr("Safe Core") + "-" + tr("Wallet (v2.1.0 Safe_Spos2)"));
     titlebar->setButtonType(MIN_MAX_BUTTON);
     titlebar->setWidth(this->width() - 2 * BORDER_SIZE);
     titlebar->setBorderWidth(2 * BORDER_SIZE);
