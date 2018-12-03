@@ -418,3 +418,64 @@ UniValue sendfromvirtualaccount(const UniValue& params, bool fHelp)
 
     return wtx.GetHash().GetHex();
 }
+
+UniValue listvirtualaccount(const UniValue& params, bool fHelp)
+{
+     if (fHelp || params.size() > 2)
+        throw runtime_error(
+            "listvirtualaccount \"lower_bound\" limit\n"
+            "\nReturn to virtual account list\n"
+            "\nArguments:\n"
+            "1. \"lower_bound\"    (string, optional) Specify the lower limit of the list, default value is ""\n"
+            "2. \"limit\"     (numeric, optional) Maximum number of results, defualt value is 20\n"
+            "\nResult:\n"
+            "[\n"
+            "   {\n"
+            "     \"safeAddress:\"\"...\"\n"
+            "     \"virtualAccountName:\"\"...\"\n"
+            "     \"owner:\"\"...\"\n"
+            "     \"active:\"\"...\"\n"
+            "   }\n"
+            "   ,...\n"
+            "]\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listvirtualaccount", "")
+            + HelpExampleRpc("listvirtualaccount", "safe")
+            + HelpExampleRpc("listvirtualaccount", "safe 10")
+        );
+
+    LOCK(cs_main);
+    std::string vaccount;
+    if (params.size() > 0)
+        vaccount = params[0].get_str();
+
+    int limit = 20;
+    if (params.size() > 1)
+        limit =  stoi(params[1].get_str());
+    if (limit < 0 || limit > 100)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid limit");
+
+    std::map<std::string, uint256> virtualAccountIds;
+    if (!GetVirtualAccountsIdListByAccountName(virtualAccountIds))
+        throw JSONRPCError(GET_VIRTUALACCOUNTID_FAILED,  strprintf("No virtual account virtual available for name %s.", vaccount.c_str()));
+
+    UniValue ret(UniValue::VARR);
+    int cnt = 0;
+    CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    for(auto ite = virtualAccountIds.begin(); ite != virtualAccountIds.end(); ++ite)
+    {
+        if (ite->first < vaccount)
+            continue;
+        if (!GetVirtualInfoByVirtualAccountId(ite->second, virtualAccountInfo))
+            throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("safeAddress", virtualAccountInfo.virtualAcountData.strSafeAddress));
+        obj.push_back(Pair("virtualAccountName", virtualAccountInfo.virtualAcountData.strVirtualAccountName));
+        obj.push_back(Pair("owner", virtualAccountInfo.virtualAcountData.owner));
+        obj.push_back(Pair("active", virtualAccountInfo.virtualAcountData.active));
+        ret.push_back(obj);
+        if (++cnt >= limit)
+            break;
+    }
+    return ret;
+}

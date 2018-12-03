@@ -2133,3 +2133,13 @@ bool CTxMemPool::removeVirtualAccountInfoIndex(const uint256& txhash)
     }
     return true;
 }
+
+bool CTxMemPool::getAccountsIdList(std::map<std::string, uint256>& mVirutalAccountId)
+{
+    LOCK(cs);
+    for(mapVirtualAccountName_virtualAccountId_Index::const_iterator it = mapVirtualAccountName_virtualAccountId.begin(); it != mapVirtualAccountName_virtualAccountId.end(); it++)
+    {
+        mVirutalAccountId.insert(make_pair(it->first, it->second.id));
+    }
+    return mVirutalAccountId.size();
+}

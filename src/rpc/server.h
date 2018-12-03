@@ -347,6 +347,7 @@ extern UniValue getvirtualaccount(const UniValue& params, bool fHelp);
 extern UniValue getvirtualaccountbyname(const UniValue& params, bool fHelp);
 extern UniValue sendtovirtualaccount(const UniValue& params, bool fHelp);
 extern UniValue sendfromvirtualaccount(const UniValue& params, bool fHelp);
+extern UniValue listvirtualaccount(const UniValue& params, bool fHelp);
 
 
 bool StartRPC();

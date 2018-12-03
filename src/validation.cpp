@@ -8768,3 +8768,14 @@ bool GetAccountIdBySafeAddress(const std::string& strSafeAddress, uint256& virtu
 
     return false;
 }
+
+bool GetVirtualAccountsIdListByAccountName(std::map<std::string, uint256> &virtualAccountIds, const bool fWithMempool)
+{
+    if (!fWithMempool)
+        return pblocktree->Read_VirtualAccountList_Index(virtualAccountIds);
+
+    mempool.getAccountsIdList(virtualAccountIds);
+    pblocktree->Read_VirtualAccountList_Index(virtualAccountIds);
+
+    return virtualAccountIds.size();
+}

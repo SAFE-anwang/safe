@@ -1214,6 +1214,22 @@ struct CVirtualAccountId_Accountinfo_IndexValue
     }
 };
 
+struct CIterator_VirtualAccountNameKey
+{
+    std::string strVirtualAccountName;
+
+    CIterator_VirtualAccountNameKey(const std::string& strVirtualAccountName = "") : strVirtualAccountName(strVirtualAccountName) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(strVirtualAccountName);
+    }
+};
+
 
 /**
  * Count ECDSA signature operations the old-fashioned (pre-0.6) way
@@ -1533,4 +1549,5 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
 bool GetVirtualInfoByVirtualAccountId(const uint256& virtualAccountId, CVirtualAccountId_Accountinfo_IndexValue& virtualAccountInfo, const bool fWithMempool=true);
 bool GetVirtualAccountIdByAccountName(const std::string& strVirtualAccountName, uint256& virtualAccountId, const bool fWithMempool=true);
 bool GetAccountIdBySafeAddress(const std::string& strSafeAddress, uint256& virtualAccountId, const bool fWithMempool=true);
+bool GetVirtualAccountsIdListByAccountName(std::map<std::string,uint256> &virtualAccountIdlist, const bool fWithMempool = true);
 #endif // BITCOIN_VALIDATION_H

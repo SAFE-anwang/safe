@@ -139,6 +139,7 @@ enum AppRpcError
     EXISTENT_VIRTUAL_ACCOUNT_ID         = -702,
     EXISTENT_VIRTUAL_ACCOUNT_NAME       = -703,
     NO_VIRTUAL_ACCOUNT_EXIST            = -704,
+    GET_VIRTUALACCOUNTID_FAILED         = -705,
 };
 
 extern uint16_t g_nAppHeaderVersion;

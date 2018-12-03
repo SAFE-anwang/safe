@@ -1327,3 +1327,38 @@ bool CBlockTreeDB::Erase_SafeAdress_AccountId_Index(const std::vector<std::pair<
         batch.Erase(make_pair(DB_SAFEADRESS_ACCOUNTID_INDEX, it->first));
     return WriteBatch(batch);
 }
+
+bool CBlockTreeDB::Read_VirtualAccountList_Index(std::map<std::string, uint256>& mVirtualAccountId)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    std::string strVirtualAccountName = "";
+
+    pcursor->Seek(make_pair(DB_VIRTUALACCOUNTNAME_ACCOUNTID_INDEX, CIterator_VirtualAccountNameKey(strVirtualAccountName)));
+
+    int nCurHeight = g_nChainHeight;
+    std::map<uint256, char> mapAppId;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, std::string> key;
+        if (pcursor->GetKey(key) && key.first == DB_VIRTUALACCOUNTNAME_ACCOUNTID_INDEX)
+        {
+            uint256 nVirutalAccountId;
+            if(pcursor->GetValue(nVirutalAccountId))
+            {
+                mVirtualAccountId.insert(make_pair(key.second, nVirutalAccountId));
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get virtual account list.");
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return mVirtualAccountId.size();
+}

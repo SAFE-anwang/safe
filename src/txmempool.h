@@ -646,6 +646,7 @@ public:
     bool getVirtualAccountIdByAccountName(const std::string& strVirtualAccountName, CName_Id_IndexValue& value);
     bool getVirtualAccountIdBySafeAddress(const std::string& strSafeAddress, CName_Id_IndexValue& value);
     bool removeVirtualAccountInfoIndex(const uint256& txhash);
+    bool getAccountsIdList(std::map<std::string, uint256>& mVirutalAccountId);
 
 public:
     /** Remove a set of transactions from the mempool.

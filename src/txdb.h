@@ -164,6 +164,7 @@ public:
     bool Erase_VirtualAccountId_Accountinfo_Index(const std::vector<std::pair<uint256, CVirtualAccountId_Accountinfo_IndexValue> >& vect);
     bool Write_SafeAdress_AccountId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> >& vect);
     bool Erase_SafeAdress_AccountId_Index(const std::vector<std::pair<std::string, CName_Id_IndexValue> >& vect);
+    bool Read_VirtualAccountList_Index(std::map<std::string, uint256>& vVirtualAccountId);
 };
 
 #endif // BITCOIN_TXDB_H
