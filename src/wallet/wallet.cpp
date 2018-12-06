@@ -4122,7 +4122,12 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 // vouts to the payees
                 BOOST_FOREACH (const CRecipient& recipient, vecSend)
                 {
-                    CTxOut txout(recipient.nAmount, recipient.scriptPubKey, recipient.nLockedMonth <= 0 ? 0 : g_nChainHeight + 1 + recipient.nLockedMonth * BLOCKS_PER_MONTH);
+                    int64_t ntempUnlockedHeightIn = 0;
+                    if (g_nChainHeight + 1 >= g_nStartSPOSHeight)
+                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * SPOS_BLOCKS_PER_MONTH;
+                    else
+                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * BLOCKS_PER_MONTH;
+                    CTxOut txout(recipient.nAmount, recipient.scriptPubKey, recipient.nLockedMonth <= 0 ? 0 : ntempUnlockedHeightIn);
 
                     if(!recipient.strMemo.empty())
                         txout.vReserve = FillTransferSafeData(CAppHeader(g_nAppHeaderVersion, uint256S(g_strSafePayId), TRANSFER_SAFE_CMD), CTransferSafeData(recipient.strMemo));
@@ -4899,7 +4904,13 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
                     if(recipient.scriptPubKey == CScript())
                         continue;
 
-                    CTxOut txout(recipient.nAmount, recipient.scriptPubKey, recipient.nLockedMonth <= 0 ? 0 : g_nChainHeight + 1 + recipient.nLockedMonth * BLOCKS_PER_MONTH);
+                    int64_t ntempUnlockedHeightIn = 0;
+                    if (g_nChainHeight + 1 >= g_nStartSPOSHeight)
+                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * SPOS_BLOCKS_PER_MONTH;
+                    else
+                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * BLOCKS_PER_MONTH;
+
+                    CTxOut txout(recipient.nAmount, recipient.scriptPubKey, recipient.nLockedMonth <= 0 ? 0 : ntempUnlockedHeightIn);
                     if(recipient.fAsset)
                     {
                         if(pHeader->nAppCmd == TRANSFER_ASSET_CMD)

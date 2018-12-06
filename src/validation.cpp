@@ -40,6 +40,7 @@
 #include "main.h"
 #include "rpc/server.h"
 #include "masternode-sync.h"
+#include "messagesigner.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -104,6 +105,10 @@ std::mutex g_mutexTmpAllCandyInfo;
 std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
+int64_t AllowableErrorTime = -12;
+CAmount MiningIncentives = 334559821;
+
+
 
 const static int M = 2000; //Maximum number of digits
 int numA[M];
@@ -620,16 +625,34 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
             if(nType == FROM_BLOCK)
             {
                 int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-                if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                    return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height");
+
+                if (nTxHeight >= g_nStartSPOSHeight)
+                {
+                    if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
+                        return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height");
+                }
+                else
+                {
+                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                        return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height");
+                }
             }
             else if(nType == FROM_WALLET)
             {
                 if(!blockHash.IsNull())
                 {
                     int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                        return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height");
+
+                    if (nTxHeight >= g_nStartSPOSHeight)
+                    {
+                        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
+                            return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height");
+                    }
+                    else
+                    {
+                        if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                            return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height");
+                    }
                 }
             }
             else
@@ -637,8 +660,17 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                 if(masternodeSync.IsBlockchainSynced())
                 {
                     int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                        return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
+
+                    if (nTxHeight >= g_nStartSPOSHeight)
+                    {
+                        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
+                            return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
+                    }
+                    else
+                    {
+                        if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                            return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
+                    }
                 }
             }
         }
@@ -650,10 +682,12 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                 continue;
             if(tx.nVersion >= SAFE_TX_VERSION_1)
             {
-                if(txout.nUnlockedHeight != 0 ||
-                   vReserve.size() != TXOUT_RESERVE_MIN_SIZE ||
-                   vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
-                    return state.DoS(50, false, REJECT_INVALID, "coinsbase: invalid txout reserve");
+                if(txout.nUnlockedHeight != 0 && !IsStartSPosHeight(nHeight+1))
+                {
+                    if(vReserve.size() != TXOUT_RESERVE_MIN_SIZE ||
+                    vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
+                        return state.DoS(50, false, REJECT_INVALID, "coinsbase: invalid txout reserve");
+                }
             }
         }
         else
@@ -1861,11 +1895,22 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                 if(nPrevTxHeight >= nTxHeight)
                     return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy txin");
 
-                if(nPrevTxHeight+BLOCKS_PER_DAY>nTxHeight)
-                    return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                if (nTxHeight >= g_nStartSPOSHeight)
+                {
+                    if(nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
 
-                if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                    return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                    if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                }
+                else
+                {
+                    if(nPrevTxHeight+BLOCKS_PER_DAY>nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+
+                    if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                }
             }
 
             CAmount nSafe = 0;
@@ -2275,8 +2320,16 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
                 continue;
 
             int64_t nOffset = txout.nUnlockedHeight - coins->nHeight;
-            if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                continue;
+            if (coins->nHeight >= g_nStartSPOSHeight)
+            {
+                if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
+                    continue;
+            }
+            else
+            {
+                if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                    continue;
+            }
 
             return state.DoS(100, false, REJECT_NONSTANDARD, "invalid-txin-locked");
         }
@@ -2745,8 +2798,13 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
     }
 
     // Check the header
-    if (!CheckCriticalBlock(block) && !CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
-        return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
+    if (!CheckCriticalBlock(block))
+    {
+        int nHeight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
+        if (nHeight < g_nStartSPOSHeight)
+            if (!CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
+                return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString()); 
+    }
 
     return true;
 }
@@ -2780,6 +2838,22 @@ double ConvertBitsToDouble(unsigned int nBits)
 
     return dDiff;
 }
+
+CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
+{
+    CAmount nSubsidy = MiningIncentives;
+
+    // yearly decline of production by ~7.1% per year, projected ~18M coins max by year 2050+.
+    for (int i = consensusParams.nSubsidyHalvingInterval; i <= nPrevHeight; i += consensusParams.nSubsidyHalvingInterval) {
+        nSubsidy -= nSubsidy/14;
+    }
+
+    // Hard fork to reduce the block reward by 10 extra percent (allowing budget/superblocks)
+    CAmount nSuperblockPart = (nPrevHeight > consensusParams.nBudgetPaymentsStartBlock) ? nSubsidy/10 : 0;
+
+    return fSuperblockPartOnly ? nSuperblockPart : nSubsidy - nSuperblockPart;
+}
+
 
 /*
 NOTE:   unlike bitcoin we are using PREVIOUS block height here,
@@ -4391,7 +4465,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if(CheckCriticalBlock(block))
         blockReward = nFees + g_nCriticalReward;
     else
-        blockReward = nFees + GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, chainparams.GetConsensus());
+        if (pindex->pprev->nHeight >= g_nStartSPOSHeight)
+            blockReward = nFees + GetSPOSBlockSubsidy(pindex->pprev->nHeight, chainparams.GetConsensus());
+        else
+            blockReward = nFees + GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, chainparams.GetConsensus());
     std::string strError = "";
     if (!IsBlockValueValid(block, pindex->nHeight, blockReward, strError)) {
         return state.DoS(0, error("ConnectBlock(SAFE): %s", strError), REJECT_INVALID, "bad-cb-amount");
@@ -5344,6 +5421,10 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
     if(CheckCriticalBlock(block))
         return true;
 
+    int nHeight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
+    if (nHeight >= g_nStartSPOSHeight)
+        return true;
+
     // Check proof of work matches claimed amount
     if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
         return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
@@ -5357,6 +5438,65 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
     return true;
 }
 
+bool ParseReserve(const std::vector<unsigned char> &vReserve, std::string &straddress, std::vector<unsigned char> &vchSig)
+{
+    if (vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + 34)
+        return false;
+
+    unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
+
+    for (unsigned int i = nOffset; i < 34; i++)
+        straddress.push_back(vReserve[i]);
+
+    for(unsigned int i = nOffset + 34; i < vReserve.size(); i++)
+        vchSig.push_back(vReserve[i]);
+
+    return true;
+}
+
+bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& state)
+{
+    if (block.nBits != 0 || block.nNonce != 0)
+        return state.DoS(100, error("CheckSPOSBlock(): block.nBits or block.nNonce not equal to 0"), REJECT_INVALID, "bad-nBits-nNonce", true);
+
+    int64_t nNowTime = GetTime();
+    if (nNowTime - block.GetBlockTime() > AllowableErrorTime)
+        return state.DoS(100, error("CheckSPOSBlock(): block.nTime error"), REJECT_INVALID, "bad-nTime", true);
+
+    CTransaction tempTransaction  = block.vtx[0];
+    const CTxOut &out = tempTransaction.vout[0];
+
+    std::string straddress = "";
+    std::vector<unsigned char> vchSig;
+    if (!ParseReserve(out.vReserve, straddress, vchSig))
+        return state.DoS(100, error("CheckSPOSBlock(): analysis CTxOut vReserve fail"), REJECT_INVALID, "bad-vReserve", true);
+
+    CBitcoinAddress address;
+    if (!address.SetString(straddress))
+        return state.DoS(100, error("CheckSPOSBlock(): straddress error"), REJECT_INVALID, "bad-address", true);
+
+    CKeyID keyID;
+    if (!address.GetKeyID(keyID))
+        return state.DoS(100, error("CheckSPOSBlock(): keyID error"), REJECT_INVALID, "bad-keyID", true);
+
+    std::string strMessage = straddress;
+    std::string strError = "";
+    if (!CMessageSigner::VerifyMessage(keyID, vchSig, strMessage, strError))
+        return state.DoS(100, error("CheckSPOSBlock(): signature error"), REJECT_INVALID, "bad-signature", true);
+
+    if (!masternodeSync.IsBlockchainSynced())
+        return true;
+
+    int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_nMasternodeSPosCount;
+    CMasternode tempmn = g_vecResultMasternodes[nindex];
+    std::string strmnaddress = CBitcoinAddress(tempmn.pubKeyCollateralAddress.GetID()).ToString();
+
+    if (straddress != strmnaddress)
+        return state.DoS(100, error("CheckSPOSBlock(): blockaddress error"), REJECT_INVALID, "bad-blockaddress", true);
+
+    return true;
+}
+
 bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot)
 {
     // These are checks that are independent of context.
@@ -5364,10 +5504,23 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (block.fChecked)
         return true;
 
+     // First transaction must be coinbase, the rest must not be
+    if (block.vtx.empty() || !block.vtx[0].IsCoinBase())
+        return state.DoS(100, error("CheckBlock(): first tx is not coinbase"),
+                         REJECT_INVALID, "bad-cb-missing");
+    for (unsigned int i = 1; i < block.vtx.size(); i++)
+        if (block.vtx[i].IsCoinBase())
+            return state.DoS(100, error("CheckBlock(): more than one coinbase"),
+                             REJECT_INVALID, "bad-cb-multiple");
+
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
     if (!CheckBlockHeader(block, state, fCheckPOW))
         return false;
+
+    if (nHeight >= g_nStartSPOSHeight)
+        if (!CheckSPOSBlock(block, nHeight, state))
+            return false;
 
     // Check the merkle root.
     if (fCheckMerkleRoot) {
@@ -5393,16 +5546,6 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (block.vtx.empty() || block.vtx.size() > MaxBlockSize(true) || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION) > MaxBlockSize(true))
         return state.DoS(100, error("%s: size limits failed", __func__),
                          REJECT_INVALID, "bad-blk-length");
-
-    // First transaction must be coinbase, the rest must not be
-    if (block.vtx.empty() || !block.vtx[0].IsCoinBase())
-        return state.DoS(100, error("CheckBlock(): first tx is not coinbase"),
-                         REJECT_INVALID, "bad-cb-missing");
-    for (unsigned int i = 1; i < block.vtx.size(); i++)
-        if (block.vtx[i].IsCoinBase())
-            return state.DoS(100, error("CheckBlock(): more than one coinbase"),
-                             REJECT_INVALID, "bad-cb-multiple");
-
 
     // SAFE : CHECK TRANSACTIONS FOR INSTANTSEND
 
@@ -5486,9 +5629,13 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
             return state.DoS(100, error("%s : incorrect proof of work (DGW pre-fork) - %f %f %f at %d", __func__, abs(n1-n2), n1, n2, nHeight),
                             REJECT_INVALID, "bad-diffbits");
     } else {
-        if (!CheckCriticalBlock(block) && block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
-            return state.DoS(100, error("%s : incorrect proof of work at %d", __func__, nHeight),
-                            REJECT_INVALID, "bad-diffbits");
+        if (!CheckCriticalBlock(block))
+        {
+            if(!IsStartSPosHeight(pindexPrev->nHeight+1))
+                if(block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
+                    return state.DoS(100, error("%s : incorrect proof of work at %d", __func__, nHeight),
+                                    REJECT_INVALID, "bad-diffbits");
+        }
     }
     */
 
@@ -7005,8 +7152,17 @@ bool GetAddressAmountByHeight(const int& nHeight, const std::string& strAddress,
     std::lock_guard<std::mutex> lock(g_mutexChangeFile);
 
     uint64_t nDetailFileSize = boost::filesystem::file_size(GetDataDir() / "height/detail.dat");
-    if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * BLOCKS_PER_MONTH)
-        return error("%s: cannot get address amount out of 3 months", __func__);
+
+    if (nHeight >= g_nStartSPOSHeight)
+    {
+        if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * SPOS_BLOCKS_PER_MONTH)
+            return error("%s: cannot get address amount out of 3 months", __func__);
+    }
+    else
+    {
+        if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * BLOCKS_PER_MONTH)
+            return error("%s: cannot get address amount out of 3 months", __func__);
+    }
 
     vector<int> vChangeHeight;
     if(!GetRangeChangeHeight(nHeight, vChangeHeight))
@@ -7176,8 +7332,16 @@ static bool GetAllCandyInfo()
 
         int64_t nTimeBegin = mapBlockIndex[candyInfoValue.blockHash]->GetBlockTime();
 
-        if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
-            continue;
+        if (nTxHeight >= g_nStartSPOSHeight)
+        {
+            if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                continue;
+        }
+        else
+        {
+            if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                continue;
+        }
 
         CAmount nTotalSafe = 0;
         if(!GetTotalAmountByHeight(nTxHeight, nTotalSafe))
@@ -7758,8 +7922,16 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
             COutPoint out(tx.GetHash(), i);
             CCandy_BlockTime_Info candyblocktimeinfo(assetId, assetInfo.assetData, CCandyInfo(candyData.nAmount, candyData.nExpired),out , candyBlock.nTime, nCandyHeight);
 
-            if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
-                continue;
+            if (nCandyHeight >= g_nStartSPOSHeight)
+            {
+                if (candyData.nExpired * SPOS_BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
+                    continue;
+            }
+            else
+            {
+                if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
+                    continue;
+            }
 
             if(nCandyHeight > nCurrentHeight)
                 continue;
@@ -8076,7 +8248,10 @@ bool LoadChangeInfoToList()
         if(CheckCriticalBlock(block))
             blockReward = g_nCriticalReward;
         else
-            blockReward = GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, Params().GetConsensus());
+            if (pindex->pprev->nHeight >= g_nStartSPOSHeight)
+                blockReward = GetSPOSBlockSubsidy(pindex->pprev->nHeight, Params().GetConsensus());
+            else
+                blockReward = GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, Params().GetConsensus());
 
         g_listChangeInfo.push_back(CChangeInfo(pindex->nHeight, g_nLastCandyHeight, blockReward, bExistCandy, mapAddressAmount));
 
@@ -8317,7 +8492,11 @@ static bool WriteChangeInfo(const CChangeInfo& changeInfo)
     // 5. remove change file before 3 month
     if(nStep == 4)
     {
-        int nEndHeight = changeInfo.nHeight - 3 * BLOCKS_PER_MONTH;
+        int nEndHeight = 0;
+        if (changeInfo.nHeight >= g_nStartSPOSHeight)
+            nEndHeight = changeInfo.nHeight - 3 * SPOS_BLOCKS_PER_MONTH;
+        else
+            nEndHeight = changeInfo.nHeight - 3 * BLOCKS_PER_MONTH;
         if(nEndHeight >= changeInfo.nLastCandyHeight)
             nEndHeight = changeInfo.nLastCandyHeight;
         DeleteFilesToHeight(nEndHeight);

@@ -42,6 +42,9 @@ double GetDifficulty(const CBlockIndex* blockindex)
             blockindex = chainActive.Tip();
     }
 
+    if (blockindex->nBits == 0)
+        return 0.0;
+
     int nShift = (blockindex->nBits >> 24) & 0xff;
 
     double dDiff =

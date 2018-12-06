@@ -3,6 +3,7 @@
 #include "validation.h"
 #include "consensus/merkle.h"
 #include "init.h"
+#include "masternode.h"
 
 #include <string>
 
@@ -15,6 +16,11 @@ std::string g_strCancelledMoneroCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLah6SqX
 std::string g_strCancelledSafeAddress = "XagqqFetxiDb9wbartKDrXgnqLah9fKoTx"; // safe's black hold address (hash160: 0x0000...01)
 std::string g_strCancelledAssetAddress = "XagqqFetxiDb9wbartKDrXgnqLahHSe2VE"; // asset's black hold address (hash160: 0x0000...02)
 std::string g_strPutCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLahUovwfs"; // candy's black hold address (hash160: 0x0000...03)
+int g_nStartSPOSHeight = 2500;
+unsigned int g_nMasternodeSPosCount = 9;
+unsigned int g_nMasternodeMinOnlineTime = 86400*3;
+int64_t g_nStartNewLoopTime = 0;
+std::vector<CMasternode> g_vecResultMasternodes;
 
 
 CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)
@@ -123,11 +129,21 @@ bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout)
     if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
         return false;
 
-    int64_t nOffset = txout.nUnlockedHeight - GetTxHeight(txHash);
-    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
-        return false;
+	int nTxheight = GetTxHeight(txHash);
+    int64_t nOffset = txout.nUnlockedHeight - nTxheight;	
+    if (nTxheight >= g_nStartSPOSHeight)
+    {
+        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH) // invalid
+            return false;
+    }
+    else
+    {
+        if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
+            return false;
+    }
 
     return true;
+
 }
 
 bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout)
@@ -139,9 +155,17 @@ bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout)
         return false;
 
     int64_t nOffset = txout.nUnlockedHeight - nheight;
-    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
-        return false;
-
+	
+	if (nheight >= g_nStartSPOSHeight)
+    {
+        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH) // invalid
+            return false;
+    }
+	else
+	{
+		if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
+        	return false;
+	}
     return true;
 }
 
@@ -154,8 +178,20 @@ int GetLockedMonth(const uint256& txHash, const CTxOut& txout)
     if(txout.nUnlockedHeight < nHeight)
         return 0;
 
-    int m1 = (txout.nUnlockedHeight - nHeight) / BLOCKS_PER_MONTH;
-    int m2 = (txout.nUnlockedHeight - nHeight) % BLOCKS_PER_MONTH;
+    int m1 = 0;
+    int m2= 0;
+
+    if (nHeight >= g_nStartSPOSHeight)
+    {
+        m1 = (txout.nUnlockedHeight - nHeight) / SPOS_BLOCKS_PER_MONTH;
+        m2 = (txout.nUnlockedHeight - nHeight) % SPOS_BLOCKS_PER_MONTH;
+    }
+    else
+    {
+        m1 = (txout.nUnlockedHeight - nHeight) / BLOCKS_PER_MONTH;
+        m2 = (txout.nUnlockedHeight - nHeight) % BLOCKS_PER_MONTH;
+    }
+
     if(m2 != 0)
         m1++;
 
@@ -173,8 +209,20 @@ int GetLockedMonthByHeight(const int& nheight, const CTxOut& txout)
     if(txout.nUnlockedHeight < nheight)
         return 0;
 
-    int m1 = (txout.nUnlockedHeight - nheight) / BLOCKS_PER_MONTH;
-    int m2 = (txout.nUnlockedHeight - nheight) % BLOCKS_PER_MONTH;
+	int m1 = 0;
+	int m2 = 0;
+
+	if (nheight >= g_nStartSPOSHeight)
+    {
+        m1 = (txout.nUnlockedHeight - nheight) / SPOS_BLOCKS_PER_MONTH;
+        m2 = (txout.nUnlockedHeight - nheight) % SPOS_BLOCKS_PER_MONTH;
+    }
+    else
+    {
+        m1 = (txout.nUnlockedHeight - nheight) / BLOCKS_PER_MONTH;
+        m2 = (txout.nUnlockedHeight - nheight) % BLOCKS_PER_MONTH;
+    }
+
     if(m2 != 0)
         m1++;
 
@@ -190,7 +238,11 @@ CAmount GetCancelledAmount(const int &nHeight)
     if(nOffset < 0)
         return 0;
 
-    int nMonth = nOffset / BLOCKS_PER_MONTH;
+    int nMonth = 0;
+    if (nHeight >= g_nStartSPOSHeight)
+        nMonth = nOffset / SPOS_BLOCKS_PER_MONTH;
+    else
+        nMonth = nOffset / BLOCKS_PER_MONTH;
     if (nMonth == 0)
         return 500 * COIN;
 

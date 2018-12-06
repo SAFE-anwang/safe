@@ -653,11 +653,23 @@ UniValue getcandy(const UniValue& params, bool fHelp)
         int nTxHeight = GetTxHeight(out.hash, &blockHash);
         if(blockHash.IsNull())
             continue;
-        if(nTxHeight + BLOCKS_PER_DAY > nCurrentHeight)
-            continue;
 
-        if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
-            continue;
+        if (nTxHeight >= g_nStartSPOSHeight)
+        {
+            if(nTxHeight + SPOS_BLOCKS_PER_DAY > nCurrentHeight)
+                continue;
+
+            if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                continue;
+        }
+        else
+        {
+            if(nTxHeight + BLOCKS_PER_DAY > nCurrentHeight)
+                continue;
+
+            if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                continue;
+        }
 
         CAmount nTotalSafe = 0;
         if(!GetTotalAmountByHeight(nTxHeight, nTotalSafe))

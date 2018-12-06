@@ -484,9 +484,31 @@ QString TransactionTableModel::formatLockedTxAmount(const TransactionRecord *wtx
 
 QString TransactionTableModel::formatLockedMonth(const TransactionRecord *rec) const
 {
+	//XJTODO
     if(rec->nUnlockedHeight > 0)
-        return rec->strLockedMonth;
-    return QString();
+    {
+        int nHeight = GetTxHeight(rec->hash);
+        int m1 = 0;
+        int m2 = 0;
+        if (nHeight >= g_nStartSPOSHeight)
+        {
+            m1 = (rec->nUnlockedHeight - nHeight) / SPOS_BLOCKS_PER_MONTH;
+            m2 = (rec->nUnlockedHeight - nHeight) % SPOS_BLOCKS_PER_MONTH;
+        }
+        else
+        {
+            m1 = (rec->nUnlockedHeight - nHeight) / BLOCKS_PER_MONTH;
+            m2 = (rec->nUnlockedHeight - nHeight) % BLOCKS_PER_MONTH;
+        }
+
+        if(m2 != 0)
+            m1++;
+        return QString::number(m1);
+    }
+    else
+    {
+        return QString();
+    }
 }
 
 QString TransactionTableModel::formatUnlockedHeight(const TransactionRecord *wtx) const

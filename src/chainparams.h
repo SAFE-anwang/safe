@@ -18,6 +18,13 @@ struct CDNSSeedData {
     CDNSSeedData(const std::string &strName, const std::string &strHost) : name(strName), host(strHost) {}
 };
 
+struct COutPointData
+{
+   std::string strtx;
+   uint32_t n;
+   COutPointData(const std::string &instrtx, const uint32_t &inn) : strtx(instrtx), n(inn) {}
+};
+
 struct SeedSpec6 {
     uint8_t addr[16];
     uint16_t port;
@@ -81,6 +88,7 @@ public:
     int PoolMaxTransactions() const { return nPoolMaxTransactions; }
     int FulfilledRequestExpireTime() const { return nFulfilledRequestExpireTime; }
     std::string SporkPubKey() const { return strSporkPubKey; }
+    const std::vector<COutPointData>& COutPointDataS() const { return vcoutpointdata; }
 protected:
     CChainParams() {}
 
@@ -108,6 +116,7 @@ protected:
     int nFulfilledRequestExpireTime;
     std::string strSporkPubKey;
     std::string strMasternodePaymentsPubKey;
+    std::vector<COutPointData> vcoutpointdata;
 };
 
 /**

@@ -33,6 +33,8 @@
 
 using namespace std;
 
+extern int g_nStartSPOSHeight;
+
 /**
  * @note Do not add or change anything in the information returned by this
  * method. `getinfo` exists for backwards-compatibility only. It combines
@@ -920,8 +922,17 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
             }
 
             int64_t nOffset = temptxout.nUnlockedHeight - nTxHeight;
-            if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
-                continue;
+
+            if (nTxHeight >= g_nStartSPOSHeight)
+            {
+                if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH) // invalid
+                    continue;
+            }
+            else
+            {
+                if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
+                    continue;
+            }
 
             lockamount += it->second;
         }
