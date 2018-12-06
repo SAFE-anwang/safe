@@ -37,6 +37,7 @@
 #include "masternode-sync.h"
 #include "masternodelist.h"
 #include "walletview.h"
+#include "main.h"
 
 #include <iostream>
 
