@@ -142,10 +142,10 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0x000d8b21044326f9b58110404510ce2b4ee30af5d97dd7de30d551c34dfdc9a2"));
         assert(genesis.hashMerkleRoot == uint256S("0xe0028eb9648db56b1ac77cf090b99048a8007e2bb64b68f092c03c7f56a662c7"));
 
-        vSeeds.push_back(CDNSSeedData("54.222.223.23", "54.222.223.23"));
-        vSeeds.push_back(CDNSSeedData("52.80.207.207", "52.80.207.207"));
-        vSeeds.push_back(CDNSSeedData("54.223.251.201", "54.223.251.201"));
-        vSeeds.push_back(CDNSSeedData("54.222.152.47", "54.222.152.47"));
+        vSeeds.push_back(CDNSSeedData("47.74.249.150", "47.74.249.150"));
+        vSeeds.push_back(CDNSSeedData("47.74.245.187", "47.74.245.187"));
+        vSeeds.push_back(CDNSSeedData("47.74.249.237", "47.74.249.237"));
+        vSeeds.push_back(CDNSSeedData("47.74.249.6", "47.74.249.6"));
 
         vcoutpointdata.push_back(COutPointData("56e2a4069eb8348a499173cdcb3952f21f9f9dffd67de35cde853866a0bc8f93", 27));
         vcoutpointdata.push_back(COutPointData("597310ddc0742999ebf884143405c21c383f02f9520516d5e2727a4777e72894", 0));

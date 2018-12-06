@@ -875,8 +875,19 @@ void TransactionRecord::updateLockedMonth()
 {
     if(nUnlockedHeight > 0)
     {
-        int m1 = (nUnlockedHeight - nTxHeight) / BLOCKS_PER_MONTH;
-        int m2 = (nUnlockedHeight - nTxHeight) % BLOCKS_PER_MONTH;
+        int m1 = 0;
+        int m2 = 0;
+        if (nTxHeight >= g_nStartSPOSHeight)
+        {
+            m1 = (nUnlockedHeight - nTxHeight) / SPOS_BLOCKS_PER_MONTH;
+            m2 = (nUnlockedHeight - nTxHeight) % SPOS_BLOCKS_PER_MONTH;
+        }
+        else
+        {
+            m1 = (nUnlockedHeight - nTxHeight) / BLOCKS_PER_MONTH;
+            m2 = (nUnlockedHeight - nTxHeight) % BLOCKS_PER_MONTH;
+        }
+
         if(m2 != 0)
             m1++;
         strLockedMonth = QString::number(m1);

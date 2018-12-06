@@ -328,9 +328,9 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         if(IsStartSPosHeight(nHeight))
             pblock->nBits = 0;
         else
-            pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
+            pblock->nBits = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
 
-        pblock->nNonce         = 0;
+        pblock->nNonce = 0;
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
 
         CValidationState state;
