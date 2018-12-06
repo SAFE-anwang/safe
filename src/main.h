@@ -44,8 +44,6 @@ extern int64_t g_nStartNewLoopTime;
 extern std::vector<CMasternode> g_vecResultMasternodes;
 
 
-extern int g_nLastCalCandyHeight;
-extern CAmount g_nCriticalEffective;
 
 
 
