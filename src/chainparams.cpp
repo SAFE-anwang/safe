@@ -147,32 +147,14 @@ public:
         vSeeds.push_back(CDNSSeedData("47.74.249.237", "47.74.249.237"));
         vSeeds.push_back(CDNSSeedData("47.74.249.6", "47.74.249.6"));
 
-        vcoutpointdata.push_back(COutPointData("56e2a4069eb8348a499173cdcb3952f21f9f9dffd67de35cde853866a0bc8f93", 27));
-        vcoutpointdata.push_back(COutPointData("597310ddc0742999ebf884143405c21c383f02f9520516d5e2727a4777e72894", 0));
-        vcoutpointdata.push_back(COutPointData("6d6443d74d4ef3873a1a32d339bcc9b96848a29758280ecd648eb75d4f302d94", 1));
-        vcoutpointdata.push_back(COutPointData("54611beb271df89fdba891f72a2c4895141e45cb613d402f207ad3b9cbb2ec94", 0));
-        vcoutpointdata.push_back(COutPointData("4c129f13e2d6da59672fb98adb9ab0e9241ff14daec336a307ec92d5aa80e893", 1));
-        vcoutpointdata.push_back(COutPointData("4fa85a95bed8f4cd8ca123b7935d966a5184dcfff85e3211ad653ad8258bc997", 3));
-        vcoutpointdata.push_back(COutPointData("a2310713b20a7f386bace32c3e3653751448f5e65f0b8aea80aeb1954f775e96", 1));
-        vcoutpointdata.push_back(COutPointData("aff715f3acc4e60454e6641bf2c93fa78a822623be77b454e4e5b5d5d72bc793", 1));
-        vcoutpointdata.push_back(COutPointData("687d85ea869fc499333c4f59d0300f1b2ab59ea3bb3bc4754eab9e8ca0cf1f7e", 0));
-        vcoutpointdata.push_back(COutPointData("0d822c8bd6aeb7024738cc0cff4a3af8ba26c1378a17e1bfc1595500e4ea3d7e", 0));
-        vcoutpointdata.push_back(COutPointData("7fe2d7f4d04ef918b98a18b275160dcd5366127624b0e5f15f62d65e0614e17f", 1));
-        vcoutpointdata.push_back(COutPointData("de25591e710e59fc0111c7140485161bbed9f3280c522a36cc191aeb56c80c80", 1));
-        vcoutpointdata.push_back(COutPointData("0438895d2f6a3116c1a31f554f4fe1d0a2a23b239c8e0ae59322d9f444886480", 1));
-        vcoutpointdata.push_back(COutPointData("56b2bc7575ed31470c7473417e2beede4bb479ab8b74fba0cce2ce0e96648e80", 1));
-        vcoutpointdata.push_back(COutPointData("2a15421ec94050bb673f46a3771d9c150f5373bfb02f543c3ca34e56f03da080", 1));
-        vcoutpointdata.push_back(COutPointData("8976cb474ff949a783954c297f6437710fcb133d0237206911409da93e3eb181", 1));
-        vcoutpointdata.push_back(COutPointData("86dbe6028104a00aef03731f257429a74ea67dfeed58bea6af49ab5b0051d881", 1));
-        vcoutpointdata.push_back(COutPointData("1703baa597527859131837f0bc7e3720b6c7438eb65169ff759789f09dcee481", 1));
-        vcoutpointdata.push_back(COutPointData("47486adfb377dbbda55bcf185bc8b1bc5f5b7b3b93987a35b5c23bf8dbbb4382", 1));
-        vcoutpointdata.push_back(COutPointData("65e2b606541e5b6db7eebc1298f12c60b43c7402edda9094deeb1c46b94f8582", 1));
-        vcoutpointdata.push_back(COutPointData("43531915322e3d4e3045d466b8521f5b208cb7f972d6bfd003d66b91cbdc8b82", 1));
-        vcoutpointdata.push_back(COutPointData("3ac49ebdd66e74bb0fd43df720203ca3163c71cda6b650de620ccf252b769382", 1));
-        vcoutpointdata.push_back(COutPointData("ac72c148114e607f4353c42197405040e626eeb6220499ec068114f0997e9882", 1));
-        vcoutpointdata.push_back(COutPointData("7a51f6e72b085aebf4c935baf56c05baa30587b087b08afcbad2f88350b35084", 2));
-        vcoutpointdata.push_back(COutPointData("b3c53972bd27d6072dec8ded631cac4d725575696695c393d44b703b5865ad84", 0));
-        vcoutpointdata.push_back(COutPointData("c7bf64b142ffbd842d0078594ec405398eff79d1d644fd65313b1807918bb184", 1));
+        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 0));
+        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 1));
+        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 2));
+        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 3));
+        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 4));
+        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 5));
+        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 6));
+        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 7));
 
         // Safe addresses start with 'X'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,76);

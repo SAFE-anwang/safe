@@ -17,7 +17,7 @@ std::string g_strCancelledSafeAddress = "XagqqFetxiDb9wbartKDrXgnqLah9fKoTx"; //
 std::string g_strCancelledAssetAddress = "XagqqFetxiDb9wbartKDrXgnqLahHSe2VE"; // asset's black hold address (hash160: 0x0000...02)
 std::string g_strPutCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLahUovwfs"; // candy's black hold address (hash160: 0x0000...03)
 int g_nStartSPOSHeight = 25000;//XJTODO
-unsigned int g_nMasternodeSPosCount = 9;
+unsigned int g_nMasternodeSPosCount = 3;//XJTODO
 unsigned int g_nMasternodeMinOnlineTime = 86400*3;
 int64_t g_nStartNewLoopTime = 0;
 std::vector<CMasternode> g_vecResultMasternodes;
