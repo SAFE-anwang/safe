@@ -297,7 +297,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
 
         // NOTE: unlike in bitcoin, we need to pass PREVIOUS block height here
         CAmount blockReward = 0;
-        if (pindexPrev->nHeight >= g_nStartSPOSHeight)
+        if (nHeight >= g_nStartSPOSHeight)
             blockReward = nFees + GetSPOSBlockSubsidy(pindexPrev->nHeight, Params().GetConsensus());
         else
             blockReward = nFees + GetBlockSubsidy(pindexPrev->nBits, pindexPrev->nHeight, Params().GetConsensus());

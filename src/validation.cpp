@@ -105,7 +105,7 @@ std::mutex g_mutexTmpAllCandyInfo;
 std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
-int64_t AllowableErrorTime = -12;
+int64_t AllowableErrorTime = 12;
 CAmount MiningIncentives = 334559821;
 
 
@@ -5460,7 +5460,7 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
         return state.DoS(100, error("CheckSPOSBlock(): block.nBits or block.nNonce not equal to 0"), REJECT_INVALID, "bad-nBits-nNonce", true);
 
     int64_t nNowTime = GetTime();
-    if (nNowTime - block.GetBlockTime() > AllowableErrorTime)
+    if (abs(nNowTime - block.GetBlockTime()) > AllowableErrorTime)
         return state.DoS(100, error("CheckSPOSBlock(): block.nTime error"), REJECT_INVALID, "bad-nTime", true);
 
     CTransaction tempTransaction  = block.vtx[0];
