@@ -1269,7 +1269,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState& state, const enu
 
 /**
  * Check if transaction is final and can be included in a block with the
- * specified height and time. Consensus critical.
+ * specified height anGd time. Consensus critical.
  */
 bool IsFinalTx(const CTransaction &tx, int nBlockHeight, int64_t nBlockTime);
 
@@ -1550,4 +1550,12 @@ bool GetVirtualInfoByVirtualAccountId(const uint256& virtualAccountId, CVirtualA
 bool GetVirtualAccountIdByAccountName(const std::string& strVirtualAccountName, uint256& virtualAccountId, const bool fWithMempool=true);
 bool GetAccountIdBySafeAddress(const std::string& strSafeAddress, uint256& virtualAccountId, const bool fWithMempool=true);
 bool GetVirtualAccountsIdListByAccountName(std::map<std::string,uint256> &virtualAccountIdlist, const bool fWithMempool = true);
+
+enum DBQueryType {
+    SAFE_ADDRESS,
+    VIRTUAL_ACCOUNT_NAME,
+};
+
+bool GetVirtualInfoBySQL(const DBQueryType type, const std::string& key, CVirtualAccountId_Accountinfo_IndexValue& virtualAccountInfo, const bool fWithMempool=true);
+bool GetVirtualInfoListBySQL(const std::string& name, std::map<std::string ,CVirtualAccountId_Accountinfo_IndexValue> &virtualAccountInfo,const int limit, const bool fWithMempool=true);
 #endif // BITCOIN_VALIDATION_H

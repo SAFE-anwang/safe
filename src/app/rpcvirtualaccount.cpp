@@ -18,6 +18,7 @@
 #include "txmempool.h"
 #include "coincontrol.h"
 #include "../contract/virtual_account.h"
+#include "../contract/contract_db.h"
 #include <boost/regex.hpp>
 
 using namespace std;
@@ -106,9 +107,9 @@ UniValue createvirtualaccount(const UniValue& params, bool fHelp)
         throw JSONRPCError(INVALID_ADDRESS, "Invalid owner key.");
 
     string activeks;
-    if (params.size() > 3)
+    if (params.size() > 2)
     {
-        string activeks = TrimString(params[3].get_str());
+        activeks = TrimString(params[3].get_str());
         if (activeks.size() != 0 && !_isAddressOrPubKey(activeks))
             throw JSONRPCError(INVALID_ADDRESS, "Invalid active key.");
     }
@@ -186,14 +187,19 @@ UniValue getvirtualaccount(const UniValue& params, bool fHelp)
     if(!CBitcoinAddress(strSafeAddress).IsValid())
         throw JSONRPCError(INVALID_ADDRESS, "Invalid safeaddress");
 
-    uint256 accountId;
-    if(!GetAccountIdBySafeAddress(strSafeAddress, accountId))
-        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, "There is no corresponding virtual account for this address.");
+    // read from level db
+    // uint256 accountId;
+    // if(!GetAccountIdBySafeAddress(strSafeAddress, accountId))
+    //     throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, "There is no corresponding virtual account for this address.");
 
+    // CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    // if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
+    //     throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, "There is no corresponding virtual account for this address!");
+
+    // read from mysql
     CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
-    if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
+    if(!GetVirtualInfoBySQL(DBQueryType::SAFE_ADDRESS, strSafeAddress, virtualAccountInfo))
         throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, "There is no corresponding virtual account for this address!");
-
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("safeAddress", virtualAccountInfo.virtualAcountData.strSafeAddress));
@@ -225,14 +231,20 @@ UniValue getvirtualaccountbyname(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
-    std::string vaccount = params[0].get_str();
-    uint256 accountId;
-    if(!GetVirtualAccountIdByAccountName(vaccount, accountId))
-        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
-    CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
-    if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
-        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    std::string vaccount = TrimString(params[0].get_str());
 
+    // read from level db
+    // uint256 accountId;
+    // if(!GetVirtualAccountIdByAccountName(vaccount, accountId))
+    //     throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    // CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    // if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
+    //     throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+
+    // read from mysql
+    CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    if(!GetVirtualInfoBySQL(DBQueryType::VIRTUAL_ACCOUNT_NAME, vaccount, virtualAccountInfo))
+        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, "There is no corresponding virtual account for this address!");
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("safeAddress", virtualAccountInfo.virtualAcountData.strSafeAddress));
@@ -275,13 +287,18 @@ UniValue sendtovirtualaccount(const UniValue& params, bool fHelp)
         );
 
     UniValue p(UniValue::VARR);
-    std::string vaccount = params[0].get_str();
-    uint256 accountId;
-    if(!GetVirtualAccountIdByAccountName(vaccount, accountId))
-        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    std::string vaccount = TrimString(params[0].get_str());
+    // uint256 accountId;
+    // if(!GetVirtualAccountIdByAccountName(vaccount, accountId))
+    //     throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    // CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    // if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
+    //     throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+
+    // read from mysql
     CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
-    if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
-        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    if(!GetVirtualInfoBySQL(DBQueryType::VIRTUAL_ACCOUNT_NAME, vaccount, virtualAccountInfo))
+        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, "There is no corresponding virtual account for this address!");
 
     p.push_back(virtualAccountInfo.virtualAcountData.strSafeAddress);
     for (unsigned int idx = 1; idx < params.size(); ++idx) {
@@ -371,13 +388,18 @@ UniValue sendfromvirtualaccount(const UniValue& params, bool fHelp)
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
-    std::string vaccount = params[0].get_str();
-    uint256 accountId;
-    if(!GetVirtualAccountIdByAccountName(vaccount, accountId))
-        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    std::string vaccount = TrimString(params[0].get_str());
+    // uint256 accountId;
+    // if(!GetVirtualAccountIdByAccountName(vaccount, accountId))
+    //     throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    // CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    // if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
+    //     throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+
+    // read from mysql
     CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
-    if(!GetVirtualInfoByVirtualAccountId(accountId, virtualAccountInfo))
-        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    if(!GetVirtualInfoBySQL(DBQueryType::VIRTUAL_ACCOUNT_NAME, vaccount, virtualAccountInfo))
+        throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, "There is no corresponding virtual account for this address!");
 
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
@@ -455,24 +477,43 @@ UniValue listvirtualaccount(const UniValue& params, bool fHelp)
     if (limit < 0 || limit > 100)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid limit");
 
-    std::map<std::string, uint256> virtualAccountIds;
-    if (!GetVirtualAccountsIdListByAccountName(virtualAccountIds))
-        throw JSONRPCError(GET_VIRTUALACCOUNTID_FAILED,  strprintf("No virtual account virtual available for name %s.", vaccount.c_str()));
+    //read from level db
+    // std::map<std::string, uint256> virtualAccountIds;
+    // if (!GetVirtualAccountsIdListByAccountName(virtualAccountIds))
+    //     throw JSONRPCError(GET_VIRTUALACCOUNTID_FAILED,  strprintf("No virtual account virtual available for name %s.", vaccount.c_str()));
 
-    UniValue ret(UniValue::VARR);
+    // UniValue ret(UniValue::VARR);
+    // int cnt = 0;
+    // CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
+    // for(auto ite = virtualAccountIds.begin(); ite != virtualAccountIds.end(); ++ite)
+    // {
+    //     if (ite->first < vaccount)
+    //         continue;
+    //     if (!GetVirtualInfoByVirtualAccountId(ite->second, virtualAccountInfo))
+    //         throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
+    //     UniValue obj(UniValue::VOBJ);
+    //     obj.push_back(Pair("safeAddress", virtualAccountInfo.virtualAcountData.strSafeAddress));
+    //     obj.push_back(Pair("virtualAccountName", virtualAccountInfo.virtualAcountData.strVirtualAccountName));
+    //     obj.push_back(Pair("owner", virtualAccountInfo.virtualAcountData.owner));
+    //     obj.push_back(Pair("active", virtualAccountInfo.virtualAcountData.active));
+    //     ret.push_back(obj);
+    //     if (++cnt >= limit)
+    //         break;
+    // }
+
+    //read from mysql
+    map<string, CVirtualAccountId_Accountinfo_IndexValue> mVirtualAccountInfo;
+    GetVirtualInfoListBySQL(vaccount, mVirtualAccountInfo, limit);
+
     int cnt = 0;
-    CVirtualAccountId_Accountinfo_IndexValue virtualAccountInfo;
-    for(auto ite = virtualAccountIds.begin(); ite != virtualAccountIds.end(); ++ite)
+    UniValue ret(UniValue::VARR);
+    for(auto ite = mVirtualAccountInfo.begin(); ite != mVirtualAccountInfo.end(); ++ite)
     {
-        if (ite->first < vaccount)
-            continue;
-        if (!GetVirtualInfoByVirtualAccountId(ite->second, virtualAccountInfo))
-            throw JSONRPCError(NO_VIRTUAL_ACCOUNT_EXIST, strprintf("There is no corresponding virtual account for name %s.", vaccount.c_str()));
         UniValue obj(UniValue::VOBJ);
-        obj.push_back(Pair("safeAddress", virtualAccountInfo.virtualAcountData.strSafeAddress));
-        obj.push_back(Pair("virtualAccountName", virtualAccountInfo.virtualAcountData.strVirtualAccountName));
-        obj.push_back(Pair("owner", virtualAccountInfo.virtualAcountData.owner));
-        obj.push_back(Pair("active", virtualAccountInfo.virtualAcountData.active));
+        obj.push_back(Pair("safeAddress", ite->second.virtualAcountData.strSafeAddress));
+        obj.push_back(Pair("virtualAccountName", ite->second.virtualAcountData.strVirtualAccountName));
+        obj.push_back(Pair("owner", ite->second.virtualAcountData.owner));
+        obj.push_back(Pair("active", ite->second.virtualAcountData.active));
         ret.push_back(obj);
         if (++cnt >= limit)
             break;

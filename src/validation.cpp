@@ -3794,6 +3794,9 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     if(writeFail)
         return AbortNode(state, "Failed to write getCandyCount index");
 
+    if (virtualAccountId_accountInfo_index.size() && !contract_db.Erase_VirtualAccountInfo_BySQL(virtualAccountId_accountInfo_index))
+        return AbortNode(state, contract_db.errorInfo);
+
     if(virtualAccountId_accountInfo_index.size() && !contract_db.Erase_VirtualAccountId_Accountinfo_Index(virtualAccountId_accountInfo_index))
         return AbortNode(state, "Failed to write virtualAccountId_accountInfo index");
 
@@ -4548,6 +4551,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                       ,deltaValue.nGetCandyCount,value.nGetCandyCount);
         }
     }
+
+    if (virtualAccountId_accountInfo_index.size() && !contract_db.Write_VirtualAccountInfo_BySQL(virtualAccountId_accountInfo_index))
+        return AbortNode(state, contract_db.errorInfo);
 
     if (virtualAccountId_accountInfo_index.size() && !contract_db.Write_VirtualAccountId_Accountinfo_Index(virtualAccountId_accountInfo_index))
         return AbortNode(state, "Failed to write virtualAccountId_accountInfo index");
@@ -8731,6 +8737,39 @@ bool GetVirtualInfoByVirtualAccountId(const uint256& virtualAccountId, CVirtualA
     if(contract_db.Read_VirtualAccountId_Accountinfo_Index(virtualAccountId, virtualAccountInfo))
         return true;
     return fWithMempool && mempool.getVirtualInfoByVirtualAccountId(virtualAccountId, virtualAccountInfo);
+}
+
+bool GetVirtualInfoBySQL(const DBQueryType type, const std::string& key, CVirtualAccountId_Accountinfo_IndexValue& virtualAccountInfo, const bool fWithMempool)
+{
+    if(contract_db.Read_VirtualAccountInfo_BySQL(type, key, virtualAccountInfo))
+        return true;
+
+    if (!fWithMempool) return false;
+
+    CName_Id_IndexValue value;
+    if (DBQueryType::SAFE_ADDRESS == type)
+    {
+        if (!mempool.getVirtualAccountIdBySafeAddress(key, value))
+            return false;
+    }
+    else if (DBQueryType::VIRTUAL_ACCOUNT_NAME == type)
+    {
+        if (!mempool.getVirtualAccountIdByAccountName(key, value))
+            return false;
+    }
+    else return false;
+
+    return mempool.getVirtualInfoByVirtualAccountId(value.id, virtualAccountInfo);
+}
+
+bool GetVirtualInfoListBySQL(const std::string& name, std::map<std::string, CVirtualAccountId_Accountinfo_IndexValue> &mVirtualAccountInfo,const int limit, const bool fWithMempool)
+{
+    if (!fWithMempool)
+        return contract_db.Read_VirtualAccountInfoList_BySQL(name, mVirtualAccountInfo, limit);
+
+    mempool.getAccountsInfoList(mVirtualAccountInfo);
+    contract_db.Read_VirtualAccountInfoList_BySQL(name, mVirtualAccountInfo, limit);
+    return mVirtualAccountInfo.size();
 }
 
 bool GetVirtualAccountIdByAccountName(const string& strVirtualAccountName, uint256& virtualAccountId, const bool fWithMempool)

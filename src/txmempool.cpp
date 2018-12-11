@@ -2138,8 +2138,14 @@ bool CTxMemPool::getAccountsIdList(std::map<std::string, uint256>& mVirutalAccou
 {
     LOCK(cs);
     for(mapVirtualAccountName_virtualAccountId_Index::const_iterator it = mapVirtualAccountName_virtualAccountId.begin(); it != mapVirtualAccountName_virtualAccountId.end(); it++)
-    {
         mVirutalAccountId.insert(make_pair(it->first, it->second.id));
-    }
     return mVirutalAccountId.size();
+}
+
+bool CTxMemPool::getAccountsInfoList(std::map<std::string, CVirtualAccountId_Accountinfo_IndexValue>& mVirutalAccountInfo)
+{
+    LOCK(cs);
+    for(mapVirtualAccountId_virtualAccountInfo_Index::const_iterator it = mapVirtualAccountId_VirtualAccountInfo.begin(); it != mapVirtualAccountId_VirtualAccountInfo.end(); it++)
+        mVirutalAccountInfo.insert(make_pair(it->second.virtualAcountData.strVirtualAccountName, it->second));
+    return mVirutalAccountInfo.size();
 }
