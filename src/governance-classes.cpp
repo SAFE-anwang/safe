@@ -539,7 +539,7 @@ CAmount CSuperblock::GetPaymentsLimit(int nBlockHeight)
     int nBits = consensusParams.fPowAllowMinDifficultyBlocks ? UintToArith256(consensusParams.powLimit).GetCompact() : 1;
     // some part of all blocks issued during the cycle goes to superblock, see GetBlockSubsidy
     CAmount nSuperblockPartOfSubsidy = 0;
-    if (nBlockHeight - 1 >= g_nStartSPOSHeight)
+    if (nBlockHeight >= g_nStartSPOSHeight)
         nSuperblockPartOfSubsidy = GetSPOSBlockSubsidy(nBlockHeight - 1, consensusParams, true);
     else
         nSuperblockPartOfSubsidy = GetBlockSubsidy(nBits, nBlockHeight - 1, consensusParams, true);
