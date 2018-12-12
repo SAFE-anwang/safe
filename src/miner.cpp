@@ -389,7 +389,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
 
     CDataStream ssKey(SER_DISK, CLIENT_VERSION);
     ssKey.reserve(1000);
-    ssKey << mn.pubKeyMasternode.GetID();
+    ssKey << activeMasternode.pubKeyMasternode.GetID();
     string serialMasternode = ssKey.str();
 
     for(unsigned int i = 0; i < serialMasternode.size(); i++)
