@@ -333,9 +333,12 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         pblock->nNonce = 0;
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
 
-        CValidationState state;
-        if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-            throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+        if(!IsStartSPosHeight(nHeight))
+        {
+            CValidationState state;
+            if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+                throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+            }
         }
     }
 
@@ -379,10 +382,20 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(0)) + COINBASE_FLAGS;
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
-    std::string strCollateralAddress = CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString();
-    for(unsigned int i = 0; i < strCollateralAddress.size(); i++)
-        txCoinbase.vout[0].vReserve.push_back(strCollateralAddress[i]);
+    uint16_t nSPOSVersion = SPOS_VERSION;
+    const unsigned char* pVersion = (const unsigned char*)&nSPOSVersion;
+    txCoinbase.vout[0].vReserve.push_back(pVersion[0]);
+    txCoinbase.vout[0].vReserve.push_back(pVersion[1]);
 
+    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+    ssKey.reserve(1000);
+    ssKey << mn.pubKeyMasternode.GetID();
+    string serialMasternode = ssKey.str();
+
+    for(unsigned int i = 0; i < serialMasternode.size(); i++)
+        txCoinbase.vout[0].vReserve.push_back(serialMasternode[i]);
+
+    std::string strCollateralAddress = CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString();
     std::vector<unsigned char> vchSig;
     if(!CMessageSigner::SignMessage(strCollateralAddress, vchSig, activeMasternode.keyMasternode)) {
         LogPrintf("SPOS_Error:SignMessage() failed\n");
@@ -406,6 +419,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
 
     pblock->vtx[0] = txCoinbase;
     pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
+
     return true;
 }
 
@@ -581,7 +595,7 @@ static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeigh
                   ,pblock->nTime,strBlockTime);
         return;
     }
-    nNextTime = g_nStartNewLoopTime + Params().GetConsensus().nSPOSTargetSpacing * 1000;//XJTODO 10 change to chainparam
+    nNextTime = g_nStartNewLoopTime + Params().GetConsensus().nSPOSTargetSpacing * 1000;
 
     if(mapMasternodes.empty())
     {
@@ -597,7 +611,7 @@ static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeigh
         const CMasternode& mn = (*mnpair).second;
         int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
         //XJTODO Test codes can annotate this
-        if(mn.nActiveState != CMasternode::MASTERNODE_ENABLED || onlineTime < g_nMasternodeMinOnlineTime)
+        if(/*mn.nActiveState != CMasternode::MASTERNODE_ENABLED ||*/ onlineTime < g_nMasternodeMinOnlineTime)
             continue;
 
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
@@ -680,7 +694,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     if(masternodeSPosCount != g_nMasternodeSPosCount)
         LogPrintf("SPOS_Warning:system g_nMasternodeSPosCount:%d,curr vecMasternodes size:%d\n",g_nMasternodeSPosCount,masternodeSPosCount);
 
-    //1.2
+    //1.3
     int64_t nCurrTime = GetTimeMillis();
     if(nCurrTime < pblock->nTime*1000)
     {
@@ -690,46 +704,56 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         return;
     }
 
-    int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;//Params().GetConsensus().nPowTargetSpacing; XJTODO
-    int64_t nIntervalMS = 500;
-    int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-    if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0)
-        return;
-
+    int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
+    nCurrTime += interval*1000;
     int64_t nTimeInerval = (nCurrTime - g_nStartNewLoopTime) / 1000;
     int index = nTimeInerval / interval % masternodeSPosCount;
-    CMasternode& mn = g_vecResultMasternodes[index];
+    CMasternode& mn = g_vecResultMasternodes[index-1];
     string masterIP = mn.addr.ToStringIP();
     string localIP = activeMasternode.service.ToStringIP();
 
-    nNextTime = g_nStartNewLoopTime + (index+1)*interval*1000;
+    nNextTime = g_nStartNewLoopTime + index*interval*1000;
 
     //XJTODO,Test codes can annotate this
-    if(localIP != masterIP)
+//    if(localIP != masterIP)
+//    {
+//        LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block:%d.\n",index-1,masterIP,nNewBlockHeight);
+//        return;
+//    }
+//    if(mnodeman.GetFullMasternodeMap().count(activeMasternode.outpoint)<=0)
+//    {
+//        LogPrintf("SPOS_Error:output(%d:%s) not exist.\n",activeMasternode.outpoint.n,activeMasternode.outpoint.hash.ToString());
+//        return;
+//    }
+//    CMasternode& mnLocal = mnodeman.GetFullMasternodeMap()[activeMasternode.outpoint];
+//    if(mnLocal.GetInfo().pubKeyCollateralAddress != mn.GetInfo().pubKeyCollateralAddress)
+//    {
+//        LogPrintf("SPOS_Error:local collateral address:%s is different to worker masternode collateral address:%s\n"
+//                  ,CBitcoinAddress(mnLocal.pubKeyCollateralAddress.GetID()).ToString()
+//                  ,CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
+//        return;
+//    }
+
+    int64_t nIntervalMS = 500;
+    int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
+    if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0)
     {
-        LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block:%d.\n",index,masterIP,nNewBlockHeight);
-        return;
-    }
-    if(mnodeman.GetFullMasternodeMap().count(activeMasternode.outpoint)<=0)
-    {
-        LogPrintf("SPOS_Error:output(%d:%s) not exist.\n",activeMasternode.outpoint.n,activeMasternode.outpoint.hash.ToString());
-        return;
-    }
-    CMasternode& mnLocal = mnodeman.GetFullMasternodeMap()[activeMasternode.outpoint];
-    if(mnLocal.GetInfo().pubKeyCollateralAddress != mn.GetInfo().pubKeyCollateralAddress)
-    {
-        LogPrintf("SPOS_Error:local collateral address:%s is different to worker masternode collateral address:%s\n"
-                  ,CBitcoinAddress(mnLocal.pubKeyCollateralAddress.GetID()).ToString()
-                  ,CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
+        LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) less than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
         return;
     }
 
     //it's turn to generate block
-    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.\n",index,localIP,nNewBlockHeight);
+    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.\n",index-1,localIP,nNewBlockHeight);
 
     SetThreadPriority(THREAD_PRIORITY_NORMAL);
+    //coin base add extra data
     if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
         return;
+
+    CValidationState state;
+    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+    }
 
     ProcessBlockFound(pblock, chainparams);
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
@@ -814,6 +838,7 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
             {
                 ConsensusUseSPos(chainparams,connman,pindexPrev,nCurHeight,nNewBlockHeight,pblock
                                  ,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime);
+
                 MilliSleep(50);
             }else{
                 ConsensusUsePow(chainparams,connman,pblock,pindexPrev,coinbaseScript,nTransactionsUpdatedLast);

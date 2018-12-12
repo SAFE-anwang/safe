@@ -5445,7 +5445,7 @@ bool ParseReserve(const std::vector<unsigned char> &vReserve, std::string &strad
 
     unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
 
-    for (unsigned int i = nOffset; i < 34; i++)
+    for (unsigned int i = nOffset; i < 34 + TXOUT_RESERVE_MIN_SIZE; i++)
         straddress.push_back(vReserve[i]);
 
     for(unsigned int i = nOffset + 34; i < vReserve.size(); i++)
