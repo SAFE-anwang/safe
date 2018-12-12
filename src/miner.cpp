@@ -415,7 +415,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
         strSig.push_back(vchSig[i]);
     }
 
-    LogPrintf("SPOS_Message:height:%d,coinbase extra data:strAddress:%s,vchSig:%s",nHeight,strCollateralAddress,strSig);
+    LogPrintf("SPOS_Message:height:%d,coinbase extra data:strAddress:%s,vchSig:%s,vchSig size:%d\n",nHeight,strCollateralAddress,strSig, vchSig.size());
 
     pblock->vtx[0] = txCoinbase;
     pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);

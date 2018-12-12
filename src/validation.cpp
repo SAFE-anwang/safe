@@ -107,6 +107,8 @@ bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
 int64_t AllowableErrorTime = 12;
 CAmount MiningIncentives = 334559821;
+unsigned int nKeyIdSize = 20;
+
 
 
 
@@ -5438,18 +5440,26 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
     return true;
 }
 
-bool ParseReserve(const std::vector<unsigned char> &vReserve, std::string &straddress, std::vector<unsigned char> &vchSig)
-{
-    if (vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + 34)
-        return false;
 
+bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vector<unsigned char> &vchKeyId, std::vector<unsigned char> &vchSig, uint16_t &nSPOSVersion)
+{
+    if (vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + nKeyIdSize + sizeof(nSPOSVersion))
+        return false;
+    
     unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
 
-    for (unsigned int i = nOffset; i < 34 + TXOUT_RESERVE_MIN_SIZE; i++)
-        straddress.push_back(vReserve[i]);
+    // 1. version (2 bytes)
+    nSPOSVersion = *(uint16_t*)&vReserve[nOffset];
+    nOffset += sizeof(nSPOSVersion);
 
-    for(unsigned int i = nOffset + 34; i < vReserve.size(); i++)
-        vchSig.push_back(vReserve[i]);
+    // 2. keyid (20 bytes)
+    for(unsigned int i = 0; i < nKeyIdSize; i++)
+        vchKeyId.push_back(vReserve[nOffset++]);
+
+    // 3. vchSig 
+    unsigned int nvchSigLen = vReserve.size() - nKeyIdSize - TXOUT_RESERVE_MIN_SIZE - sizeof(nSPOSVersion);
+    for (unsigned int j = 0; j < nvchSigLen; j++)
+        vchSig.push_back(vReserve[nOffset++]);
 
     return true;
 }
@@ -5467,17 +5477,19 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
     const CTxOut &out = tempTransaction.vout[0];
 
     std::string straddress = "";
+    std::vector<unsigned char> vchKeyId;
     std::vector<unsigned char> vchSig;
-    if (!ParseReserve(out.vReserve, straddress, vchSig))
+    uint16_t nSPOSVersion = 1;
+
+    if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, nSPOSVersion))
         return state.DoS(100, error("CheckSPOSBlock(): analysis CTxOut vReserve fail"), REJECT_INVALID, "bad-vReserve", true);
 
-    CBitcoinAddress address;
-    if (!address.SetString(straddress))
-        return state.DoS(100, error("CheckSPOSBlock(): straddress error"), REJECT_INVALID, "bad-address", true);
-
     CKeyID keyID;
-    if (!address.GetKeyID(keyID))
-        return state.DoS(100, error("CheckSPOSBlock(): keyID error"), REJECT_INVALID, "bad-keyID", true);
+    CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
+    ssKey >> keyID;
+
+    straddress = CBitcoinAddress(keyID).ToString();
+    LogPrintf("CKeyID:%s --------straddress:%s-----vchSig size:%d\n", keyID.ToString(), straddress, vchSig.size());
 
     std::string strMessage = straddress;
     std::string strError = "";
@@ -5490,6 +5502,8 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
     int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_nMasternodeSPosCount;
     CMasternode tempmn = g_vecResultMasternodes[nindex];
     std::string strmnaddress = CBitcoinAddress(tempmn.pubKeyCollateralAddress.GetID()).ToString();
+
+    LogPrintf("strmnaddress:%s --------straddress:%s\n", strmnaddress, straddress);
 
     if (straddress != strmnaddress)
         return state.DoS(100, error("CheckSPOSBlock(): blockaddress error"), REJECT_INVALID, "bad-blockaddress", true);
