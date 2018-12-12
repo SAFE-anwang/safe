@@ -5445,7 +5445,7 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
 {
     if (vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + nKeyIdSize + sizeof(nSPOSVersion))
         return false;
-    
+
     unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
 
     // 1. version (2 bytes)
@@ -5456,7 +5456,7 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
     for(unsigned int i = 0; i < nKeyIdSize; i++)
         vchKeyId.push_back(vReserve[nOffset++]);
 
-    // 3. vchSig 
+    // 3. vchSig
     unsigned int nvchSigLen = vReserve.size() - nKeyIdSize - TXOUT_RESERVE_MIN_SIZE - sizeof(nSPOSVersion);
     for (unsigned int j = 0; j < nvchSigLen; j++)
         vchSig.push_back(vReserve[nOffset++]);
