@@ -395,7 +395,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     for(unsigned int i = 0; i < serialMasternode.size(); i++)
         txCoinbase.vout[0].vReserve.push_back(serialMasternode[i]);
 
-    std::string strCollateralAddress = CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString();
+    std::string strCollateralAddress = CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString();
     std::vector<unsigned char> vchSig;
     if(!CMessageSigner::SignMessage(strCollateralAddress, vchSig, activeMasternode.keyMasternode)) {
         LogPrintf("SPOS_Error:SignMessage() failed\n");
