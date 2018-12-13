@@ -5633,7 +5633,7 @@ static bool CheckIndexAgainstCheckpoint(const CBlockIndex* pindexPrev, CValidati
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex * const pindexPrev)
 {
     const Consensus::Params& consensusParams = Params().GetConsensus();
-    
+
     int nHeight = pindexPrev->nHeight + 1;
     if (nHeight < g_nStartSPOSHeight)
     {
