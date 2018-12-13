@@ -5634,6 +5634,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
 {
     const Consensus::Params& consensusParams = Params().GetConsensus();
 
+    /*
     int nHeight = pindexPrev->nHeight + 1;
     if (nHeight < g_nStartSPOSHeight)
     {
@@ -5656,7 +5657,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
                                         REJECT_INVALID, "bad-diffbits");
             }
         }
-    }
+    }*/
 
     // Check timestamp against prev
     if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast())
