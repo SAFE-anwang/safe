@@ -373,7 +373,7 @@ void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned
 }
 
 /*
- * SPOS Coinbase add collateral address and the sign of the collateral address
+ * SPOS Coinbase add version,serailze KeyID and the sign of the collateral address
 */
 bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMasternode& mn)
 {
@@ -382,19 +382,22 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(0)) + COINBASE_FLAGS;
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
+    //1.add version
     uint16_t nSPOSVersion = SPOS_VERSION;
     const unsigned char* pVersion = (const unsigned char*)&nSPOSVersion;
     txCoinbase.vout[0].vReserve.push_back(pVersion[0]);
     txCoinbase.vout[0].vReserve.push_back(pVersion[1]);
 
+    //2.add serialize KeyID of public key
     CDataStream ssKey(SER_DISK, CLIENT_VERSION);
     ssKey.reserve(1000);
     ssKey << activeMasternode.pubKeyMasternode.GetID();
-    string serialMasternode = ssKey.str();
+    string serialPubKeyId = ssKey.str();
 
-    for(unsigned int i = 0; i < serialMasternode.size(); i++)
-        txCoinbase.vout[0].vReserve.push_back(serialMasternode[i]);
+    for(unsigned int i = 0; i < serialPubKeyId.size(); i++)
+        txCoinbase.vout[0].vReserve.push_back(serialPubKeyId[i]);
 
+    //3.add the sign of collateral address which use the prikey of masternode
     std::string strCollateralAddress = CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString();
     std::vector<unsigned char> vchSig;
     if(!CMessageSigner::SignMessage(strCollateralAddress, vchSig, activeMasternode.keyMasternode)) {
@@ -408,6 +411,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
         return false;
     }
 
+    //------------XJTODO,this can be removed-----------------
     string strSig;
     for(unsigned int i=0;i<vchSig.size();i++)
     {
@@ -416,6 +420,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     }
 
     LogPrintf("SPOS_Message:height:%d,coinbase extra data:strAddress:%s,vchSig:%s,vchSig size:%d\n",nHeight,strCollateralAddress,strSig, vchSig.size());
+    //-------------------------------------------------------
 
     pblock->vtx[0] = txCoinbase;
     pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
@@ -552,12 +557,12 @@ static void ConsensusUsePow(const CChainParams& chainparams, CConnman& connman,C
     }
 }
 
-static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeight,CBlock *pblock,int64_t& nNextTime)
+static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeight,CBlock *pblock)
 {
-//    if(nCurHeight == nNewBlockHeight)
-//        return;
+    if(nCurHeight == nNewBlockHeight)
+        return;
 
-//    nCurHeight = nNewBlockHeight;
+    nCurHeight = nNewBlockHeight;
     unsigned int ret = nNewBlockHeight % g_nMasternodeSPosCount;
     if(ret != 0 )
         return;
@@ -595,7 +600,6 @@ static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeigh
                   ,pblock->nTime,strBlockTime);
         return;
     }
-    nNextTime = g_nStartNewLoopTime + Params().GetConsensus().nSPOSTargetSpacing * 1000;
 
     if(mapMasternodes.empty())
     {
@@ -611,7 +615,7 @@ static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeigh
         const CMasternode& mn = (*mnpair).second;
         int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
         //XJTODO Test codes can annotate this
-        if(/*mn.nActiveState != CMasternode::MASTERNODE_ENABLED ||*/ onlineTime < g_nMasternodeMinOnlineTime)
+        if(mn.nActiveState != CMasternode::MASTERNODE_ENABLED || onlineTime < g_nMasternodeMinOnlineTime)
             continue;
 
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
@@ -679,7 +683,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
     nCurHeight = nNewBlockHeight;
 
-    SelectMasterNode(nCurHeight,nNewBlockHeight,pblock,nNextTime);
+    SelectMasterNode(nCurHeight,nNewBlockHeight,pblock);
 
     unsigned int masternodeSPosCount = g_vecResultMasternodes.size();
     if(masternodeSPosCount == 0)
@@ -715,24 +719,24 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     nNextTime = g_nStartNewLoopTime + index*interval*1000;
 
     //XJTODO,Test codes can annotate this
-//    if(localIP != masterIP)
-//    {
-//        LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block:%d.\n",index-1,masterIP,nNewBlockHeight);
-//        return;
-//    }
-//    if(mnodeman.GetFullMasternodeMap().count(activeMasternode.outpoint)<=0)
-//    {
-//        LogPrintf("SPOS_Error:output(%d:%s) not exist.\n",activeMasternode.outpoint.n,activeMasternode.outpoint.hash.ToString());
-//        return;
-//    }
-//    CMasternode& mnLocal = mnodeman.GetFullMasternodeMap()[activeMasternode.outpoint];
-//    if(mnLocal.GetInfo().pubKeyCollateralAddress != mn.GetInfo().pubKeyCollateralAddress)
-//    {
-//        LogPrintf("SPOS_Error:local collateral address:%s is different to worker masternode collateral address:%s\n"
-//                  ,CBitcoinAddress(mnLocal.pubKeyCollateralAddress.GetID()).ToString()
-//                  ,CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
-//        return;
-//    }
+    if(localIP != masterIP)
+    {
+        LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block:%d.\n",index-1,masterIP,nNewBlockHeight);
+        return;
+    }
+    if(mnodeman.GetFullMasternodeMap().count(activeMasternode.outpoint)<=0)
+    {
+        LogPrintf("SPOS_Error:output(%d:%s) not exist.\n",activeMasternode.outpoint.n,activeMasternode.outpoint.hash.ToString());
+        return;
+    }
+    CMasternode& mnLocal = mnodeman.GetFullMasternodeMap()[activeMasternode.outpoint];
+    if(mnLocal.GetInfo().pubKeyCollateralAddress != mn.GetInfo().pubKeyCollateralAddress)
+    {
+        LogPrintf("SPOS_Error:local collateral address:%s is different to worker masternode collateral address:%s\n"
+                  ,CBitcoinAddress(mnLocal.pubKeyCollateralAddress.GetID()).ToString()
+                  ,CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
+        return;
+    }
 
     int64_t nIntervalMS = 500;
     int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);

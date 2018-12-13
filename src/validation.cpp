@@ -5471,7 +5471,8 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
 
     int64_t nNowTime = GetTime();
     if (abs(nNowTime - block.GetBlockTime()) > AllowableErrorTime)
-        return state.DoS(100, error("CheckSPOSBlock(): block.nTime error"), REJECT_INVALID, "bad-nTime", true);
+        return state.DoS(100, error("CheckSPOSBlock(): block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d"
+                                    ,nNowTime,block.GetBlockTime(),AllowableErrorTime), REJECT_INVALID, "bad-nTime", true);
 
     CTransaction tempTransaction  = block.vtx[0];
     const CTxOut &out = tempTransaction.vout[0];
@@ -5500,13 +5501,15 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
         return true;
 
     int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_nMasternodeSPosCount;
-    CMasternode tempmn = g_vecResultMasternodes[nindex];
+    CMasternode& tempmn = g_vecResultMasternodes[nindex];
     std::string strmnaddress = CBitcoinAddress(tempmn.pubKeyCollateralAddress.GetID()).ToString();
 
     LogPrintf("strmnaddress:%s --------straddress:%s\n", strmnaddress, straddress);
 
     if (straddress != strmnaddress)
-        return state.DoS(100, error("CheckSPOSBlock(): blockaddress error"), REJECT_INVALID, "bad-blockaddress", true);
+        return state.DoS(100, error("CheckSPOSBlock(): blockaddress error,remote address:%s,local address:%s,local index:%d,remoteKeyId:%s,localKeyId:%s"
+                                    ,straddress,strmnaddress,nindex,keyID.ToString(),tempmn.pubKeyCollateralAddress.GetID().ToString())
+                                    , REJECT_INVALID, "bad-blockaddress", true);
 
     return true;
 }
