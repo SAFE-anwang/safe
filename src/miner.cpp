@@ -866,6 +866,10 @@ void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainpar
     if(!GetBoolArg("-lmb_gen", false))
         return;
 
+    //XJTODO for test,this can be remove
+    g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
+    g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
+
     static boost::thread_group* minerThreads = NULL;
 
     if (nThreads < 0)
