@@ -405,6 +405,8 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
         return false;
     }
 
+    LogPrintf("mn address:%s--------------------------activeMasternod address:%s\n", CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(), strCollateralAddress);
+
     std::string strError;
     if(!CMessageSigner::VerifyMessage(activeMasternode.pubKeyMasternode, vchSig, strCollateralAddress, strError)) {
         LogPrintf("SPOS_Error:VerifyMessage() failed, error: %s\n", strError);
