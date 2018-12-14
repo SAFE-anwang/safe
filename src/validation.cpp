@@ -5424,13 +5424,13 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
         return true;
 
     int nHeight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
-    if (nHeight >= g_nStartSPOSHeight)
-        return true;
-
-    // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
-        return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
-                         REJECT_INVALID, "high-hash");
+    if (nHeight < g_nStartSPOSHeight)
+    {
+        // Check proof of work matches claimed amount
+        if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
+            return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
+                             REJECT_INVALID, "high-hash");
+    }
 
     // Check timestamp
     if (block.GetBlockTime() > GetAdjustedTime() + 2 * 60 * 60)
