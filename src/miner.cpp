@@ -615,6 +615,10 @@ static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeigh
     {
         const CMasternode& mn = (*mnpair).second;
         int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
+
+        //XJTODO
+        LogPrintf("SPOS_Message,before sort:ip:%s,nActiveState:%d,onlineTime:%d,isOK:%d\n",mn.addr.ToStringIP()
+                  ,mn.nActiveState,onlineTime,onlineTime < g_nMasternodeMinOnlineTime?0:1);
         //XJTODO Test codes can annotate this
         if(mn.nActiveState != CMasternode::MASTERNODE_ENABLED || onlineTime < g_nMasternodeMinOnlineTime)
             continue;
@@ -631,6 +635,13 @@ static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeigh
     {
         LogPrintf("SPOS_Error:scoreMasternodes is empty\n");
         return;
+    }
+
+    //XJTODO
+    for (auto& mnpair : scoreMasternodes)
+    {
+        LogPrintf("SPOS_Message,after sort:ip:%s,score:%s\n",mnpair.second.addr.ToStringIP()
+                  ,mnpair.first.ToString());
     }
 
     unsigned int count = 0;
