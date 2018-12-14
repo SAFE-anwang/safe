@@ -869,7 +869,8 @@ void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainpar
     //XJTODO for test,this can be remove
     g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
     g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
-    LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d\n", g_nStartSPOSHeight,g_nMasternodeSPosCount);
+    g_nMasternodeMinOnlineTime = GetArg("-masternode_min_online_time", g_nMasternodeMinOnlineTime);
+    LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_min_online_time:%d\n", g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeMinOnlineTime);
 
     static boost::thread_group* minerThreads = NULL;
 
