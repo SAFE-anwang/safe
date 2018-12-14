@@ -559,10 +559,11 @@ static void ConsensusUsePow(const CChainParams& chainparams, CConnman& connman,C
 
 static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeight,CBlock *pblock)
 {
-    if(nCurHeight == nNewBlockHeight)
-        return;
+    //XJTODO remove it
+//    if(nCurHeight == nNewBlockHeight)
+//        return;
 
-    nCurHeight = nNewBlockHeight;
+//    nCurHeight = nNewBlockHeight;
     unsigned int ret = nNewBlockHeight % g_nMasternodeSPosCount;
     if(ret != 0 )
         return;
