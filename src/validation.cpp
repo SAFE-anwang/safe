@@ -5500,16 +5500,25 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
     if (!masternodeSync.IsBlockchainSynced())
         return true;
 
-    int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_nMasternodeSPosCount;
+    //int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_nMasternodeSPosCount;
+    int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_vecResultMasternodes.size();
     CMasternode& tempmn = g_vecResultMasternodes[nindex];
     std::string strmnaddress = CBitcoinAddress(tempmn.pubKeyCollateralAddress.GetID()).ToString();
 
-    LogPrintf("strmnaddress:%s --------straddress:%s\n", strmnaddress, straddress);
+    LogPrintf("strmnaddress:%s --------straddress:%s------------g_vecResultMasternodes size:%d\n", strmnaddress, straddress, g_vecResultMasternodes.size());
 
     if (straddress != strmnaddress)
+    {
+        for (unsigned int i = 0; i < g_vecResultMasternodes.size(); i++)
+        {
+            const CMasternode& mnTemp = g_vecResultMasternodes[i];
+            LogPrintf("IP:%s --------stramnTempddress:%s\n", mnTemp.addr.ToStringIP(), CBitcoinAddress(mnTemp.pubKeyCollateralAddress.GetID()).ToString());
+        }
         return state.DoS(100, error("CheckSPOSBlock(): blockaddress error,remote address:%s,local address:%s,local index:%d,remoteKeyId:%s,localKeyId:%s"
-                                    ,straddress,strmnaddress,nindex,keyID.ToString(),tempmn.pubKeyCollateralAddress.GetID().ToString())
-                                    , REJECT_INVALID, "bad-blockaddress", true);
+                            ,straddress,strmnaddress,nindex,keyID.ToString(),tempmn.pubKeyCollateralAddress.GetID().ToString())
+                            , REJECT_INVALID, "bad-blockaddress", true);
+    }
+
 
     return true;
 }
