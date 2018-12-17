@@ -391,14 +391,14 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     //2.add serialize KeyID of public key
     CDataStream ssKey(SER_DISK, CLIENT_VERSION);
     ssKey.reserve(1000);
-    ssKey << activeMasternode.pubKeyMasternode.GetID();
+    ssKey << mn.pubKeyMasternode.GetID();
     string serialPubKeyId = ssKey.str();
 
     for(unsigned int i = 0; i < serialPubKeyId.size(); i++)
         txCoinbase.vout[0].vReserve.push_back(serialPubKeyId[i]);
 
     //3.add the sign of collateral address which use the prikey of masternode
-    std::string strCollateralAddress = CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString();
+    std::string strCollateralAddress = CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString();
     std::vector<unsigned char> vchSig;
     if(!CMessageSigner::SignMessage(strCollateralAddress, vchSig, activeMasternode.keyMasternode)) {
         LogPrintf("SPOS_Error:SignMessage() failed\n");
@@ -408,7 +408,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     LogPrintf("mn address:%s--------------------------activeMasternod address:%s\n", CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(), strCollateralAddress);
 
     std::string strError;
-    if(!CMessageSigner::VerifyMessage(activeMasternode.pubKeyMasternode, vchSig, strCollateralAddress, strError)) {
+    if(!CMessageSigner::VerifyMessage(mn.pubKeyMasternode, vchSig, strCollateralAddress, strError)) {
         LogPrintf("SPOS_Error:VerifyMessage() failed, error: %s\n", strError);
         return false;
     }
