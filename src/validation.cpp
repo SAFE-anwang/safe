@@ -108,6 +108,7 @@ unsigned int nCandyPageCount = 20;//display 20 candy info per page
 int64_t AllowableErrorTime = 12;
 CAmount MiningIncentives = 334559821;
 unsigned int nKeyIdSize = 20;
+unsigned int nConsensusAlgorithmLen = 4;
 
 
 
@@ -5441,23 +5442,27 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
 }
 
 
-bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vector<unsigned char> &vchKeyId, std::vector<unsigned char> &vchSig, uint16_t &nSPOSVersion)
+bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vector<unsigned char> &vchKeyId, std::vector<unsigned char> &vchSig, std::vector<unsigned char> &vchConAlg, uint16_t &nSPOSVersion)
 {
-    if (vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + nKeyIdSize + sizeof(nSPOSVersion))
+    if (vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + nConsensusAlgorithmLen + sizeof(nSPOSVersion) + nKeyIdSize)
         return false;
 
     unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
 
-    // 1. version (2 bytes)
+    //1.Consensus algorithm(4 bytes)
+    for(unsigned int k = 0; k < nConsensusAlgorithmLen; k++)
+        vchConAlg.push_back(vReserve[nOffset++]);
+    
+    // 2. version (2 bytes)
     nSPOSVersion = *(uint16_t*)&vReserve[nOffset];
     nOffset += sizeof(nSPOSVersion);
 
-    // 2. keyid (20 bytes)
+    // 3. keyid (20 bytes)
     for(unsigned int i = 0; i < nKeyIdSize; i++)
         vchKeyId.push_back(vReserve[nOffset++]);
 
-    // 3. vchSig
-    unsigned int nvchSigLen = vReserve.size() - nKeyIdSize - TXOUT_RESERVE_MIN_SIZE - sizeof(nSPOSVersion);
+    // 4. vchSig
+    unsigned int nvchSigLen = vReserve.size() - nConsensusAlgorithmLen - nKeyIdSize - TXOUT_RESERVE_MIN_SIZE - sizeof(nSPOSVersion);
     for (unsigned int j = 0; j < nvchSigLen; j++)
         vchSig.push_back(vReserve[nOffset++]);
 
@@ -5480,45 +5485,36 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
     std::string straddress = "";
     std::vector<unsigned char> vchKeyId;
     std::vector<unsigned char> vchSig;
+    std::vector<unsigned char> vchConAlg;
     uint16_t nSPOSVersion = 1;
 
-    if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, nSPOSVersion))
+    if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, vchConAlg, nSPOSVersion) || vchConAlg.size() != nConsensusAlgorithmLen || vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
         return state.DoS(100, error("CheckSPOSBlock(): analysis CTxOut vReserve fail"), REJECT_INVALID, "bad-vReserve", true);
 
     CKeyID keyID;
     CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
     ssKey >> keyID;
 
-    straddress = CBitcoinAddress(keyID).ToString();
-    LogPrintf("CKeyID:%s --------straddress:%s-----vchSig size:%d\n", keyID.ToString(), straddress, vchSig.size());
-
-    std::string strMessage = straddress;
+    std::string strBlockHash = block.GetHash().ToString();
     std::string strError = "";
-    if (!CMessageSigner::VerifyMessage(keyID, vchSig, strMessage, strError))
+    if (!CMessageSigner::VerifyMessage(keyID, vchSig, strBlockHash, strError))
         return state.DoS(100, error("CheckSPOSBlock(): signature error"), REJECT_INVALID, "bad-signature", true);
 
     if (!masternodeSync.IsBlockchainSynced())
         return true;
 
     //int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_nMasternodeSPosCount;
-    int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_vecResultMasternodes.size();
-    CMasternode& tempmn = g_vecResultMasternodes[nindex];
-    std::string strmnaddress = CBitcoinAddress(tempmn.pubKeyCollateralAddress.GetID()).ToString();
+    int32_t nIndex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_vecResultMasternodes.size();
+    CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
 
-    LogPrintf("strmnaddress:%s --------straddress:%s------------g_vecResultMasternodes size:%d\n", strmnaddress, straddress, g_vecResultMasternodes.size());
+    CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
-    if (straddress != strmnaddress)
-    {
-        for (unsigned int i = 0; i < g_vecResultMasternodes.size(); i++)
-        {
-            const CMasternode& mnTemp = g_vecResultMasternodes[i];
-            LogPrintf("IP:%s --------stramnTempddress:%s\n", mnTemp.addr.ToStringIP(), CBitcoinAddress(mnTemp.pubKeyCollateralAddress.GetID()).ToString());
-        }
-        return state.DoS(100, error("CheckSPOSBlock(): blockaddress error,remote address:%s,local address:%s,local index:%d,remoteKeyId:%s,localKeyId:%s"
-                            ,straddress,strmnaddress,nindex,keyID.ToString(),tempmn.pubKeyCollateralAddress.GetID().ToString())
+    LogPrintf("keyID:%s --------mnkeyID:%s-----------strBlockHash:%s\n", keyID.ToString(), mnkeyID.ToString(), strBlockHash);
+
+    if (keyID != mnkeyID)
+        return state.DoS(100, error("CheckSPOSBlock(): blockaddress error,remote keyID:%s,local mnkeyID:%s,local nIndex:%d"
+                            ,keyID.ToString(),mnkeyID.ToString(),nIndex)
                             , REJECT_INVALID, "bad-blockaddress", true);
-    }
-
 
     return true;
 }
