@@ -398,14 +398,15 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
         txCoinbase.vout[0].vReserve.push_back(serialPubKeyId[i]);
 
     //3.add the sign of collateral address which use the prikey of masternode
-    std::string strCollateralAddress = CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString();
+    std::string strCollateralAddress = CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString();
     std::vector<unsigned char> vchSig;
     if(!CMessageSigner::SignMessage(strCollateralAddress, vchSig, activeMasternode.keyMasternode)) {
         LogPrintf("SPOS_Error:SignMessage() failed\n");
         return false;
     }
 
-    LogPrintf("mn address:%s--------------------------activeMasternod address:%s\n", CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(), strCollateralAddress);
+    LogPrintf("mn address:%s--------------------------activeMasternod address:%s\n", CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(),
+              strCollateralAddress);
 
     std::string strError;
     if(!CMessageSigner::VerifyMessage(mn.pubKeyMasternode, vchSig, strCollateralAddress, strError)) {
