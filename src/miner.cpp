@@ -627,7 +627,7 @@ static void SelectMasterNode(unsigned int& nSelectMasterNodeHeight,unsigned int 
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << hash;
-        ss << pblock->nTime;
+        ss << nNewBlockHeight;
         uint256 score = ss.GetHash();
         scoreMasternodes[score] = mn;
     }
