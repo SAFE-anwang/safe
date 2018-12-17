@@ -382,13 +382,19 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(0)) + COINBASE_FLAGS;
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
-    //1.add version
+    //1.add spos
+    txCoinbase.vout[0].vReserve.push_back('s');
+    txCoinbase.vout[0].vReserve.push_back('p');
+    txCoinbase.vout[0].vReserve.push_back('o');
+    txCoinbase.vout[0].vReserve.push_back('s');
+
+    //2.add version
     uint16_t nSPOSVersion = SPOS_VERSION;
     const unsigned char* pVersion = (const unsigned char*)&nSPOSVersion;
     txCoinbase.vout[0].vReserve.push_back(pVersion[0]);
     txCoinbase.vout[0].vReserve.push_back(pVersion[1]);
 
-    //2.add serialize KeyID of public key
+    //3.add serialize KeyID of public key
     CDataStream ssKey(SER_DISK, CLIENT_VERSION);
     ssKey.reserve(1000);
     ssKey << mn.pubKeyMasternode.GetID();
@@ -397,19 +403,16 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     for(unsigned int i = 0; i < serialPubKeyId.size(); i++)
         txCoinbase.vout[0].vReserve.push_back(serialPubKeyId[i]);
 
-    //3.add the sign of collateral address which use the prikey of masternode
-    std::string strCollateralAddress = CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString();
+    //4.add the block hash
     std::vector<unsigned char> vchSig;
-    if(!CMessageSigner::SignMessage(strCollateralAddress, vchSig, activeMasternode.keyMasternode)) {
+    string strBlockHash = pblock->GetHash().ToString();
+    if(!CMessageSigner::SignMessage(strBlockHash, vchSig, activeMasternode.keyMasternode)) {
         LogPrintf("SPOS_Error:SignMessage() failed\n");
         return false;
     }
 
-    LogPrintf("mn address:%s--------------------------activeMasternod address:%s\n", CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString(),
-              strCollateralAddress);
-
     std::string strError;
-    if(!CMessageSigner::VerifyMessage(mn.pubKeyMasternode, vchSig, strCollateralAddress, strError)) {
+    if(!CMessageSigner::VerifyMessage(mn.pubKeyMasternode, vchSig, strBlockHash, strError)) {
         LogPrintf("SPOS_Error:VerifyMessage() failed, error: %s\n", strError);
         return false;
     }
@@ -422,7 +425,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
         strSig.push_back(vchSig[i]);
     }
 
-    LogPrintf("SPOS_Message:height:%d,coinbase extra data:strAddress:%s,vchSig:%s,vchSig size:%d\n",nHeight,strCollateralAddress,strSig, vchSig.size());
+    LogPrintf("SPOS_Message:height:%d,blockHash:%s,coinbase extra data:vchSig:%s,vchSig size:%d\n",nHeight,strBlockHash,strSig, vchSig.size());
     //-------------------------------------------------------
 
     pblock->vtx[0] = txCoinbase;
@@ -657,7 +660,8 @@ static void SelectMasterNode(unsigned int& nSelectMasterNodeHeight,unsigned int 
     }
 
     //random the master node
-    uint64_t now_hi = uint64_t(pblock->nTime) << 32;
+    //uint64_t now_hi = uint64_t(pblock->nTime) << 32;
+    uint64_t now_hi = uint64_t(nNewBlockHeight) << 32;
     for( uint32_t i = 0; i < g_vecResultMasternodes.size(); ++i )
     {
         /// High performance random generator
