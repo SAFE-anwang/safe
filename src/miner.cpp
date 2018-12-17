@@ -559,13 +559,12 @@ static void ConsensusUsePow(const CChainParams& chainparams, CConnman& connman,C
     }
 }
 
-static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeight,CBlock *pblock)
+static void SelectMasterNode(unsigned int& nSelectMasterNodeHeight,unsigned int nNewBlockHeight,CBlock *pblock)
 {
     //XJTODO remove it
-//    if(nCurHeight == nNewBlockHeight)
-//        return;
+    if(nSelectMasterNodeHeight == nNewBlockHeight)
+        return;
 
-//    nCurHeight = nNewBlockHeight;
     unsigned int ret = nNewBlockHeight % g_nMasternodeSPosCount;
     if(ret != 0 )
         return;
@@ -682,22 +681,23 @@ static void SelectMasterNode(unsigned int nCurHeight,unsigned int nNewBlockHeigh
         CMasternode& mn = g_vecResultMasternodes[i];
         LogPrintf("SPOS_Message:masterNodeIP[%d]:%s\n", i, mn.addr.ToStringIP());
     }
+
+    nSelectMasterNodeHeight = nNewBlockHeight;
 }
 
 /*
     Consensus Use Safe Pos
 */
 static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,CBlockIndex* pindexPrev
-                             ,unsigned int& nCurHeight,unsigned int nNewBlockHeight,CBlock *pblock
+                             ,unsigned int& nGenerateBlockHeight,unsigned int& nSelectMasterNodeHeight
+                             ,unsigned int nNewBlockHeight,CBlock *pblock
                              ,boost::shared_ptr<CReserveScript>& coinbaseScript
                              ,unsigned int nTransactionsUpdatedLast,int64_t& nNextTime)
 {
-    if(nCurHeight == nNewBlockHeight)
+    if(nGenerateBlockHeight == nNewBlockHeight)
         return;
 
-    nCurHeight = nNewBlockHeight;
-
-    SelectMasterNode(nCurHeight,nNewBlockHeight,pblock);
+    SelectMasterNode(nSelectMasterNodeHeight,nNewBlockHeight,pblock);
 
     unsigned int masternodeSPosCount = g_vecResultMasternodes.size();
     if(masternodeSPosCount == 0)
@@ -705,8 +705,6 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         LogPrintf("SPOS_Error:vecMasternodes is empty\n");
         return;
     }
-
-    nCurHeight = nNewBlockHeight;
 
     //if masternodeSPosCount less than g_nMasternodeSPosCount,still continue,just % actual masternodeSPosCount
     if(masternodeSPosCount != g_nMasternodeSPosCount)
@@ -726,6 +724,11 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     nCurrTime += interval*1000;
     int64_t nTimeInerval = (nCurrTime - g_nStartNewLoopTime) / 1000;
     int index = nTimeInerval / interval % masternodeSPosCount;
+    if(index<1)
+    {
+        LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval\n",index,nTimeInerval);
+        return;
+    }
     CMasternode& mn = g_vecResultMasternodes[index-1];
     string masterIP = mn.addr.ToStringIP();
     string localIP = activeMasternode.service.ToStringIP();
@@ -777,6 +780,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     coinbaseScript->KeepScript();
 
+    nGenerateBlockHeight = nNewBlockHeight;
     // In regression test mode, stop mining after a block is found. This
     // allows developers to controllably generate a block on demand.
     if (chainparams.MineBlocksOnDemand())
@@ -816,7 +820,7 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
             throw std::runtime_error("No coinbase script available (mining requires a wallet)");
 
         g_nStartNewLoopTime = GetTimeMillis();
-        unsigned int nCurHeight = 0;
+        unsigned int nGenerateBlockHeight = 0,nSelectMasterNodeHeight = 0;
         int64_t nNextBlockTime = 0;
         while (true) {
             if (chainparams.MiningRequiresPeers()) {
@@ -854,8 +858,8 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 
             if(IsStartSPosHeight(nNewBlockHeight))
             {
-                ConsensusUseSPos(chainparams,connman,pindexPrev,nCurHeight,nNewBlockHeight,pblock
-                                 ,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime);
+                ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nSelectMasterNodeHeight
+                                 ,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime);
 
                 MilliSleep(50);
             }else{
