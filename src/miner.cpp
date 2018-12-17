@@ -830,7 +830,11 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                     bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
                     if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
                         break;
-                    MilliSleep(1000);
+                    unsigned int nBlockHeight = chainActive.Height() + 1;
+                    if(IsStartSPosHeight(nBlockHeight))
+                        MilliSleep(50);
+                    else
+                        MilliSleep(1000);
                 } while (true);
             }
 
