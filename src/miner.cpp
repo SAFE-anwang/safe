@@ -403,7 +403,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     for(unsigned int i = 0; i < serialPubKeyId.size(); i++)
         txCoinbase.vout[0].vReserve.push_back(serialPubKeyId[i]);
 
-    //4.add the block hash
+    //4.add the sign of safe+spos+version+pubkey
     string strSignMessage= "";
     for(unsigned int i=0; i< txCoinbase.vout[0].vReserve.size();i++)
         strSignMessage.push_back(txCoinbase.vout[0].vReserve[i]);
@@ -737,24 +737,19 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     string localIP = activeMasternode.service.ToStringIP();
 
     nNextTime = g_nStartNewLoopTime + index*interval*1000;
+    LogPrintf("pubKeyMasternode:%s,keyMasternode:%s",activeMasternode.pubKeyMasternode.GetID().ToString(),activeMasternode.keyMasternode.GetPubKey().GetID().ToString());
 
-    //XJTODO,Test codes can annotate this
+    //XJTODO,Test codes can annotate this,remove it
     if(localIP != masterIP)
     {
         LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block:%d.\n",index-1,masterIP,nNewBlockHeight);
         return;
     }
-    if(mnodeman.GetFullMasternodeMap().count(activeMasternode.outpoint)<=0)
-    {
-        LogPrintf("SPOS_Error:output(%d:%s) not exist.\n",activeMasternode.outpoint.n,activeMasternode.outpoint.hash.ToString());
-        return;
-    }
-    CMasternode& mnLocal = mnodeman.GetFullMasternodeMap()[activeMasternode.outpoint];
-    if(mnLocal.GetInfo().pubKeyCollateralAddress != mn.GetInfo().pubKeyCollateralAddress)
+    if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
     {
         LogPrintf("SPOS_Error:local collateral address:%s is different to worker masternode collateral address:%s\n"
-                  ,CBitcoinAddress(mnLocal.pubKeyCollateralAddress.GetID()).ToString()
-                  ,CBitcoinAddress(mn.pubKeyCollateralAddress.GetID()).ToString());
+                  ,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
+                  ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
         return;
     }
 
