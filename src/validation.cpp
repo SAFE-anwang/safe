@@ -5497,8 +5497,9 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
 
     std::string strBlockHash = block.GetHash().ToString();
     std::string strError = "";
+
     if (!CMessageSigner::VerifyMessage(keyID, vchSig, strBlockHash, strError))
-        return state.DoS(100, error("CheckSPOSBlock(): signature error"), REJECT_INVALID, "bad-signature", true);
+        return state.DoS(100, error("CheckSPOSBlock(): signature error, keyID:%s, strBlockHash:%s, vchConAlg size:%d, vchSig size:%d", keyID.ToString(), strBlockHash,vchConAlg.size(), vchSig.size()), REJECT_INVALID, "bad-signature", true);
 
     if (!masternodeSync.IsBlockchainSynced())
         return true;
@@ -5509,7 +5510,7 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
 
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
-    LogPrintf("keyID:%s --------mnkeyID:%s-----------strBlockHash:%s\n", keyID.ToString(), mnkeyID.ToString(), strBlockHash);
+    LogPrintf("keyID:%s --------mnkeyID:%s\n", keyID.ToString(), mnkeyID.ToString());
 
     if (keyID != mnkeyID)
         return state.DoS(100, error("CheckSPOSBlock(): blockaddress error,remote keyID:%s,local mnkeyID:%s,local nIndex:%d"

@@ -425,7 +425,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
         strSig.push_back(vchSig[i]);
     }
 
-    LogPrintf("SPOS_Message:height:%d,blockHash:%s,coinbase extra data:vchSig:%s,vchSig size:%d\n",nHeight,strBlockHash,strSig, vchSig.size());
+    LogPrintf("SPOS_Message:height:%d,blockHash:%s,coinbase extra data:vchSig:%s,vchSig size:%d, keyid:%s\n",nHeight,strBlockHash,strSig, vchSig.size(), mn.pubKeyMasternode.GetID().ToString());
     //-------------------------------------------------------
 
     pblock->vtx[0] = txCoinbase;
