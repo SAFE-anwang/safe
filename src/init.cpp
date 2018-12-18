@@ -102,6 +102,9 @@ static const bool DEFAULT_PROXYRANDOMIZE = true;
 static const bool DEFAULT_REST_ENABLE = false;
 static const bool DEFAULT_DISABLE_SAFEMODE = false;
 static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
+extern int g_nStartSPOSHeight;
+extern unsigned int g_nMasternodeSPosCount;
+extern unsigned int g_nMasternodeMinOnlineTime;
 
 std::unique_ptr<CConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
@@ -1527,6 +1530,10 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     LogPrintf("* Using %.1fMiB for block index database\n", nBlockTreeDBCache * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1fMiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
+
+    g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
+    g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
+    g_nMasternodeMinOnlineTime = GetArg("-masternode_min_online_time", g_nMasternodeMinOnlineTime);
 
     bool fLoaded = false;
     while (!fLoaded) {
