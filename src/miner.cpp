@@ -625,7 +625,7 @@ static void SelectMasterNode(unsigned int& nSelectMasterNodeHeight,unsigned int 
         LogPrintf("SPOS_Message,before sort:ip:%s,nActiveState:%d,onlineTime:%d,isOK:%d\n",mn.addr.ToStringIP()
                   ,mn.nActiveState,onlineTime,onlineTime < g_nMasternodeMinOnlineTime?0:1);
         //XJTODO Test codes can annotate this
-        if(mn.nActiveState != CMasternode::MASTERNODE_ENABLED || onlineTime < g_nMasternodeMinOnlineTime)
+        if(/*mn.nActiveState != CMasternode::MASTERNODE_ENABLED || */onlineTime < g_nMasternodeMinOnlineTime)
             continue;
 
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
