@@ -5442,9 +5442,11 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
 }
 
 
-bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vector<unsigned char> &vchKeyId, std::vector<unsigned char> &vchSig, std::vector<unsigned char> &vchConAlg, uint16_t &nSPOSVersion)
+bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vector<unsigned char> &vchKeyId, std::vector<unsigned char> &vchSig, std::vector<unsigned char> &vchConAlg, uint16_t &nSPOSVersion, string &strSigMessage)
 {
-    if (vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + nConsensusAlgorithmLen + sizeof(nSPOSVersion) + nKeyIdSize)
+    unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + nConsensusAlgorithmLen + sizeof(nSPOSVersion) + nKeyIdSize;
+
+    if (vReserve.size() <= nFixedLen)
         return false;
 
     unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
@@ -5462,9 +5464,12 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
         vchKeyId.push_back(vReserve[nOffset++]);
 
     // 4. vchSig
-    unsigned int nvchSigLen = vReserve.size() - nConsensusAlgorithmLen - nKeyIdSize - TXOUT_RESERVE_MIN_SIZE - sizeof(nSPOSVersion);
+    unsigned int nvchSigLen = vReserve.size() - nFixedLen;
     for (unsigned int j = 0; j < nvchSigLen; j++)
         vchSig.push_back(vReserve[nOffset++]);
+
+    for (unsigned int m = 0; m < nFixedLen; m++)
+        strSigMessage.push_back(vReserve[m]);
 
     return true;
 }
@@ -5482,24 +5487,23 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
     CTransaction tempTransaction  = block.vtx[0];
     const CTxOut &out = tempTransaction.vout[0];
 
-    std::string straddress = "";
     std::vector<unsigned char> vchKeyId;
     std::vector<unsigned char> vchSig;
     std::vector<unsigned char> vchConAlg;
+    string strSigMessage = "";
     uint16_t nSPOSVersion = 1;
 
-    if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, vchConAlg, nSPOSVersion) || vchConAlg.size() != nConsensusAlgorithmLen || vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
+    if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, vchConAlg, nSPOSVersion, strSigMessage) || vchConAlg.size() != nConsensusAlgorithmLen || vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
         return state.DoS(100, error("SPOS CheckSPOSBlock(): analysis CTxOut vReserve fail, vchConAlg size:%d", vchConAlg.size()), REJECT_INVALID, "bad-vReserve", true);
 
     CKeyID keyID;
     CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
     ssKey >> keyID;
 
-    std::string strBlockHash = block.GetHash().ToString();
     std::string strError = "";
 
-    if (!CMessageSigner::VerifyMessage(keyID, vchSig, strBlockHash, strError))
-        return state.DoS(100, error("SPOS CheckSPOSBlock(): signature error, keyID:%s, strBlockHash:%s, vchSig size:%d", keyID.ToString(), strBlockHash, vchSig.size()), REJECT_INVALID, "bad-signature", true);
+    if (!CMessageSigner::VerifyMessage(keyID, vchSig, strSigMessage, strError))
+        return state.DoS(100, error("SPOS CheckSPOSBlock(): signature error, keyID:%s, strSigMessage:%s, vchSig size:%d", keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-signature", true);
 
     if (!masternodeSync.IsBlockchainSynced())
         return true;
