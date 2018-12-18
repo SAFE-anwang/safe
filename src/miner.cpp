@@ -404,28 +404,23 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
         txCoinbase.vout[0].vReserve.push_back(serialPubKeyId[i]);
 
     //4.add the block hash
+    string strSignMessage= "";
+    for(unsigned int i=0; i< txCoinbase.vout[0].vReserve.size();i++)
+        strSignMessage.push_back(txCoinbase.vout[0].vReserve[i]);
     std::vector<unsigned char> vchSig;
-    string strBlockHash = pblock->GetHash().ToString();
-    if(!CMessageSigner::SignMessage(strBlockHash, vchSig, activeMasternode.keyMasternode)) {
+    if(!CMessageSigner::SignMessage(strSignMessage, vchSig, activeMasternode.keyMasternode)) {
         LogPrintf("SPOS_Error:SignMessage() failed\n");
         return false;
     }
 
     std::string strError;
-    if(!CMessageSigner::VerifyMessage(mn.pubKeyMasternode, vchSig, strBlockHash, strError)) {
+    if(!CMessageSigner::VerifyMessage(activeMasternode.pubKeyMasternode, vchSig, strSignMessage, strError)) {
         LogPrintf("SPOS_Error:VerifyMessage() failed, error: %s\n", strError);
         return false;
     }
 
     //------------XJTODO,this can be removed-----------------
-    string strSig;
-    for(unsigned int i=0;i<vchSig.size();i++)
-    {
-        txCoinbase.vout[0].vReserve.push_back(vchSig[i]);
-        strSig.push_back(vchSig[i]);
-    }
-
-    LogPrintf("SPOS_Message:height:%d,blockHash:%s,coinbase extra data:vchSig:%s,vchSig size:%d\n",nHeight,strBlockHash,strSig, vchSig.size());
+    LogPrintf("SPOS_Message:height:%d,strSignMessage:%s\n",nHeight,strSignMessage);
     //-------------------------------------------------------
 
     pblock->vtx[0] = txCoinbase;
