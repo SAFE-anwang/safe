@@ -737,7 +737,6 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     string localIP = activeMasternode.service.ToStringIP();
 
     nNextTime = g_nStartNewLoopTime + index*interval*1000;
-    LogPrintf("pubKeyMasternode:%s,keyMasternode:%s",activeMasternode.pubKeyMasternode.GetID().ToString(),activeMasternode.keyMasternode.GetPubKey().GetID().ToString());
 
     //XJTODO,Test codes can annotate this,remove it
     if(localIP != masterIP)
@@ -774,6 +773,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
     }
 
+    LogPrintf("SPOS_Message:test block success\n");
     ProcessBlockFound(pblock, chainparams);
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     coinbaseScript->KeepScript();
@@ -782,20 +782,34 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     // In regression test mode, stop mining after a block is found. This
     // allows developers to controllably generate a block on demand.
     if (chainparams.MineBlocksOnDemand())
+    {
+        LogPrintf("SPOS_Warning:MineBlocksOnDemand\n");
         throw boost::thread_interrupted();
+    }
 
     // Check for stop or if block needs to be rebuilt
     boost::this_thread::interruption_point();
     // Regtest mode doesn't require peers
     if (connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0 && chainparams.MiningRequiresPeers())
+    {
+        LogPrintf("SPOS_Warning:GetNodeCount fail\n");
         return;
+    }
     if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast /*&& GetTime() - nCurrTime > 60*/)//XJTODO remove annotate code
+    {
+        LogPrintf("SPOS_Warning:mempool fail,mempool.GetTransactionsUpdated():%d,nTransactionsUpdatedLast:%d\n"
+                  ,mempool.GetTransactionsUpdated(),nTransactionsUpdatedLast);
         return;
+    }
     if (pindexPrev != chainActive.Tip())
+    {
+        LogPrintf("SPOS_Warning:tip not equal\n");
         return;
+    }
 
     // Update nTime every few seconds
     UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
+    LogPrintf("SPOS_Message:generate block finished\n");
 }
 
 // ***TODO*** that part changed in bitcoin, we are using a mix with old one here for now
