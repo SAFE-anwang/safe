@@ -419,6 +419,9 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
         return false;
     }
 
+    for(unsigned int i=0; i< strSignMessage.size(); i++)
+        txCoinbase.vout[0].vReserve.push_back(strSignMessage[i]);
+
     //------------XJTODO,this can be removed-----------------
     LogPrintf("SPOS_Message:height:%d,strSignMessage:%s\n",nHeight,strSignMessage);
     //-------------------------------------------------------
