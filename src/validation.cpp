@@ -5481,9 +5481,10 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
         return state.DoS(100, error(" SPOS CheckSPOSBlock(): block.nBits or block.nNonce not equal to 0"), REJECT_INVALID, "bad-nBits-nNonce", true);
 
     int64_t nNowTime = GetTime();
-    if (abs(nNowTime - block.GetBlockTime()) > AllowableErrorTime)
-        return state.DoS(100, error("SPOS CheckSPOSBlock(): block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d"
-                                    ,nNowTime,block.GetBlockTime(),AllowableErrorTime), REJECT_INVALID, "bad-nTime", true);
+    //XJTODO tmp annote
+//    if (abs(nNowTime - block.GetBlockTime()) > AllowableErrorTime)
+//        return state.DoS(100, error("SPOS CheckSPOSBlock(): block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d"
+//                                    ,nNowTime,block.GetBlockTime(),AllowableErrorTime), REJECT_INVALID, "bad-nTime", true);
 
     CTransaction tempTransaction  = block.vtx[0];
     const CTxOut &out = tempTransaction.vout[0];
