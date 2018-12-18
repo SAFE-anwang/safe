@@ -414,7 +414,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     }
 
     std::string strError;
-    if(!CMessageSigner::VerifyMessage(activeMasternode.pubKeyMasternode, vchSig, strSignMessage, strError)) {
+    if(!CMessageSigner::VerifyMessage(mn.pubKeyMasternode, vchSig, strSignMessage, strError)) {
         LogPrintf("SPOS_Error:VerifyMessage() failed, error: %s\n", strError);
         return false;
     }
