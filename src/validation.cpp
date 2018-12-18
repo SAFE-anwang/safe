@@ -105,7 +105,7 @@ std::mutex g_mutexTmpAllCandyInfo;
 std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
-int64_t AllowableErrorTime = 12;
+int64_t AllowableErrorTime = 2;
 //CAmount MiningIncentives = 334559821;
 CAmount MiningIncentives = 45000000000;
 unsigned int nKeyIdSize = 20;
@@ -5482,7 +5482,7 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
 
     int64_t nNowTime = GetTime();
     //XJTODO tmp annote
-//    if (abs(nNowTime - block.GetBlockTime()) > AllowableErrorTime)
+//    if (block.GetBlockTime() - nNowTime > AllowableErrorTime)
 //        return state.DoS(100, error("SPOS CheckSPOSBlock(): block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d"
 //                                    ,nNowTime,block.GetBlockTime(),AllowableErrorTime), REJECT_INVALID, "bad-nTime", true);
 
