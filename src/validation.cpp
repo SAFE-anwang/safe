@@ -106,7 +106,8 @@ std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
 int64_t AllowableErrorTime = 12;
-CAmount MiningIncentives = 334559821;
+//CAmount MiningIncentives = 334559821;
+CAmount MiningIncentives = 45000000000;
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
 
