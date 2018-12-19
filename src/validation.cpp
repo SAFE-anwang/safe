@@ -49,6 +49,7 @@
 #include "instantx.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
+#include "activemasternode.h"
 
 #include <sstream>
 
@@ -110,8 +111,9 @@ int64_t AllowableErrorTime = 2;
 CAmount MiningIncentives = 45000000000;
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
-
-
+extern unsigned int g_nMasternodeMinOnlineTime;
+extern CActiveMasternode activeMasternode;
+extern int64_t g_nLastSelectMasterNodeHeight;
 
 
 const static int M = 2000; //Maximum number of digits
@@ -5477,7 +5479,7 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
     return true;
 }
 
-bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& state)
+bool CheckSPOSBlock(const CBlock& block, CValidationState& state)
 {
     if (block.nBits != 0 || block.nNonce != 0)
         return state.DoS(100, error(" SPOS CheckSPOSBlock(): block.nBits or block.nNonce not equal to 0"), REJECT_INVALID, "bad-nBits-nNonce", true);
@@ -5548,7 +5550,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
         return false;
 
     if (nHeight >= g_nStartSPOSHeight)
-        if (!CheckSPOSBlock(block, nHeight, state))
+        if (!CheckSPOSBlock(block, state))
             return false;
 
     // Check the merkle root.
