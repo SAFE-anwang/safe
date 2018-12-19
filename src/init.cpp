@@ -2081,6 +2081,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     // Generate coins in the background
     GenerateBitcoins(GetBoolArg("-gen", DEFAULT_GENERATE), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
 
+    GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", DEFAULT_GENERATE), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
+
     // ********************************************************* Step 13: finished
 
     SetRPCWarmupFinished();

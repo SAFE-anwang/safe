@@ -422,10 +422,6 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMas
     for(unsigned int i=0; i< vchSig.size(); i++)
         txCoinbase.vout[0].vReserve.push_back(vchSig[i]);
 
-    //------------XJTODO,this can be removed-----------------
-    LogPrintf("SPOS_Message:height:%d,strSignMessage:%s\n",nHeight,strSignMessage);
-    //-------------------------------------------------------
-
     pblock->vtx[0] = txCoinbase;
     pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
 
@@ -493,214 +489,144 @@ static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainpar
     return true;
 }
 
-static void ConsensusUsePow(const CChainParams& chainparams, CConnman& connman,CBlock *pblock,CBlockIndex* pindexPrev
-                           ,boost::shared_ptr<CReserveScript>& coinbaseScript,unsigned int nTransactionsUpdatedLast)
+void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 {
-    //
-    // Search
-    //
-    int64_t nStart = GetTime();
-    arith_uint256 hashTarget = arith_uint256().SetCompact(pblock->nBits);
-    while (true)
-    {
-        unsigned int nHashesDone = 0;
+    LogPrintf("SafeMiner -- started\n");
+    SetThreadPriority(THREAD_PRIORITY_LOWEST);
+    RenameThread("safe-miner");
 
-        uint256 hash;
-        while (true)
-        {
-            hash = pblock->GetHash();
-            if (UintToArith256(hash) <= hashTarget)
-            {
-                {
-                    srand((unsigned int)time(NULL));
-                    //int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", 24)) * 1000;
-					int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", chainparams.GetConsensus().nPowTargetSpacing)) * 1000;
-                    MilliSleep(nTime);
-                }
-                // Found a solution
-                SetThreadPriority(THREAD_PRIORITY_NORMAL);
-                LogPrintf("SafeMiner:\n  proof-of-work found\n  hash: %s\n  target: %s\n", hash.GetHex(), hashTarget.GetHex());
-                ProcessBlockFound(pblock, chainparams);
-                SetThreadPriority(THREAD_PRIORITY_LOWEST);
-                coinbaseScript->KeepScript();
+    unsigned int nExtraNonce = 0;
 
-                // In regression test mode, stop mining after a block is found. This
-                // allows developers to controllably generate a block on demand.
-                if (chainparams.MineBlocksOnDemand())
-                    throw boost::thread_interrupted();
+    boost::shared_ptr<CReserveScript> coinbaseScript;
+    GetMainSignals().ScriptForMining(coinbaseScript);
 
-                break;
+    try {
+        // Throw an error if no script was provided.  This can happen
+        // due to some internal error but also if the keypool is empty.
+        // In the latter case, already the pointer is NULL.
+        if (!coinbaseScript || coinbaseScript->reserveScript.empty())
+            throw std::runtime_error("No coinbase script available (mining requires a wallet)");
+
+        while (true) {
+            if (chainparams.MiningRequiresPeers()) {
+                // Busy-wait for the network to come online so we don't waste time mining
+                // on an obsolete chain. In regtest mode we expect to fly solo.
+                do {
+                    bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
+                    if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
+                        break;
+                    MilliSleep(1000);
+                } while (true);
             }
-            pblock->nNonce += 1;
-            nHashesDone += 1;
-            if ((pblock->nNonce & 0xFF) == 0)
-                break;
+
+
+            //
+            // Create new block
+            //
+            unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
+            CBlockIndex* pindexPrev = chainActive.Tip();
+            if(!pindexPrev) break;
+
+            std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, coinbaseScript->reserveScript));
+            if (!pblocktemplate.get())
+            {
+                LogPrintf("SafeMiner -- Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
+                return;
+            }
+            CBlock *pblock = &pblocktemplate->block;
+            IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
+
+            LogPrintf("SafeMiner -- Running miner with %u transactions in block (%u bytes)\n", pblock->vtx.size(),
+                ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
+
+            //
+            // Search
+            //
+            int64_t nStart = GetTime();
+            arith_uint256 hashTarget = arith_uint256().SetCompact(pblock->nBits);
+            while (true)
+            {
+                unsigned int nHashesDone = 0;
+
+                uint256 hash;
+                while (true)
+                {
+                    hash = pblock->GetHash();
+                    if (UintToArith256(hash) <= hashTarget)
+                    {
+                        {
+                            srand((unsigned int)time(NULL));
+                            int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", 24)) * 1000;
+                            //int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", chainparams.GetConsensus().nPowTargetSpacing)) * 1000;
+                            MilliSleep(nTime);
+                        }
+                        // Found a solution
+                        SetThreadPriority(THREAD_PRIORITY_NORMAL);
+                        LogPrintf("SafeMiner:\n  proof-of-work found\n  hash: %s\n  target: %s\n", hash.GetHex(), hashTarget.GetHex());
+                        ProcessBlockFound(pblock, chainparams);
+                        SetThreadPriority(THREAD_PRIORITY_LOWEST);
+                        coinbaseScript->KeepScript();
+
+                        // In regression test mode, stop mining after a block is found. This
+                        // allows developers to controllably generate a block on demand.
+                        if (chainparams.MineBlocksOnDemand())
+                            throw boost::thread_interrupted();
+
+                        break;
+                    }
+                    pblock->nNonce += 1;
+                    nHashesDone += 1;
+                    if ((pblock->nNonce & 0xFF) == 0)
+                        break;
+                }
+
+                // Check for stop or if block needs to be rebuilt
+                boost::this_thread::interruption_point();
+                // Regtest mode doesn't require peers
+                if (connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0 && chainparams.MiningRequiresPeers())
+                    break;
+                //4294901760
+                if (pblock->nNonce >= 0xffff0000)
+                    break;
+                if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 60)
+                    break;
+                if (pindexPrev != chainActive.Tip())
+                    break;
+
+                // Update nTime every few seconds
+                if (UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev) < 0)
+                    break; // Recreate the block if the clock has run backwards,
+                           // so that we can use the correct time.
+                if (chainparams.GetConsensus().fPowAllowMinDifficultyBlocks)
+                {
+                    // Changing pblock->nTime can change work required on testnet:
+                    hashTarget.SetCompact(pblock->nBits);
+                }
+            }
         }
-
-        // Check for stop or if block needs to be rebuilt
-        boost::this_thread::interruption_point();
-        // Regtest mode doesn't require peers
-        if (connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0 && chainparams.MiningRequiresPeers())
-            break;
-        if (pblock->nNonce >= 0xffff0000)
-            break;
-        if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 60)
-            break;
-        if (pindexPrev != chainActive.Tip())
-            break;
-
-        // Update nTime every few seconds
-        if (UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev) < 0)
-            break; // Recreate the block if the clock has run backwards,
-                   // so that we can use the correct time.
-        if (chainparams.GetConsensus().fPowAllowMinDifficultyBlocks)
-        {
-            // Changing pblock->nTime can change work required on testnet:
-            hashTarget.SetCompact(pblock->nBits);
-        }
     }
-}
-
-static void SelectMasterNode(unsigned int& nSelectMasterNodeHeight,unsigned int nNewBlockHeight,CBlock *pblock)
-{
-    //XJTODO remove it
-    if(nSelectMasterNodeHeight == nNewBlockHeight)
-        return;
-
-    unsigned int ret = nNewBlockHeight % g_nMasternodeSPosCount;
-    if(ret != 0 )
-        return;
-
-    std::map<COutPoint, CMasternode> mapMasternodes;
-    if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
+    catch (const boost::thread_interrupted&)
     {
-        std::map<COutPoint, CMasternode> fullmapMasternodes = mnodeman.GetFullMasternodeMap();
-
-        const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
-        std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
-        for (;it != vtempOutPointData.end(); it++)
-        {
-            COutPointData tempcoutpointdata = *it;
-            COutPoint tempcoutpoint;
-            tempcoutpoint.hash = SerializeHash(tempcoutpointdata.strtx);
-            tempcoutpoint.n = tempcoutpointdata.n;
-             std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
-            if (tempit != fullmapMasternodes.end())
-                mapMasternodes[tempcoutpoint] = tempit->second;
-        }
+        LogPrintf("SafeMiner -- terminated\n");
+        throw;
     }
-    else
-        mapMasternodes = mnodeman.GetFullMasternodeMap();
-
-    g_vecResultMasternodes.clear();
-    std::vector<CMasternode>().swap(g_vecResultMasternodes);
-    //1.3.3
-    g_nStartNewLoopTime = GetTimeMillis();
-    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
-    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pblock->nTime);
-    if(g_nStartNewLoopTime < pblock->nTime*1000)
+    catch (const std::runtime_error &e)
     {
-        LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",g_nStartNewLoopTime/1000,strStartNewLoopTime
-                  ,pblock->nTime,strBlockTime);
+        LogPrintf("SafeMiner -- runtime error: %s\n", e.what());
         return;
     }
-
-    if(mapMasternodes.empty())
-    {
-        LogPrintf("SPOS_Error:mapMasternodes is empty\n");
-        return;
-    }
-
-    std::map<uint256,CMasternode> scoreMasternodes;
-
-    //sort by score
-    for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
-    {
-        const CMasternode& mn = (*mnpair).second;
-        int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
-
-        //XJTODO
-        LogPrintf("SPOS_Message,before sort:ip:%s,nActiveState:%d,onlineTime:%d,isOK:%d\n",mn.addr.ToStringIP()
-                  ,mn.nActiveState,onlineTime,onlineTime < g_nMasternodeMinOnlineTime?0:1);
-        //XJTODO Test codes can annotate this
-        if(/*mn.nActiveState != CMasternode::MASTERNODE_ENABLED || */onlineTime < g_nMasternodeMinOnlineTime)
-            continue;
-
-        uint256 hash = mn.pubKeyCollateralAddress.GetHash();
-        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
-        ss << hash;
-        ss << nNewBlockHeight;
-        uint256 score = ss.GetHash();
-        scoreMasternodes[score] = mn;
-    }
-
-    if(scoreMasternodes.empty())
-    {
-        LogPrintf("SPOS_Error:scoreMasternodes is empty\n");
-        return;
-    }
-
-    //XJTODO
-    for (auto& mnpair : scoreMasternodes)
-    {
-        LogPrintf("SPOS_Message,after sort:ip:%s,score:%s\n",mnpair.second.addr.ToStringIP()
-                  ,mnpair.first.ToString());
-    }
-
-    unsigned int count = 0;
-    for (auto& mnpair : scoreMasternodes)
-    {
-        CMasternode& mn = mnpair.second;
-        g_vecResultMasternodes.push_back(mn);
-        count++;
-        if(count>=g_nMasternodeSPosCount)
-            break;
-    }
-
-    //random the master node
-    //uint64_t now_hi = uint64_t(pblock->nTime) << 32;
-    uint64_t now_hi = uint64_t(nNewBlockHeight) << 32;
-    for( uint32_t i = 0; i < g_vecResultMasternodes.size(); ++i )
-    {
-        /// High performance random generator
-        /// http://xorshift.di.unimi.it/
-        uint64_t k = now_hi + uint64_t(i)*2685821657736338717ULL;
-        k ^= (k >> 12);
-        k ^= (k << 25);
-        k ^= (k >> 27);
-        k *= 2685821657736338717ULL;
-
-        uint32_t jmax = g_vecResultMasternodes.size() - i;
-        uint32_t j = i + k%jmax;
-        std::swap( g_vecResultMasternodes[i],g_vecResultMasternodes[j] );
-    }
-
-    string localIpPortInfo = activeMasternode.service.ToString();
-    uint32_t size = g_vecResultMasternodes.size();
-    LogPrintf("SPOS:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode\n"
-              ,localIpPortInfo,nNewBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,pblock->nTime,strBlockTime,size);
-    for( uint32_t i = 0; i < size; ++i )
-    {
-        CMasternode& mn = g_vecResultMasternodes[i];
-        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s\n", i, mn.addr.ToStringIP());
-    }
-
-    nSelectMasterNodeHeight = nNewBlockHeight;
 }
 
 /*
     Consensus Use Safe Pos
 */
 static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,CBlockIndex* pindexPrev
-                             ,unsigned int& nGenerateBlockHeight,unsigned int& nSelectMasterNodeHeight
-                             ,unsigned int nNewBlockHeight,CBlock *pblock
+                             ,unsigned int& nGenerateBlockHeight,unsigned int nNewBlockHeight,CBlock *pblock
                              ,boost::shared_ptr<CReserveScript>& coinbaseScript
                              ,unsigned int nTransactionsUpdatedLast,int64_t& nNextTime)
 {
     if(nGenerateBlockHeight == nNewBlockHeight)
         return;
-
-    SelectMasterNode(nSelectMasterNodeHeight,nNewBlockHeight,pblock);
 
     unsigned int masternodeSPosCount = g_vecResultMasternodes.size();
     if(masternodeSPosCount == 0)
@@ -813,9 +739,9 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 }
 
 // ***TODO*** that part changed in bitcoin, we are using a mix with old one here for now
-void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
+void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 {
-    LogPrintf("SafeMiner -- started\n");
+    LogPrintf("SafeSposMiner -- started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     RenameThread("safe-miner");
 
@@ -832,7 +758,7 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
             throw std::runtime_error("No coinbase script available (mining requires a wallet)");
 
         g_nStartNewLoopTime = GetTimeMillis();
-        unsigned int nGenerateBlockHeight = 0,nSelectMasterNodeHeight = 0;
+        unsigned int nGenerateBlockHeight = 0;
         int64_t nNextBlockTime = 0;
         while (true) {
             if (chainparams.MiningRequiresPeers()) {
@@ -842,45 +768,35 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                     bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
                     if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
                         break;
-                    unsigned int nBlockHeight = chainActive.Height() + 1;
-                    if(IsStartSPosHeight(nBlockHeight))
-                        MilliSleep(50);
-                    else
-                        MilliSleep(1000);
+                    MilliSleep(50);
                 } while (true);
             }
 
-            //
-            // Create new block
-            //
-            unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
             CBlockIndex* pindexPrev = chainActive.Tip();
-            if(!pindexPrev) break;
-
-            std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, coinbaseScript->reserveScript));
-            if (!pblocktemplate.get())
-            {
-                LogPrintf("SafeMiner -- Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
-                return;
-            }
-
+            if(!pindexPrev)
+                break;
             unsigned int nNewBlockHeight = chainActive.Height() + 1;
-
-            CBlock *pblock = &pblocktemplate->block;
-            IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
-
-            LogPrintf("SafeMiner -- Running miner with %u transactions in block (%u bytes)\n", pblock->vtx.size(),
-                ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
-
             if(IsStartSPosHeight(nNewBlockHeight))
             {
-                ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nSelectMasterNodeHeight
-                                 ,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime);
+                // Create new block
+                unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
+                std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, coinbaseScript->reserveScript));
+                if (!pblocktemplate.get())
+                {
+                    LogPrintf("SafeSposMiner -- Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
+                    return;
+                }
 
-                MilliSleep(50);
-            }else{
-                ConsensusUsePow(chainparams,connman,pblock,pindexPrev,coinbaseScript,nTransactionsUpdatedLast);
+                CBlock *pblock = &pblocktemplate->block;
+                IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
+
+                LogPrintf("SafeSposMiner -- Running miner with %u transactions in block (%u bytes)\n", pblock->vtx.size(),
+                    ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
+
+                ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nNewBlockHeight,pblock,coinbaseScript
+                                 ,nTransactionsUpdatedLast,nNextBlockTime);
             }
+            MilliSleep(50);
         }
     }
     catch (const boost::thread_interrupted&)
@@ -900,10 +816,31 @@ void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainpar
     if(!GetBoolArg("-lmb_gen", false))
         return;
 
-    //XJTODO for test,this can be remove
-    g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
-    g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
-    g_nMasternodeMinOnlineTime = GetArg("-masternode_min_online_time", g_nMasternodeMinOnlineTime);
+    static boost::thread_group* minerThreads = NULL;
+
+    if (nThreads < 0)
+        nThreads = GetNumCores();
+
+    if (minerThreads != NULL)
+    {
+        minerThreads->interrupt_all();
+        delete minerThreads;
+        minerThreads = NULL;
+    }
+
+    if (nThreads == 0 || !fGenerate)
+        return;
+
+    minerThreads = new boost::thread_group();
+    for (int i = 0; i < nThreads; i++)
+        minerThreads->create_thread(boost::bind(&BitcoinMiner, boost::cref(chainparams), boost::ref(connman)));
+}
+
+void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman)
+{
+    if(!GetBoolArg("-sposgen", false))
+        return;
+
     LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_min_online_time:%d\n", g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeMinOnlineTime);
 
     static boost::thread_group* minerThreads = NULL;
@@ -923,5 +860,5 @@ void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainpar
 
     minerThreads = new boost::thread_group();
     for (int i = 0; i < nThreads; i++)
-        minerThreads->create_thread(boost::bind(&BitcoinMiner, boost::cref(chainparams), boost::ref(connman)));
+        minerThreads->create_thread(boost::bind(&SposMiner, boost::cref(chainparams), boost::ref(connman)));
 }

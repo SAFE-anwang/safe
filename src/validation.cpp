@@ -4617,6 +4617,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
+    if(IsStartSPosHeight(pindex->nHeight+1))
+        SelectMasterNode(pindex->nHeight+1,block);
     return true;
 }
 
@@ -5482,9 +5484,9 @@ bool CheckSPOSBlock(const CBlock& block, const int& nHeight, CValidationState& s
 
     int64_t nNowTime = GetTime();
     //XJTODO tmp annote
-//    if (block.GetBlockTime() - nNowTime > AllowableErrorTime)
-//        return state.DoS(100, error("SPOS CheckSPOSBlock(): block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d"
-//                                    ,nNowTime,block.GetBlockTime(),AllowableErrorTime), REJECT_INVALID, "bad-nTime", true);
+    if (block.GetBlockTime() - nNowTime > AllowableErrorTime)
+        return state.DoS(100, error("SPOS CheckSPOSBlock(): block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d"
+                                    ,nNowTime,block.GetBlockTime(),AllowableErrorTime), REJECT_INVALID, "bad-nTime", true);
 
     CTransaction tempTransaction  = block.vtx[0];
     const CTxOut &out = tempTransaction.vout[0];
@@ -8882,4 +8884,132 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
     }
 
     return true;
+}
+
+void SelectMasterNode(unsigned int nNewBlockHeight,const CBlock& pblock)
+{
+    if(g_nLastSelectMasterNodeHeight == nNewBlockHeight)
+    {
+        LogPrintf("g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d,not SelectMasterNode\n",nNewBlockHeight);
+        return;
+    }
+
+    unsigned int ret = nNewBlockHeight % g_nMasternodeSPosCount;
+    if(ret != 0 )
+        return;
+
+    std::map<COutPoint, CMasternode> mapMasternodes;
+    if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
+    {
+        std::map<COutPoint, CMasternode> fullmapMasternodes = mnodeman.GetFullMasternodeMap();
+
+        const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
+        std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
+        for (;it != vtempOutPointData.end(); it++)
+        {
+            COutPointData tempcoutpointdata = *it;
+            COutPoint tempcoutpoint;
+            tempcoutpoint.hash = SerializeHash(tempcoutpointdata.strtx);
+            tempcoutpoint.n = tempcoutpointdata.n;
+             std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
+            if (tempit != fullmapMasternodes.end())
+                mapMasternodes[tempcoutpoint] = tempit->second;
+        }
+    }
+    else
+        mapMasternodes = mnodeman.GetFullMasternodeMap();
+
+    g_vecResultMasternodes.clear();
+    std::vector<CMasternode>().swap(g_vecResultMasternodes);
+    //1.3.3
+    g_nStartNewLoopTime = GetTimeMillis();
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pblock.nTime);
+    if(g_nStartNewLoopTime < pblock.nTime*1000)
+    {
+        LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",g_nStartNewLoopTime/1000,strStartNewLoopTime
+                  ,pblock.nTime,strBlockTime);
+        return;
+    }
+
+    if(mapMasternodes.empty())
+    {
+        LogPrintf("SPOS_Error:mapMasternodes is empty\n");
+        return;
+    }
+
+    std::map<uint256,CMasternode> scoreMasternodes;
+
+    //sort by score
+    for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
+    {
+        const CMasternode& mn = (*mnpair).second;
+        int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
+
+        //XJTODO
+        LogPrintf("SPOS_Message,before sort:ip:%s,nActiveState:%d,onlineTime:%d,isOK:%d\n",mn.addr.ToStringIP()
+                  ,mn.nActiveState,onlineTime,onlineTime < g_nMasternodeMinOnlineTime?0:1);
+        //XJTODO Test codes can annotate this
+        if(/*mn.nActiveState != CMasternode::MASTERNODE_ENABLED || */onlineTime < g_nMasternodeMinOnlineTime)
+            continue;
+
+        uint256 hash = mn.pubKeyCollateralAddress.GetHash();
+        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+        ss << hash;
+        ss << pblock.nTime;
+        uint256 score = ss.GetHash();
+        scoreMasternodes[score] = mn;
+    }
+
+    if(scoreMasternodes.empty())
+    {
+        LogPrintf("SPOS_Error:scoreMasternodes is empty\n");
+        return;
+    }
+
+    //XJTODO remove it5
+    for (auto& mnpair : scoreMasternodes)
+    {
+        LogPrintf("SPOS_Message,after sort:ip:%s,score:%s\n",mnpair.second.addr.ToStringIP()
+                  ,mnpair.first.ToString());
+    }
+
+    unsigned int count = 0;
+    for (auto& mnpair : scoreMasternodes)
+    {
+        CMasternode& mn = mnpair.second;
+        g_vecResultMasternodes.push_back(mn);
+        count++;
+        if(count>=g_nMasternodeSPosCount)
+            break;
+    }
+
+    //random the master node
+    uint64_t now_hi = uint64_t(pblock.nTime) << 32;
+    for( uint32_t i = 0; i < g_vecResultMasternodes.size(); ++i )
+    {
+        /// High performance random generator
+        /// http://xorshift.di.unimi.it/
+        uint64_t k = now_hi + uint64_t(i)*2685821657736338717ULL;
+        k ^= (k >> 12);
+        k ^= (k << 25);
+        k ^= (k >> 27);
+        k *= 2685821657736338717ULL;
+
+        uint32_t jmax = g_vecResultMasternodes.size() - i;
+        uint32_t j = i + k%jmax;
+        std::swap( g_vecResultMasternodes[i],g_vecResultMasternodes[j] );
+    }
+
+    string localIpPortInfo = activeMasternode.service.ToString();
+    uint32_t size = g_vecResultMasternodes.size();
+    LogPrintf("SPOS:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode\n"
+              ,localIpPortInfo,nNewBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,pblock.nTime,strBlockTime,size);
+    for( uint32_t i = 0; i < size; ++i )
+    {
+        CMasternode& mn = g_vecResultMasternodes[i];
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s\n", i, mn.addr.ToStringIP());
+    }
+
+    g_nLastSelectMasterNodeHeight = nNewBlockHeight;
 }

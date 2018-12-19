@@ -1511,5 +1511,7 @@ bool ExistForbidTxin(const int nHeight, const std::vector<int>& prevheights);
 bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ngetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
 bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ndbgetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
 
+void SelectMasterNode(unsigned int nNewBlockHeight,const CBlock& pblock);
+
 
 #endif // BITCOIN_VALIDATION_H
