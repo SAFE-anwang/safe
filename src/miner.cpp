@@ -843,22 +843,22 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
 
     LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_min_online_time:%d\n", g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeMinOnlineTime);
 
-    static boost::thread_group* minerThreads = NULL;
+    static boost::thread_group* sposMinerThreads = NULL;
 
     if (nThreads < 0)
         nThreads = GetNumCores();
 
-    if (minerThreads != NULL)
+    if (sposMinerThreads != NULL)
     {
-        minerThreads->interrupt_all();
-        delete minerThreads;
-        minerThreads = NULL;
+        sposMinerThreads->interrupt_all();
+        delete sposMinerThreads;
+        sposMinerThreads = NULL;
     }
 
     if (nThreads == 0 || !fGenerate)
         return;
 
-    minerThreads = new boost::thread_group();
+    sposMinerThreads = new boost::thread_group();
     for (int i = 0; i < nThreads; i++)
-        minerThreads->create_thread(boost::bind(&SposMiner, boost::cref(chainparams), boost::ref(connman)));
+        sposMinerThreads->create_thread(boost::bind(&SposMiner, boost::cref(chainparams), boost::ref(connman)));
 }

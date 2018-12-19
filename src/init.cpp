@@ -238,6 +238,7 @@ void PrepareShutdown()
         pwalletMain->Flush(false);
 #endif
     GenerateBitcoins(false, 0, Params(), *g_connman);
+    GenerateBitcoinsBySPOS(false,0,Params(), *g_connman);
     MapPort(false);
     UnregisterValidationInterface(peerLogic.get());
     peerLogic.reset();
