@@ -175,18 +175,31 @@ namespace {
     struct CBlockIndexWorkComparator
     {
         bool operator()(CBlockIndex *pa, CBlockIndex *pb) const {
+            if(IsStartSPosHeight(pa->nHeight)||IsStartSPosHeight(pb->nHeight))
+            {
+                if (pa->nHeight > pb->nHeight)
+                    return false;
+                if (pa->nHeight < pb->nHeight)
+                    return true;
+            }
             // First sort by most total work, ...
-            if (pa->nChainWork > pb->nChainWork) return false;
-            if (pa->nChainWork < pb->nChainWork) return true;
+            if (pa->nChainWork > pb->nChainWork)
+                return false;
+            if (pa->nChainWork < pb->nChainWork)
+                return true;
 
             // ... then by earliest time received, ...
-            if (pa->nSequenceId < pb->nSequenceId) return false;
-            if (pa->nSequenceId > pb->nSequenceId) return true;
+            if (pa->nSequenceId < pb->nSequenceId)
+                return false;
+            if (pa->nSequenceId > pb->nSequenceId)
+                return true;
 
             // Use pointer address as tie breaker (should only happen with blocks
             // loaded from disk, as those all have id 0).
-            if (pa < pb) return false;
-            if (pa > pb) return true;
+            if (pa < pb)
+                return false;
+            if (pa > pb)
+                return true;
 
             // Identical blocks.
             return false;
@@ -4620,7 +4633,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
     if(IsStartSPosHeight(pindex->nHeight+1))
-        SelectMasterNode(pindex->nHeight+1,block);
+        SelectMasterNode(pindex->nHeight+1,block.nTime);
     return true;
 }
 
@@ -5282,7 +5295,11 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
     }
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
-    if (pindexBestHeader == NULL || pindexBestHeader->nChainWork < pindexNew->nChainWork)
+    if(IsStartSPosHeight(pindexNew->nHeight))
+    {
+        if (pindexBestHeader == NULL || pindexBestHeader->nHeight < pindexNew->nHeight)
+            pindexBestHeader = pindexNew;
+    }else if (pindexBestHeader == NULL || pindexBestHeader->nChainWork < pindexNew->nChainWork)
         pindexBestHeader = pindexNew;
 
     setDirtyBlockIndex.insert(pindexNew);
@@ -8888,7 +8905,7 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
     return true;
 }
 
-void SelectMasterNode(unsigned int nNewBlockHeight,const CBlock& pblock)
+void SelectMasterNode(unsigned int nNewBlockHeight, uint32_t nTime)
 {
     if(g_nLastSelectMasterNodeHeight == nNewBlockHeight)
     {
@@ -8926,11 +8943,11 @@ void SelectMasterNode(unsigned int nNewBlockHeight,const CBlock& pblock)
     //1.3.3
     g_nStartNewLoopTime = GetTimeMillis();
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
-    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pblock.nTime);
-    if(g_nStartNewLoopTime < pblock.nTime*1000)
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
+    if(g_nStartNewLoopTime < nTime*1000)
     {
         LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",g_nStartNewLoopTime/1000,strStartNewLoopTime
-                  ,pblock.nTime,strBlockTime);
+                  ,nTime,strBlockTime);
         return;
     }
 
@@ -8958,7 +8975,7 @@ void SelectMasterNode(unsigned int nNewBlockHeight,const CBlock& pblock)
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << hash;
-        ss << pblock.nTime;
+        ss << nTime;
         uint256 score = ss.GetHash();
         scoreMasternodes[score] = mn;
     }
@@ -8987,7 +9004,7 @@ void SelectMasterNode(unsigned int nNewBlockHeight,const CBlock& pblock)
     }
 
     //random the master node
-    uint64_t now_hi = uint64_t(pblock.nTime) << 32;
+    uint64_t now_hi = uint64_t(nTime) << 32;
     for( uint32_t i = 0; i < g_vecResultMasternodes.size(); ++i )
     {
         /// High performance random generator
@@ -9006,7 +9023,7 @@ void SelectMasterNode(unsigned int nNewBlockHeight,const CBlock& pblock)
     string localIpPortInfo = activeMasternode.service.ToString();
     uint32_t size = g_vecResultMasternodes.size();
     LogPrintf("SPOS:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode\n"
-              ,localIpPortInfo,nNewBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,pblock.nTime,strBlockTime,size);
+              ,localIpPortInfo,nNewBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,strBlockTime,size);
     for( uint32_t i = 0; i < size; ++i )
     {
         CMasternode& mn = g_vecResultMasternodes[i];

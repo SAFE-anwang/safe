@@ -513,7 +513,7 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                 // on an obsolete chain. In regtest mode we expect to fly solo.
                 do {
                     bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
-                    if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
+                    if (/*!fvNodesEmpty && */!IsInitialBlockDownload() && masternodeSync.IsSynced())
                         break;
                     MilliSleep(1000);
                 } while (true);
@@ -526,6 +526,10 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
             unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
             CBlockIndex* pindexPrev = chainActive.Tip();
             if(!pindexPrev) break;
+
+            //pow change to pos,then stop this thread
+            if(IsStartSPosHeight(pindexPrev->nHeight+1))
+                break;
 
             std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, coinbaseScript->reserveScript));
             if (!pblocktemplate.get())
@@ -556,7 +560,7 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                     {
                         {
                             srand((unsigned int)time(NULL));
-                            int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", 24)) * 1000;
+                            int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", 4)) * 1000;
                             //int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", chainparams.GetConsensus().nPowTargetSpacing)) * 1000;
                             MilliSleep(nTime);
                         }
@@ -631,8 +635,13 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     unsigned int masternodeSPosCount = g_vecResultMasternodes.size();
     if(masternodeSPosCount == 0)
     {
-        LogPrintf("SPOS_Error:vecMasternodes is empty\n");
-        return;
+        SelectMasterNode(nNewBlockHeight,pindexPrev->nTime);
+        masternodeSPosCount = g_vecResultMasternodes.size();
+        if(masternodeSPosCount == 0)
+        {
+            LogPrintf("SPOS_Error:vecMasternodes is empty\n");
+            return;
+        }
     }
 
     //if masternodeSPosCount less than g_nMasternodeSPosCount,still continue,just % actual masternodeSPosCount
@@ -653,7 +662,9 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     nCurrTime += interval*1000;
     int64_t nTimeInerval = (nCurrTime - g_nStartNewLoopTime) / 1000;
     int index = nTimeInerval / interval % masternodeSPosCount;
-    if(index<1)
+    if(masternodeSPosCount==1)//XJTODO
+        index = 1;
+    else if(index<1)
     {
         LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval\n",index,nTimeInerval);
         return;
@@ -687,7 +698,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     }
 
     //it's turn to generate block
-    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.\n",index-1,localIP,nNewBlockHeight);
+    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d\n",index-1,localIP,nNewBlockHeight,nActualTimeMillisInterval);
 
     SetThreadPriority(THREAD_PRIORITY_NORMAL);
     //coin base add extra data
@@ -700,6 +711,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     }
 
     LogPrintf("SPOS_Message:test block success\n");
+    if(masternodeSPosCount==1)//XJTODO
+        MilliSleep(Params().GetConsensus().nSPOSTargetSpacing*1000);
     ProcessBlockFound(pblock, chainparams);
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     coinbaseScript->KeepScript();
@@ -707,6 +720,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     nGenerateBlockHeight = nNewBlockHeight;
     // In regression test mode, stop mining after a block is found. This
     // allows developers to controllably generate a block on demand.
+
     if (chainparams.MineBlocksOnDemand())
     {
         LogPrintf("SPOS_Warning:MineBlocksOnDemand\n");
@@ -766,7 +780,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 // on an obsolete chain. In regtest mode we expect to fly solo.
                 do {
                     bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
-                    if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
+                    if (/*!fvNodesEmpty &&*/ /*!IsInitialBlockDownload() &&*/ masternodeSync.IsSynced())
                         break;
                     MilliSleep(50);
                 } while (true);
