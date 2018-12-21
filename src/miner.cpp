@@ -650,11 +650,11 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
     //1.3
     int64_t nCurrTime = GetTimeMillis();
-    if(nCurrTime < pblock->nTime*1000)
+    if(nCurrTime < pindexPrev->nTime*1000)
     {
         string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
-        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pblock->nTime);
-        LogPrintf("SPOS_Warning:current time(%d,%s) less than new block time(%d,%s)\n",nCurrTime/1000,strCurrTime,pblock->nTime,strBlockTime);
+        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
+        LogPrintf("SPOS_Warning:current time(%d,%s) less than new block time(%d,%s)\n",nCurrTime/1000,strCurrTime,pindexPrev->nTime,strBlockTime);
         return;
     }
 
@@ -670,7 +670,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     string masterIP = mn.addr.ToStringIP();
     string localIP = activeMasternode.service.ToStringIP();
 
-    nNextTime = g_nStartNewLoopTime + (index+1)*interval*1000;
+    nNextTime = g_nStartNewLoopTime + index*interval*1000;
     if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode && nNewBlockHeight != nWaitBlockHeight)
     {
         nWaitBlockHeight = nNewBlockHeight;
@@ -709,6 +709,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     ProcessBlockFound(pblock, chainparams);
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     coinbaseScript->KeepScript();
+    MilliSleep(nIntervalMS);
 
     nGenerateBlockHeight = nNewBlockHeight;
     // In regression test mode, stop mining after a block is found. This
