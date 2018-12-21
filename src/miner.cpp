@@ -661,24 +661,22 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
     nCurrTime += interval*1000;
     int64_t nTimeInerval = (nCurrTime - g_nStartNewLoopTime) / 1000;
-    int index = nTimeInerval / interval % masternodeSPosCount;
-    if(masternodeSPosCount==1)//XJTODO
-        index = 1;
-    else if(index<1)
+    int index = (nTimeInerval / interval - 1) % masternodeSPosCount;
+    if(index<0)
     {
-        LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval\n",index,nTimeInerval);
+        LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval:%d\n",index,nTimeInerval);
         return;
     }
-    CMasternode& mn = g_vecResultMasternodes[index-1];
+    CMasternode& mn = g_vecResultMasternodes[index];
     string masterIP = mn.addr.ToStringIP();
     string localIP = activeMasternode.service.ToStringIP();
 
-    nNextTime = g_nStartNewLoopTime + index*interval*1000;
+    nNextTime = g_nStartNewLoopTime + (index+1)*interval*1000;
 
     //XJTODO,Test codes can annotate this,remove it
     if(localIP != masterIP)
     {
-        LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block:%d.\n",index-1,masterIP,nNewBlockHeight);
+        LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block:%d.\n",index,masterIP,nNewBlockHeight);
         return;
     }
     if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
@@ -698,7 +696,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     }
 
     //it's turn to generate block
-    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d\n",index-1,localIP,nNewBlockHeight,nActualTimeMillisInterval);
+    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d\n",index,localIP,nNewBlockHeight,nActualTimeMillisInterval);
 
     SetThreadPriority(THREAD_PRIORITY_NORMAL);
     //coin base add extra data
@@ -779,7 +777,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 // Busy-wait for the network to come online so we don't waste time mining
                 // on an obsolete chain. In regtest mode we expect to fly solo.
                 do {
-                    bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
+                    bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;//XJTODO
                     if (/*!fvNodesEmpty &&*/ /*!IsInitialBlockDownload() &&*/ masternodeSync.IsSynced())
                         break;
                     MilliSleep(50);
