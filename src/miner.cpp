@@ -659,8 +659,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     }
 
     int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
-    nCurrTime += interval*1000;
-    int64_t nTimeInerval = (nCurrTime - g_nStartNewLoopTime) / 1000;
+    int64_t nTimeInerval = (nCurrTime + interval*1000 - g_nStartNewLoopTime) / 1000;
     int index = (nTimeInerval / interval - 1) % masternodeSPosCount;
     if(index<0)
     {
@@ -684,8 +683,9 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
     int64_t nIntervalMS = 500;
     int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-    if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0)
+    if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && nNewBlockHeight != nWaitBlockHeight)
     {
+        nWaitBlockHeight = nNewBlockHeight;
         LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) less than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
         return;
     }
