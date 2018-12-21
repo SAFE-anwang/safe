@@ -4632,8 +4632,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
-    if(IsStartSPosHeight(pindex->nHeight+1))
-        SelectMasterNode(pindex->nHeight+1,block.nTime);
+    if(IsStartSPosHeight(pindex->nHeight))
+        SelectMasterNode(pindex->nHeight,block.nTime);
     return true;
 }
 

@@ -627,7 +627,7 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,CBlockIndex* pindexPrev
                              ,unsigned int& nGenerateBlockHeight,unsigned int nNewBlockHeight,CBlock *pblock
                              ,boost::shared_ptr<CReserveScript>& coinbaseScript,unsigned int nTransactionsUpdatedLast
-                             ,int64_t& nNextTime,unsigned int nWaitBlockHeight)
+                             ,int64_t& nNextTime,unsigned int& nWaitBlockHeight)
 {
     if(nGenerateBlockHeight == nNewBlockHeight)
         return;
@@ -635,7 +635,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     unsigned int masternodeSPosCount = g_vecResultMasternodes.size();
     if(masternodeSPosCount == 0)
     {
-        SelectMasterNode(nNewBlockHeight,pindexPrev->nTime);
+        SelectMasterNode(pindexPrev->nHeight,pindexPrev->nTime);
         masternodeSPosCount = g_vecResultMasternodes.size();
         if(masternodeSPosCount == 0)
         {
