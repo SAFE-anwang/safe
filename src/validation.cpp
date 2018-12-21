@@ -5504,7 +5504,7 @@ bool CheckSPOSBlock(const CBlock& block, CValidationState& state)
     int64_t nNowTime = GetTime();
     //XJTODO tmp annote
     if (block.GetBlockTime() - nNowTime > AllowableErrorTime)
-        return state.DoS(100, error("SPOS CheckSPOSBlock(): block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d"
+        return state.DoS(100, error("SPOS CheckSPOSBlock(): block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d,please check local time correct"
                                     ,nNowTime,block.GetBlockTime(),AllowableErrorTime), REJECT_INVALID, "bad-nTime", true);
 
     CTransaction tempTransaction  = block.vtx[0];

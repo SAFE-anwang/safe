@@ -626,8 +626,8 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 */
 static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,CBlockIndex* pindexPrev
                              ,unsigned int& nGenerateBlockHeight,unsigned int nNewBlockHeight,CBlock *pblock
-                             ,boost::shared_ptr<CReserveScript>& coinbaseScript
-                             ,unsigned int nTransactionsUpdatedLast,int64_t& nNextTime)
+                             ,boost::shared_ptr<CReserveScript>& coinbaseScript,unsigned int nTransactionsUpdatedLast
+                             ,int64_t& nNextTime,unsigned int nWaitBlockHeight)
 {
     if(nGenerateBlockHeight == nNewBlockHeight)
         return;
@@ -672,16 +672,11 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     string localIP = activeMasternode.service.ToStringIP();
 
     nNextTime = g_nStartNewLoopTime + (index+1)*interval*1000;
-
-    //XJTODO,Test codes can annotate this,remove it
-    if(localIP != masterIP)
+    if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode && nNewBlockHeight != nWaitBlockHeight)
     {
+        nWaitBlockHeight = nNewBlockHeight;
         LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block:%d.\n",index,masterIP,nNewBlockHeight);
-        return;
-    }
-    if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
-    {
-        LogPrintf("SPOS_Error:local collateral address:%s is different to worker masternode collateral address:%s\n"
+        LogPrintf("SPOS_Message:local collateral address:%s is different to worker masternode collateral address:%s\n"
                   ,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
                   ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
         return;
@@ -705,8 +700,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
     CValidationState state;
     if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        LogPrintf("SPOS_Warning:blockHeight:%d,%s: TestBlockValidity failed: %s", nNewBlockHeight,__func__, FormatStateMessage(state));
-        return;
+        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
     }
 
     LogPrintf("SPOS_Message:test block success\n");
@@ -771,7 +765,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             throw std::runtime_error("No coinbase script available (mining requires a wallet)");
 
         g_nStartNewLoopTime = GetTimeMillis();
-        unsigned int nGenerateBlockHeight = 0;
+        unsigned int nGenerateBlockHeight = 0,nWaitBlockHeight = 0;
         int64_t nNextBlockTime = 0;
         while (true) {
             if (chainparams.MiningRequiresPeers()) {
@@ -807,7 +801,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                     ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
                 ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nNewBlockHeight,pblock,coinbaseScript
-                                 ,nTransactionsUpdatedLast,nNextBlockTime);
+                                 ,nTransactionsUpdatedLast,nNextBlockTime,nWaitBlockHeight);
             }
             MilliSleep(50);
         }
