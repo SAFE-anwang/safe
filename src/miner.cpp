@@ -375,7 +375,7 @@ void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned
 /*
  * SPOS Coinbase add version,serailze KeyID and the sign of the collateral address
 */
-bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,CMasternode& mn)
+bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,const CMasternode& mn)
 {
     unsigned int nHeight = pindexPrev->nHeight+1;
     CMutableTransaction txCoinbase(pblock->vtx[0]);
@@ -635,6 +635,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     unsigned int masternodeSPosCount = g_vecResultMasternodes.size();
     if(masternodeSPosCount == 0)
     {
+        LogPrintf("masternode is 0,select again\n");
         SelectMasterNode(pindexPrev->nHeight,pindexPrev->nTime);
         masternodeSPosCount = g_vecResultMasternodes.size();
         if(masternodeSPosCount == 0)
@@ -661,7 +662,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
     int64_t nTimeInerval = (nCurrTime + interval*1000 - g_nStartNewLoopTime) / 1000;
     int index = (nTimeInerval / interval - 1) % masternodeSPosCount;
-    if(index<0)
+    if(index<0||index>=(int)masternodeSPosCount)
     {
         LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval:%d\n",index,nTimeInerval);
         return;

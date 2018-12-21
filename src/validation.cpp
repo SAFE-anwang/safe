@@ -5533,7 +5533,7 @@ bool CheckSPOSBlock(const CBlock& block, CValidationState& state)
 
     //int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_nMasternodeSPosCount;
     int32_t nIndex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_vecResultMasternodes.size();
-    CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
+    const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
 
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
@@ -8909,7 +8909,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
 {
     if(g_nLastSelectMasterNodeHeight == nCurrBlockHeight)
     {
-        LogPrintf("g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d,not SelectMasterNode\n",nCurrBlockHeight);
+        LogPrintf("SPOS_Message:g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d,not SelectMasterNode\n",nCurrBlockHeight);
         return;
     }
 
@@ -8917,6 +8917,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     if(ret != 0 )
         return;
 
+    LogPrintf("SPOS_Message:start select masternode.\n");
     std::map<COutPoint, CMasternode> mapMasternodes;
     if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
     {
@@ -9026,7 +9027,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
               ,localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,strBlockTime,size);
     for( uint32_t i = 0; i < size; ++i )
     {
-        CMasternode& mn = g_vecResultMasternodes[i];
+        const CMasternode& mn = g_vecResultMasternodes[i];
         LogPrintf("SPOS_Message:masterNodeIP[%d]:%s\n", i, mn.addr.ToStringIP());
     }
 
