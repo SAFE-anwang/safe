@@ -672,22 +672,26 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     string localIP = activeMasternode.service.ToStringIP();
 
     nNextTime = g_nStartNewLoopTime + index*interval*1000;
-    if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode && nNewBlockHeight != nWaitBlockHeight)
+    if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
     {
+        if(nNewBlockHeight != nWaitBlockHeight)
+        {
+            LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block:%d.\n",index,masterIP,nNewBlockHeight);
+            LogPrintf("SPOS_Message:local collateral address:%s is different to worker masternode collateral address:%s\n"
+                      ,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
+                      ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
+        }
         nWaitBlockHeight = nNewBlockHeight;
-        LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block:%d.\n",index,masterIP,nNewBlockHeight);
-        LogPrintf("SPOS_Message:local collateral address:%s is different to worker masternode collateral address:%s\n"
-                  ,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
-                  ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
         return;
     }
 
     int64_t nIntervalMS = 500;
     int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-    if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && nNewBlockHeight != nWaitBlockHeight)
+    if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0)
     {
+        if(nNewBlockHeight != nWaitBlockHeight)
+            LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) less than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
         nWaitBlockHeight = nNewBlockHeight;
-        LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) less than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
         return;
     }
 
