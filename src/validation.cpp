@@ -4632,7 +4632,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
-    if(IsStartSPosHeight(pindex->nHeight))
+    if(IsStartSPosHeight(pindex->nHeight+1))
         SelectMasterNode(pindex->nHeight,block.nTime);
     return true;
 }
@@ -8905,15 +8905,15 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
     return true;
 }
 
-void SelectMasterNode(unsigned int nNewBlockHeight, uint32_t nTime)
+void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
 {
-    if(g_nLastSelectMasterNodeHeight == nNewBlockHeight)
+    if(g_nLastSelectMasterNodeHeight == nCurrBlockHeight)
     {
-        LogPrintf("g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d,not SelectMasterNode\n",nNewBlockHeight);
+        LogPrintf("g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d,not SelectMasterNode\n",nCurrBlockHeight);
         return;
     }
 
-    unsigned int ret = nNewBlockHeight % g_nMasternodeSPosCount;
+    unsigned int ret = nCurrBlockHeight % g_nMasternodeSPosCount;
     if(ret != 0 )
         return;
 
@@ -9023,12 +9023,12 @@ void SelectMasterNode(unsigned int nNewBlockHeight, uint32_t nTime)
     string localIpPortInfo = activeMasternode.service.ToString();
     uint32_t size = g_vecResultMasternodes.size();
     LogPrintf("SPOS:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode\n"
-              ,localIpPortInfo,nNewBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,strBlockTime,size);
+              ,localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,strBlockTime,size);
     for( uint32_t i = 0; i < size; ++i )
     {
         CMasternode& mn = g_vecResultMasternodes[i];
         LogPrintf("SPOS_Message:masterNodeIP[%d]:%s\n", i, mn.addr.ToStringIP());
     }
 
-    g_nLastSelectMasterNodeHeight = nNewBlockHeight;
+    g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
 }
