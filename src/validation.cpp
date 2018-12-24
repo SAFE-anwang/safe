@@ -5962,6 +5962,8 @@ bool ProcessNewBlock(const CChainParams& chainparams, const CBlock* pblock, bool
 bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams, const CBlock& block, CBlockIndex* pindexPrev, bool fCheckPOW, bool fCheckMerkleRoot)
 {
     AssertLockHeld(cs_main);
+    if(pindexPrev != chainActive.Tip())
+        LogPrintf("pindexPrev != chainActive.Tip(),%s\n",pindexPrev->ToString());
     assert(pindexPrev && pindexPrev == chainActive.Tip());
     if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, block.GetHash()))
         return error("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
