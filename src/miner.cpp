@@ -697,7 +697,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         {
             if(nNewBlockHeight != nWaitBlockHeight)
                 LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
-                          ,nActualTimeMillisInterval,nIntervalMS,nNewBlockHeight,g_nSposIndex);
+                          ,nActualTimeMillisInterval,nIntervalMS,pindexPrev->nHeight,g_nSposIndex);
             nWaitBlockHeight = nNewBlockHeight;
             return;
         }
@@ -717,8 +717,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         }
 
         LogPrintf("SPOS_Message:test block success\n");
-        ProcessBlockFound(pblock, chainparams);
         g_nSposIndex++;
+        ProcessBlockFound(pblock, chainparams);
 
         LogPrintf("SPOS_Message:pblock height:%d,index:%d\n",nNewBlockHeight,((pblock->GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % masternodeSPosCount);
         SetThreadPriority(THREAD_PRIORITY_LOWEST);
