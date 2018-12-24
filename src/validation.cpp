@@ -5538,8 +5538,11 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     if (!masternodeSync.IsBlockchainSynced())
         return true;
 
-    //int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_nMasternodeSPosCount;
-    int32_t nIndex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_vecResultMasternodes.size();
+    int32_t mnSize = g_vecResultMasternodes.size();
+    if(mnSize == 0)
+        return state.DoS(100, error("SPOS CheckSPOSBlock():height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
+                                    ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-mnSize", true);
+    int32_t nIndex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % mnSize;
     int32_t nNewIndex = ((block.GetBlockTime() + Params().GetConsensus().nSPOSTargetSpacing - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1) % g_vecResultMasternodes.size();
     const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
 
