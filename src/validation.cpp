@@ -74,6 +74,7 @@ using namespace std;
  */
 
 CCriticalSection cs_main;
+CCriticalSection cs_spos;
 
 BlockMap mapBlockIndex;
 CChain chainActive;
@@ -4633,7 +4634,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
     if(IsStartSPosHeight(pindex->nHeight+1))
+    {
+        LogPrintf("SPOS_Message:connect block:%d\n",pindex->nHeight);
+        LOCK(cs_spos);
         SelectMasterNode(pindex->nHeight,block.nTime);
+    }
     return true;
 }
 
@@ -5498,6 +5503,7 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
 
 bool CheckSPOSBlock(const CBlock& block, CValidationState& state)
 {
+    LOCK(cs_spos);
     if (block.nBits != 0 || block.nNonce != 0)
         return state.DoS(100, error(" SPOS CheckSPOSBlock(): block.nBits or block.nNonce not equal to 0"), REJECT_INVALID, "bad-nBits-nNonce", true);
 
@@ -8917,7 +8923,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     if(ret != 0 )
         return;
 
-    LogPrintf("SPOS_Message:start select masternode.\n");
+    LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d.\n",nCurrBlockHeight);
     std::map<COutPoint, CMasternode> mapMasternodes;
     if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
     {
