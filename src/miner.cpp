@@ -694,8 +694,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
         if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0)
         {
-            if(nNewBlockHeight != nWaitBlockHeight)
-                LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) less than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
+            //if(nNewBlockHeight != nWaitBlockHeight)
+            LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) less than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
             nWaitBlockHeight = nNewBlockHeight;
             return;
         }
