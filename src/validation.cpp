@@ -5541,7 +5541,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
 
     //int32_t nindex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_nMasternodeSPosCount;
     int32_t nIndex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % g_vecResultMasternodes.size();
-    int32_t nNewIndex = ((block.GetBlockTime() + Params().GetConsensus().nSPOSTargetSpacing*1000 - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1) % g_vecResultMasternodes.size();
+    int32_t nNewIndex = ((block.GetBlockTime() + Params().GetConsensus().nSPOSTargetSpacing - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1) % g_vecResultMasternodes.size();
     const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
 
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();

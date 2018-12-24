@@ -657,6 +657,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
         //1.3
         int64_t nCurrTime = GetTimeMillis();
+        pblock->nTime = GetAdjustedTime();
         if(nCurrTime < pindexPrev->nTime*1000)
         {
             string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
@@ -666,7 +667,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         }
 
         int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
-        int64_t nTimeInerval = (nCurrTime + interval*1000 - g_nStartNewLoopTime) / 1000;
+        int64_t nTimeInerval = (pblock->nTime*1000 + interval*1000 - g_nStartNewLoopTime) / 1000;
         int index = (nTimeInerval / interval - 1) % masternodeSPosCount;
         if(index<0||index>=(int)masternodeSPosCount)
         {
@@ -694,15 +695,15 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
         if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0)
         {
-            //if(nNewBlockHeight != nWaitBlockHeight)
-            LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) less than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
+            if(nNewBlockHeight != nWaitBlockHeight)
+                LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
             nWaitBlockHeight = nNewBlockHeight;
             return;
         }
 
         //it's turn to generate block
-        LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld\n"
-                  ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime);
+        LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,blockTime:%lld\n"
+                  ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime,pblock->nTime);
 
         SetThreadPriority(THREAD_PRIORITY_NORMAL);
         //coin base add extra data
