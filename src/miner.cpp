@@ -678,7 +678,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         string masterIP = mn.addr.ToStringIP();
         string localIP = activeMasternode.service.ToStringIP();
 
-        nNextTime = g_nStartNewLoopTime*1000 + index*interval*1000;
+        nNextTime = g_nStartNewLoopTime + (nTimeInerval / interval - 1)*interval*1000;
         if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
         {
             if(nNewBlockHeight != nWaitBlockHeight)
@@ -779,7 +779,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
         if (!coinbaseScript || coinbaseScript->reserveScript.empty())
             throw std::runtime_error("No coinbase script available (mining requires a wallet)");
 
-        g_nStartNewLoopTime = GetTimeMillis();
+        g_nStartNewLoopTime = GetTimeMillis()*1000;
         unsigned int nGenerateBlockHeight = 0,nWaitBlockHeight = 0;
         int64_t nNextBlockTime = 0;
         while (true) {
