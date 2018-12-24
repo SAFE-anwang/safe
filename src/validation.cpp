@@ -3988,6 +3988,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTimeStart = GetTimeMicros();
 
     // Check it again in case a previous version let a bad block in
+    LogPrintf("SPOS_Message:XJTODO,connect block,check block.\n");
     if (!CheckBlock(block, pindex->nHeight, state, !fJustCheck, !fJustCheck))
         return false;
 
@@ -5883,6 +5884,7 @@ static bool AcceptBlock(const CBlock& block, CValidationState& state, const CCha
     }
     if (fNewBlock) *fNewBlock = true;
 
+    LogPrintf("SPOS_Message:XJTODO,accept block,check block.\n");
     if ((!CheckBlock(block, pindex->nHeight, state)) || !ContextualCheckBlock(block, state, pindex->pprev)) {
         if (state.IsInvalid() && !state.CorruptionPossible()) {
             pindex->nStatus |= BLOCK_FAILED_VALID;
@@ -5971,6 +5973,7 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!ContextualCheckBlockHeader(block, state, pindexPrev))
         return false;
+    LogPrintf("SPOS_Message:XJTODO,test block validity,check block.\n");
     if (!CheckBlock(block, indexDummy.nHeight, state, fCheckPOW, fCheckMerkleRoot))
         return false;
     if (!ContextualCheckBlock(block, state, pindexPrev))
@@ -6316,6 +6319,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
             return error("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 1: verify block validity
+        LogPrintf("SPOS_Message:XJTODO,verifydb,check block.\n");
         if (nCheckLevel >= 1 && !CheckBlock(block, pindex->nHeight, state))
             return error("VerifyDB(): *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 2: verify undo validity
