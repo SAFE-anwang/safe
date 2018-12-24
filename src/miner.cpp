@@ -696,7 +696,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposIndex != 0)
         {
             if(nNewBlockHeight != nWaitBlockHeight)
-                LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
+                LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
+                          ,nActualTimeMillisInterval,nIntervalMS,nNewBlockHeight,g_nSposIndex);
             nWaitBlockHeight = nNewBlockHeight;
             return;
         }
