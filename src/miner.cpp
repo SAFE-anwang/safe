@@ -710,23 +710,23 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         //coin base add extra data
         if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
             return;
-    }
-    CValidationState state;
-    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-    }
 
-    LogPrintf("SPOS_Message:test block success\n");
-    if(masternodeSPosCount==1)//XJTODO
-        MilliSleep(Params().GetConsensus().nSPOSTargetSpacing*1000);
-    ProcessBlockFound(pblock, chainparams);
-    {
-        LOCK(cs_spos);
+        CValidationState state;
+        if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+            throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+        }
+
+        LogPrintf("SPOS_Message:test block success\n");
+        ProcessBlockFound(pblock, chainparams);
         g_nSposIndex++;
     }
+
     LogPrintf("SPOS_Message:pblock height:%d,index:%d\n",nNewBlockHeight,((pblock->GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % masternodeSPosCount);
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     coinbaseScript->KeepScript();
+
+    if(masternodeSPosCount==1)//XJTODO
+        MilliSleep(Params().GetConsensus().nSPOSTargetSpacing*1000);
 
     MilliSleep(nIntervalMS);
 
