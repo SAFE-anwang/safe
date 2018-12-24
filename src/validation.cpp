@@ -9039,7 +9039,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     for( uint32_t i = 0; i < size; ++i )
     {
         const CMasternode& mn = g_vecResultMasternodes[i];
-        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s\n", i, mn.addr.ToStringIP());
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s\n", i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString());
     }
 
     g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
