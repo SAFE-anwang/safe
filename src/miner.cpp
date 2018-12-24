@@ -635,91 +635,89 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
     int64_t nIntervalMS = 500;
     unsigned int masternodeSPosCount = 0;
-    {
-        LOCK(cs_spos);
+    LOCK(cs_spos);
 
+    masternodeSPosCount = g_vecResultMasternodes.size();
+    if(masternodeSPosCount == 0)
+    {
+        LogPrintf("SPOS_Warning:masternode is 0,select again\n");
+        SelectMasterNode(pindexPrev->nHeight,pindexPrev->nTime);
         masternodeSPosCount = g_vecResultMasternodes.size();
         if(masternodeSPosCount == 0)
         {
-            LogPrintf("SPOS_Warning:masternode is 0,select again\n");
-            SelectMasterNode(pindexPrev->nHeight,pindexPrev->nTime);
-            masternodeSPosCount = g_vecResultMasternodes.size();
-            if(masternodeSPosCount == 0)
-            {
-                LogPrintf("SPOS_Error:vecMasternodes is empty\n");
-                return;
-            }
-        }
-
-        //if masternodeSPosCount less than g_nMasternodeSPosCount,still continue,just % actual masternodeSPosCount
-        if(masternodeSPosCount != g_nMasternodeSPosCount)
-            LogPrintf("SPOS_Warning:system g_nMasternodeSPosCount:%d,curr vecMasternodes size:%d\n",g_nMasternodeSPosCount,masternodeSPosCount);
-
-        //1.3
-        int64_t nCurrTime = GetTimeMillis();
-        pblock->nTime = GetAdjustedTime();
-        if(nCurrTime < (int64_t)pindexPrev->nTime*1000)
-        {
-            string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
-            string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
-            LogPrintf("SPOS_Warning:current time(%d,%s) less than new block time(%d,%s)\n",nCurrTime/1000,strCurrTime,pindexPrev->nTime,strBlockTime);
+            LogPrintf("SPOS_Error:vecMasternodes is empty\n");
             return;
         }
-
-        int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
-        int64_t nTimeInerval = pblock->nTime + interval - g_nStartNewLoopTime/ 1000;
-        int64_t nTimeIntervalCnt = (nTimeInerval / interval - 1);
-        int index = nTimeIntervalCnt % masternodeSPosCount;
-        if(index<0||index>=(int)masternodeSPosCount)
-        {
-            LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval:%d\n",index,nTimeInerval);
-            return;
-        }
-        CMasternode& mn = g_vecResultMasternodes[index];
-        string masterIP = mn.addr.ToStringIP();
-        string localIP = activeMasternode.service.ToStringIP();
-
-        nNextTime = g_nStartNewLoopTime + nTimeIntervalCnt*interval*1000;
-        if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
-        {
-            if(nNewBlockHeight != nWaitBlockHeight)
-            {
-                LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.\n",index,masterIP,pindexPrev->nHeight);
-                LogPrintf("SPOS_Message:local collateral address:%s is different to worker masternode collateral address:%s\n"
-                          ,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
-                          ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
-            }
-            nWaitBlockHeight = nNewBlockHeight;
-            return;
-        }
-
-        int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposIndex != 0)
-        {
-            if(nNewBlockHeight != nWaitBlockHeight)
-                LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
-            nWaitBlockHeight = nNewBlockHeight;
-            return;
-        }
-
-        //it's turn to generate block
-        LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,blockTime:%lld\n"
-                  ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime,pblock->nTime);
-
-        SetThreadPriority(THREAD_PRIORITY_NORMAL);
-        //coin base add extra data
-        if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
-            return;
-
-        CValidationState state;
-        if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-            throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-        }
-
-        LogPrintf("SPOS_Message:test block success\n");
-        ProcessBlockFound(pblock, chainparams);
-        g_nSposIndex++;
     }
+
+    //if masternodeSPosCount less than g_nMasternodeSPosCount,still continue,just % actual masternodeSPosCount
+    if(masternodeSPosCount != g_nMasternodeSPosCount)
+        LogPrintf("SPOS_Warning:system g_nMasternodeSPosCount:%d,curr vecMasternodes size:%d\n",g_nMasternodeSPosCount,masternodeSPosCount);
+
+    //1.3
+    int64_t nCurrTime = GetTimeMillis();
+    pblock->nTime = GetAdjustedTime();
+    if(nCurrTime < (int64_t)pindexPrev->nTime*1000)
+    {
+        string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
+        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
+        LogPrintf("SPOS_Warning:current time(%d,%s) less than new block time(%d,%s)\n",nCurrTime/1000,strCurrTime,pindexPrev->nTime,strBlockTime);
+        return;
+    }
+
+    int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
+    int64_t nTimeInerval = pblock->nTime + interval - g_nStartNewLoopTime/ 1000;
+    int64_t nTimeIntervalCnt = (nTimeInerval / interval - 1);
+    int index = nTimeIntervalCnt % masternodeSPosCount;
+    if(index<0||index>=(int)masternodeSPosCount)
+    {
+        LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval:%d\n",index,nTimeInerval);
+        return;
+    }
+    CMasternode& mn = g_vecResultMasternodes[index];
+    string masterIP = mn.addr.ToStringIP();
+    string localIP = activeMasternode.service.ToStringIP();
+
+    nNextTime = g_nStartNewLoopTime + nTimeIntervalCnt*interval*1000;
+    if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
+    {
+        if(nNewBlockHeight != nWaitBlockHeight)
+        {
+            LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.\n",index,masterIP,pindexPrev->nHeight);
+            LogPrintf("SPOS_Message:local collateral address:%s is different to worker masternode collateral address:%s\n"
+                      ,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
+                      ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
+        }
+        nWaitBlockHeight = nNewBlockHeight;
+        return;
+    }
+
+    int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
+    if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposIndex != 0)
+    {
+        if(nNewBlockHeight != nWaitBlockHeight)
+            LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
+        nWaitBlockHeight = nNewBlockHeight;
+        return;
+    }
+
+    //it's turn to generate block
+    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,blockTime:%lld\n"
+              ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime,pblock->nTime);
+
+    SetThreadPriority(THREAD_PRIORITY_NORMAL);
+    //coin base add extra data
+    if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
+        return;
+
+    CValidationState state;
+    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+    }
+
+    LogPrintf("SPOS_Message:test block success\n");
+    ProcessBlockFound(pblock, chainparams);
+    g_nSposIndex++;
 
     LogPrintf("SPOS_Message:pblock height:%d,index:%d\n",nNewBlockHeight,((pblock->GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % masternodeSPosCount);
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
