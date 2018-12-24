@@ -678,7 +678,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         string masterIP = mn.addr.ToStringIP();
         string localIP = activeMasternode.service.ToStringIP();
 
-        nNextTime = g_nStartNewLoopTime + index*interval*1000;
+        nNextTime = g_nStartNewLoopTime*1000 + index*interval*1000;
         if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
         {
             if(nNewBlockHeight != nWaitBlockHeight)
