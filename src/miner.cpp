@@ -668,7 +668,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
         int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
         int64_t nTimeInerval = pblock->nTime + interval - g_nStartNewLoopTime/ 1000;
-        int index = (nTimeInerval / interval - 1) % masternodeSPosCount;
+        int64_t nTimeIntervalCnt = (nTimeInerval / interval - 1);
+        int index = nTimeIntervalCnt % masternodeSPosCount;
         if(index<0||index>=(int)masternodeSPosCount)
         {
             LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval:%d\n",index,nTimeInerval);
@@ -678,7 +679,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         string masterIP = mn.addr.ToStringIP();
         string localIP = activeMasternode.service.ToStringIP();
 
-        nNextTime = g_nStartNewLoopTime + (nTimeInerval / interval - 1)*interval*1000;
+        nNextTime = g_nStartNewLoopTime + nTimeIntervalCnt*interval*1000;
         if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
         {
             if(nNewBlockHeight != nWaitBlockHeight)
@@ -693,7 +694,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         }
 
         int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && index != 0)
+        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposIndex != 0)
         {
             if(nNewBlockHeight != nWaitBlockHeight)
                 LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d)\n",nActualTimeMillisInterval,nIntervalMS);
@@ -719,6 +720,10 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     if(masternodeSPosCount==1)//XJTODO
         MilliSleep(Params().GetConsensus().nSPOSTargetSpacing*1000);
     ProcessBlockFound(pblock, chainparams);
+    {
+        LOCK(cs_spos);
+        g_nSposIndex++;
+    }
     LogPrintf("SPOS_Message:pblock height:%d,index:%d\n",nNewBlockHeight,((pblock->GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % masternodeSPosCount);
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     coinbaseScript->KeepScript();
