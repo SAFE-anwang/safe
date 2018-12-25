@@ -4060,9 +4060,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                         fScriptChecks = (GetBlockProofEquivalentTime(*pindexBestHeader, *pindex, *pindexBestHeader, chainparams.GetConsensus()) <= 60 * 60 * 24 * 7 * 2); 
                     }
                 }
-                else  //SPOS calculation method to be determined
+                else
                 {
-                    fScriptChecks = (GetBlockProofEquivalentTime(*pindexBestHeader, *pindex, *pindexBestHeader, chainparams.GetConsensus()) <= 60 * 60 * 24 * 7 * 2); 
+                    fScriptChecks = (GetBlockSPOSEquivalentTime(*pindexBestHeader, *pindex) <= 60 * 60 * 24 * 7 * 2); 
                 }
             }
         }

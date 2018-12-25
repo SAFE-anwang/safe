@@ -295,3 +295,20 @@ int64_t GetBlockProofEquivalentTime(const CBlockIndex& to, const CBlockIndex& fr
     }
     return sign * r.GetLow64();
 }
+
+int64_t GetBlockSPOSEquivalentTime(const CBlockIndex& to, const CBlockIndex& from)
+{
+    int sign = 1;
+    unsigned int r = 0;
+    if (to.GetBlockTime() > from.GetBlockTime())
+    {
+        r = to.GetBlockTime() - from.GetBlockTime();
+    } 
+    else 
+    {
+        r = from.GetBlockTime() - to.GetBlockTime();
+        sign = -1;
+    }
+
+    return sign * r
+}
