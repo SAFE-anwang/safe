@@ -2998,13 +2998,16 @@ void CheckForkWarningConditions()
         pindexBestForkTip = NULL;
 
     bool bBestWorkOrHeight = false;
-    if (IsStartSPosHeight(pindexBestInvalid->nHeight))
-        if (pindexBestInvalid && pindexBestInvalid->nHeight > chainActive.Tip()->nHeight + 6)
-            bBestWorkOrHeight = true;
-    else
-        if (pindexBestInvalid && pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + (GetBlockProof(*chainActive.Tip()) * 6))
-            bBestWorkOrHeight = true;
-        
+    if (pindexBestInvalid)
+    {
+        if (IsStartSPosHeight(pindexBestInvalid->nHeight))
+            if (pindexBestInvalid->nHeight > chainActive.Tip()->nHeight + 6)
+                bBestWorkOrHeight = true;
+        else
+            if (pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + (GetBlockProof(*chainActive.Tip()) * 6))
+                bBestWorkOrHeight = true;   
+    }
+
     if (pindexBestForkTip || bBestWorkOrHeight)
     {
         if (!fLargeWorkForkFound && pindexBestForkBase)
