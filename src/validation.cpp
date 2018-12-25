@@ -3002,7 +3002,7 @@ void CheckForkWarningConditions()
         if (pindexBestInvalid && pindexBestInvalid->nHeight > chainActive.Tip()->nHeight + 6)
             bBestWorkOrHeight = true;
     else
-        if (pindexBestInvalid && pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + (GetBlockProof(*chainActive.Tip()) * 6))
+        if (pindexBestInvalid && pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + GetBlockProof(*chainActive.Tip()) * 6)
             bBestWorkOrHeight = true;
         
     if (pindexBestForkTip || (pindexBestInvalid && bBestWorkOrHeight)
