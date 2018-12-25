@@ -655,8 +655,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
             LogPrintf("SPOS_Warning:system g_nMasternodeSPosCount:%d,curr vecMasternodes size:%d\n",g_nMasternodeSPosCount,masternodeSPosCount);
 
         //1.3
-        int64_t nCurrTime = GetTimeMillis();
         pblock->nTime = GetAdjustedTime();
+        int64_t nCurrTime = GetTimeMillis();
         if(nCurrTime < (int64_t)pindexPrev->nTime*1000)
         {
             string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
@@ -669,16 +669,17 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         int64_t nTimeInerval = pblock->nTime + interval - g_nStartNewLoopTime/ 1000;
         int64_t nTimeIntervalCnt = (nTimeInerval / interval - 1);
         int index = nTimeIntervalCnt % masternodeSPosCount;
+        nNextTime = g_nStartNewLoopTime + nTimeIntervalCnt*interval*1000;
         if(index<0||index>=(int)masternodeSPosCount)
         {
             LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval:%d\n",index,nTimeInerval);
             return;
         }
+
         CMasternode& mn = g_vecResultMasternodes[index];
         string masterIP = mn.addr.ToStringIP();
         string localIP = activeMasternode.service.ToStringIP();
 
-        nNextTime = g_nStartNewLoopTime + nTimeIntervalCnt*interval*1000;
         if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
         {
             if(nNewBlockHeight != nWaitBlockHeight)
@@ -693,6 +694,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         }
 
         int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
+        LogPrintf("nActualTimeMillisInterval:%d,nCurrTime:%d,nNextTime:%d\n",nActualTimeMillisInterval,nCurrTime,nNextTime);
         if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposIndex != 0)
         {
             if(nNewBlockHeight != nWaitBlockHeight)
@@ -821,8 +823,12 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 LogPrintf("SafeSposMiner -- Running miner with %u transactions in block (%u bytes)\n", pblock->vtx.size(),
                     ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
+                int64_t t_start = GetTimeMillis();
                 ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nNewBlockHeight,pblock,coinbaseScript
                                  ,nTransactionsUpdatedLast,nNextBlockTime,nWaitBlockHeight);
+                int64_t t_end = GetTimeMillis();
+                if(t_end-t_start>1)
+                    LogPrintf("SPOS_Message:ConsensusUseSPos time cost:%d\n",t_end-t_start);
             }
             MilliSleep(50);
         }
