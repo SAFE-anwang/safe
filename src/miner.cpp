@@ -694,13 +694,10 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         }
 
         int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-        LogPrintf("nActualTimeMillisInterval:%d,nCurrTime:%d,nNextTime:%d\n",nActualTimeMillisInterval,nCurrTime,nNextTime);
-        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposIndex != 0)
+        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && index != 0 && g_nSposIndex != index)
         {
-            if(nNewBlockHeight != nWaitBlockHeight)
-                LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
-                          ,nActualTimeMillisInterval,nIntervalMS,pindexPrev->nHeight,g_nSposIndex);
-            nWaitBlockHeight = nNewBlockHeight;
+            LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
+                      ,nActualTimeMillisInterval,nIntervalMS,pindexPrev->nHeight,g_nSposIndex);
             return;
         }
 
@@ -718,11 +715,11 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
             throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
         }
 
-        LogPrintf("SPOS_Message:test block success\n");
-        g_nSposIndex++;
+        LogPrintf("SPOS_Message:test block validate success\n");
+        g_nSposIndex = index;
         ProcessBlockFound(pblock, chainparams);
 
-        LogPrintf("SPOS_Message:pblock height:%d,index:%d\n",nNewBlockHeight,((pblock->GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % masternodeSPosCount);
+        LogPrintf("SPOS_Message:generate pblock height:%d,index:%d\n",nNewBlockHeight,((pblock->GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % masternodeSPosCount);
         SetThreadPriority(THREAD_PRIORITY_LOWEST);
         coinbaseScript->KeepScript();
 
@@ -823,12 +820,8 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 LogPrintf("SafeSposMiner -- Running miner with %u transactions in block (%u bytes)\n", pblock->vtx.size(),
                     ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
-                int64_t t_start = GetTimeMillis();
                 ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nNewBlockHeight,pblock,coinbaseScript
                                  ,nTransactionsUpdatedLast,nNextBlockTime,nWaitBlockHeight);
-                int64_t t_end = GetTimeMillis();
-                if(t_end-t_start>1)
-                    LogPrintf("SPOS_Message:ConsensusUseSPos time cost:%d\n",t_end-t_start);
             }
             MilliSleep(50);
         }
