@@ -37,6 +37,7 @@
 #include "masternodeman.h"
 #include "privatesend-client.h"
 #include "privatesend-server.h"
+#include "main.h"
 
 #include <boost/thread.hpp>
 
@@ -321,8 +322,12 @@ void ProcessBlockAvailability(NodeId nodeid) {
     if (!state->hashLastUnknownBlock.IsNull()) {
         BlockMap::iterator itOld = mapBlockIndex.find(state->hashLastUnknownBlock);
         if (itOld != mapBlockIndex.end() && itOld->second->nChainWork > 0) {
-            if (state->pindexBestKnownBlock == NULL || itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
-                state->pindexBestKnownBlock = itOld->second;
+            if (IsStartSPosHeight(itOld->second->nHeight))
+                if (state->pindexBestKnownBlock == NULL || itOld->second->nHeight >= state->pindexBestKnownBlock->nHeight)
+                    state->pindexBestKnownBlock = itOld->second;
+            else
+                if (state->pindexBestKnownBlock == NULL || itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
+                    state->pindexBestKnownBlock = itOld->second;
             state->hashLastUnknownBlock.SetNull();
         }
     }
@@ -338,8 +343,12 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
     BlockMap::iterator it = mapBlockIndex.find(hash);
     if (it != mapBlockIndex.end() && it->second->nChainWork > 0) {
         // An actually better block was announced.
-        if (state->pindexBestKnownBlock == NULL || it->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
-            state->pindexBestKnownBlock = it->second;
+        if (IsStartSPosHeight(it->second->nHeight))
+            if (state->pindexBestKnownBlock == NULL || it->second->nHeight >= state->pindexBestKnownBlock->nHeight)
+                state->pindexBestKnownBlock = it->second;
+        else
+            if (state->pindexBestKnownBlock == NULL || it->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
+                state->pindexBestKnownBlock = it->second;
     } else {
         // An unknown block was announced; just assume that the latest one is the best one.
         state->hashLastUnknownBlock = hash;
@@ -397,9 +406,19 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
     // Make sure pindexBestKnownBlock is up to date, we'll need it.
     ProcessBlockAvailability(nodeid);
 
-    if (state->pindexBestKnownBlock == NULL || state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork || state->pindexBestKnownBlock->nChainWork < UintToArith256(consensusParams.nMinimumChainWork)) {
-        // This peer has nothing interesting.
-        return;
+    if (IsStartSPosHeight(chainActive.Tip()->nHeight))
+    {
+         if (state->pindexBestKnownBlock == NULL || state->pindexBestKnownBlock->nHeight < chainActive.Tip()->nHeight) {
+            // This peer has nothing interesting.
+            return;
+        }
+    }
+    else
+    {
+         if (state->pindexBestKnownBlock == NULL || state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork || state->pindexBestKnownBlock->nChainWork < UintToArith256(consensusParams.nMinimumChainWork)) {
+            // This peer has nothing interesting.
+            return;
+        }
     }
 
     if (state->pindexLastCommonBlock == NULL) {
@@ -1894,7 +1913,16 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         CNodeState *nodestate = State(pfrom->GetId());
         // If this set of headers is valid and ends in a block with at least as
         // much work as our tip, download as much as possible.
-        if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && chainActive.Tip()->nChainWork <= pindexLast->nChainWork) {
+
+        bool bNewEffectiveBlock = false;
+        if (IsStartSPosHeight(pindexLast->nHeight))
+            if (chainActive.Tip()->nHeight <= pindexLast->nHeight)
+                bNewEffectiveBlock = true;
+        else
+            if (chainActive.Tip()->nChainWork <= pindexLast->nChainWork)
+                bNewEffectiveBlock = true;
+        
+        if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && bNewEffectiveBlock) {
             vector<CBlockIndex *> vToFetch;
             CBlockIndex *pindexWalk = pindexLast;
             // Calculate all the blocks we'd need to switch to pindexLast, up to a limit.
