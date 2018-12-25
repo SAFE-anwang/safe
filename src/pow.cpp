@@ -310,5 +310,5 @@ int64_t GetBlockSPOSEquivalentTime(const CBlockIndex& to, const CBlockIndex& fro
         sign = -1;
     }
 
-    return sign * r
+    return sign * r;
 }
