@@ -649,7 +649,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                 if (nTxHeight >= g_nStartSPOSHeight)
                 {
                     if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
-                        return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height");
+                        return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height" + strprintf(",txout.nUnlockedHeight:%lld,nTxHeight:%lld,nOffset:%lld", txout.nUnlockedHeight, nTxHeight, nOffset));
                 }
                 else
                 {
@@ -666,7 +666,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                     if (nTxHeight >= g_nStartSPOSHeight)
                     {
                         if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
-                            return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height");
+                            return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height" + strprintf(",txout.nUnlockedHeight:%lld,nTxHeight:%lld,nOffset:%lld", txout.nUnlockedHeight, nTxHeight, nOffset));
                     }
                     else
                     {
@@ -684,7 +684,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                     if (nTxHeight >= g_nStartSPOSHeight)
                     {
                         if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
-                            return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
+                            return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height" + strprintf(",txout.nUnlockedHeight:%lld,nTxHeight:%lld,nOffset:%lld", txout.nUnlockedHeight, nTxHeight, nOffset));
                     }
                     else
                     {
