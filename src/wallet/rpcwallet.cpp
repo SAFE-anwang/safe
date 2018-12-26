@@ -509,6 +509,9 @@ UniValue sendwithlock(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
+    if(!masternodeSync.IsBlockchainSynced())
+        throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
     EnsureWalletIsUnlocked();
 
     CBitcoinAddress address(params[0].get_str());
