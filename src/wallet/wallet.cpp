@@ -4129,6 +4129,8 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * BLOCKS_PER_MONTH;
                     CTxOut txout(recipient.nAmount, recipient.scriptPubKey, recipient.nLockedMonth <= 0 ? 0 : ntempUnlockedHeightIn);
 
+                    LogPrintf("CWallet::CreateTransaction -- g_nChainHeight:%d----g_nStartSPOSHeight:%d----ntempUnlockedHeightIn%d\n", g_nChainHeight, g_nStartSPOSHeight, ntempUnlockedHeightIn);
+
                     if(!recipient.strMemo.empty())
                         txout.vReserve = FillTransferSafeData(CAppHeader(g_nAppHeaderVersion, uint256S(g_strSafePayId), TRANSFER_SAFE_CMD), CTransferSafeData(recipient.strMemo));
 
