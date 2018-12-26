@@ -4123,10 +4123,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 BOOST_FOREACH (const CRecipient& recipient, vecSend)
                 {
                     int64_t ntempUnlockedHeightIn = 0;
-                    if (g_nChainHeight + 1 >= g_nStartSPOSHeight)
-                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * SPOS_BLOCKS_PER_MONTH;
-                    else
-                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * BLOCKS_PER_MONTH;
+                    ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * SPOS_BLOCKS_PER_MONTH;
                     CTxOut txout(recipient.nAmount, recipient.scriptPubKey, recipient.nLockedMonth <= 0 ? 0 : ntempUnlockedHeightIn);
 
                     LogPrintf("CWallet::CreateTransaction -- g_nChainHeight:%d----g_nStartSPOSHeight:%d----ntempUnlockedHeightIn%d\n", g_nChainHeight, g_nStartSPOSHeight, ntempUnlockedHeightIn);
