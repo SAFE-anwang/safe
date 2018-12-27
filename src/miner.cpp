@@ -657,7 +657,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
             LogPrintf("SPOS_Warning:system g_nMasternodeSPosCount:%d,curr vecMasternodes size:%d\n",g_nMasternodeSPosCount,masternodeSPosCount);
 
         //1.3
-        pblock->nTime = GetTimeMillis();
+        pblock->nTime = GetTime();
         int64_t nCurrTime = GetTimeMillis();
         if(nCurrTime < (int64_t)pindexPrev->nTime*1000)
         {
@@ -667,7 +667,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
             return;
         }
 
-        int64_t interval = 1/*Params().GetConsensus().nSPOSTargetSpacing*/;
+        int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
         int64_t nTimeInerval = pblock->nTime + interval - g_nStartNewLoopTime/ 1000;
         int64_t nTimeIntervalCnt = (nTimeInerval / interval - 1);
         int index = nTimeIntervalCnt % masternodeSPosCount;
