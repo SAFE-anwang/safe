@@ -15,7 +15,7 @@ BITCOIN_CLI_BIN=$(top_builddir)/src/safe-cli$(EXEEXT)
 BITCOIN_WIN_INSTALLER=$(PACKAGE)-$(PACKAGE_VERSION)-win$(WINDOWS_BITS)-setup$(EXEEXT)
 
 OSX_APP=Safe-Qt.app
-OSX_DMG=safe_v2.1.0.dmg
+OSX_DMG=safe_v2.5.0.dmg
 OSX_BACKGROUND_IMAGE=background.tiff
 OSX_DEPLOY_SCRIPT=$(top_srcdir)/contrib/macdeploy/macdeployqtplus
 OSX_FANCY_PLIST=$(top_srcdir)/contrib/macdeploy/fancy.plist
