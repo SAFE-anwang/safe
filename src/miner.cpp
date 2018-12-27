@@ -696,7 +696,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         }
 
         int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0)
+        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposGeneratedIndex != -1)
         {
             if(index != g_nSposGeneratedIndex)
                 LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"

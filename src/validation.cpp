@@ -4688,7 +4688,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if(IsStartSPosHeight(pindex->nHeight+1))
     {
-        LogPrintf("SPOS_Message:connect block:%d\n",pindex->nHeight);
+        LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
         LOCK(cs_spos);
         SelectMasterNode(pindex->nHeight,block.nTime);
     }
@@ -9061,7 +9061,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
     //1.3.3
     g_nStartNewLoopTime = (int64_t)nTime*1000;
-    g_nSposGeneratedIndex = 0;
+    g_nSposGeneratedIndex = -1;
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
     string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
     if(g_nStartNewLoopTime < nTime*1000)
