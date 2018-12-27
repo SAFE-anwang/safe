@@ -77,9 +77,11 @@ int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParam
 {
     int64_t nOldTime = pblock->nTime;
     int64_t nNewTime = std::max(pindexPrev->GetMedianTimePast()+1, GetAdjustedTime());
-
-    if (nOldTime < nNewTime)
-        pblock->nTime = nNewTime;
+    if(!IsStartSPosHeight(pindexPrev->nHeight+1))
+    {
+        if (nOldTime < nNewTime)
+            pblock->nTime = nNewTime;
+    }
 
     // Updating time can change work required on testnet:
     if (consensusParams.fPowAllowMinDifficultyBlocks&&!IsStartSPosHeight(pindexPrev->nHeight+1))
