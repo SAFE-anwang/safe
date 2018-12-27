@@ -2972,8 +2972,11 @@ bool IsInitialBlockDownload()
         return true;
 
     if (!IsStartSPosHeight(chainActive.Tip()->nHeight))
+    {
         if (chainActive.Tip()->nChainWork < UintToArith256(chainParams.GetConsensus().nMinimumChainWork))
             return true;
+    }
+
     if (chainActive.Tip()->GetBlockTime() < (GetTime() - chainParams.MaxTipAge()))
         return true;
     lockIBDState = true;
@@ -3001,11 +3004,15 @@ void CheckForkWarningConditions()
     if (pindexBestInvalid)
     {
         if (IsStartSPosHeight(pindexBestInvalid->nHeight))
+        {
             if (pindexBestInvalid->nHeight > chainActive.Tip()->nHeight + 6)
                 bBestWorkOrHeight = true;
+        }
         else
+        {
             if (pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + (GetBlockProof(*chainActive.Tip()) * 6))
-                bBestWorkOrHeight = true;   
+                bBestWorkOrHeight = true; 
+        }
     }
 
     if (pindexBestForkTip || bBestWorkOrHeight)
@@ -3067,20 +3074,25 @@ void CheckForkWarningConditionsOnNewFork(CBlockIndex* pindexNewForkTip)
     // the 7-block condition and from this always have the most-likely-to-cause-warning fork
 
     if (IsStartSPosHeight(pindexNewForkTip->nHeight))
+    {
         if (pfork && (!pindexBestForkTip || (pindexBestForkTip && pindexNewForkTip->nHeight > pindexBestForkTip->nHeight)) &&
-                pindexNewForkTip->nHeight - pfork->nHeight > 7 && chainActive.Height() - pindexNewForkTip->nHeight < 72)
+            pindexNewForkTip->nHeight - pfork->nHeight > 7 && chainActive.Height() - pindexNewForkTip->nHeight < 72)
         {
             pindexBestForkTip = pindexNewForkTip;
             pindexBestForkBase = pfork;
         }
+    }
     else
+    {
         if (pfork && (!pindexBestForkTip || (pindexBestForkTip && pindexNewForkTip->nHeight > pindexBestForkTip->nHeight)) &&
-                pindexNewForkTip->nChainWork - pfork->nChainWork > (GetBlockProof(*pfork) * 7) &&
-                chainActive.Height() - pindexNewForkTip->nHeight < 72)
+            pindexNewForkTip->nChainWork - pfork->nChainWork > (GetBlockProof(*pfork) * 7) &&
+            chainActive.Height() - pindexNewForkTip->nHeight < 72)
         {
             pindexBestForkTip = pindexNewForkTip;
             pindexBestForkBase = pfork;
         }
+    }
+
 
     CheckForkWarningConditions();
 }
@@ -3089,11 +3101,15 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
 {
 
     if (IsStartSPosHeight(pindexNew->nHeight))
+    {
         if (!pindexBestInvalid || pindexNew->nHeight > pindexBestInvalid->nHeight)
             pindexBestInvalid = pindexNew;
+    }
     else
+    {
         if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
             pindexBestInvalid = pindexNew;
+    }
 
     LogPrintf("%s: invalid block=%s  height=%d  log2_work=%.8g  date=%s\n", __func__,
       pindexNew->GetBlockHash().ToString(), pindexNew->nHeight,
@@ -5042,11 +5058,16 @@ static CBlockIndex* FindMostWorkChain() {
             if (fFailedChain || fMissingData) {
                 // Candidate chain is not usable (either invalid or missing data)
                 if (IsStartSPosHeight(pindexNew->nHeight))
+                {
                     if (fFailedChain && (pindexBestInvalid == NULL || pindexNew->nHeight > pindexBestInvalid->nHeight))
                         pindexBestInvalid = pindexNew;
+                }
                 else
+                {
                     if (fFailedChain && (pindexBestInvalid == NULL || pindexNew->nChainWork > pindexBestInvalid->nChainWork))
                         pindexBestInvalid = pindexNew;
+                }
+
                 CBlockIndex *pindexFailed = pindexNew;
                 // Remove the entire chain from the set.
                 while (pindexTest != pindexFailed) {
@@ -5137,17 +5158,21 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
             } else {
                 PruneBlockIndexCandidates();
                 if (IsStartSPosHeight(chainActive.Tip()->nHeight))
+                {
                     if (!pindexOldTip || chainActive.Tip()->nHeight > pindexOldTip->nHeight) {
                         // We're in a better position than we were. Return temporarily to release the lock.
                         fContinue = false;
                         break;
                     }
+                }
                 else
+                {
                     if (!pindexOldTip || chainActive.Tip()->nChainWork > pindexOldTip->nChainWork) {
                         // We're in a better position than we were. Return temporarily to release the lock.
                         fContinue = false;
                         break;
                     }
+                }
             }
         }
     }
@@ -5744,9 +5769,11 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
             if (!CheckCriticalBlock(block))
             {
                 if(!IsStartSPosHeight(pindexPrev->nHeight+1))
+                {
                     if(block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
                         return state.DoS(100, error("%s : incorrect proof of work at %d", __func__, nHeight),
                                         REJECT_INVALID, "bad-diffbits");
+                }   
             }
         }
     }*/
@@ -5916,12 +5943,18 @@ static bool AcceptBlock(const CBlock& block, CValidationState& state, const CCha
     bool fAlreadyHave = pindex->nStatus & BLOCK_HAVE_DATA;
     bool fHasMoreWork = false;
     if (chainActive.Tip())
+    {
         if (IsStartSPosHeight(pindex->nHeight))
+        {
             if (pindex->nHeight > chainActive.Tip()->nHeight)
                 fHasMoreWork = true; 
+        }
         else
+        {
             if (pindex->nChainWork > chainActive.Tip()->nChainWork)
                 fHasMoreWork = true;
+        }
+    }
     else
         fHasMoreWork = true;
     // Blocks that are too out-of-order needlessly limit the effectiveness of
@@ -6258,11 +6291,16 @@ bool static LoadBlockIndexDB()
             setBlockIndexCandidates.insert(pindex);
 
         if (IsStartSPosHeight(pindex->nHeight))
+        {
             if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nHeight > pindexBestInvalid->nHeight))
                 pindexBestInvalid = pindex;
+        }
         else
+        {
             if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nChainWork > pindexBestInvalid->nChainWork))
                 pindexBestInvalid = pindex;
+        }
+
         if (pindex->pprev)
             pindex->BuildSkip();
         if (pindex->IsValid(BLOCK_VALID_TREE) && (pindexBestHeader == NULL || CBlockIndexWorkComparator()(pindexBestHeader, pindex)))

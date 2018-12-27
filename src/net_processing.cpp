@@ -323,11 +323,15 @@ void ProcessBlockAvailability(NodeId nodeid) {
         BlockMap::iterator itOld = mapBlockIndex.find(state->hashLastUnknownBlock);
         if (itOld != mapBlockIndex.end() && itOld->second->nChainWork > 0) {
             if (IsStartSPosHeight(itOld->second->nHeight))
+            {
                 if (state->pindexBestKnownBlock == NULL || itOld->second->nHeight >= state->pindexBestKnownBlock->nHeight)
                     state->pindexBestKnownBlock = itOld->second;
+            } 
             else
+            {
                 if (state->pindexBestKnownBlock == NULL || itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
                     state->pindexBestKnownBlock = itOld->second;
+            }
             state->hashLastUnknownBlock.SetNull();
         }
     }
@@ -344,11 +348,15 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
     if (it != mapBlockIndex.end() && it->second->nChainWork > 0) {
         // An actually better block was announced.
         if (IsStartSPosHeight(it->second->nHeight))
+        {
             if (state->pindexBestKnownBlock == NULL || it->second->nHeight >= state->pindexBestKnownBlock->nHeight)
                 state->pindexBestKnownBlock = it->second;
+        }
         else
+        {
             if (state->pindexBestKnownBlock == NULL || it->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
                 state->pindexBestKnownBlock = it->second;
+        }
     } else {
         // An unknown block was announced; just assume that the latest one is the best one.
         state->hashLastUnknownBlock = hash;
@@ -844,9 +852,11 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                         if (IsStartSPosHeight(pindexBestHeader->nHeight))
                             bEquivalentTime = true;
                         else
+                        {
                             if (GetBlockProofEquivalentTime(*pindexBestHeader, *mi->second, *pindexBestHeader, consensusParams) < nOneMonth)
                                 bEquivalentTime = true;
-                            
+                        }
+
                         send = mi->second->IsValid(BLOCK_VALID_SCRIPTS) && (pindexBestHeader != NULL) &&
                             (pindexBestHeader->GetBlockTime() - mi->second->GetBlockTime() < nOneMonth) && bEquivalentTime;
                         if (!send) {
@@ -1923,12 +1933,16 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
         bool bNewEffectiveBlock = false;
         if (IsStartSPosHeight(pindexLast->nHeight))
+        {
             if (chainActive.Tip()->nHeight <= pindexLast->nHeight)
                 bNewEffectiveBlock = true;
+        }
         else
+        {
             if (chainActive.Tip()->nChainWork <= pindexLast->nChainWork)
                 bNewEffectiveBlock = true;
-        
+        }
+
         if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && bNewEffectiveBlock) {
             vector<CBlockIndex *> vToFetch;
             CBlockIndex *pindexWalk = pindexLast;
