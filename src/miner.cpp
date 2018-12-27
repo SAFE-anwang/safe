@@ -696,16 +696,17 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         }
 
         int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && index != 0 && g_nSposIndex != index)
+        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0)
         {
-            LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
-                      ,nActualTimeMillisInterval,nIntervalMS,pindexPrev->nHeight,g_nSposIndex);
+            if(index != g_nSposGeneratedIndex)
+                LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
+                          ,nActualTimeMillisInterval,nIntervalMS,pindexPrev->nHeight,g_nSposGeneratedIndex);
             return;
         }
 
         //it's turn to generate block
         LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,blockTime:%lld,g_nSposIndex:%d\n"
-                  ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime,pblock->nTime,g_nSposIndex);
+                  ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime,pblock->nTime,g_nSposGeneratedIndex);
 
         SetThreadPriority(THREAD_PRIORITY_NORMAL);
         //coin base add extra data
@@ -718,7 +719,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         }
 
         LogPrintf("SPOS_Message:test block validate success\n");
-        g_nSposIndex = index;
+        g_nSposGeneratedIndex = index;
         ProcessBlockFound(pblock, chainparams);
 
         LogPrintf("SPOS_Message:generate pblock height:%d,index:%d\n",nNewBlockHeight,((pblock->GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % masternodeSPosCount);

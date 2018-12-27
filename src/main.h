@@ -41,7 +41,7 @@ extern std::string g_strPutCandyAddress;
 extern int g_nStartSPOSHeight;
 extern unsigned int g_nMasternodeSPosCount;
 extern int64_t g_nStartNewLoopTime;
-extern int64_t g_nSposIndex;
+extern int64_t g_nSposGeneratedIndex;
 extern std::vector<CMasternode> g_vecResultMasternodes;
 
 
