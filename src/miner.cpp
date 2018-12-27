@@ -667,7 +667,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
             return;
         }
 
-        int64_t interval = 100/*Params().GetConsensus().nSPOSTargetSpacing*/;
+        int64_t interval = 1/*Params().GetConsensus().nSPOSTargetSpacing*/;
         int64_t nTimeInerval = pblock->nTime + interval - g_nStartNewLoopTime/ 1000;
         int64_t nTimeIntervalCnt = (nTimeInerval / interval - 1);
         int index = nTimeIntervalCnt % masternodeSPosCount;
