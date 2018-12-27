@@ -686,9 +686,9 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         {
             if(nNewBlockHeight != nWaitBlockHeight)
             {
-                LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.\n",index,masterIP,pindexPrev->nHeight);
-                LogPrintf("SPOS_Message:local collateral address:%s is different to worker masternode collateral address:%s\n"
-                          ,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
+                LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.blockTime:%lld,g_nStartNewLoopTime:%lld,"
+                          "local collateral address:%s,masternode collateral address:%s\n",index,masterIP,pindexPrev->nHeight
+                          ,pblock->nTime,g_nStartNewLoopTime,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
                           ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
             }
             nWaitBlockHeight = nNewBlockHeight;
