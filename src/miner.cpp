@@ -704,8 +704,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         }
 
         //it's turn to generate block
-        LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,blockTime:%lld\n"
-                  ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime,pblock->nTime);
+        LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,blockTime:%lld,g_nSposIndex:%d\n"
+                  ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime,pblock->nTime,g_nSposIndex);
 
         SetThreadPriority(THREAD_PRIORITY_NORMAL);
         //coin base add extra data
