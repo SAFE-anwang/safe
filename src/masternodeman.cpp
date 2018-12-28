@@ -732,13 +732,14 @@ void CMasternodeMan::ProcessMasternodeConnections(CConnman& connman)
     if(Params().NetworkIDString() == CBaseChainParams::REGTEST) return;
 
     connman.ForEachNode(CConnman::AllNodes, [](CNode* pnode) {
-        LogPrintf("SPOS_Message:%s,fMasternode:%d,privateSendClient addr:%s,fInfoValid:%d\n",pnode->addr.ToString(),pnode->fMasternode
+        LogPrintf("SPOS_Info:%s,fMasternode:%d,privateSendClient addr:%s,fInfoValid:%d\n",pnode->addr.ToString(),pnode->fMasternode
                   ,privateSendClient.infoMixingMasternode.addr.ToString(),privateSendClient.infoMixingMasternode.fInfoValid);
         if(pnode->fMasternode) {
             if(privateSendClient.infoMixingMasternode.fInfoValid && pnode->addr == privateSendClient.infoMixingMasternode.addr)
                 return;
             LogPrintf("Closing Masternode connection: peer=%d, addr=%s\n", pnode->id, pnode->addr.ToString());
-            pnode->fDisconnect = true;
+            if(!fMasterNode)//XJTODO
+                pnode->fDisconnect = true;
         }
     });
 }
