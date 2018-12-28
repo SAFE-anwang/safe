@@ -669,8 +669,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
         int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
         int64_t nTimeInerval = pblock->nTime + interval - g_nStartNewLoopTime/ 1000;
-        int64_t nTimeIntervalCnt = (nTimeInerval / interval - 1);
-        int index = nTimeIntervalCnt % masternodeSPosCount;
+        int64_t nTimeIntervalCnt = nTimeInerval / interval;
+        int index = nTimeIntervalCnt % masternodeSPosCount -1;
         nNextTime = g_nStartNewLoopTime + nTimeIntervalCnt*interval*1000;
         if(index<0||index>=(int)masternodeSPosCount)
         {
@@ -718,11 +718,10 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
             throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
         }
 
-        LogPrintf("SPOS_Message:test block validate success\n");
+        LogPrintf("SPOS_Message:test self block validate success\n");
         g_nSposGeneratedIndex = index;
         ProcessBlockFound(pblock, chainparams);
 
-        LogPrintf("SPOS_Message:generate pblock height:%d,index:%d\n",nNewBlockHeight,((pblock->GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % masternodeSPosCount);
         SetThreadPriority(THREAD_PRIORITY_LOWEST);
         coinbaseScript->KeepScript();
 

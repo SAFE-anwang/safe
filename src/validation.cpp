@@ -9035,6 +9035,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     if(ret != 0 )
         return;
 
+    LogPrintf("SPOS_Message:--------------------------------------------------------\n");
     LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d.\n",nCurrBlockHeight);
     std::map<COutPoint, CMasternode> mapMasternodes;
     if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
