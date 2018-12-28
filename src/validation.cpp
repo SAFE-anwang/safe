@@ -5615,17 +5615,20 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     if(mnSize == 0)
         return state.DoS(100, error("SPOS CheckSPOSBlock():height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
                                     ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-mnSize", true);
-    int32_t nIndex = ((block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing) % mnSize;
-    int32_t nNewIndex = ((block.GetBlockTime() + Params().GetConsensus().nSPOSTargetSpacing - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1) % g_vecResultMasternodes.size();
+    int32_t interval = (block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+    int32_t nIndex = interval % mnSize;
+    if(nIndex<0)
+        return state.DoS(100,error("SPOS CheckSPOSBlock():height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
+                                   ,nHeight,nIndex,block.GetBlockTime(),g_nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
     const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
 
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
     if (keyID != mnkeyID)
         return state.DoS(100, error("SPOS CheckSPOSBlock(): height:%d,blockaddress error,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
-                                    "ip:%s,blocktime:%lld,startlooptime:%lld,newIndex:%d\n"
+                                    "ip:%s,blocktime:%lld,startlooptime:%lld\n"
                                     ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
-                                    ,block.GetBlockTime(),g_nStartNewLoopTime,nNewIndex)
+                                    ,block.GetBlockTime(),g_nStartNewLoopTime)
                                     , REJECT_INVALID, "bad-blockaddress", true);
 
     return true;
