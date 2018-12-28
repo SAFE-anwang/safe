@@ -732,6 +732,8 @@ void CMasternodeMan::ProcessMasternodeConnections(CConnman& connman)
     if(Params().NetworkIDString() == CBaseChainParams::REGTEST) return;
 
     connman.ForEachNode(CConnman::AllNodes, [](CNode* pnode) {
+        LogPrintf("SPOS_Message:%s,fMasternode:%d,privateSendClient addr:%s,fInfoValid:%d\n",pnode->addr.ToString(),pnode->fMasternode
+                  ,privateSendClient.infoMixingMasternode.addr.ToString(),privateSendClient.infoMixingMasternode.fInfoValid);
         if(pnode->fMasternode) {
             if(privateSendClient.infoMixingMasternode.fInfoValid && pnode->addr == privateSendClient.infoMixingMasternode.addr)
                 return;
