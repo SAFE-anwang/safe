@@ -670,20 +670,11 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
         int64_t nTimeInerval = pblock->nTime + interval - g_nStartNewLoopTime/ 1000;
         int64_t nTimeIntervalCnt = (nTimeInerval / interval - 2);
-        //to avoid nTimeIntervalCnt=masternodeSPosCount,first time nTimeIntervalCnt:-1
+        //to avoid nTimeIntervalCnt=masternodeSPosCount,first time nTimeIntervalCnt:-1,index:-1
         if(nTimeIntervalCnt<0)
             return;
         int index = nTimeIntervalCnt % masternodeSPosCount;
         nNextTime = g_nStartNewLoopTime + (nTimeIntervalCnt+1)*interval*1000;
-
-        int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposGeneratedIndex != -2)
-        {
-            if(index != g_nSposGeneratedIndex)
-                LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
-                          ,nActualTimeMillisInterval,nIntervalMS,pindexPrev->nHeight,g_nSposGeneratedIndex);
-            return;
-        }
 
         if(index<0||index>=(int)masternodeSPosCount)
         {
@@ -705,6 +696,15 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
                           ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
             }
             nWaitBlockHeight = nNewBlockHeight;
+            return;
+        }
+
+        int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
+        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposGeneratedIndex != -2)
+        {
+            if(index != g_nSposGeneratedIndex)
+                LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
+                          ,nActualTimeMillisInterval,nIntervalMS,pindexPrev->nHeight,g_nSposGeneratedIndex);
             return;
         }
 
