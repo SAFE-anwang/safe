@@ -630,145 +630,141 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,CBlockIndex* pindexPrev
                              ,unsigned int& nGenerateBlockHeight,unsigned int nNewBlockHeight,CBlock *pblock
                              ,boost::shared_ptr<CReserveScript>& coinbaseScript,unsigned int nTransactionsUpdatedLast
-                             ,int64_t& nNextTime,unsigned int& nWaitBlockHeight)
+                             ,int64_t& nNextTime,unsigned int& nWaitBlockHeight,unsigned int& nSleepMS)
 {
     if(nGenerateBlockHeight == nNewBlockHeight)
         return;
 
-    LOCK(cs_spos);
+    int64_t nIntervalMS = 500;
+    unsigned int masternodeSPosCount = 0;
+    masternodeSPosCount = g_vecResultMasternodes.size();
+    if(masternodeSPosCount == 0)
     {
-        int64_t nIntervalMS = 500;
-        unsigned int masternodeSPosCount = 0;
+        LogPrintf("SPOS_Warning:masternode is 0,select again\n");
+        SelectMasterNode(pindexPrev->nHeight,pindexPrev->nTime);
         masternodeSPosCount = g_vecResultMasternodes.size();
         if(masternodeSPosCount == 0)
         {
-            LogPrintf("SPOS_Warning:masternode is 0,select again\n");
-            SelectMasterNode(pindexPrev->nHeight,pindexPrev->nTime);
-            masternodeSPosCount = g_vecResultMasternodes.size();
-            if(masternodeSPosCount == 0)
-            {
-                LogPrintf("SPOS_Error:vecMasternodes is empty\n");
-                return;
-            }
-        }
-
-        //if masternodeSPosCount less than g_nMasternodeSPosCount,still continue,just % actual masternodeSPosCount
-        if(masternodeSPosCount != g_nMasternodeSPosCount)
-            LogPrintf("SPOS_Warning:system g_nMasternodeSPosCount:%d,curr vecMasternodes size:%d\n",g_nMasternodeSPosCount,masternodeSPosCount);
-
-        //1.3
-        pblock->nTime = GetTime();
-        int64_t nCurrTime = GetTimeMillis();
-        if(nCurrTime < (int64_t)pindexPrev->nTime*1000)
-        {
-            string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
-            string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
-            LogPrintf("SPOS_Warning:current time(%d,%s) less than new block time(%d,%s)\n",nCurrTime/1000,strCurrTime,pindexPrev->nTime,strBlockTime);
+            LogPrintf("SPOS_Error:vecMasternodes is empty\n");
             return;
         }
-
-        int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
-        int64_t nTimeInerval = pblock->nTime + interval - g_nStartNewLoopTime/ 1000;
-        int64_t nTimeIntervalCnt = (nTimeInerval / interval - 2);
-        //to avoid nTimeIntervalCnt=masternodeSPosCount,first time nTimeIntervalCnt:-1,index:-1
-        if(nTimeIntervalCnt<0)
-            return;
-        int index = nTimeIntervalCnt % masternodeSPosCount;
-        nNextTime = g_nStartNewLoopTime + (nTimeIntervalCnt+1)*interval*1000;
-
-        if(index<0||index>=(int)masternodeSPosCount)
-        {
-            LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval:%d\n",index,nTimeInerval);
-            return;
-        }
-
-        CMasternode& mn = g_vecResultMasternodes[index];
-        string masterIP = mn.addr.ToStringIP();
-        string localIP = activeMasternode.service.ToStringIP();
-
-        if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
-        {
-            if(nNewBlockHeight != nWaitBlockHeight)
-            {
-                LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.blockTime:%lld,g_nStartNewLoopTime:%lld,"
-                          "local collateral address:%s,masternode collateral address:%s\n",index,masterIP,pindexPrev->nHeight
-                          ,pblock->nTime,g_nStartNewLoopTime,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
-                          ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
-            }
-            nWaitBlockHeight = nNewBlockHeight;
-            return;
-        }
-
-        int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-        if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposGeneratedIndex != -2)
-        {
-            if(index != g_nSposGeneratedIndex)
-                LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
-                          ,nActualTimeMillisInterval,nIntervalMS,pindexPrev->nHeight,g_nSposGeneratedIndex);
-            return;
-        }
-
-        //it's turn to generate block
-        LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,blockTime:%lld,g_nSposIndex:%d\n"
-                  ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime,pblock->nTime,g_nSposGeneratedIndex);
-
-        SetThreadPriority(THREAD_PRIORITY_NORMAL);
-        //coin base add extra data
-        if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
-            return;
-
-        CValidationState state;
-        if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-            throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-        }
-
-        LogPrintf("SPOS_Message:test self block validate success\n");
-        g_nSposGeneratedIndex = index;
-        ProcessBlockFound(pblock, chainparams);
-
-        SetThreadPriority(THREAD_PRIORITY_LOWEST);
-        coinbaseScript->KeepScript();
-
-        if(masternodeSPosCount==1)//XJTODO
-            MilliSleep(Params().GetConsensus().nSPOSTargetSpacing*1000);
-
-        MilliSleep(nIntervalMS);
-
-        nGenerateBlockHeight = nNewBlockHeight;
-        // In regression test mode, stop mining after a block is found. This
-        // allows developers to controllably generate a block on demand.
-
-        if (chainparams.MineBlocksOnDemand())
-        {
-            LogPrintf("SPOS_Warning:MineBlocksOnDemand\n");
-            throw boost::thread_interrupted();
-        }
-
-        // Check for stop or if block needs to be rebuilt
-        boost::this_thread::interruption_point();
-        // Regtest mode doesn't require peers
-        if (connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0 && chainparams.MiningRequiresPeers())
-        {
-            LogPrintf("SPOS_Warning:GetNodeCount fail\n");
-            return;
-        }
-        if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast /*&& GetTime() - nCurrTime > 60*/)//XJTODO remove annotate code
-        {
-            LogPrintf("SPOS_Warning:mempool fail,mempool.GetTransactionsUpdated():%d,nTransactionsUpdatedLast:%d\n"
-                      ,mempool.GetTransactionsUpdated(),nTransactionsUpdatedLast);
-            return;
-        }
-        if (pindexPrev != chainActive.Tip())
-        {
-            LogPrintf("SPOS_Warning:tip not equal\n");
-            return;
-        }
-
-        // Update nTime every few seconds
-        UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-        LogPrintf("SPOS_Message:generate block finished\n");
     }
 
+    //if masternodeSPosCount less than g_nMasternodeSPosCount,still continue,just % actual masternodeSPosCount
+    if(masternodeSPosCount != g_nMasternodeSPosCount)
+        LogPrintf("SPOS_Warning:system g_nMasternodeSPosCount:%d,curr vecMasternodes size:%d\n",g_nMasternodeSPosCount,masternodeSPosCount);
+
+    //1.3
+    pblock->nTime = GetTime();
+    int64_t nCurrTime = GetTimeMillis();
+    if(nCurrTime < (int64_t)pindexPrev->nTime*1000)
+    {
+        string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
+        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
+        LogPrintf("SPOS_Warning:current time(%d,%s) less than new block time(%d,%s)\n",nCurrTime/1000,strCurrTime,pindexPrev->nTime,strBlockTime);
+        return;
+    }
+
+    int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
+    int64_t nTimeInerval = pblock->nTime + interval - g_nStartNewLoopTime/ 1000;
+    int64_t nTimeIntervalCnt = (nTimeInerval / interval - 2);
+    //to avoid nTimeIntervalCnt=masternodeSPosCount,first time nTimeIntervalCnt:-1,index:-1
+    if(nTimeIntervalCnt<0)
+        return;
+    int index = nTimeIntervalCnt % masternodeSPosCount;
+    nNextTime = g_nStartNewLoopTime + (nTimeIntervalCnt+1)*interval*1000;
+
+    if(index<0||index>=(int)masternodeSPosCount)
+    {
+        LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval:%d\n",index,nTimeInerval);
+        return;
+    }
+
+    CMasternode& mn = g_vecResultMasternodes[index];
+    string masterIP = mn.addr.ToStringIP();
+    string localIP = activeMasternode.service.ToStringIP();
+
+    if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
+    {
+        if(nNewBlockHeight != nWaitBlockHeight)
+        {
+            LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.blockTime:%lld,g_nStartNewLoopTime:%lld,"
+                      "local collateral address:%s,masternode collateral address:%s\n",index,masterIP,pindexPrev->nHeight
+                      ,pblock->nTime,g_nStartNewLoopTime,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
+                      ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
+        }
+        nWaitBlockHeight = nNewBlockHeight;
+        return;
+    }
+
+    int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
+    if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && g_nSposGeneratedIndex != -2)
+    {
+        if(index != g_nSposGeneratedIndex)
+            LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
+                      ,nActualTimeMillisInterval,nIntervalMS,pindexPrev->nHeight,g_nSposGeneratedIndex);
+        return;
+    }
+
+    //it's turn to generate block
+    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,blockTime:%lld,g_nSposIndex:%d\n"
+              ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime,pblock->nTime,g_nSposGeneratedIndex);
+
+    SetThreadPriority(THREAD_PRIORITY_NORMAL);
+    //coin base add extra data
+    if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
+        return;
+
+    CValidationState state;
+    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+    }
+
+    LogPrintf("SPOS_Message:test self block validate success\n");
+    g_nSposGeneratedIndex = index;
+    ProcessBlockFound(pblock, chainparams);
+
+    SetThreadPriority(THREAD_PRIORITY_LOWEST);
+    coinbaseScript->KeepScript();
+
+    if(masternodeSPosCount==1)//XJTODO
+        nSleepMS = Params().GetConsensus().nSPOSTargetSpacing*1000;
+    else
+        nSleepMS = nIntervalMS;
+
+    nGenerateBlockHeight = nNewBlockHeight;
+    // In regression test mode, stop mining after a block is found. This
+    // allows developers to controllably generate a block on demand.
+
+    if (chainparams.MineBlocksOnDemand())
+    {
+        LogPrintf("SPOS_Warning:MineBlocksOnDemand\n");
+        throw boost::thread_interrupted();
+    }
+
+    // Check for stop or if block needs to be rebuilt
+    boost::this_thread::interruption_point();
+    // Regtest mode doesn't require peers
+    if (connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0 && chainparams.MiningRequiresPeers())
+    {
+        LogPrintf("SPOS_Warning:GetNodeCount fail\n");
+        return;
+    }
+    if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast /*&& GetTime() - nCurrTime > 60*/)//XJTODO remove annotate code
+    {
+        LogPrintf("SPOS_Warning:mempool fail,mempool.GetTransactionsUpdated():%d,nTransactionsUpdatedLast:%d\n"
+                  ,mempool.GetTransactionsUpdated(),nTransactionsUpdatedLast);
+        return;
+    }
+    if (pindexPrev != chainActive.Tip())
+    {
+        LogPrintf("SPOS_Warning:tip not equal\n");
+        return;
+    }
+
+    // Update nTime every few seconds
+    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
+    LogPrintf("SPOS_Message:generate block finished\n");
 }
 
 // ***TODO*** that part changed in bitcoin, we are using a mix with old one here for now
@@ -805,31 +801,38 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 } while (true);
             }
 
-            CBlockIndex* pindexPrev = chainActive.Tip();
-            if(!pindexPrev)
-                break;
-            unsigned int nNewBlockHeight = chainActive.Height() + 1;
-            if(IsStartSPosHeight(nNewBlockHeight))
+            unsigned int nSleepMS = 0;
             {
-                // Create new block
-                unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
-                std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, coinbaseScript->reserveScript));
-                if (!pblocktemplate.get())
+                LOCK(cs_spos);
+                CBlockIndex* pindexPrev = chainActive.Tip();
+                if(!pindexPrev)
+                    break;
+                unsigned int nNewBlockHeight = chainActive.Height() + 1;
+                if(IsStartSPosHeight(nNewBlockHeight))
                 {
-                    LogPrintf("SafeSposMiner -- Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
-                    return;
+                    // Create new block
+                    unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
+                    std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, coinbaseScript->reserveScript));
+                    if (!pblocktemplate.get())
+                    {
+                        LogPrintf("SafeSposMiner -- Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
+                        return;
+                    }
+
+                    CBlock *pblock = &pblocktemplate->block;
+                    IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
+
+    //                LogPrintf("SPOS_Message:Running miner with %u transactions in block (%u bytes),currHeight:%d\n",pblock->vtx.size(),
+    //                          ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION),pindexPrev->nHeight);
+
+                    ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nNewBlockHeight,pblock,coinbaseScript
+                                     ,nTransactionsUpdatedLast,nNextBlockTime,nWaitBlockHeight,nSleepMS);
                 }
-
-                CBlock *pblock = &pblocktemplate->block;
-                IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
-
-                LogPrintf("SPOS_Message:Running miner with %u transactions in block (%u bytes),currHeight:%d\n",pblock->vtx.size(),
-                          ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION),pindexPrev->nHeight);
-
-                ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nNewBlockHeight,pblock,coinbaseScript
-                                 ,nTransactionsUpdatedLast,nNextBlockTime,nWaitBlockHeight);
             }
-            MilliSleep(50);
+            if(nSleepMS>0)
+                MilliSleep(nSleepMS);
+            else
+                MilliSleep(50);
         }
     }
     catch (const boost::thread_interrupted&)
