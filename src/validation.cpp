@@ -115,7 +115,7 @@ unsigned int nConsensusAlgorithmLen = 4;
 extern unsigned int g_nMasternodeMinOnlineTime;
 extern CActiveMasternode activeMasternode;
 extern int64_t g_nLastSelectMasterNodeHeight;
-
+extern unsigned int g_nMasternodeEnable;
 
 const static int M = 2000; //Maximum number of digits
 int numA[M];
@@ -9093,7 +9093,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         LogPrintf("SPOS_Message,before sort:ip:%s,nActiveState:%d,onlineTime:%d,isOK:%d\n",mn.addr.ToStringIP()
                   ,mn.nActiveState,onlineTime,onlineTime < g_nMasternodeMinOnlineTime?0:1);
         //XJTODO Test codes can annotate this
-        if(/*mn.nActiveState != CMasternode::MASTERNODE_ENABLED || */onlineTime < g_nMasternodeMinOnlineTime)
+        if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeEnable==1) || onlineTime < g_nMasternodeMinOnlineTime)
             continue;
 
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();

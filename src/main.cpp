@@ -21,6 +21,7 @@ unsigned int g_nMasternodeSPosCount = 3;
 unsigned int g_nMasternodeMinOnlineTime = 86400*3;
 int64_t g_nStartNewLoopTime = 0;
 int g_nSposGeneratedIndex = -2;
+unsigned int g_nMasternodeEnable = 1;//XJTODO remove it
 int64_t g_nLastSelectMasterNodeHeight = 0;
 std::vector<CMasternode> g_vecResultMasternodes;
 
