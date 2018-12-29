@@ -4691,6 +4691,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
         LOCK(cs_spos);
         SelectMasterNode(pindex->nHeight,block.nTime);
+        g_nWaitBlockHeight = pindex->nHeight+1;
     }
     return true;
 }

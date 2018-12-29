@@ -630,7 +630,7 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,CBlockIndex* pindexPrev
                              ,unsigned int& nGenerateBlockHeight,unsigned int nNewBlockHeight,CBlock *pblock
                              ,boost::shared_ptr<CReserveScript>& coinbaseScript,unsigned int nTransactionsUpdatedLast
-                             ,int64_t& nNextTime,unsigned int& nWaitBlockHeight,unsigned int& nSleepMS)
+                             ,int64_t& nNextTime,unsigned int& nSleepMS)
 {
     if(nGenerateBlockHeight == nNewBlockHeight)
         return;
@@ -686,14 +686,14 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
     if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
     {
-        if(nNewBlockHeight != nWaitBlockHeight)
+        if(nNewBlockHeight != g_nWaitBlockHeight)
         {
             LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.blockTime:%lld,g_nStartNewLoopTime:%lld,"
                       "local collateral address:%s,masternode collateral address:%s\n",index,masterIP,pindexPrev->nHeight
                       ,pblock->nTime,g_nStartNewLoopTime,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
                       ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
         }
-        nWaitBlockHeight = nNewBlockHeight;
+        g_nWaitBlockHeight = nNewBlockHeight;
         return;
     }
 
@@ -787,7 +787,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             throw std::runtime_error("No coinbase script available (mining requires a wallet)");
 
         g_nStartNewLoopTime = GetTimeMillis()*1000;
-        unsigned int nGenerateBlockHeight = 0,nWaitBlockHeight = 0;
+        unsigned int nGenerateBlockHeight = 0;
         int64_t nNextBlockTime = 0;
         while (true) {
             if (chainparams.MiningRequiresPeers()) {
@@ -826,7 +826,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
     //                          ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION),pindexPrev->nHeight);
 
                     ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nNewBlockHeight,pblock,coinbaseScript
-                                     ,nTransactionsUpdatedLast,nNextBlockTime,nWaitBlockHeight,nSleepMS);
+                                     ,nTransactionsUpdatedLast,nNextBlockTime,nSleepMS);
                 }
             }
             if(nSleepMS>0)
