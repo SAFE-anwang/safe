@@ -105,7 +105,7 @@ static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
 extern int g_nStartSPOSHeight;
 extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinOnlineTime;
-extern unsigned int g_nMasternodeEnable;
+extern unsigned int g_nMasternodeStatusEnable;
 
 std::unique_ptr<CConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
@@ -1536,7 +1536,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
     g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
     g_nMasternodeMinOnlineTime = GetArg("-masternode_min_online_time", g_nMasternodeMinOnlineTime);
-    g_nMasternodeEnable = GetArg("-masternode_enable", g_nMasternodeEnable);
+    g_nMasternodeStatusEnable = GetArg("-masternode_status_enable", g_nMasternodeStatusEnable);
 
     bool fLoaded = false;
     while (!fLoaded) {
