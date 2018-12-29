@@ -686,14 +686,14 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
     if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
     {
-        if(nNewBlockHeight != g_nWaitBlockHeight && nCurrTime != nNextLogTime)
+        if(nNewBlockHeight != g_nWaitBlockHeight && pblock->nTime != nNextLogTime)
         {
             LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.blockTime:%lld,g_nStartNewLoopTime:%lld,"
                       "local collateral address:%s,masternode collateral address:%s\n",index,masterIP,pindexPrev->nHeight
                       ,pblock->nTime,g_nStartNewLoopTime,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
                       ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString());
         }
-        nNextLogTime = nCurrTime;
+        nNextLogTime = pblock->nTime;
         g_nWaitBlockHeight = nNewBlockHeight;
         return;
     }
