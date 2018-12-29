@@ -823,8 +823,8 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 CBlock *pblock = &pblocktemplate->block;
                 IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
 
-                LogPrintf("SafeSposMiner -- Running miner with %u transactions in block (%u bytes)\n", pblock->vtx.size(),
-                    ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
+                LogPrintf("SPOS_Message:Running miner with %u transactions in block (%u bytes),currHeight:%d\n",pblock->vtx.size(),
+                          ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION),pindexPrev->nHeight);
 
                 ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nNewBlockHeight,pblock,coinbaseScript
                                  ,nTransactionsUpdatedLast,nNextBlockTime,nWaitBlockHeight);
