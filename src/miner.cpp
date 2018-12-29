@@ -516,7 +516,7 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                 // on an obsolete chain. In regtest mode we expect to fly solo.
                 do {
                     bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
-                    if (/*!fvNodesEmpty && */!IsInitialBlockDownload() && masternodeSync.IsSynced())
+                    if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
                         break;
                     MilliSleep(1000);
                 } while (true);
@@ -799,7 +799,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 // on an obsolete chain. In regtest mode we expect to fly solo.
                 do {
                     bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;//XJTODO
-                    if (/*!fvNodesEmpty &&*/ /*!IsInitialBlockDownload() &&*/ masternodeSync.IsSynced())
+                    if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
                         break;
                     MilliSleep(50);
                 } while (true);
