@@ -9090,8 +9090,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
 
         //XJTODO
-        LogPrintf("SPOS_Message,before sort:ip:%s,nActiveState:%d,onlineTime:%d,isOK:%d\n",mn.addr.ToStringIP()
-                  ,mn.nActiveState,onlineTime,onlineTime < g_nMasternodeMinOnlineTime?0:1);
+        LogPrintf("SPOS_Message,before sort:ip:%s,nActiveState:%d,onlineTime:%d,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP()
+                  ,mn.nActiveState,onlineTime,mn.nClientVersion,onlineTime < g_nMasternodeMinOnlineTime?0:1);
         //XJTODO Test codes can annotate this
         if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==1) || onlineTime < g_nMasternodeMinOnlineTime)
             continue;
@@ -9113,8 +9113,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     //XJTODO remove it5
     for (auto& mnpair : scoreMasternodes)
     {
-        LogPrintf("SPOS_Message,after sort:ip:%s,score:%s\n",mnpair.second.addr.ToStringIP()
-                  ,mnpair.first.ToString());
+        LogPrintf("SPOS_Message,after sort:ip:%s,score:%s,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
+                  ,mnpair.first.ToString(),mnpair.second.nClientVersion);
     }
 
     unsigned int count = 0;
@@ -9151,7 +9151,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     for( uint32_t i = 0; i < size; ++i )
     {
         const CMasternode& mn = g_vecResultMasternodes[i];
-        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s\n", i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString());
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.nClientVersion);
     }
 
     g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
