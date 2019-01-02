@@ -1335,8 +1335,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
 /** Context-independent validity checks */
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW = true);
-bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true, CKeyID *pkeyID = NULL);
-bool CheckSPOSBlock(const CBlock& block, CValidationState& state, const int& nHeight, CKeyID *pkeyID = NULL);
+bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true, string &strKeyId = "");
+bool CheckSPOSBlock(const CBlock& block, CValidationState& state, const int& nHeight, string &strKeyId = "");
 
 /** Context-dependent validity checks */
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex *pindexPrev);
