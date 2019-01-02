@@ -4032,7 +4032,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     std::string strKeyID = "";
     // Check it again in case a previous version let a bad block in
-    if (!CheckBlock(block, pindex->nHeight, state, !fJustCheck, !fJustCheck, strKeyID))
+    if (!CheckBlock(block, pindex->nHeight, state, !fJustCheck, !fJustCheck, &strKeyID))
         return false;
 
     // verify that the view's current state corresponds to the previous block
@@ -5575,7 +5575,7 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
     return true;
 }
 
-bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight, std::string &strKeyId)
+bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight, std::string *pstrKeyId)
 {
     LOCK(cs_spos);
     if (block.nBits != 0 || block.nNonce != 0)
@@ -5631,11 +5631,12 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
                                     ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
                                     ,block.GetBlockTime(),g_nStartNewLoopTime)
                                     , REJECT_INVALID, "bad-blockaddress", true);
-    strKeyId = keyID.ToString();
+    if (pstrKeyId)
+        *pstrKeyId = keyID.ToString();
     return true;
 }
 
-bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot, std::string &strKeyId)
+bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot, std::string *pstrKeyId)
 {
     // These are checks that are independent of context.
 
