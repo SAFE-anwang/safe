@@ -4035,6 +4035,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (!CheckBlock(block, pindex->nHeight, state, strKeyID, !fJustCheck, !fJustCheck))
         return false;
 
+    LogPrintf("CheckBlock strKeyID:%s\n", strKeyID);
+
     // verify that the view's current state corresponds to the previous block
     uint256 hashPrevBlock = pindex->pprev == NULL ? uint256() : pindex->pprev->GetBlockHash();
     assert(hashPrevBlock == view.GetBestBlock());
@@ -4689,7 +4691,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if(IsStartSPosHeight(pindex->nHeight+1))
     {
-        LogPrintf("SPOS_Message:connect new block:%d---keyid:%s\n",pindex->nHeight, strKeyID);
+        LogPrintf("SPOS_Message:connect new block:%d---strKeyID:%s\n",pindex->nHeight, strKeyID);
         LOCK(cs_spos);
         SelectMasterNode(pindex->nHeight,block.nTime);
     }
@@ -5662,6 +5664,8 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
         if (!CheckSPOSBlock(block, state,nHeight, strKeyID))
             return false;
     }
+
+    LogPrintf("CheckSPOSBlock strKeyID:%s\n", strKeyID);
 
     // Check the merkle root.
     if (fCheckMerkleRoot) {
