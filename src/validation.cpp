@@ -5658,8 +5658,10 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
         return false;
 
     if (nHeight >= g_nStartSPOSHeight)
-        if (!CheckSPOSBlock(block, state,nHeight, strKeyId))
+    {
+        if (!CheckSPOSBlock(block, state,nHeight, pstrKeyId))
             return false;
+    }
 
     // Check the merkle root.
     if (fCheckMerkleRoot) {
