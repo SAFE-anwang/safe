@@ -10,8 +10,13 @@
 #include "utilstrencodings.h"
 
 int g_nChainHeight = -1;
+#if SCN_CURRENT == SCN__main
 int g_nProtocolV1Height = 809220;
 int g_nProtocolV2Height = 943809;
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+int g_nProtocolV1Height = 200;
+int g_nProtocolV2Height = 400;
+#endif
 
 bool IsProtocolV0(const int& nHeight)
 {
