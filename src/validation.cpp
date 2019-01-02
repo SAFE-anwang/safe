@@ -4032,7 +4032,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     std::string strKeyID = "";
     // Check it again in case a previous version let a bad block in
-    if (!CheckBlock(block, pindex->nHeight, state, strKeyID, !fJustCheck, !fJustCheck, &strKeyID))
+    if (!CheckBlock(block, pindex->nHeight, state, strKeyID, !fJustCheck, !fJustCheck))
         return false;
 
     // verify that the view's current state corresponds to the previous block
