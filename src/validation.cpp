@@ -5632,7 +5632,11 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
                                     ,block.GetBlockTime(),g_nStartNewLoopTime)
                                     , REJECT_INVALID, "bad-blockaddress", true);
     if (pstrKeyId)
+    {
         *pstrKeyId = keyID.ToString();
+        LogPrintf("SPOS *pstrKeyId:%s\n", *pstrKeyId);
+    }
+
     return true;
 }
 
