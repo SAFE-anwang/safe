@@ -535,7 +535,8 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                                (int64_t)(mn.lastPing.sigTime - mn.sigTime) << " " << std::setw(10) <<
                                mn.GetLastPaidTime() << " "  << std::setw(6) <<
                                mn.GetLastPaidBlock() << " " <<
-                               mn.addr.ToString();
+                               mn.addr.ToString()<< " " <<
+                               mn.nClientVersion;
                 std::string strFull = streamFull.str();
                 if (strFilter !="" && strFull.find(strFilter) == std::string::npos &&
                     strOutpoint.find(strFilter) == std::string::npos) continue;
