@@ -6,6 +6,8 @@
 #ifndef BITCOIN_CONSENSUS_CONSENSUS_H
 #define BITCOIN_CONSENSUS_CONSENSUS_H
 
+#include "config/safe-chain.h"
+
 /** The maximum allowed size for a serialized block, in bytes (network rule) */
 // static const unsigned int MAX_BLOCK_SIZE = 1000000;
 static const unsigned int MAX_LEGACY_BLOCK_SIZE = (1 * 1000 * 1000);

@@ -9,6 +9,7 @@
 #include "config/safe-config.h"
 #endif
 
+#include "config/safe-chain.h"
 #include "util.h"
 
 #include "support/allocators/secure.h"
