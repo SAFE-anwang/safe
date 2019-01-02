@@ -1341,8 +1341,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             if(assetData.bPayCandy)
             {
                 char totalAmountStr[64] = "",candyAmountStr[64]="";
-                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetData.nTotalAmount);
-                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",assetData.nCandyAmount);
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,assetData.nCandyAmount);
                 string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
                 string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
                 if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -1757,8 +1757,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                     return state.DoS(10, false, REJECT_INVALID, "put_candy: candy amount is different from candy amount of asset data");
 
                 char totalAmountStr[64] = "",candyAmountStr[64]="";
-                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetData.nTotalAmount);
-                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",assetData.nCandyAmount);
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,assetData.nCandyAmount);
                 string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
                 string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
                 if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -1777,8 +1777,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                     return state.DoS(10, false, REJECT_INVALID, "put_candy: non-existent asset");
 
                 char totalAmountStr[64] = "",candyAmountStr[64]="";
-                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetInfo.assetData.nTotalAmount);
-                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",candyData.nAmount);
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetInfo.assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,candyData.nAmount);
                 string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
                 string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
                 if(compareFloatString(candyAmountStr,candyMinStr)<0||compareFloatString(candyAmountStr,candyMaxStr)>0)
