@@ -32,7 +32,13 @@ class CBaseMainParams : public CBaseChainParams
 public:
     CBaseMainParams()
     {
+#if SCN_CURRENT == SCN__main
         nRPCPort = 5554;
+#elif SCN_CURRENT == SCN__dev
+        nRPCPort = 4421;
+#elif SCN_CURRENT == SCN__test
+        nRPCPort = 4487;
+#endif
     }
 };
 static CBaseMainParams mainParams;
@@ -45,7 +51,13 @@ class CBaseTestNetParams : public CBaseChainParams
 public:
     CBaseTestNetParams()
     {
+#if SCN_CURRENT == SCN__main
         nRPCPort = 15554;
+#elif SCN_CURRENT == SCN__dev
+        nRPCPort = 14421;
+#elif SCN_CURRENT == SCN__test
+        nRPCPort = 14487;
+#endif
         strDataDir = "testnet3";
     }
 };
@@ -59,7 +71,13 @@ class CBaseRegTestParams : public CBaseChainParams
 public:
     CBaseRegTestParams()
     {
+#if SCN_CURRENT == SCN__main
         nRPCPort = 25554;
+#elif SCN_CURRENT == SCN__dev
+        nRPCPort = 24421;
+#elif SCN_CURRENT == SCN__test
+        nRPCPort = 24487;
+#endif
         strDataDir = "regtest";
     }
 };
