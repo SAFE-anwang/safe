@@ -17,6 +17,8 @@ int g_nProtocolV2Height = 943809;
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
 int g_nProtocolV1Height = 200;
 int g_nProtocolV2Height = 400;
+#else
+#error "unsupported <safe chain name>"
 #endif
 
 bool IsProtocolV0(const int& nHeight)

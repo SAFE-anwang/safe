@@ -476,6 +476,8 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                             int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", chainparams.GetConsensus().nPowTargetSpacing)) * 1000;
                             MilliSleep(nTime);
                         }
+#else
+#error "unsupported <safe chain name>"
 #endif
                         // Found a solution
                         SetThreadPriority(THREAD_PRIORITY_NORMAL);
@@ -540,6 +542,8 @@ void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainpar
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
     if(!GetBoolArg("-lmb_gen", false))
         return;
+#else
+#error "unsupported <safe chain name>"
 #endif
 
     static boost::thread_group* minerThreads = NULL;

@@ -13,6 +13,8 @@ static std::string g_strCriticalAddress = "Xx7fUGPeMLr7gyYfWEF5nC2AXaar95sZnQ";
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
 int g_nCriticalHeight = 175;
 static std::string g_strCriticalAddress = "XuVvTuxikYC1Cu9rtcvbZQmuXxKCfhdb5U";
+#else
+#error "unsupported <safe chain name>"
 #endif
 
 int g_nAnWwangDiffOffset = 100;
@@ -52,6 +54,8 @@ CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)
     block.nBits = 0x1e0ffff0;
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
     block.nBits = 0x1f0ffff0;
+#else
+#error "unsupported <safe chain name>"
 #endif
     block.nNonce = 0;
 

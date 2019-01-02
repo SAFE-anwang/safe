@@ -197,6 +197,8 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     //do nothing
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
     retarget = DIFF_BTC;
+#else
+#error "unsupported <safe chain name>"
 #endif
 
     // Bitcoin style retargeting

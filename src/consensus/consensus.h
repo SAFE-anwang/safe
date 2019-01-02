@@ -26,6 +26,8 @@ inline unsigned int MaxBlockSigOps(bool fDIP0001Active /*= false */)
 static const int COINBASE_MATURITY = 100;
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
 static const int COINBASE_MATURITY = 10;
+#else
+#error "unsupported <safe chain name>"
 #endif
 
 /** Flags for nSequence and nLockTime locks */
