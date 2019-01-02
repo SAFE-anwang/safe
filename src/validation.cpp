@@ -4035,9 +4035,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (!CheckBlock(block, pindex->nHeight, state, !fJustCheck, !fJustCheck, &keyID))
         return false;
 
-    if (IsStartSPosHeight(pindex->nHeight))
-        LogPrintf(" ConnectBlock-- keyID:%s\n", keyID.ToString());
-
     // verify that the view's current state corresponds to the previous block
     uint256 hashPrevBlock = pindex->pprev == NULL ? uint256() : pindex->pprev->GetBlockHash();
     assert(hashPrevBlock == view.GetBestBlock());
@@ -4692,7 +4689,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if(IsStartSPosHeight(pindex->nHeight+1))
     {
-        LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
+        LogPrintf("SPOS_Message:connect new block:%d---keyid:%s\n",pindex->nHeight, keyID.ToString());
         LOCK(cs_spos);
         SelectMasterNode(pindex->nHeight,block.nTime);
     }
