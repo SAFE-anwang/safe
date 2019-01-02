@@ -4030,9 +4030,13 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     int64_t nTimeStart = GetTimeMicros();
 
+    CKeyID keyID;
     // Check it again in case a previous version let a bad block in
-    if (!CheckBlock(block, pindex->nHeight, state, !fJustCheck, !fJustCheck))
+    if (!CheckBlock(block, pindex->nHeight, state, !fJustCheck, !fJustCheck, &keyID))
         return false;
+
+    if (IsStartSPosHeight(pindex->nHeight))
+        LogPrintf(" ConnectBlock-- keyID:%s\n", keyID.ToString());
 
     // verify that the view's current state corresponds to the previous block
     uint256 hashPrevBlock = pindex->pprev == NULL ? uint256() : pindex->pprev->GetBlockHash();
@@ -5574,7 +5578,7 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
     return true;
 }
 
-bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight)
+bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight, CKeyID *pkeyID)
 {
     LOCK(cs_spos);
     if (block.nBits != 0 || block.nNonce != 0)
@@ -5630,11 +5634,12 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
                                     ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
                                     ,block.GetBlockTime(),g_nStartNewLoopTime)
                                     , REJECT_INVALID, "bad-blockaddress", true);
-
+    if (pkeyID)
+        *pkeyID = keyID;
     return true;
 }
 
-bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot)
+bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot, CKeyID *pkeyID)
 {
     // These are checks that are independent of context.
 
@@ -5656,7 +5661,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
         return false;
 
     if (nHeight >= g_nStartSPOSHeight)
-        if (!CheckSPOSBlock(block, state,nHeight))
+        if (!CheckSPOSBlock(block, state,nHeight, pkeyID))
             return false;
 
     // Check the merkle root.
