@@ -40,7 +40,7 @@ public:
 #elif SCN_CURRENT == SCN__test
         nRPCPort = 4487;
 #else
-#error "unsupported <safe chain name>"
+#error unsupported <safe chain name>
 #endif
     }
 };
@@ -61,7 +61,7 @@ public:
 #elif SCN_CURRENT == SCN__test
         nRPCPort = 14487;
 #else
-#error "unsupported <safe chain name>"
+#error unsupported <safe chain name>
 #endif
         strDataDir = "testnet3";
     }
@@ -83,7 +83,7 @@ public:
 #elif SCN_CURRENT == SCN__test
         nRPCPort = 24487;
 #else
-#error "unsupported <safe chain name>"
+#error unsupported <safe chain name>
 #endif
         strDataDir = "regtest";
     }

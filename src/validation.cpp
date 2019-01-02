@@ -5494,7 +5494,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
     //do nothing
 #else
-#error "unsupported <safe chain name>"
+#error unsupported <safe chain name>
 #endif
     // Check timestamp against prev
     if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast())

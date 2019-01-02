@@ -536,7 +536,7 @@ boost::filesystem::path GetDefaultDataDir()
 #elif SCN_CURRENT == SCN__test
     return GetSpecialFolderPath(CSIDL_APPDATA) / "Safe_Test";
 #else
-#error "unsupported <safe chain name>"
+#error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
 
 #else
@@ -556,7 +556,7 @@ boost::filesystem::path GetDefaultDataDir()
 #elif SCN_CURRENT == SCN__test
     return pathRet / "Library/Application Support/Safe_Test";
 #else
-#error "unsupported <safe chain name>"
+#error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
 
 #else
@@ -568,7 +568,7 @@ boost::filesystem::path GetDefaultDataDir()
 #elif SCN_CURRENT == SCN__test
     return pathRet / ".safe_test";
 #else
-#error "unsupported <safe chain name>"
+#error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
 
 #endif//#ifdef MAC_OSX

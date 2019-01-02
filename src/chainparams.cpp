@@ -1103,7 +1103,7 @@ public:
 static CRegTestParams regTestParams;
 
 #else
-#error "unsupported <safe chain name>"
+#error unsupported <safe chain name>
 #endif  //#if SCN_CURRENT == ...
 
 static CChainParams *pCurrentParams = 0;

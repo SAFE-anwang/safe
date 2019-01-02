@@ -5,8 +5,11 @@
 ////////////////////////////////////////////////////////////
 //pre-defined safe-chain-name
 
+//notice:
+//  SCN__`xxx` must not be 0
+//  or `#if SCN_CURRENT == SCN__main` is always executed
 #define SCN__error      -1
-#define SCN__main       0
+#define SCN__main       1
 #define SCN__dev        10
 #define SCN__test       20
 
@@ -18,8 +21,9 @@
 #endif
 
 ////////////////////////////////////////////////////////////
-
-#define SCN_CURRENT (SCN__ ## SAFE_CHAIN_NAME)
+#define _SCN_CAT(x)  SCN__##x
+#define SCN_CAT(x)   _SCN_CAT(x)
+#define SCN_CURRENT SCN_CAT(SAFE_CHAIN_NAME)
 
 ////////////////////////////////////////////////////////////
 
@@ -30,7 +34,10 @@
 #elif SCN_CURRENT == SCN__test
 #pragma message("SCN_CURRENT == SCN__test")
 #else
-#error "unsupported <safe chain name>"
+#define _DISPLAY_SCN_CURRENT(x) #x
+#define DISPLAY_SCN_CURRENT(x) _DISPLAY_SCN_CURRENT(x)
+#pragma message("error: SCN_CURRENT == " DISPLAY_SCN_CURRENT(SCN_CURRENT))
+#error unsupported <safe chain name>
 #endif
 
 #endif  //SAFE_CHAIN_H
