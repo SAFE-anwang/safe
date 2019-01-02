@@ -192,6 +192,12 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         else retarget = DIFF_BTC;
     }
 
+#if SCN_CURRENT == SCN__main
+    //do nothing
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    retarget = DIFF_BTC;
+#endif
+
     // Bitcoin style retargeting
     if (retarget == DIFF_BTC)
     {
