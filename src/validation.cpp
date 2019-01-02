@@ -4030,7 +4030,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     int64_t nTimeStart = GetTimeMicros();
 
-    string strKeyID = "";
+    std::string strKeyID = "";
     // Check it again in case a previous version let a bad block in
     if (!CheckBlock(block, pindex->nHeight, state, !fJustCheck, !fJustCheck, strKeyID))
         return false;
@@ -5575,7 +5575,7 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
     return true;
 }
 
-bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight, string &strKeyId)
+bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight, std::string &strKeyId)
 {
     LOCK(cs_spos);
     if (block.nBits != 0 || block.nNonce != 0)
@@ -5635,7 +5635,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     return true;
 }
 
-bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot, string &strKeyId)
+bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot, std::string &strKeyId)
 {
     // These are checks that are independent of context.
 
