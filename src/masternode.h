@@ -340,7 +340,8 @@ public:
         READWRITE(sigTime);
         READWRITE(nProtocolVersion);
         READWRITE(lastPing);
-        if(CLIENT_VERSION>=SPOS_MIN_CLIENT_VERSION)
+        int sz = s.size();
+        if(CLIENT_VERSION>=SPOS_MIN_CLIENT_VERSION&&sz>0)
             READWRITE(nClientVersion);
     }
 

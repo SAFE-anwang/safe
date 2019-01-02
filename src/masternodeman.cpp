@@ -777,6 +777,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
     if (strCommand == NetMsgType::MNANNOUNCE) { //Masternode Broadcast
 
         CMasternodeBroadcast mnb;
+        mnb.nClientVersion = 0;
         vRecv >> mnb;
 
         pfrom->setAskFor.erase(mnb.GetHash());
