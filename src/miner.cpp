@@ -466,6 +466,16 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                     hash = pblock->GetHash();
                     if (UintToArith256(hash) <= hashTarget)
                     {
+#if SCN_CURRENT == SCN__main
+                        //do nothing
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+                        {
+                            srand((unsigned int)time(NULL));
+                            //int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", 24)) * 1000;
+                            int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", chainparams.GetConsensus().nPowTargetSpacing)) * 1000;
+                            MilliSleep(nTime);
+                        }
+#endif
                         // Found a solution
                         SetThreadPriority(THREAD_PRIORITY_NORMAL);
                         LogPrintf("SafeMiner:\n  proof-of-work found\n  hash: %s\n  target: %s\n", hash.GetHex(), hashTarget.GetHex());
@@ -524,6 +534,13 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 
 void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman)
 {
+#if SCN_CURRENT == SCN__main
+    //do nothing
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    if(!GetBoolArg("-lmb_gen", false))
+        return;
+#endif
+
     static boost::thread_group* minerThreads = NULL;
 
     if (nThreads < 0)
