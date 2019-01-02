@@ -6,10 +6,16 @@
 
 #include <string>
 
+#if SCN_CURRENT == SCN__main
 int g_nCriticalHeight = 807085;
+static std::string g_strCriticalAddress = "Xx7fUGPeMLr7gyYfWEF5nC2AXaar95sZnQ";
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+int g_nCriticalHeight = 175;
+static std::string g_strCriticalAddress = "XuVvTuxikYC1Cu9rtcvbZQmuXxKCfhdb5U";
+#endif
+
 int g_nAnWwangDiffOffset = 100;
 CAmount g_nCriticalReward = 21000000 * COIN;
-static std::string g_strCriticalAddress = "Xx7fUGPeMLr7gyYfWEF5nC2AXaar95sZnQ";
 
 std::string g_strCancelledMoneroCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLah6SqX2S"; // monero's safe candy hold address (hash160: 0x0000...00)
 std::string g_strCancelledSafeAddress = "XagqqFetxiDb9wbartKDrXgnqLah9fKoTx"; // safe's black hold address (hash160: 0x0000...01)
@@ -41,7 +47,11 @@ CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)
     block.hashPrevBlock = pindexPrev->GetBlockHash();
     block.hashMerkleRoot = BlockMerkleRoot(block);
     block.nTime = pindexPrev->nTime + 30;
+#if SCN_CURRENT == SCN__main
     block.nBits = 0x1e0ffff0;
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    block.nBits = 0x1f0ffff0;
+#endif
     block.nNonce = 0;
 
     return block;
