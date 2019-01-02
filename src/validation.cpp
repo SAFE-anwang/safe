@@ -9095,6 +9095,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         //XJTODO Test codes can annotate this
         if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==1) || onlineTime < g_nMasternodeMinOnlineTime)
             continue;
+        if(mn.nClientVersion < SPOS_MIN_CLIENT_VERSION)
+            continue;
 
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
