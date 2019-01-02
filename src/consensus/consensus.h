@@ -20,7 +20,11 @@ inline unsigned int MaxBlockSigOps(bool fDIP0001Active /*= false */)
     return MaxBlockSize(fDIP0001Active) / 50;
 }
 /** Coinbase transaction outputs can only be spent after this number of new blocks (network rule) */
+#if SCN_CURRENT == SCN__main
 static const int COINBASE_MATURITY = 100;
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+static const int COINBASE_MATURITY = 10;
+#endif
 
 /** Flags for nSequence and nLockTime locks */
 enum {
