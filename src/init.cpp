@@ -106,6 +106,7 @@ extern int g_nStartSPOSHeight;
 extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinOnlineTime;
 extern unsigned int g_nMasternodeStatusEnable;
+extern unsigned int g_nMasternodeMinCount;
 
 std::unique_ptr<CConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
@@ -1533,10 +1534,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     LogPrintf("* Using %.1fMiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
 
+    //XJTODO annote it
     g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
     g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
     g_nMasternodeMinOnlineTime = GetArg("-masternode_min_online_time", g_nMasternodeMinOnlineTime);
     g_nMasternodeStatusEnable = GetArg("-masternode_status_enable", g_nMasternodeStatusEnable);
+    g_nMasternodeMinCount = GetArg("-masternode_min_count", g_nMasternodeMinCount);
 
     bool fLoaded = false;
     while (!fLoaded) {

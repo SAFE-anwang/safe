@@ -116,6 +116,7 @@ extern unsigned int g_nMasternodeMinOnlineTime;
 extern CActiveMasternode activeMasternode;
 extern int64_t g_nLastSelectMasterNodeHeight;
 extern unsigned int g_nMasternodeStatusEnable;
+extern unsigned int g_nMasternodeMinCount;
 
 const static int M = 2000; //Maximum number of digits
 int numA[M];
@@ -9108,9 +9109,10 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         scoreMasternodes[score] = mn;
     }
 
-    if(scoreMasternodes.empty())
+    unsigned int scoreMnSize = scoreMasternodes.size();
+    if(scoreMnSize < g_nMasternodeMinCount)
     {
-        LogPrintf("SPOS_Error:scoreMasternodes is empty\n");
+        LogPrintf("SPOS_Error:scoreMasternodes size:%d,g_nMasternodeMinCount:%d\n",scoreMnSize,g_nMasternodeMinCount);
         return;
     }
 

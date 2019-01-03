@@ -16,13 +16,14 @@ std::string g_strCancelledMoneroCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLah6SqX
 std::string g_strCancelledSafeAddress = "XagqqFetxiDb9wbartKDrXgnqLah9fKoTx"; // safe's black hold address (hash160: 0x0000...01)
 std::string g_strCancelledAssetAddress = "XagqqFetxiDb9wbartKDrXgnqLahHSe2VE"; // asset's black hold address (hash160: 0x0000...02)
 std::string g_strPutCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLahUovwfs"; // candy's black hold address (hash160: 0x0000...03)
+
 int g_nStartSPOSHeight = 32205;//XJTODO
-unsigned int g_nMasternodeSPosCount = 3;
+unsigned int g_nMasternodeSPosCount = 9;
 unsigned int g_nMasternodeMinOnlineTime = 86400*3;
-unsigned int g_nWaitBlockHeight = 0;//TODO change to tmp
 int64_t g_nStartNewLoopTime = 0;
 int g_nSposGeneratedIndex = -2;
 unsigned int g_nMasternodeStatusEnable = 1;//XJTODO remove it
+unsigned int g_nMasternodeMinCount = 5;
 int64_t g_nLastSelectMasterNodeHeight = 0;
 std::vector<CMasternode> g_vecResultMasternodes;
 
