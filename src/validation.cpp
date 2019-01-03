@@ -5579,14 +5579,13 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
 
 bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight, std::string &strKeyID)
 {
-    LOCK(cs_spos);
     if (block.nBits != 0 || block.nNonce != 0)
-        return state.DoS(100, error(" SPOS CheckSPOSBlock(): height:%d,block.nBits or block.nNonce not equal to 0",nHeight), REJECT_INVALID, "bad-nBits-nNonce", true);
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,block.nBits or block.nNonce not equal to 0",nHeight), REJECT_INVALID, "bad-nBits-nNonce", true);
 
     int64_t nNowTime = GetTime();
     //XJTODO tmp annote
     if (block.GetBlockTime() - nNowTime > AllowableErrorTime)
-        return state.DoS(100, error("SPOS CheckSPOSBlock(): height:%d,block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d,please check local time correct"
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d,please check local time correct"
                                     ,nHeight,nNowTime,block.GetBlockTime(),AllowableErrorTime), REJECT_INVALID, "bad-nTime", true);
 
     CTransaction tempTransaction  = block.vtx[0];
@@ -5599,7 +5598,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     uint16_t nSPOSVersion = 1;
 
     if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, vchConAlg, nSPOSVersion, strSigMessage) || vchConAlg.size() != nConsensusAlgorithmLen || vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
-        return state.DoS(100, error("SPOS CheckSPOSBlock(): height:%d,analysis CTxOut vReserve fail, vchConAlg size:%d",nHeight,vchConAlg.size()), REJECT_INVALID, "bad-vReserve", true);
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,analysis CTxOut vReserve fail, vchConAlg size:%d",nHeight,vchConAlg.size()), REJECT_INVALID, "bad-vReserve", true);
 
     CKeyID keyID;
     CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
@@ -5608,7 +5607,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     std::string strError = "";
 
     if (!CMessageSigner::VerifyMessage(keyID, vchSig, strSigMessage, strError))
-        return state.DoS(100, error("SPOS CheckSPOSBlock():height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
                                     ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-signature", true);
 
     if (!masternodeSync.IsBlockchainSynced())
@@ -5616,19 +5615,19 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
 
     int32_t mnSize = g_vecResultMasternodes.size();
     if(mnSize == 0)
-        return state.DoS(100, error("SPOS CheckSPOSBlock():height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
                                     ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-mnSize", true);
     int32_t interval = (block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1;
     int32_t nIndex = interval % mnSize;
     if(nIndex<0)
-        return state.DoS(100,error("SPOS CheckSPOSBlock():height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
                                    ,nHeight,nIndex,block.GetBlockTime(),g_nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
     const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
 
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
     if (keyID != mnkeyID)
-        return state.DoS(100, error("SPOS CheckSPOSBlock(): height:%d,blockaddress error,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,blockaddress error,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
                                     "ip:%s,blocktime:%lld,startlooptime:%lld\n"
                                     ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
                                     ,block.GetBlockTime(),g_nStartNewLoopTime)
@@ -5661,6 +5660,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
 
     if (nHeight >= g_nStartSPOSHeight)
     {
+        LOCK(cs_spos);
         if (!CheckSPOSBlock(block, state,nHeight, strKeyID))
             return false;
     }
