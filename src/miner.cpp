@@ -5,6 +5,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "config/safe-chain.h"
 #include "miner.h"
 
 #include "amount.h"
@@ -466,6 +467,18 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                     hash = pblock->GetHash();
                     if (UintToArith256(hash) <= hashTarget)
                     {
+#if SCN_CURRENT == SCN__main
+                        //do nothing
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+                        {
+                            srand((unsigned int)time(NULL));
+                            //int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", 24)) * 1000;
+                            int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", chainparams.GetConsensus().nPowTargetSpacing)) * 1000;
+                            MilliSleep(nTime);
+                        }
+#else
+#error unsupported <safe chain name>
+#endif
                         // Found a solution
                         SetThreadPriority(THREAD_PRIORITY_NORMAL);
                         LogPrintf("SafeMiner:\n  proof-of-work found\n  hash: %s\n  target: %s\n", hash.GetHex(), hashTarget.GetHex());
@@ -524,6 +537,15 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 
 void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman)
 {
+#if SCN_CURRENT == SCN__main
+    //do nothing
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    if(!GetBoolArg("-lmb_gen", false))
+        return;
+#else
+#error unsupported <safe chain name>
+#endif
+
     static boost::thread_group* minerThreads = NULL;
 
     if (nThreads < 0)

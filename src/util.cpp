@@ -9,6 +9,7 @@
 #include "config/safe-config.h"
 #endif
 
+#include "config/safe-chain.h"
 #include "util.h"
 
 #include "support/allocators/secure.h"
@@ -518,13 +519,26 @@ void PrintExceptionContinue(const std::exception* pex, const char* pszThread)
 boost::filesystem::path GetDefaultDataDir()
 {
     namespace fs = boost::filesystem;
-    // Windows < Vista: C:\Documents and Settings\Username\Application Data\Safe
-    // Windows >= Vista: C:\Users\Username\AppData\Roaming\Safe
-    // Mac: ~/Library/Application Support/Safe
-    // Unix: ~/.safe
+    // Windows < Vista: 
+    //   "C:\Documents and Settings\Username\Application Data\" + SAFE_DATA_DIR_NAME
+    // Windows >= Vista: 
+    //   "C:\Users\Username\AppData\Roaming\" + SAFE_DATA_DIR_NAME
+    // Mac: 
+    //   "~/Library/Application Support/" + SAFE_DATA_DIR_NAME
+    // Unix: 
+    //   "~/" + ".safe"
 #ifdef WIN32
     // Windows
+#if SCN_CURRENT == SCN__main
     return GetSpecialFolderPath(CSIDL_APPDATA) / "Safe";
+#elif SCN_CURRENT == SCN__dev
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "Safe_Dev";
+#elif SCN_CURRENT == SCN__test
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "Safe_Test";
+#else
+#error unsupported <safe chain name>
+#endif//#if SCN_CURRENT == SCN__main
+
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -532,14 +546,34 @@ boost::filesystem::path GetDefaultDataDir()
         pathRet = fs::path("/");
     else
         pathRet = fs::path(pszHome);
+
 #ifdef MAC_OSX
     // Mac
+#if SCN_CURRENT == SCN__main
     return pathRet / "Library/Application Support/Safe";
+#elif SCN_CURRENT == SCN__dev
+    return pathRet / "Library/Application Support/Safe_Dev";
+#elif SCN_CURRENT == SCN__test
+    return pathRet / "Library/Application Support/Safe_Test";
+#else
+#error unsupported <safe chain name>
+#endif//#if SCN_CURRENT == SCN__main
+
 #else
     // Unix
+#if SCN_CURRENT == SCN__main
     return pathRet / ".safe";
-#endif
-#endif
+#elif SCN_CURRENT == SCN__dev
+    return pathRet / ".safe_dev";
+#elif SCN_CURRENT == SCN__test
+    return pathRet / ".safe_test";
+#else
+#error unsupported <safe chain name>
+#endif//#if SCN_CURRENT == SCN__main
+
+#endif//#ifdef MAC_OSX
+
+#endif//#ifdef WIN32
 }
 
 static boost::filesystem::path pathCached;

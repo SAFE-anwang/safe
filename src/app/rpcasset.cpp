@@ -124,8 +124,8 @@ UniValue issueasset(const UniValue& params, bool fHelp)
 
         nCandyAmount = AmountFromValue(params[9], nAssetDecimals, true);
         char totalAmountStr[64] = "",candyAmountStr[64]="";
-        snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",nAssetTotalAmount);
-        snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",nCandyAmount);
+        snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,nAssetTotalAmount);
+        snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,nCandyAmount);
         string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
         string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
         if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -523,8 +523,8 @@ UniValue putcandy(const UniValue& params, bool fHelp)
 
     CAmount nAmount = AmountFromValue(params[1], assetInfo.assetData.nDecimals, true);
     char totalAmountStr[64] = "",candyAmountStr[64]="";
-    snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetInfo.assetData.nTotalAmount);
-    snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",nAmount);
+    snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetInfo.assetData.nTotalAmount);
+    snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,nAmount);
     string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
     string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
     if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -1257,7 +1257,7 @@ UniValue getaddrassetbalance(const UniValue& params, bool fHelp)
                 if (strtempAddress == strAddress)
                 {
                     char ctempdata[64] = {0};
-                    sprintf(ctempdata, "%lld", txout.nValue);
+                    sprintf(ctempdata, "%" PRId64, txout.nValue);
                     TotalReceiveAmount = plusstring(TotalReceiveAmount, ctempdata);
 
                     if (txout.nUnlockedHeight > chainActive.Height())
@@ -1291,7 +1291,7 @@ UniValue getaddrassetbalance(const UniValue& params, bool fHelp)
                     if (strtempAddress == strAddress)
                     {
                         char ctempdata[64] = {0};
-                        sprintf(ctempdata, "%lld", txout.nValue);
+                        sprintf(ctempdata, "%" PRId64, txout.nValue);
                         TotalSendAmount = plusstring(TotalSendAmount, ctempdata);
                     }
                 }

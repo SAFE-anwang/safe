@@ -5,6 +5,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "config/safe-chain.h"
 #include "validation.h"
 
 #include "alert.h"
@@ -1340,8 +1341,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             if(assetData.bPayCandy)
             {
                 char totalAmountStr[64] = "",candyAmountStr[64]="";
-                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetData.nTotalAmount);
-                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",assetData.nCandyAmount);
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,assetData.nCandyAmount);
                 string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
                 string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
                 if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -1756,8 +1757,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                     return state.DoS(10, false, REJECT_INVALID, "put_candy: candy amount is different from candy amount of asset data");
 
                 char totalAmountStr[64] = "",candyAmountStr[64]="";
-                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetData.nTotalAmount);
-                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",assetData.nCandyAmount);
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,assetData.nCandyAmount);
                 string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
                 string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
                 if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -1776,8 +1777,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                     return state.DoS(10, false, REJECT_INVALID, "put_candy: non-existent asset");
 
                 char totalAmountStr[64] = "",candyAmountStr[64]="";
-                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetInfo.assetData.nTotalAmount);
-                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",candyData.nAmount);
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetInfo.assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,candyData.nAmount);
                 string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
                 string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
                 if(compareFloatString(candyAmountStr,candyMinStr)<0||compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -5473,6 +5474,7 @@ static bool CheckIndexAgainstCheckpoint(const CBlockIndex* pindexPrev, CValidati
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex * const pindexPrev)
 {
     const Consensus::Params& consensusParams = Params().GetConsensus();
+#if SCN_CURRENT == SCN__main
     int nHeight = pindexPrev->nHeight + 1;
     // Check proof of work
     if(Params().NetworkIDString() == CBaseChainParams::MAIN && nHeight <= 68589){
@@ -5489,7 +5491,11 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
             return state.DoS(100, error("%s : incorrect proof of work at %d", __func__, nHeight),
                             REJECT_INVALID, "bad-diffbits");
     }
-
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    //do nothing
+#else
+#error unsupported <safe chain name>
+#endif
     // Check timestamp against prev
     if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast())
         return state.Invalid(error("%s: block's timestamp is too early", __func__),

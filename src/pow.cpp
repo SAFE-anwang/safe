@@ -3,6 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "config/safe-chain.h"
 #include "pow.h"
 
 #include "arith_uint256.h"
@@ -191,6 +192,14 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         if (pindexLast->nHeight + 1 >= 4001) retarget = DIFF_DGW;
         else retarget = DIFF_BTC;
     }
+
+#if SCN_CURRENT == SCN__main
+    //do nothing
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    retarget = DIFF_BTC;
+#else
+#error unsupported <safe chain name>
+#endif
 
     // Bitcoin style retargeting
     if (retarget == DIFF_BTC)

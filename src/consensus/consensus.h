@@ -6,6 +6,8 @@
 #ifndef BITCOIN_CONSENSUS_CONSENSUS_H
 #define BITCOIN_CONSENSUS_CONSENSUS_H
 
+#include "config/safe-chain.h"
+
 /** The maximum allowed size for a serialized block, in bytes (network rule) */
 // static const unsigned int MAX_BLOCK_SIZE = 1000000;
 static const unsigned int MAX_LEGACY_BLOCK_SIZE = (1 * 1000 * 1000);
@@ -20,7 +22,13 @@ inline unsigned int MaxBlockSigOps(bool fDIP0001Active /*= false */)
     return MaxBlockSize(fDIP0001Active) / 50;
 }
 /** Coinbase transaction outputs can only be spent after this number of new blocks (network rule) */
+#if SCN_CURRENT == SCN__main
 static const int COINBASE_MATURITY = 100;
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+static const int COINBASE_MATURITY = 10;
+#else
+#error unsupported <safe chain name>
+#endif
 
 /** Flags for nSequence and nLockTime locks */
 enum {
