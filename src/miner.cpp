@@ -628,14 +628,10 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
     Consensus Use Safe Pos
 */
 static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,CBlockIndex* pindexPrev
-                             ,unsigned int& nGenerateBlockHeight,unsigned int nNewBlockHeight,CBlock *pblock
-                             ,boost::shared_ptr<CReserveScript>& coinbaseScript,unsigned int nTransactionsUpdatedLast
-                             ,int64_t& nNextTime,unsigned int& nSleepMS,int64_t& nNextLogTime,unsigned int& nWaitBlockHeight)
+                             ,unsigned int nNewBlockHeight,CBlock *pblock,boost::shared_ptr<CReserveScript>& coinbaseScript
+                             ,unsigned int nTransactionsUpdatedLast,int64_t& nNextTime,unsigned int& nSleepMS
+                             ,int64_t& nNextLogTime,unsigned int& nWaitBlockHeight)
 {
-    //XJTODO remove it
-    if(nGenerateBlockHeight == nNewBlockHeight)
-        return;
-
     int index = 0;
     unsigned int masternodeSPosCount = 0;
     int64_t nIntervalMS = 500;
@@ -721,10 +717,10 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
             return;
     }
 
-        CValidationState state;
-        if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-            throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-        }
+    CValidationState state;
+    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+    }
 
     {
         LOCK(cs_main);
@@ -741,7 +737,6 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
             nSleepMS = nIntervalMS;
     }
 
-    nGenerateBlockHeight = nNewBlockHeight;
     // In regression test mode, stop mining after a block is found. This
     // allows developers to controllably generate a block on demand.
 
@@ -796,7 +791,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             throw std::runtime_error("No coinbase script available (mining requires a wallet)");
 
         g_nStartNewLoopTime = GetTimeMillis()*1000;
-        unsigned int nGenerateBlockHeight = 0,nWaitBlockHeight = 0;
+        unsigned int nWaitBlockHeight = 0;
         int64_t nNextBlockTime = 0,nNextLogTime = 0;
         while (true) {
             if (chainparams.MiningRequiresPeers()) {
@@ -832,8 +827,8 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 //                LogPrintf("SPOS_Message:Running miner with %u transactions in block (%u bytes),currHeight:%d\n",pblock->vtx.size(),
 //                          ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION),pindexPrev->nHeight);
 
-                ConsensusUseSPos(chainparams,connman,pindexPrev,nGenerateBlockHeight,nNewBlockHeight,pblock,coinbaseScript
-                                 ,nTransactionsUpdatedLast,nNextBlockTime,nSleepMS,nNextLogTime,nWaitBlockHeight);
+                ConsensusUseSPos(chainparams,connman,pindexPrev,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast
+                                 ,nNextBlockTime,nSleepMS,nNextLogTime,nWaitBlockHeight);
             }
             if(nSleepMS>0)
                 MilliSleep(nSleepMS);

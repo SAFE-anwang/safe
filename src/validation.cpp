@@ -5575,13 +5575,12 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
     return true;
 }
 
-bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight)
+bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight,bool fCheckPOW)
 {
     if (block.nBits != 0 || block.nNonce != 0)
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,block.nBits or block.nNonce not equal to 0",nHeight), REJECT_INVALID, "bad-nBits-nNonce", true);
 
     int64_t nNowTime = GetTime();
-    //XJTODO tmp annote
     if (block.GetBlockTime() - nNowTime > AllowableErrorTime)
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d,please check local time correct"
                                     ,nHeight,nNowTime,block.GetBlockTime(),AllowableErrorTime), REJECT_INVALID, "bad-nTime", true);
@@ -5630,7 +5629,8 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
                                     ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
                                     ,block.GetBlockTime(),g_nStartNewLoopTime)
                                     , REJECT_INVALID, "bad-blockaddress", true);
-    LogPrintf("SPOS_Message:check spos block,height:%d,strKeyID:%s\n",nHeight, keyID.ToString());
+    if(fCheckPOW)
+        LogPrintf("SPOS_Message:check spos block,height:%d,strKeyID:%s\n",nHeight, keyID.ToString());
     return true;
 }
 
@@ -5658,7 +5658,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (nHeight >= g_nStartSPOSHeight)
     {
         LOCK(cs_spos);
-        if (!CheckSPOSBlock(block, state,nHeight))
+        if (!CheckSPOSBlock(block, state,nHeight,fCheckPOW))
             return false;
     }
 
@@ -9152,8 +9152,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
 
     string localIpPortInfo = activeMasternode.service.ToString();
     uint32_t size = g_vecResultMasternodes.size();
-    LogPrintf("SPOS:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode\n"
-              ,localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,strBlockTime,size);
+    LogPrintf("SPOS:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,min online masternode count:%d\n"
+              ,localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,strBlockTime,size,g_nMasternodeMinCount);
     for( uint32_t i = 0; i < size; ++i )
     {
         const CMasternode& mn = g_vecResultMasternodes[i];
