@@ -514,7 +514,7 @@ UniValue sendwithlock(const UniValue& params, bool fHelp)
 
     int nOffset = g_nChainHeight - g_nStartSPOSHeight - g_nSPOSAStartLockHeight;
     if (nOffset < 0)
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height + 2 * SPOS_BLOCKS_PER_DAY));
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height + g_nSPOSAStartLockHeight));
 
     EnsureWalletIsUnlocked();
 
@@ -2942,7 +2942,7 @@ UniValue sendmanywithlock(const UniValue& params, bool fHelp)
 
     int nOffset = g_nChainHeight - g_nStartSPOSHeight - g_nSPOSAStartLockHeight;
     if (nOffset < 0)
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height + 2 * SPOS_BLOCKS_PER_DAY));
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height + g_nSPOSAStartLockHeight));
 
     EnsureWalletIsUnlocked();
 
