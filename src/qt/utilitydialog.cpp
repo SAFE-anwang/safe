@@ -35,7 +35,10 @@ HelpMessageDialog::HelpMessageDialog(QWidget *parent, HelpMode helpMode) :
 {
     ui->setupUi(this);
 
-    QString version = tr("Safe Core") + " " + tr("version") + " " + QString::fromStdString(FormatFullVersion());
+    QString version = tr("Safe Core") + " " + tr("version") + " " 
+                      + QString::fromStdString(FormatFullVersion()) + " | build info: " 
+                      + QString::fromStdString(FormatFullBuildInfo());
+
     /* On x86 add a bit specifier to the version so that users can distinguish between
      * 32 and 64 bit builds. On other architectures, 32/64 bit may be more ambigious.
      */

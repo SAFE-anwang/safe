@@ -83,6 +83,12 @@ const std::string CLIENT_NAME("Safe Core");
 #endif
 #endif
 
+/*
+#pragma message(STRINGIZE(BUILD_SUFFIX))
+#pragma message(STRINGIZE(BUILD_DESC))
+#pragma message(STRINGIZE(CLIENT_VERSION_SUFFIX))
+*/
+
 const std::string CLIENT_BUILD(BUILD_DESC CLIENT_VERSION_SUFFIX);
 const std::string CLIENT_DATE(BUILD_DATE);
 
@@ -117,4 +123,12 @@ std::string FormatSubVersion(const std::string& name, int nClientVersion, const 
     }
     ss << "/";
     return ss.str();
+}
+
+std::string FormatFullBuildInfo()
+{
+    return (
+        std::string(STRINGIZE(BUILD_SUFFIX)) + "@[" + 
+        std::string(BUILD_DATE) + "]"
+    );
 }
