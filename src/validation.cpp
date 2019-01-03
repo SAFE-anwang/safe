@@ -4030,12 +4030,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     int64_t nTimeStart = GetTimeMicros();
 
-    std::string strKeyID = "";
     // Check it again in case a previous version let a bad block in
-    if (!CheckBlock(block, pindex->nHeight, state, strKeyID, !fJustCheck, !fJustCheck))
+    if (!CheckBlock(block, pindex->nHeight, state, !fJustCheck, !fJustCheck))
         return false;
-
-    LogPrintf("CheckBlock strKeyID:%s\n", strKeyID);
 
     // verify that the view's current state corresponds to the previous block
     uint256 hashPrevBlock = pindex->pprev == NULL ? uint256() : pindex->pprev->GetBlockHash();
@@ -5577,7 +5574,7 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
     return true;
 }
 
-bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight, std::string &strKeyID)
+bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight)
 {
     if (block.nBits != 0 || block.nNonce != 0)
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,block.nBits or block.nNonce not equal to 0",nHeight), REJECT_INVALID, "bad-nBits-nNonce", true);
@@ -5632,12 +5629,11 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
                                     ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
                                     ,block.GetBlockTime(),g_nStartNewLoopTime)
                                     , REJECT_INVALID, "bad-blockaddress", true);
-    strKeyID = keyID.ToString();
-    LogPrintf("SPOS_Message:check spos block,height:%d,strKeyID:%s\n",nHeight,strKeyID);
+    LogPrintf("SPOS_Message:check spos block,height:%d,strKeyID:%s\n",nHeight, keyID.ToString());
     return true;
 }
 
-bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, std::string &strKeyID, bool fCheckPOW, bool fCheckMerkleRoot)
+bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot)
 {
     // These are checks that are independent of context.
 
@@ -5661,7 +5657,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (nHeight >= g_nStartSPOSHeight)
     {
         LOCK(cs_spos);
-        if (!CheckSPOSBlock(block, state,nHeight, strKeyID))
+        if (!CheckSPOSBlock(block, state,nHeight))
             return false;
     }
 
@@ -5988,8 +5984,7 @@ static bool AcceptBlock(const CBlock& block, CValidationState& state, const CCha
     }
     if (fNewBlock) *fNewBlock = true;
 
-    std::string strKeyID = "";
-    if ((!CheckBlock(block, pindex->nHeight, state, strKeyID)) || !ContextualCheckBlock(block, state, pindex->pprev)) {
+    if ((!CheckBlock(block, pindex->nHeight, state)) || !ContextualCheckBlock(block, state, pindex->pprev)) {
         if (state.IsInvalid() && !state.CorruptionPossible()) {
             pindex->nStatus |= BLOCK_FAILED_VALID;
             setDirtyBlockIndex.insert(pindex);
@@ -6079,8 +6074,7 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!ContextualCheckBlockHeader(block, state, pindexPrev))
         return false;
-    std::string strKeyID = "";
-    if (!CheckBlock(block, indexDummy.nHeight, state, strKeyID, fCheckPOW, fCheckMerkleRoot))
+    if (!CheckBlock(block, indexDummy.nHeight, state, fCheckPOW, fCheckMerkleRoot))
         return false;
     if (!ContextualCheckBlock(block, state, pindexPrev))
         return false;
@@ -6435,8 +6429,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         if (!ReadBlockFromDisk(block, pindex, chainparams.GetConsensus()))
             return error("VerifyDB(): *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 1: verify block validity
-        std::string strKeyID = "";
-        if (nCheckLevel >= 1 && !CheckBlock(block, pindex->nHeight, state, strKeyID))
+        if (nCheckLevel >= 1 && !CheckBlock(block, pindex->nHeight, state))
             return error("VerifyDB(): *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex) {
