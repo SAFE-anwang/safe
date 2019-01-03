@@ -4434,6 +4434,10 @@ http://www.anwang.com/</translation>
         <translation>交易被拒绝，该笔交易（部分）金额已被封存</translation>
     </message>
     <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>该功能在区块高度为 %1 时启用</translation>
+    </message>
+    <message>
         <source>Invalid asset name</source>
         <translation>无效的资产名称</translation>
     </message>

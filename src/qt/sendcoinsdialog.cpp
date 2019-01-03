@@ -29,6 +29,7 @@
 #include "init.h"
 #include "validation.h"
 #include "masternode-sync.h"
+#include "main.h"
 
 #include <QMessageBox>
 #include <QScrollBar>
@@ -275,6 +276,13 @@ void SendCoinsDialog::on_sendButton_clicked()
             if(entry->validate())
             {
                 const SendCoinsRecipient& recipient = entry->getValue(fAssets);
+                int nOffset = g_nChainHeight - g_nStartSPOSHeight - g_nSPOSAStartLockHeight;
+                if (nOffset < 0)
+                {
+                    QMessageBox::critical(this, tr("Safe Core"), tr("This feature is enabled when the block height is %1").arg(g_nProtocolV2Height+g_nSPOSAStartLockHeight), tr("Yes"));
+                    valid = false;
+                    break;
+                }
                 if(!fAssets && recipient.nLockedMonth > 0 && (ui->checkUsePrivateSend->isChecked() || ui->checkUseInstantSend->isChecked()))
                 {
                     //QMessageBox::critical(this, tr("Safe Core"), tr("Can not use PrivateSend or InstantSend if you create locked transaction"), QMessageBox::Yes);
