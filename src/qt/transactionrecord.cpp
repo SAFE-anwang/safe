@@ -235,7 +235,7 @@ void TransactionRecord::decomposeToMe(const CWallet *wallet, const CWalletTx &wt
                 }
                 if(getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,nAssetDebit,getAddress))
                     parts.append(sub);
-                else if(sub.bSAFETransaction && !wallet->IsChange(txout))
+                else if((sub.bSAFETransaction && !wallet->IsChange(txout)) || wtx.IsCoinBase())
                     parts.append(sub);
             }
             i++;
