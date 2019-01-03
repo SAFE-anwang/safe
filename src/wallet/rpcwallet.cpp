@@ -512,7 +512,7 @@ UniValue sendwithlock(const UniValue& params, bool fHelp)
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
-    int nOffset = g_nChainHeight - g_nStartSPOSHeight - 2 * SPOS_BLOCKS_PER_DAY;
+    int nOffset = g_nChainHeight - g_nStartSPOSHeight - g_nSPOSAStartLockHeight;
     if (nOffset < 0)
         throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height + 2 * SPOS_BLOCKS_PER_DAY));
 
@@ -2940,7 +2940,7 @@ UniValue sendmanywithlock(const UniValue& params, bool fHelp)
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
-    int nOffset = g_nChainHeight - g_nStartSPOSHeight - 2 * SPOS_BLOCKS_PER_DAY;
+    int nOffset = g_nChainHeight - g_nStartSPOSHeight - g_nSPOSAStartLockHeight;
     if (nOffset < 0)
         throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height + 2 * SPOS_BLOCKS_PER_DAY));
 

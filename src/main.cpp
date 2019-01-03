@@ -26,6 +26,8 @@ unsigned int g_nMasternodeStatusEnable = 1;//XJTODO remove it
 unsigned int g_nMasternodeMinCount = 5;
 int64_t g_nLastSelectMasterNodeHeight = 0;
 std::vector<CMasternode> g_vecResultMasternodes;
+int64_t g_nSPOSAStartLockHeight = 17280; //2*SPOS_BLOCKS_PER_DAY
+
 
 
 CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)
