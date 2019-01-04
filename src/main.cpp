@@ -22,11 +22,11 @@ unsigned int g_nMasternodeSPosCount = 9;
 unsigned int g_nMasternodeMinOnlineTime = 86400*3;
 int64_t g_nStartNewLoopTime = 0;
 int g_nSposGeneratedIndex = -2;
-unsigned int g_nMasternodeStatusEnable = 1;//XJTODO remove it
+unsigned int g_nMasternodeStatusEnable = CMasternode::MASTERNODE_ENABLED;//1 masternode status must enable,0 status can be other
 unsigned int g_nMasternodeMinCount = 5;
 int64_t g_nLastSelectMasterNodeHeight = 0;
 std::vector<CMasternode> g_vecResultMasternodes;
-int64_t g_nSPOSAStartLockHeight = 17280; //2*SPOS_BLOCKS_PER_DAY
+int64_t g_nSPOSAStartLockHeight = 2*SPOS_BLOCKS_PER_DAY;//2 days
 
 
 

@@ -754,12 +754,12 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         LogPrintf("SPOS_Warning:GetNodeCount fail\n");
         return;
     }
-    if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast /*&& GetTime() - nCurrTime > 60*/)//XJTODO remove annotate code
-    {
-        LogPrintf("SPOS_Warning:mempool fail,mempool.GetTransactionsUpdated():%d,nTransactionsUpdatedLast:%d\n"
-                  ,mempool.GetTransactionsUpdated(),nTransactionsUpdatedLast);
-        return;
-    }
+//    if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast /*&& GetTime() - nCurrTime > 60*/)
+//    {
+//        LogPrintf("SPOS_Warning:mempool fail,mempool.GetTransactionsUpdated():%d,nTransactionsUpdatedLast:%d\n"
+//                  ,mempool.GetTransactionsUpdated(),nTransactionsUpdatedLast);
+//        return;
+//    }
     if (pindexPrev != chainActive.Tip())
     {
         LogPrintf("SPOS_Warning:tip not equal\n");
@@ -798,7 +798,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 // Busy-wait for the network to come online so we don't waste time mining
                 // on an obsolete chain. In regtest mode we expect to fly solo.
                 do {
-                    bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;//XJTODO
+                    bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
                     if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
                         break;
                     MilliSleep(50);

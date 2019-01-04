@@ -1347,7 +1347,6 @@ void CTxMemPool::add_GetCandyCount_Index(const CTxMemPoolEntry& entry, const CCo
                             continue;
                         if(CBitcoinAddress(in_dest).ToString() == g_strPutCandyAddress)
                         {
-                            //XJTODO test
                             CGetCandyCount_IndexKey key(candyData.assetId,txin.prevout);
                             CGetCandyCount_IndexValue& value = mapGetCandyCount[key];
                             value.nGetCandyCount += candyData.nAmount;
@@ -1391,7 +1390,6 @@ bool CTxMemPool::remove_GetCandyCount_Index(const uint256& txhash)
         std::vector<std::pair<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> > keys = (*it).second;
         for(std::vector<std::pair<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> >::iterator mit = keys.begin(); mit != keys.end(); mit++)
         {
-            //XJTODO test
             const CGetCandyCount_IndexKey& key = mit->first;
             if(mapGetCandyCount.find(key) != mapGetCandyCount.end())
             {

@@ -9095,8 +9095,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         //XJTODO
         LogPrintf("SPOS_Message,before sort:ip:%s,nActiveState:%d,onlineTime:%d,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP()
                   ,mn.nActiveState,onlineTime,mn.nClientVersion,onlineTime < g_nMasternodeMinOnlineTime?0:1);
-        //XJTODO Test codes can annotate this
-        if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==1) || onlineTime < g_nMasternodeMinOnlineTime)
+
+        if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED) || onlineTime < g_nMasternodeMinOnlineTime)
             continue;
         if(mn.nClientVersion < SPOS_MIN_CLIENT_VERSION)
             continue;
