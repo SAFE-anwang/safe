@@ -4689,12 +4689,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if(IsStartSPosHeight(pindex->nHeight+1))
     {
-        if (masternodeSync.IsSynced())
-        {
-            LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
-            LOCK(cs_spos);
-            SelectMasterNode(pindex->nHeight,block.nTime);
-        }
+        LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
+        LOCK(cs_spos);
+        SelectMasterNode(pindex->nHeight,block.nTime);
     }
     return true;
 }
@@ -9035,6 +9032,9 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
 
 void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
 {
+    if(!masternodeSync.IsMasternodeListSynced())
+        return;
+
     if(g_nLastSelectMasterNodeHeight == nCurrBlockHeight)
     {
         LogPrintf("SPOS_Message:g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d,not SelectMasterNode\n",nCurrBlockHeight);
