@@ -4689,7 +4689,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if(IsStartSPosHeight(pindex->nHeight+1))
     {
-        if (masternodeSync.IsBlockchainSynced())
+        if (masternodeSync.IsSynced())
         {
             LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
             LOCK(cs_spos);
