@@ -4689,9 +4689,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if(IsStartSPosHeight(pindex->nHeight+1))
     {
-        LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
-        LOCK(cs_spos);
-        SelectMasterNode(pindex->nHeight,block.nTime);
+        if (masternodeSync.IsBlockchainSynced())
+        {
+            LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
+            LOCK(cs_spos);
+            SelectMasterNode(pindex->nHeight,block.nTime);
+        }
     }
     return true;
 }
@@ -5607,12 +5610,13 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock():height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
                                     ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-signature", true);
 
-    if (!masternodeSync.IsBlockchainSynced())
+    int32_t mnSize = g_vecResultMasternodes.size();
+
+    if (!masternodeSync.IsBlockchainSynced()||mnSize==0)
         return true;
 
-    int32_t mnSize = g_vecResultMasternodes.size();
     if(mnSize == 0)
-        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
                                     ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-mnSize", true);
     int32_t interval = (block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1;
     int32_t nIndex = interval % mnSize;
@@ -9093,7 +9097,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
 
         //XJTODO
-        LogPrintf("SPOS_Message,before sort:ip:%s,nActiveState:%d,onlineTime:%d,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP()
+        LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%d,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP()
                   ,mn.nActiveState,onlineTime,mn.nClientVersion,onlineTime < g_nMasternodeMinOnlineTime?0:1);
 
         if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED) || onlineTime < g_nMasternodeMinOnlineTime)
@@ -9119,7 +9123,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     //XJTODO remove it5
     for (auto& mnpair : scoreMasternodes)
     {
-        LogPrintf("SPOS_Message,after sort:ip:%s,score:%s,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
+        LogPrintf("SPOS_Message:after sort:ip:%s,score:%s,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
                   ,mnpair.first.ToString(),mnpair.second.nClientVersion);
     }
 
@@ -9152,7 +9156,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
 
     string localIpPortInfo = activeMasternode.service.ToString();
     uint32_t size = g_vecResultMasternodes.size();
-    LogPrintf("SPOS:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,min online masternode count:%d\n"
+    LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,min online masternode count:%d\n"
               ,localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,strBlockTime,size,g_nMasternodeMinCount);
     for( uint32_t i = 0; i < size; ++i )
     {
