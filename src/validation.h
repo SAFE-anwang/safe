@@ -1513,5 +1513,7 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
 
 void SelectMasterNode(unsigned int nNewBlockHeight,uint32_t nTime);
 
+void SelectSporkMessageMasterNode();
+
 
 #endif // BITCOIN_VALIDATION_H

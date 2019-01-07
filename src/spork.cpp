@@ -61,6 +61,7 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
         //does a task if needed
         ExecuteSpork(spork.nSporkID, spork.nValue);
 
+        SelectSporkMessageMasterNode();
     } else if (strCommand == NetMsgType::GETSPORKS) {
 
         std::map<int, CSporkMessage>::iterator it = mapSporksActive.begin();

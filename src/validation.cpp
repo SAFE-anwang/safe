@@ -9171,3 +9171,118 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
 
     g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
 }
+
+void SelectSporkMessageMasterNode()
+{
+    if (!masternodeSync.IsMasternodeListSynced() || !masternodeSync.IsBlockchainSynced())
+        return;
+
+    std::map<COutPoint, CMasternode> mapMasternodes;
+    if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
+    {
+        std::map<COutPoint, CMasternode> fullmapMasternodes = mnodeman.GetFullMasternodeMap();
+
+        const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
+        std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
+        for (;it != vtempOutPointData.end(); it++)
+        {
+            COutPointData tempcoutpointdata = *it;
+            COutPoint tempcoutpoint;
+            tempcoutpoint.hash = SerializeHash(tempcoutpointdata.strtx);
+            tempcoutpoint.n = tempcoutpointdata.n;
+             std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
+            if (tempit != fullmapMasternodes.end())
+                mapMasternodes[tempcoutpoint] = tempit->second;
+        }
+    }
+    else
+        return;
+
+    if (mapMasternodes.empty())
+    {
+        LogPrintf("SPOS_Error:Spork mapMasternodes is empty\n");
+        return;
+    }
+
+    g_vecResultMasternodes.clear();
+    std::vector<CMasternode>().swap(g_vecResultMasternodes);
+
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive->Tip().nTime);
+
+    //sort by score
+    std::map<uint256,CMasternode> scoreMasternodes;
+    for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
+    {
+        const CMasternode& mn = (*mnpair).second;
+        int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
+
+        //XJTODO
+        LogPrintf("SPOS_Message: Spork before sort:ip:%s,nActiveState:%d,onlineTime:%d,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP()
+                  ,mn.nActiveState,onlineTime,mn.nClientVersion,onlineTime < g_nMasternodeMinOnlineTime?0:1);
+
+        if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED) || onlineTime < g_nMasternodeMinOnlineTime)
+            continue;
+        if(mn.nClientVersion < SPOS_MIN_CLIENT_VERSION)
+            continue;
+
+        uint256 hash = mn.pubKeyCollateralAddress.GetHash();
+        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+        ss << hash;
+        ss << chainActive->Tip().nTime;
+        uint256 score = ss.GetHash();
+        scoreMasternodes[score] = mn;
+    }
+
+    unsigned int scoreMnSize = scoreMasternodes.size();
+    if(scoreMnSize < g_nMasternodeMinCount)
+    {
+        LogPrintf("SPOS_Error: Spork scoreMasternodes size:%d,g_nMasternodeMinCount:%d\n",scoreMnSize,g_nMasternodeMinCount);
+        return;
+    }
+
+    //XJTODO remove it5
+    for (auto& mnpair : scoreMasternodes)
+    {
+        LogPrintf("SPOS_Message:Spork after sort:ip:%s,score:%s,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
+                  ,mnpair.first.ToString(),mnpair.second.nClientVersion);
+    }
+
+    unsigned int count = 0;
+    for (auto& mnpair : scoreMasternodes)
+    {
+        CMasternode& mn = mnpair.second;
+        g_vecResultMasternodes.push_back(mn);
+        count++;
+        if(count>=g_nMasternodeSPosCount)
+            break;
+    }
+
+    //random the master node
+    uint64_t now_hi = uint64_t(chainActive->Tip().nTime) << 32;
+    for(uint32_t i = 0; i < g_vecResultMasternodes.size(); ++i)
+    {
+        /// High performance random generator
+        /// http://xorshift.di.unimi.it/
+        uint64_t k = now_hi + uint64_t(i)*2685821657736338717ULL;
+        k ^= (k >> 12);
+        k ^= (k << 25);
+        k ^= (k >> 27);
+        k *= 2685821657736338717ULL;
+
+        uint32_t jmax = g_vecResultMasternodes.size() - i;
+        uint32_t j = i + k%jmax;
+        std::swap( g_vecResultMasternodes[i],g_vecResultMasternodes[j] );
+    }
+
+    string localIpPortInfo = activeMasternode.service.ToString();
+    uint32_t size = g_vecResultMasternodes.size();
+    LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,min online masternode count:%d\n"
+              ,localIpPortInfo,chainActive.Height(),g_nStartNewLoopTime,strStartNewLoopTime,chainActive->Tip().nTime,strBlockTime,size,g_nMasternodeMinCount);
+    for( uint32_t i = 0; i < size; ++i )
+    {
+        const CMasternode& mn = g_vecResultMasternodes[i];
+        LogPrintf("SPOS_Message:Spork masterNodeIP[%d]:%s,keyid:%s,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.nClientVersion);
+    }
+}
