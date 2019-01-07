@@ -5609,7 +5609,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
 
     int32_t mnSize = g_vecResultMasternodes.size();
 
-    if (!masternodeSync.IsBlockchainSynced()||(mnSize==0&&g_nSelectMasterNodeRet==0))
+    if (!masternodeSync.IsSynced()||(mnSize==0&&g_nSelectMasterNodeRet==0))
         return true;
 
     if(mnSize == 0)
@@ -9032,7 +9032,7 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
 
 void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
 {
-    if(!masternodeSync.IsMasternodeListSynced())
+    if(!masternodeSync.IsSynced())
         return;
 
     if(g_nLastSelectMasterNodeHeight == nCurrBlockHeight)
