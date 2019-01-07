@@ -5609,7 +5609,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
 
     int32_t mnSize = g_vecResultMasternodes.size();
 
-    if (!masternodeSync.IsBlockchainSynced()||mnSize==0)
+    if (!masternodeSync.IsBlockchainSynced()||(mnSize==0&&g_nSelectMasterNodeRet==0))
         return true;
 
     if(mnSize == 0)
@@ -9073,18 +9073,21 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     //1.3.3
     g_nStartNewLoopTime = (int64_t)nTime*1000;
     g_nSposGeneratedIndex = -2;
+    g_nSelectMasterNodeRet = 1;
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
     string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
     if(g_nStartNewLoopTime < nTime*1000)
     {
         LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",g_nStartNewLoopTime/1000,strStartNewLoopTime
                   ,nTime,strBlockTime);
+        g_nSelectMasterNodeRet = -1;
         return;
     }
 
     if(mapMasternodes.empty())
     {
         LogPrintf("SPOS_Error:mapMasternodes is empty\n");
+        g_nSelectMasterNodeRet = -1;
         return;
     }
 
@@ -9117,6 +9120,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     if(scoreMnSize < g_nMasternodeMinCount)
     {
         LogPrintf("SPOS_Error:scoreMasternodes size:%d,g_nMasternodeMinCount:%d\n",scoreMnSize,g_nMasternodeMinCount);
+        g_nSelectMasterNodeRet = -1;
         return;
     }
 
