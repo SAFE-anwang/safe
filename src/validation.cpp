@@ -9208,7 +9208,7 @@ void SelectSporkMessageMasterNode()
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
 
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
-    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive->Tip().nTime);
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->nTime);
 
     //sort by score
     std::map<uint256,CMasternode> scoreMasternodes;
@@ -9229,7 +9229,7 @@ void SelectSporkMessageMasterNode()
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << hash;
-        ss << chainActive->Tip().nTime;
+        ss << chainActive.Tip()->nTime;
         uint256 score = ss.GetHash();
         scoreMasternodes[score] = mn;
     }
@@ -9259,7 +9259,7 @@ void SelectSporkMessageMasterNode()
     }
 
     //random the master node
-    uint64_t now_hi = uint64_t(chainActive->Tip().nTime) << 32;
+    uint64_t now_hi = uint64_t(chainActive.Tip()->nTime) << 32;
     for(uint32_t i = 0; i < g_vecResultMasternodes.size(); ++i)
     {
         /// High performance random generator
@@ -9278,7 +9278,7 @@ void SelectSporkMessageMasterNode()
     string localIpPortInfo = activeMasternode.service.ToString();
     uint32_t size = g_vecResultMasternodes.size();
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,min online masternode count:%d\n"
-              ,localIpPortInfo,chainActive.Height(),g_nStartNewLoopTime,strStartNewLoopTime,chainActive->Tip().nTime,strBlockTime,size,g_nMasternodeMinCount);
+              ,localIpPortInfo,chainActive.Height(),g_nStartNewLoopTime,strStartNewLoopTime,chainActive.Tip()->nTime,strBlockTime,size,g_nMasternodeMinCount);
     for( uint32_t i = 0; i < size; ++i )
     {
         const CMasternode& mn = g_vecResultMasternodes[i];
