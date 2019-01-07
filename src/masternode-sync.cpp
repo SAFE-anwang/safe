@@ -487,6 +487,7 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
     }
 }
 
+//XJTODO use macro
 int CMasternodeSync::GetSyncTickSeconds()
 {
     if(IsStartSPosHeight(chainActive.Height()))
@@ -497,6 +498,6 @@ int CMasternodeSync::GetSyncTickSeconds()
 int CMasternodeSync::GetSyncTimeoutSeconds()
 {
     if(IsStartSPosHeight(chainActive.Height()))
-        return 15;
+        return 12;
     return MASTERNODE_SYNC_TIMEOUT_SECONDS;
 }
