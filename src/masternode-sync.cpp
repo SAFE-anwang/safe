@@ -20,6 +20,7 @@ class CMasternodeSync;
 CMasternodeSync masternodeSync;
 
 extern bool fGetCandyInfoStart;
+extern int64_t g_nMasternodeResetTime;
 
 void CMasternodeSync::Fail()
 {
@@ -465,12 +466,16 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
     // Note: since we sync headers first, it should be ok to use this
     static bool fReachedBestHeader = false;
     bool fReachedBestHeaderNew = pindexNew->GetBlockHash() == pindexBestHeader->GetBlockHash();
-
     if (fReachedBestHeader && !fReachedBestHeaderNew) {
         // Switching from true to false means that we previousely stuck syncing headers for some reason,
         // probably initial timeout was not enough,
         // because there is no way we can update tip not having best header
-        Reset();
+        int64_t currTime = GetTime();
+        if(currTime-g_nMasternodeResetTime>150)//XJTODO use macro
+        {
+            Reset();
+            g_nMasternodeResetTime = currTime;
+        }
         fReachedBestHeader = false;
         return;
     }
@@ -491,13 +496,13 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
 int CMasternodeSync::GetSyncTickSeconds()
 {
     if(IsStartSPosHeight(chainActive.Height()))
-        return 3;
+        return 6;
     return MASTERNODE_SYNC_TICK_SECONDS;
 }
 
 int CMasternodeSync::GetSyncTimeoutSeconds()
 {
     if(IsStartSPosHeight(chainActive.Height()))
-        return 12;
+        return 30;
     return MASTERNODE_SYNC_TIMEOUT_SECONDS;
 }

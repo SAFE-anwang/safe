@@ -28,7 +28,7 @@ int64_t g_nLastSelectMasterNodeHeight = 0;
 std::vector<CMasternode> g_vecResultMasternodes;
 int64_t g_nSPOSAStartLockHeight = 2*SPOS_BLOCKS_PER_DAY;//2 days
 int g_nSelectMasterNodeRet = 0;//first time:0,select fail:-1,select succ:1
-
+int64_t g_nMasternodeResetTime = GetTime();
 
 
 CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)

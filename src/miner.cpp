@@ -762,7 +762,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 //    }
     if (pindexPrev != chainActive.Tip())
     {
-        LogPrintf("SPOS_Warning:tip not equal\n");
+        //LogPrintf("SPOS_Warning:tip not equal\n");
         return;
     }
 
