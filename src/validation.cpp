@@ -6230,6 +6230,39 @@ bool InitBlockIndex(const CChainParams& chainparams)
     if (!fReindex) {
         try {
             CBlock &block = const_cast<CBlock&>(chainparams.GenesisBlock());
+            #if 0
+            {
+                //can't use CheckProofOfWork(..) directly, becase it detecte `UintToArith256(hash) > bnTarget`
+                //  which is used to find `block.nNonce`
+                //if (!CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus())){
+                //    error("InitBlockIndex CheckProofOfWork() : nBits below minimum work");
+                if(false){
+                } else {
+                    //block.nTime = GetTime();//1231006505;
+                    //LogPrintf("block.nTime %d\n", block.nTime);
+                    //LogPrintf("bnTarget %s\n", bnTarget.ToString());
+                    uint256 hashGenesisBlock;
+                    arith_uint256 bnTarget;
+                    bnTarget.SetCompact(block.nBits, NULL, NULL);
+
+                    block.nNonce = 0;
+                    while (true) {
+                        if (block.nNonce%1000000000 == 0) {
+                            LogPrintf("block.nNonce--- %d\n", block.nNonce);
+                        }
+                        hashGenesisBlock = block.GetHash();
+                        if (UintToArith256(hashGenesisBlock) <= bnTarget) {
+                            break;
+                        }
+                        block.nNonce++;
+                    }
+                    LogPrintf("block.nNonce******** %d\n", block.nNonce);
+                    LogPrintf("hashGenesisBlock******** %s\n", hashGenesisBlock.ToString());
+                    LogPrintf("hashMerkleRoot******** %s\n", block.hashMerkleRoot.ToString());
+                }
+            }
+            #endif
+
             // Start new block file
             unsigned int nBlockSize = ::GetSerializeSize(block, SER_DISK, CLIENT_VERSION);
             CDiskBlockPos blockPos;
