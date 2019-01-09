@@ -9091,6 +9091,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         return;
     }
 
+    int logMaxCnt = 20,logCnt = 0;
     std::map<uint256,CMasternode> scoreMasternodes;
 
     //sort by score
@@ -9100,8 +9101,10 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
 
         //XJTODO
-        LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%d,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP()
-                  ,mn.nActiveState,onlineTime,mn.nClientVersion,onlineTime < g_nMasternodeMinOnlineTime?0:1);
+        logCnt++;
+        if(logCnt<=logMaxCnt)
+            LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%d,pingTime:%lld,sigTime:%lld,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP()
+                      ,mn.nActiveState,onlineTime,mn.lastPing.sigTime,mn.sigTime,mn.nClientVersion,onlineTime < g_nMasternodeMinOnlineTime?0:1);
 
         if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED) || onlineTime < g_nMasternodeMinOnlineTime)
             continue;
@@ -9125,10 +9128,13 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     }
 
     //XJTODO remove it5
+    logCnt = 0;
     for (auto& mnpair : scoreMasternodes)
     {
-        LogPrintf("SPOS_Message:after sort:ip:%s,score:%s,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
-                  ,mnpair.first.ToString(),mnpair.second.nClientVersion);
+        logCnt++;
+        if(logCnt<=logMaxCnt)
+            LogPrintf("SPOS_Message:after sort:ip:%s,score:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
+                      ,mnpair.first.ToString(),mnpair.second.lastPing.sigTime,mnpair.second.sigTime,mnpair.second.nClientVersion);
     }
 
     unsigned int count = 0;
@@ -9165,8 +9171,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     for( uint32_t i = 0; i < size; ++i )
     {
         const CMasternode& mn = g_vecResultMasternodes[i];
-        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
-                  mn.pubKeyMasternode.GetID().ToString(),mn.nClientVersion);
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.nClientVersion);
     }
 
     g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
