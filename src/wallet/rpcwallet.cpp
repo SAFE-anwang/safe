@@ -509,6 +509,13 @@ UniValue sendwithlock(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
+    if(!masternodeSync.IsBlockchainSynced())
+        throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
+    int nOffset = g_nChainHeight - g_nStartSPOSHeight - g_nSPOSAStartLockHeight;
+    if (nOffset < 0)
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height + g_nSPOSAStartLockHeight));
+
     EnsureWalletIsUnlocked();
 
     CBitcoinAddress address(params[0].get_str());
@@ -2932,6 +2939,10 @@ UniValue sendmanywithlock(const UniValue& params, bool fHelp)
 
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
+    int nOffset = g_nChainHeight - g_nStartSPOSHeight - g_nSPOSAStartLockHeight;
+    if (nOffset < 0)
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height + g_nSPOSAStartLockHeight));
 
     EnsureWalletIsUnlocked();
 

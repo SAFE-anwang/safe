@@ -519,13 +519,13 @@ void PrintExceptionContinue(const std::exception* pex, const char* pszThread)
 boost::filesystem::path GetDefaultDataDir()
 {
     namespace fs = boost::filesystem;
-    // Windows < Vista: 
+    // Windows < Vista:
     //   "C:\Documents and Settings\Username\Application Data\" + SAFE_DATA_DIR_NAME
-    // Windows >= Vista: 
+    // Windows >= Vista:
     //   "C:\Users\Username\AppData\Roaming\" + SAFE_DATA_DIR_NAME
-    // Mac: 
+    // Mac:
     //   "~/Library/Application Support/" + SAFE_DATA_DIR_NAME
-    // Unix: 
+    // Unix:
     //   "~/" + ".safe"
 #ifdef WIN32
     // Windows
@@ -534,7 +534,7 @@ boost::filesystem::path GetDefaultDataDir()
 #elif SCN_CURRENT == SCN__dev
     return GetSpecialFolderPath(CSIDL_APPDATA) / "Safe_Dev";
 #elif SCN_CURRENT == SCN__test
-    return GetSpecialFolderPath(CSIDL_APPDATA) / "Safe_Test";
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "Safe_Spos2";
 #else
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
@@ -554,7 +554,7 @@ boost::filesystem::path GetDefaultDataDir()
 #elif SCN_CURRENT == SCN__dev
     return pathRet / "Library/Application Support/Safe_Dev";
 #elif SCN_CURRENT == SCN__test
-    return pathRet / "Library/Application Support/Safe_Test";
+    return pathRet / "Library/Application Support/Safe_Spos2";
 #else
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
@@ -566,7 +566,7 @@ boost::filesystem::path GetDefaultDataDir()
 #elif SCN_CURRENT == SCN__dev
     return pathRet / ".safe_dev";
 #elif SCN_CURRENT == SCN__test
-    return pathRet / ".safe_test";
+    return pathRet / ".safe_spos2";
 #else
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main

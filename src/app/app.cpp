@@ -21,11 +21,11 @@ static string szKeyWords[] = {
     "BTC", "ETH", "EOS", "LTC", "DASH", "ETC",
     "Bitcoin", "Ethereum", "LiteCoin", "Ethereum Classic",
     "人民币", "港元", "港币", "澳门元", "澳门币", "新台币", "RMB", "CNY", "HKD", "MOP", "TWD", "人民幣", "港幣", "澳門元", "澳門幣", "新台幣", "澳门幣",
-    "mSAFE", "μSAFE", "duffs", "tSAFE", "mtSAFE", "μtSAFE", "tduffs"
+    "mSAFE", "μSAFE", "duffs", "tSAFE", "mtSAFE", "μtSAFE", "tduffs", "AnYou", "SafeGame"
 };
 
 static string szSimilarKeyWords[] = {
-    "安网", "银链", "安網", "銀鏈", "銀链", "银鏈"
+    "安网", "银链", "安網", "銀鏈", "銀链", "银鏈", "安游", "安遊"
 };
 
 string TrimString(const string& strValue)

@@ -2360,7 +2360,7 @@ http://www.anwang.com/</translation>
     <message>
         <source>Register</source>
         <translation>註冊</translation>
-    </message>  
+    </message>
     <message>
         <source>* Application Use Reference &lt;a href=https://www.anwang.com/download/API.pdf>Safe3 Application Protocol&lt;/a&gt;</source>
         <translation>* 應用使用參見 &lt;a href = https://www.anwang.com/download/API.pdf >安網3 應用協議&lt;/a&gt;</translation>
@@ -4444,6 +4444,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>The transaction was rejected! The transaction (partial) amount has been sealed</source>
         <translation>交易被拒絕，該筆交易（部分）金額已被封存</translation>
+    </message>
+    <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>该功能在区块高度为 %1 时启用</translation>
     </message>
     <message>
         <source>Invalid asset name</source>

@@ -9,6 +9,7 @@
 #include "key.h"
 #include "validation.h"
 #include "spork.h"
+#include "clientversion.h"
 
 class CMasternode;
 class CMasternodeBroadcast;
@@ -97,7 +98,7 @@ struct masternode_info_t
     masternode_info_t(masternode_info_t const&) = default;
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime) :
-        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime} {}
+        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},nClientVersion{CLIENT_VERSION} {}
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime,
                       COutPoint const& outpoint, CService const& addr,
@@ -106,7 +107,7 @@ struct masternode_info_t
         nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},
         vin{outpoint}, addr{addr},
         pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
-        nTimeLastWatchdogVote{tWatchdogV} {}
+        nTimeLastWatchdogVote{tWatchdogV},nClientVersion{CLIENT_VERSION} {}
 
     int nActiveState = 0;
     int nProtocolVersion = 0;
@@ -123,6 +124,7 @@ struct masternode_info_t
     int64_t nTimeLastPaid = 0;
     int64_t nTimeLastPing = 0; //* not in CMN
     bool fInfoValid = false; //* not in CMN
+    int nClientVersion = 0;
 };
 
 //
@@ -198,6 +200,8 @@ public:
         READWRITE(fAllowMixingTx);
         READWRITE(fUnitTest);
         READWRITE(mapGovernanceObjectsVotedOn);
+        if(CLIENT_VERSION>=SPOS_MIN_CLIENT_VERSION)
+            READWRITE(nClientVersion);
     }
 
     // CALCULATE A RANK AGAINST OF GIVEN BLOCK
@@ -294,6 +298,7 @@ public:
         fAllowMixingTx = from.fAllowMixingTx;
         fUnitTest = from.fUnitTest;
         mapGovernanceObjectsVotedOn = from.mapGovernanceObjectsVotedOn;
+        nClientVersion = from.nClientVersion;
         return *this;
     }
 };
@@ -335,6 +340,9 @@ public:
         READWRITE(sigTime);
         READWRITE(nProtocolVersion);
         READWRITE(lastPing);
+        int sz = s.size();
+        if(CLIENT_VERSION>=SPOS_MIN_CLIENT_VERSION&&sz>0)
+            READWRITE(nClientVersion);
     }
 
     uint256 GetHash() const

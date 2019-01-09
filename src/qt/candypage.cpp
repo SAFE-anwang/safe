@@ -263,10 +263,19 @@ void CandyPage::getCandy(QPushButton *btn)
         QMessageBox::warning(this, strGetCandy,tr("Get candy transaction height fail"),tr("Ok"));
         return;
     }
-    int neededHeight = nTxHeight + BLOCKS_PER_DAY;
+    int neededHeight = 0;
+    if (nTxHeight >= g_nStartSPOSHeight)
+        neededHeight = nTxHeight + SPOS_BLOCKS_PER_DAY;
+    else
+        neededHeight = nTxHeight + BLOCKS_PER_DAY;
+
     if(nCurrentHeight < neededHeight)
     {
-        int seconds = (neededHeight-nCurrentHeight)*Params().GetConsensus().nPowTargetSpacing;
+        int seconds = 0;
+        if (nTxHeight >= g_nStartSPOSHeight)
+            seconds = (neededHeight-nCurrentHeight)*Params().GetConsensus().nSPOSTargetSpacing;
+        else
+            seconds = (neededHeight-nCurrentHeight)*Params().GetConsensus().nPowTargetSpacing;
         int hour = seconds / 3600;
         int minute = seconds % 3600 / 60;
         if (hour == 0 && minute != 0)
@@ -278,11 +287,23 @@ void CandyPage::getCandy(QPushButton *btn)
         return;
     }
 
-    if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+    if (nTxHeight >= g_nStartSPOSHeight)
     {
-        QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
-        updateCurrentPage();
-        return;
+        if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+        {
+            QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
+            updateCurrentPage();
+            return;
+        }
+    }
+    else
+    {
+        if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+        {
+            QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
+            updateCurrentPage();
+            return;
+        }
     }
 
     CAmount nTotalSafe = 0;
@@ -901,8 +922,16 @@ void CandyPage::copyVec()
         if(displayHeight>nCurrentHeight)
             continue;
 
-        if(info.candyinfo.nExpired * BLOCKS_PER_MONTH + info.nHeight < nCurrentHeight)
-            continue;
+        if (info.nHeight >= g_nStartSPOSHeight)
+        {
+            if(info.candyinfo.nExpired * SPOS_BLOCKS_PER_MONTH + info.nHeight < nCurrentHeight)
+                continue;
+        }
+        else
+        {
+            if(info.candyinfo.nExpired * BLOCKS_PER_MONTH + info.nHeight < nCurrentHeight)
+                continue;
+        }
 
         tmpAllCandyInfoVec.push_back(info);
     }

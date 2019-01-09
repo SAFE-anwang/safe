@@ -102,6 +102,12 @@ static const bool DEFAULT_PROXYRANDOMIZE = true;
 static const bool DEFAULT_REST_ENABLE = false;
 static const bool DEFAULT_DISABLE_SAFEMODE = false;
 static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
+extern int g_nStartSPOSHeight;
+extern unsigned int g_nMasternodeSPosCount;
+extern unsigned int g_nMasternodeMinOnlineTime;
+extern unsigned int g_nMasternodeStatusEnable;
+extern unsigned int g_nMasternodeMinCount;
+extern int64_t g_nSPOSAStartLockHeight;
 
 std::unique_ptr<CConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
@@ -235,6 +241,7 @@ void PrepareShutdown()
         pwalletMain->Flush(false);
 #endif
     GenerateBitcoins(false, 0, Params(), *g_connman);
+    GenerateBitcoinsBySPOS(false,0,Params(), *g_connman);
     MapPort(false);
     UnregisterValidationInterface(peerLogic.get());
     peerLogic.reset();
@@ -1528,6 +1535,14 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     LogPrintf("* Using %.1fMiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
 
+    //XJTODO annote it
+    g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
+    g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
+    g_nMasternodeMinOnlineTime = GetArg("-masternode_min_online_time", g_nMasternodeMinOnlineTime);
+    g_nMasternodeStatusEnable = GetArg("-masternode_status_enable", g_nMasternodeStatusEnable);
+    g_nMasternodeMinCount = GetArg("-masternode_min_count", g_nMasternodeMinCount);
+    g_nSPOSAStartLockHeight = GetArg("-spos_start_lock_height", g_nSPOSAStartLockHeight);
+
     bool fLoaded = false;
     while (!fLoaded) {
         bool fReset = fReindex;
@@ -2073,6 +2088,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 
     // Generate coins in the background
     GenerateBitcoins(GetBoolArg("-gen", DEFAULT_GENERATE), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
+
+    GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", DEFAULT_GENERATE), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
 
     // ********************************************************* Step 13: finished
 

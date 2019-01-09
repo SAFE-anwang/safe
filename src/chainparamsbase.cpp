@@ -38,7 +38,7 @@ public:
 #elif SCN_CURRENT == SCN__dev
         nRPCPort = 4421;
 #elif SCN_CURRENT == SCN__test
-        nRPCPort = 4487;
+        nRPCPort = 4498;
 #else
 #error unsupported <safe chain name>
 #endif
@@ -59,7 +59,7 @@ public:
 #elif SCN_CURRENT == SCN__dev
         nRPCPort = 14421;
 #elif SCN_CURRENT == SCN__test
-        nRPCPort = 14487;
+        nRPCPort = 14498;
 #else
 #error unsupported <safe chain name>
 #endif
@@ -81,7 +81,7 @@ public:
 #elif SCN_CURRENT == SCN__dev
         nRPCPort = 24421;
 #elif SCN_CURRENT == SCN__test
-        nRPCPort = 24487;
+        nRPCPort = 14498;
 #else
 #error unsupported <safe chain name>
 #endif

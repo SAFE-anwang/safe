@@ -41,6 +41,7 @@
 #include "main.h"
 #include "rpc/server.h"
 #include "masternode-sync.h"
+#include "messagesigner.h"
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -49,6 +50,7 @@
 #include "instantx.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
+#include "activemasternode.h"
 
 #include <sstream>
 
@@ -73,6 +75,7 @@ using namespace std;
  */
 
 CCriticalSection cs_main;
+CCriticalSection cs_spos;
 
 BlockMap mapBlockIndex;
 CChain chainActive;
@@ -105,6 +108,16 @@ std::mutex g_mutexTmpAllCandyInfo;
 std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
+int64_t AllowableErrorTime = 2;
+//CAmount MiningIncentives = 334559821;
+CAmount MiningIncentives = 45000000000;
+unsigned int nKeyIdSize = 20;
+unsigned int nConsensusAlgorithmLen = 4;
+extern unsigned int g_nMasternodeMinOnlineTime;
+extern CActiveMasternode activeMasternode;
+extern int64_t g_nLastSelectMasterNodeHeight;
+extern unsigned int g_nMasternodeStatusEnable;
+extern unsigned int g_nMasternodeMinCount;
 
 const static int M = 2000; //Maximum number of digits
 int numA[M];
@@ -165,18 +178,31 @@ namespace {
     struct CBlockIndexWorkComparator
     {
         bool operator()(CBlockIndex *pa, CBlockIndex *pb) const {
+            if(IsStartSPosHeight(pa->nHeight)||IsStartSPosHeight(pb->nHeight))
+            {
+                if (pa->nHeight > pb->nHeight)
+                    return false;
+                if (pa->nHeight < pb->nHeight)
+                    return true;
+            }
             // First sort by most total work, ...
-            if (pa->nChainWork > pb->nChainWork) return false;
-            if (pa->nChainWork < pb->nChainWork) return true;
+            if (pa->nChainWork > pb->nChainWork)
+                return false;
+            if (pa->nChainWork < pb->nChainWork)
+                return true;
 
             // ... then by earliest time received, ...
-            if (pa->nSequenceId < pb->nSequenceId) return false;
-            if (pa->nSequenceId > pb->nSequenceId) return true;
+            if (pa->nSequenceId < pb->nSequenceId)
+                return false;
+            if (pa->nSequenceId > pb->nSequenceId)
+                return true;
 
             // Use pointer address as tie breaker (should only happen with blocks
             // loaded from disk, as those all have id 0).
-            if (pa < pb) return false;
-            if (pa > pb) return true;
+            if (pa < pb)
+                return false;
+            if (pa > pb)
+                return true;
 
             // Identical blocks.
             return false;
@@ -621,16 +647,34 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
             if(nType == FROM_BLOCK)
             {
                 int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-                if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                    return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height");
+
+                if (nTxHeight >= g_nStartSPOSHeight)
+                {
+                    if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
+                        return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height" + strprintf(",txout.nUnlockedHeight:%lld,nTxHeight:%lld,nOffset:%lld", txout.nUnlockedHeight, nTxHeight, nOffset));
+                }
+                else
+                {
+                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                        return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height");
+                }
             }
             else if(nType == FROM_WALLET)
             {
                 if(!blockHash.IsNull())
                 {
                     int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                        return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height");
+
+                    if (nTxHeight >= g_nStartSPOSHeight)
+                    {
+                        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
+                            return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height" + strprintf(",txout.nUnlockedHeight:%lld,nTxHeight:%lld,nOffset:%lld", txout.nUnlockedHeight, nTxHeight, nOffset));
+                    }
+                    else
+                    {
+                        if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                            return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height");
+                    }
                 }
             }
             else
@@ -638,8 +682,17 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                 if(masternodeSync.IsBlockchainSynced())
                 {
                     int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                        return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
+
+                    if (nTxHeight >= g_nStartSPOSHeight)
+                    {
+                        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
+                            return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height" + strprintf(",txout.nUnlockedHeight:%lld,nTxHeight:%lld,nOffset:%lld", txout.nUnlockedHeight, nTxHeight, nOffset));
+                    }
+                    else
+                    {
+                        if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                            return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
+                    }
                 }
             }
         }
@@ -651,10 +704,12 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                 continue;
             if(tx.nVersion >= SAFE_TX_VERSION_1)
             {
-                if(txout.nUnlockedHeight != 0 ||
-                   vReserve.size() != TXOUT_RESERVE_MIN_SIZE ||
-                   vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
-                    return state.DoS(50, false, REJECT_INVALID, "coinsbase: invalid txout reserve");
+                if(txout.nUnlockedHeight != 0 && !IsStartSPosHeight(nHeight+1))
+                {
+                    if(vReserve.size() != TXOUT_RESERVE_MIN_SIZE ||
+                    vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
+                        return state.DoS(50, false, REJECT_INVALID, "coinsbase: invalid txout reserve");
+                }
             }
         }
         else
@@ -710,7 +765,7 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
     map<uint256, int> mapAppId;
     map<uint256, int> mapAssetId;
     std::vector<std::string> voutaddress;
-    
+
     uint256 appId;
     for(unsigned int i = 0; i < tx.vout.size(); i++)
     {
@@ -789,8 +844,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             if (find(voutaddress.begin(), voutaddress.end(), strAddress) == voutaddress.end())
                 voutaddress.push_back(strAddress);
             else
-               return state.DoS(50, false, REJECT_INVALID, "get_candy: the output address already exists."); 
-            
+               return state.DoS(50, false, REJECT_INVALID, "get_candy: the output address already exists.");
+
             CGetCandyData getData;
             if(!ParseGetCandyData(vData, getData))
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse getcandy txout reserve failed");
@@ -1862,11 +1917,22 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                 if(nPrevTxHeight >= nTxHeight)
                     return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy txin");
 
-                if(nPrevTxHeight+BLOCKS_PER_DAY>nTxHeight)
-                    return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                if (nTxHeight >= g_nStartSPOSHeight)
+                {
+                    if(nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
 
-                if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                    return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                    if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                }
+                else
+                {
+                    if(nPrevTxHeight+BLOCKS_PER_DAY>nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+
+                    if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                }
             }
 
             CAmount nSafe = 0;
@@ -2276,8 +2342,16 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
                 continue;
 
             int64_t nOffset = txout.nUnlockedHeight - coins->nHeight;
-            if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                continue;
+            if (coins->nHeight >= g_nStartSPOSHeight)
+            {
+                if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
+                    continue;
+            }
+            else
+            {
+                if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                    continue;
+            }
 
             return state.DoS(100, false, REJECT_NONSTANDARD, "invalid-txin-locked");
         }
@@ -2746,8 +2820,13 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
     }
 
     // Check the header
-    if (!CheckCriticalBlock(block) && !CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
-        return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
+    if (!CheckCriticalBlock(block))
+    {
+        int nHeight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
+        if (nHeight < g_nStartSPOSHeight)
+            if (!CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
+                return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
+    }
 
     return true;
 }
@@ -2781,6 +2860,22 @@ double ConvertBitsToDouble(unsigned int nBits)
 
     return dDiff;
 }
+
+CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
+{
+    CAmount nSubsidy = MiningIncentives;
+
+    // yearly decline of production by ~7.1% per year, projected ~18M coins max by year 2050+.
+    for (int i = consensusParams.nSubsidyHalvingInterval; i <= nPrevHeight; i += consensusParams.nSubsidyHalvingInterval) {
+        nSubsidy -= nSubsidy/14;
+    }
+
+    // Hard fork to reduce the block reward by 10 extra percent (allowing budget/superblocks)
+    CAmount nSuperblockPart = (nPrevHeight > consensusParams.nBudgetPaymentsStartBlock) ? nSubsidy/10 : 0;
+
+    return fSuperblockPartOnly ? nSuperblockPart : nSubsidy - nSuperblockPart;
+}
+
 
 /*
 NOTE:   unlike bitcoin we are using PREVIOUS block height here,
@@ -2877,8 +2972,13 @@ bool IsInitialBlockDownload()
     const CChainParams& chainParams = Params();
     if (chainActive.Tip() == NULL)
         return true;
-    if (chainActive.Tip()->nChainWork < UintToArith256(chainParams.GetConsensus().nMinimumChainWork))
-        return true;
+
+    if (!IsStartSPosHeight(chainActive.Tip()->nHeight))
+    {
+        if (chainActive.Tip()->nChainWork < UintToArith256(chainParams.GetConsensus().nMinimumChainWork))
+            return true;
+    }
+
     if (chainActive.Tip()->GetBlockTime() < (GetTime() - chainParams.MaxTipAge()))
         return true;
     lockIBDState = true;
@@ -2902,7 +3002,22 @@ void CheckForkWarningConditions()
     if (pindexBestForkTip && chainActive.Height() - pindexBestForkTip->nHeight >= 72)
         pindexBestForkTip = NULL;
 
-    if (pindexBestForkTip || (pindexBestInvalid && pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + (GetBlockProof(*chainActive.Tip()) * 6)))
+    bool bBestWorkOrHeight = false;
+    if (pindexBestInvalid)
+    {
+        if (IsStartSPosHeight(pindexBestInvalid->nHeight))
+        {
+            if (pindexBestInvalid->nHeight > chainActive.Tip()->nHeight + 6)
+                bBestWorkOrHeight = true;
+        }
+        else
+        {
+            if (pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + (GetBlockProof(*chainActive.Tip()) * 6))
+                bBestWorkOrHeight = true;
+        }
+    }
+
+    if (pindexBestForkTip || bBestWorkOrHeight)
     {
         if (!fLargeWorkForkFound && pindexBestForkBase)
         {
@@ -2959,21 +3074,44 @@ void CheckForkWarningConditionsOnNewFork(CBlockIndex* pindexNewForkTip)
     // hash rate operating on the fork.
     // We define it this way because it allows us to only store the highest fork tip (+ base) which meets
     // the 7-block condition and from this always have the most-likely-to-cause-warning fork
-    if (pfork && (!pindexBestForkTip || (pindexBestForkTip && pindexNewForkTip->nHeight > pindexBestForkTip->nHeight)) &&
+
+    if (IsStartSPosHeight(pindexNewForkTip->nHeight))
+    {
+        if (pfork && (!pindexBestForkTip || (pindexBestForkTip && pindexNewForkTip->nHeight > pindexBestForkTip->nHeight)) &&
+            pindexNewForkTip->nHeight - pfork->nHeight > 7 && chainActive.Height() - pindexNewForkTip->nHeight < 72)
+        {
+            pindexBestForkTip = pindexNewForkTip;
+            pindexBestForkBase = pfork;
+        }
+    }
+    else
+    {
+        if (pfork && (!pindexBestForkTip || (pindexBestForkTip && pindexNewForkTip->nHeight > pindexBestForkTip->nHeight)) &&
             pindexNewForkTip->nChainWork - pfork->nChainWork > (GetBlockProof(*pfork) * 7) &&
             chainActive.Height() - pindexNewForkTip->nHeight < 72)
-    {
-        pindexBestForkTip = pindexNewForkTip;
-        pindexBestForkBase = pfork;
+        {
+            pindexBestForkTip = pindexNewForkTip;
+            pindexBestForkBase = pfork;
+        }
     }
+
 
     CheckForkWarningConditions();
 }
 
 void static InvalidChainFound(CBlockIndex* pindexNew)
 {
-    if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
-        pindexBestInvalid = pindexNew;
+
+    if (IsStartSPosHeight(pindexNew->nHeight))
+    {
+        if (!pindexBestInvalid || pindexNew->nHeight > pindexBestInvalid->nHeight)
+            pindexBestInvalid = pindexNew;
+    }
+    else
+    {
+        if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
+            pindexBestInvalid = pindexNew;
+    }
 
     LogPrintf("%s: invalid block=%s  height=%d  log2_work=%.8g  date=%s\n", __func__,
       pindexNew->GetBlockHash().ToString(), pindexNew->nHeight,
@@ -3920,20 +4058,30 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         // This setting doesn't force the selection of any particular chain but makes validating some faster by
         //  effectively caching the result of part of the verification.
         BlockMap::const_iterator  it = mapBlockIndex.find(hashAssumeValid);
-        if (it != mapBlockIndex.end()) {
-            if (it->second->GetAncestor(pindex->nHeight) == pindex &&
-                pindexBestHeader->GetAncestor(pindex->nHeight) == pindex &&
-                pindexBestHeader->nChainWork >= UintToArith256(chainparams.GetConsensus().nMinimumChainWork)) {
-                // This block is a member of the assumed verified chain and an ancestor of the best header.
-                // The equivalent time check discourages hashpower from extorting the network via DOS attack
-                //  into accepting an invalid block through telling users they must manually set assumevalid.
-                //  Requiring a software change or burying the invalid block, regardless of the setting, makes
-                //  it hard to hide the implication of the demand.  This also avoids having release candidates
-                //  that are hardly doing any signature verification at all in testing without having to
-                //  artificially set the default assumed verified block further back.
-                // The test against nMinimumChainWork prevents the skipping when denied access to any chain at
-                //  least as good as the expected chain.
-                fScriptChecks = (GetBlockProofEquivalentTime(*pindexBestHeader, *pindex, *pindexBestHeader, chainparams.GetConsensus()) <= 60 * 60 * 24 * 7 * 2);
+        if (it != mapBlockIndex.end())
+        {
+            if (it->second->GetAncestor(pindex->nHeight) == pindex && pindexBestHeader->GetAncestor(pindex->nHeight) == pindex)
+            {
+                if (!IsStartSPosHeight(pindex->nHeight))
+                {
+                    if (pindexBestHeader->nChainWork >= UintToArith256(chainparams.GetConsensus().nMinimumChainWork))
+                    {
+                       // This block is a member of the assumed verified chain and an ancestor of the best header.
+                        // The equivalent time check discourages hashpower from extorting the network via DOS attack
+                        //  into accepting an invalid block through telling users they must manually set assumevalid.
+                        //  Requiring a software change or burying the invalid block, regardless of the setting, makes
+                        //  it hard to hide the implication of the demand.  This also avoids having release candidates
+                        //  that are hardly doing any signature verification at all in testing without having to
+                        //  artificially set the default assumed verified block further back.
+                        // The test against nMinimumChainWork prevents the skipping when denied access to any chain at
+                        //  least as good as the expected chain.
+                        fScriptChecks = (GetBlockProofEquivalentTime(*pindexBestHeader, *pindex, *pindexBestHeader, chainparams.GetConsensus()) <= 60 * 60 * 24 * 7 * 2);
+                    }
+                }
+                else
+                {
+                    fScriptChecks = (GetBlockSPOSEquivalentTime(*pindexBestHeader, *pindex) <= 60 * 60 * 24 * 7 * 2);
+                }
             }
         }
     }
@@ -4392,7 +4540,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if(CheckCriticalBlock(block))
         blockReward = nFees + g_nCriticalReward;
     else
-        blockReward = nFees + GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, chainparams.GetConsensus());
+        if (pindex->pprev->nHeight >= g_nStartSPOSHeight)
+            blockReward = nFees + GetSPOSBlockSubsidy(pindex->pprev->nHeight, chainparams.GetConsensus());
+        else
+            blockReward = nFees + GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, chainparams.GetConsensus());
     std::string strError = "";
     if (!IsBlockValueValid(block, pindex->nHeight, blockReward, strError)) {
         return state.DoS(0, error("ConnectBlock(SAFE): %s", strError), REJECT_INVALID, "bad-cb-amount");
@@ -4537,6 +4688,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
+    if(IsStartSPosHeight(pindex->nHeight+1))
+    {
+        LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
+        LOCK(cs_spos);
+        SelectMasterNode(pindex->nHeight,block.nTime);
+    }
     return true;
 }
 
@@ -4902,8 +5059,17 @@ static CBlockIndex* FindMostWorkChain() {
             bool fMissingData = !(pindexTest->nStatus & BLOCK_HAVE_DATA);
             if (fFailedChain || fMissingData) {
                 // Candidate chain is not usable (either invalid or missing data)
-                if (fFailedChain && (pindexBestInvalid == NULL || pindexNew->nChainWork > pindexBestInvalid->nChainWork))
-                    pindexBestInvalid = pindexNew;
+                if (IsStartSPosHeight(pindexNew->nHeight))
+                {
+                    if (fFailedChain && (pindexBestInvalid == NULL || pindexNew->nHeight > pindexBestInvalid->nHeight))
+                        pindexBestInvalid = pindexNew;
+                }
+                else
+                {
+                    if (fFailedChain && (pindexBestInvalid == NULL || pindexNew->nChainWork > pindexBestInvalid->nChainWork))
+                        pindexBestInvalid = pindexNew;
+                }
+
                 CBlockIndex *pindexFailed = pindexNew;
                 // Remove the entire chain from the set.
                 while (pindexTest != pindexFailed) {
@@ -4993,10 +5159,21 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
                 }
             } else {
                 PruneBlockIndexCandidates();
-                if (!pindexOldTip || chainActive.Tip()->nChainWork > pindexOldTip->nChainWork) {
-                    // We're in a better position than we were. Return temporarily to release the lock.
-                    fContinue = false;
-                    break;
+                if (IsStartSPosHeight(chainActive.Tip()->nHeight))
+                {
+                    if (!pindexOldTip || chainActive.Tip()->nHeight > pindexOldTip->nHeight) {
+                        // We're in a better position than we were. Return temporarily to release the lock.
+                        fContinue = false;
+                        break;
+                    }
+                }
+                else
+                {
+                    if (!pindexOldTip || chainActive.Tip()->nChainWork > pindexOldTip->nChainWork) {
+                        // We're in a better position than we were. Return temporarily to release the lock.
+                        fContinue = false;
+                        break;
+                    }
                 }
             }
         }
@@ -5198,7 +5375,11 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
     }
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
-    if (pindexBestHeader == NULL || pindexBestHeader->nChainWork < pindexNew->nChainWork)
+    if(IsStartSPosHeight(pindexNew->nHeight))
+    {
+        if (pindexBestHeader == NULL || pindexBestHeader->nHeight < pindexNew->nHeight)
+            pindexBestHeader = pindexNew;
+    }else if (pindexBestHeader == NULL || pindexBestHeader->nChainWork < pindexNew->nChainWork)
         pindexBestHeader = pindexNew;
 
     setDirtyBlockIndex.insert(pindexNew);
@@ -5345,16 +5526,113 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
     if(CheckCriticalBlock(block))
         return true;
 
-    // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
-        return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
-                         REJECT_INVALID, "high-hash");
+    int nHeight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
+    if (nHeight < g_nStartSPOSHeight)
+    {
+        // Check proof of work matches claimed amount
+        if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
+            return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
+                             REJECT_INVALID, "high-hash");
+    }
 
     // Check timestamp
     if (block.GetBlockTime() > GetAdjustedTime() + 2 * 60 * 60)
         return state.Invalid(error("CheckBlockHeader(): block timestamp too far in the future"),
                              REJECT_INVALID, "time-too-new");
 
+    return true;
+}
+
+
+bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vector<unsigned char> &vchKeyId, std::vector<unsigned char> &vchSig, std::vector<unsigned char> &vchConAlg, uint16_t &nSPOSVersion, string &strSigMessage)
+{
+    unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + nConsensusAlgorithmLen + sizeof(nSPOSVersion) + nKeyIdSize;
+
+    if (vReserve.size() <= nFixedLen)
+        return false;
+
+    unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
+
+    //1.Consensus algorithm(4 bytes)
+    for(unsigned int k = 0; k < nConsensusAlgorithmLen; k++)
+        vchConAlg.push_back(vReserve[nOffset++]);
+
+    // 2. version (2 bytes)
+    nSPOSVersion = *(uint16_t*)&vReserve[nOffset];
+    nOffset += sizeof(nSPOSVersion);
+
+    // 3. keyid (20 bytes)
+    for(unsigned int i = 0; i < nKeyIdSize; i++)
+        vchKeyId.push_back(vReserve[nOffset++]);
+
+    // 4. vchSig
+    unsigned int nvchSigLen = vReserve.size() - nFixedLen;
+    for (unsigned int j = 0; j < nvchSigLen; j++)
+        vchSig.push_back(vReserve[nOffset++]);
+
+    for (unsigned int m = 0; m < nFixedLen; m++)
+        strSigMessage.push_back(vReserve[m]);
+
+    return true;
+}
+
+bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight,bool fCheckPOW)
+{
+    if (block.nBits != 0 || block.nNonce != 0)
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,block.nBits or block.nNonce not equal to 0",nHeight), REJECT_INVALID, "bad-nBits-nNonce", true);
+
+    int64_t nNowTime = GetTime();
+    if (block.GetBlockTime() - nNowTime > AllowableErrorTime)
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,block.nTime error,now:%lld,blockTime:%lld,allowableErrorTime:%d,please check local time correct"
+                                    ,nHeight,nNowTime,block.GetBlockTime(),AllowableErrorTime), REJECT_INVALID, "bad-nTime", true);
+
+    CTransaction tempTransaction  = block.vtx[0];
+    const CTxOut &out = tempTransaction.vout[0];
+
+    std::vector<unsigned char> vchKeyId;
+    std::vector<unsigned char> vchSig;
+    std::vector<unsigned char> vchConAlg;
+    string strSigMessage = "";
+    uint16_t nSPOSVersion = 1;
+
+    if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, vchConAlg, nSPOSVersion, strSigMessage) || vchConAlg.size() != nConsensusAlgorithmLen || vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,analysis CTxOut vReserve fail, vchConAlg size:%d",nHeight,vchConAlg.size()), REJECT_INVALID, "bad-vReserve", true);
+
+    CKeyID keyID;
+    CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
+    ssKey >> keyID;
+
+    std::string strError = "";
+
+    if (!CMessageSigner::VerifyMessage(keyID, vchSig, strSigMessage, strError))
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
+                                    ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-signature", true);
+
+    int32_t mnSize = g_vecResultMasternodes.size();
+
+    if (!masternodeSync.IsSynced()||(mnSize==0&&g_nSelectMasterNodeRet==0))
+        return true;
+
+    if(mnSize == 0)
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
+                                    ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-mnSize", true);
+    int32_t interval = (block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+    int32_t nIndex = interval % mnSize;
+    if(nIndex<0)
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
+                                   ,nHeight,nIndex,block.GetBlockTime(),g_nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
+    const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
+
+    CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
+
+    if (keyID != mnkeyID)
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): height:%d,blockaddress error,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
+                                    "ip:%s,blocktime:%lld,startlooptime:%lld\n"
+                                    ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
+                                    ,block.GetBlockTime(),g_nStartNewLoopTime)
+                                    , REJECT_INVALID, "bad-blockaddress", true);
+    if(fCheckPOW)
+        LogPrintf("SPOS_Message:check spos block,height:%d,strKeyID:%s\n",nHeight, keyID.ToString());
     return true;
 }
 
@@ -5365,10 +5643,26 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (block.fChecked)
         return true;
 
+     // First transaction must be coinbase, the rest must not be
+    if (block.vtx.empty() || !block.vtx[0].IsCoinBase())
+        return state.DoS(100, error("CheckBlock(): first tx is not coinbase"),
+                         REJECT_INVALID, "bad-cb-missing");
+    for (unsigned int i = 1; i < block.vtx.size(); i++)
+        if (block.vtx[i].IsCoinBase())
+            return state.DoS(100, error("CheckBlock(): more than one coinbase"),
+                             REJECT_INVALID, "bad-cb-multiple");
+
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
     if (!CheckBlockHeader(block, state, fCheckPOW))
         return false;
+
+    if (nHeight >= g_nStartSPOSHeight)
+    {
+        LOCK(cs_spos);
+        if (!CheckSPOSBlock(block, state,nHeight,fCheckPOW))
+            return false;
+    }
 
     // Check the merkle root.
     if (fCheckMerkleRoot) {
@@ -5394,15 +5688,6 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (block.vtx.empty() || block.vtx.size() > MaxBlockSize(true) || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION) > MaxBlockSize(true))
         return state.DoS(100, error("%s: size limits failed", __func__),
                          REJECT_INVALID, "bad-blk-length");
-
-    // First transaction must be coinbase, the rest must not be
-    if (block.vtx.empty() || !block.vtx[0].IsCoinBase())
-        return state.DoS(100, error("CheckBlock(): first tx is not coinbase"),
-                         REJECT_INVALID, "bad-cb-missing");
-    for (unsigned int i = 1; i < block.vtx.size(); i++)
-        if (block.vtx[i].IsCoinBase())
-            return state.DoS(100, error("CheckBlock(): more than one coinbase"),
-                             REJECT_INVALID, "bad-cb-multiple");
 
 
     // SAFE : CHECK TRANSACTIONS FOR INSTANTSEND
@@ -5476,20 +5761,23 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
     const Consensus::Params& consensusParams = Params().GetConsensus();
 #if SCN_CURRENT == SCN__main
     int nHeight = pindexPrev->nHeight + 1;
-    // Check proof of work
-    if(Params().NetworkIDString() == CBaseChainParams::MAIN && nHeight <= 68589){
-        // architecture issues with DGW v1 and v2)
-        unsigned int nBitsNext = GetNextWorkRequired(pindexPrev, &block, consensusParams);
-        double n1 = ConvertBitsToDouble(block.nBits);
-        double n2 = ConvertBitsToDouble(nBitsNext);
+    if (nHeight < g_nStartSPOSHeight)
+    {
+        // Check proof of work
+        if(Params().NetworkIDString() == CBaseChainParams::MAIN && nHeight <= 68589){
+            // architecture issues with DGW v1 and v2)
+            unsigned int nBitsNext = GetNextWorkRequired(pindexPrev, &block, consensusParams);
+            double n1 = ConvertBitsToDouble(block.nBits);
+            double n2 = ConvertBitsToDouble(nBitsNext);
 
-        if (abs(n1-n2) > n1*0.5)
-            return state.DoS(100, error("%s : incorrect proof of work (DGW pre-fork) - %f %f %f at %d", __func__, abs(n1-n2), n1, n2, nHeight),
-                            REJECT_INVALID, "bad-diffbits");
-    } else {
-        if (!CheckCriticalBlock(block) && block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
-            return state.DoS(100, error("%s : incorrect proof of work at %d", __func__, nHeight),
-                            REJECT_INVALID, "bad-diffbits");
+            if (abs(n1-n2) > n1*0.5)
+                return state.DoS(100, error("%s : incorrect proof of work (DGW pre-fork) - %f %f %f at %d", __func__, abs(n1-n2), n1, n2, nHeight),
+                                REJECT_INVALID, "bad-diffbits");
+        } else {
+            if (!CheckCriticalBlock(block) && block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
+                return state.DoS(100, error("%s : incorrect proof of work at %d", __func__, nHeight),
+                                REJECT_INVALID, "bad-diffbits");
+        }
     }
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
     //do nothing
@@ -5659,7 +5947,22 @@ static bool AcceptBlock(const CBlock& block, CValidationState& state, const CCha
     // process an unrequested block if it's new and has enough work to
     // advance our tip, and isn't too many blocks ahead.
     bool fAlreadyHave = pindex->nStatus & BLOCK_HAVE_DATA;
-    bool fHasMoreWork = (chainActive.Tip() ? pindex->nChainWork > chainActive.Tip()->nChainWork : true);
+    bool fHasMoreWork = false;
+    if (chainActive.Tip())
+    {
+        if (IsStartSPosHeight(pindex->nHeight))
+        {
+            if (pindex->nHeight > chainActive.Tip()->nHeight)
+                fHasMoreWork = true;
+        }
+        else
+        {
+            if (pindex->nChainWork > chainActive.Tip()->nChainWork)
+                fHasMoreWork = true;
+        }
+    }
+    else
+        fHasMoreWork = true;
     // Blocks that are too out-of-order needlessly limit the effectiveness of
     // pruning, because pruning will not delete block files that contain any
     // blocks which are too close in height to the tip.  Apply this test
@@ -5758,6 +6061,8 @@ bool ProcessNewBlock(const CChainParams& chainparams, const CBlock* pblock, bool
 bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams, const CBlock& block, CBlockIndex* pindexPrev, bool fCheckPOW, bool fCheckMerkleRoot)
 {
     AssertLockHeld(cs_main);
+    if(pindexPrev != chainActive.Tip())
+        LogPrintf("pindexPrev != chainActive.Tip(),%s\n",pindexPrev->ToString());
     assert(pindexPrev && pindexPrev == chainActive.Tip());
     if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, block.GetHash()))
         return error("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
@@ -5990,8 +6295,18 @@ bool static LoadBlockIndexDB()
         }
         if (pindex->IsValid(BLOCK_VALID_TRANSACTIONS) && (pindex->nChainTx || pindex->pprev == NULL))
             setBlockIndexCandidates.insert(pindex);
-        if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nChainWork > pindexBestInvalid->nChainWork))
-            pindexBestInvalid = pindex;
+
+        if (IsStartSPosHeight(pindex->nHeight))
+        {
+            if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nHeight > pindexBestInvalid->nHeight))
+                pindexBestInvalid = pindex;
+        }
+        else
+        {
+            if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nChainWork > pindexBestInvalid->nChainWork))
+                pindexBestInvalid = pindex;
+        }
+
         if (pindex->pprev)
             pindex->BuildSkip();
         if (pindex->IsValid(BLOCK_VALID_TREE) && (pindexBestHeader == NULL || CBlockIndexWorkComparator()(pindexBestHeader, pindex)))
@@ -6443,7 +6758,10 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
         assert((pindexFirstNeverProcessed != NULL) == (pindex->nChainTx == 0)); // nChainTx != 0 is used to signal that all parent blocks have been processed (but may have been pruned).
         assert((pindexFirstNotTransactionsValid != NULL) == (pindex->nChainTx == 0));
         assert(pindex->nHeight == nHeight); // nHeight must be consistent.
-        assert(pindex->pprev == NULL || pindex->nChainWork >= pindex->pprev->nChainWork); // For every block except the genesis block, the chainwork must be larger than the parent's.
+        if (IsStartSPosHeight(pindex->nHeight))
+            assert(pindex->pprev == NULL || pindex->nHeight >= pindex->pprev->nHeight);
+        else
+            assert(pindex->pprev == NULL || pindex->nChainWork >= pindex->pprev->nChainWork); // For every block except the genesis block, the chainwork must be larger than the parent's.
         assert(nHeight < 2 || (pindex->pskip && (pindex->pskip->nHeight < nHeight))); // The pskip pointer must point back for all but the first 2 blocks.
         assert(pindexFirstNotTreeValid == NULL); // All mapBlockIndex entries must at least be TREE valid
         if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_TREE) assert(pindexFirstNotTreeValid == NULL); // TREE valid implies all parents are TREE valid
@@ -7009,8 +7327,17 @@ bool GetAddressAmountByHeight(const int& nHeight, const std::string& strAddress,
     std::lock_guard<std::mutex> lock(g_mutexChangeFile);
 
     uint64_t nDetailFileSize = boost::filesystem::file_size(GetDataDir() / "height/detail.dat");
-    if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * BLOCKS_PER_MONTH)
-        return error("%s: cannot get address amount out of 3 months", __func__);
+
+    if (nHeight >= g_nStartSPOSHeight)
+    {
+        if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * SPOS_BLOCKS_PER_MONTH)
+            return error("%s: cannot get address amount out of 3 months", __func__);
+    }
+    else
+    {
+        if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * BLOCKS_PER_MONTH)
+            return error("%s: cannot get address amount out of 3 months", __func__);
+    }
 
     vector<int> vChangeHeight;
     if(!GetRangeChangeHeight(nHeight, vChangeHeight))
@@ -7180,8 +7507,16 @@ static bool GetAllCandyInfo()
 
         int64_t nTimeBegin = mapBlockIndex[candyInfoValue.blockHash]->GetBlockTime();
 
-        if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
-            continue;
+        if (nTxHeight >= g_nStartSPOSHeight)
+        {
+            if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                continue;
+        }
+        else
+        {
+            if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                continue;
+        }
 
         CAmount nTotalSafe = 0;
         if(!GetTotalAmountByHeight(nTxHeight, nTotalSafe))
@@ -7762,8 +8097,16 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
             COutPoint out(tx.GetHash(), i);
             CCandy_BlockTime_Info candyblocktimeinfo(assetId, assetInfo.assetData, CCandyInfo(candyData.nAmount, candyData.nExpired),out , candyBlock.nTime, nCandyHeight);
 
-            if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
-                continue;
+            if (nCandyHeight >= g_nStartSPOSHeight)
+            {
+                if (candyData.nExpired * SPOS_BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
+                    continue;
+            }
+            else
+            {
+                if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
+                    continue;
+            }
 
             if(nCandyHeight > nCurrentHeight)
                 continue;
@@ -8080,7 +8423,10 @@ bool LoadChangeInfoToList()
         if(CheckCriticalBlock(block))
             blockReward = g_nCriticalReward;
         else
-            blockReward = GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, Params().GetConsensus());
+            if (pindex->pprev->nHeight >= g_nStartSPOSHeight)
+                blockReward = GetSPOSBlockSubsidy(pindex->pprev->nHeight, Params().GetConsensus());
+            else
+                blockReward = GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, Params().GetConsensus());
 
         g_listChangeInfo.push_back(CChangeInfo(pindex->nHeight, g_nLastCandyHeight, blockReward, bExistCandy, mapAddressAmount));
 
@@ -8321,7 +8667,11 @@ static bool WriteChangeInfo(const CChangeInfo& changeInfo)
     // 5. remove change file before 3 month
     if(nStep == 4)
     {
-        int nEndHeight = changeInfo.nHeight - 3 * BLOCKS_PER_MONTH;
+        int nEndHeight = 0;
+        if (changeInfo.nHeight >= g_nStartSPOSHeight)
+            nEndHeight = changeInfo.nHeight - 3 * SPOS_BLOCKS_PER_MONTH;
+        else
+            nEndHeight = changeInfo.nHeight - 3 * BLOCKS_PER_MONTH;
         if(nEndHeight >= changeInfo.nLastCandyHeight)
             nEndHeight = changeInfo.nLastCandyHeight;
         DeleteFilesToHeight(nEndHeight);
@@ -8636,7 +8986,7 @@ bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAsse
         {
             nmapgetcandyamount = nCandyAmount + ntempmapgetcandyamount;
             return false;
-        }    
+        }
 
         mapAssetGetCandy[key] = ntempmapgetcandyamount + nCandyAmount;
     }
@@ -8677,4 +9027,269 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
     }
 
     return true;
+}
+
+void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
+{
+    if(!masternodeSync.IsSynced())
+        return;
+
+    if(g_nLastSelectMasterNodeHeight == nCurrBlockHeight)
+    {
+        LogPrintf("SPOS_Message:g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d,not SelectMasterNode\n",nCurrBlockHeight);
+        return;
+    }
+
+    unsigned int ret = nCurrBlockHeight % g_nMasternodeSPosCount;
+    if(ret != 0 )
+        return;
+
+    LogPrintf("SPOS_Info:--------------------------------------------------------\n");
+    LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d.\n",nCurrBlockHeight);
+    std::map<COutPoint, CMasternode> mapMasternodes;
+    if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
+    {
+        std::map<COutPoint, CMasternode> fullmapMasternodes = mnodeman.GetFullMasternodeMap();
+
+        const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
+        std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
+        for (;it != vtempOutPointData.end(); it++)
+        {
+            COutPointData tempcoutpointdata = *it;
+            COutPoint tempcoutpoint;
+            tempcoutpoint.hash = SerializeHash(tempcoutpointdata.strtx);
+            tempcoutpoint.n = tempcoutpointdata.n;
+             std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
+            if (tempit != fullmapMasternodes.end())
+                mapMasternodes[tempcoutpoint] = tempit->second;
+        }
+    }
+    else
+        mapMasternodes = mnodeman.GetFullMasternodeMap();
+
+    g_vecResultMasternodes.clear();
+    std::vector<CMasternode>().swap(g_vecResultMasternodes);
+    //1.3.3
+    g_nStartNewLoopTime = (int64_t)nTime*1000;
+    g_nSposGeneratedIndex = -2;
+    g_nSelectMasterNodeRet = 1;
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
+    if(g_nStartNewLoopTime < nTime*1000)
+    {
+        LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",g_nStartNewLoopTime/1000,strStartNewLoopTime
+                  ,nTime,strBlockTime);
+        g_nSelectMasterNodeRet = -1;
+        return;
+    }
+
+    if(mapMasternodes.empty())
+    {
+        LogPrintf("SPOS_Error:mapMasternodes is empty\n");
+        g_nSelectMasterNodeRet = -1;
+        return;
+    }
+
+    int logMaxCnt = 20,logCnt = 0;
+    std::map<uint256,CMasternode> scoreMasternodes;
+
+    //sort by score
+    for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
+    {
+        const CMasternode& mn = (*mnpair).second;
+        int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
+
+        //XJTODO
+        logCnt++;
+        if(logCnt<=logMaxCnt)
+            LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%lld,pingTime:%lld,sigTime:%lld,nLastDsq:%lld,nTimeLastChecked:%lld,"
+                      "nTimeLastPaid:%lld,nTimeLastPing:%lld,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP(),mn.nActiveState,onlineTime,
+                      mn.lastPing.sigTime,mn.sigTime,mn.nLastDsq,mn.nTimeLastChecked,mn.nTimeLastPaid,mn.nTimeLastPing,mn.nClientVersion,
+                      onlineTime < g_nMasternodeMinOnlineTime?0:1);
+
+        if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED) || onlineTime < g_nMasternodeMinOnlineTime)
+            continue;
+        if(mn.nClientVersion < SPOS_MIN_CLIENT_VERSION)
+            continue;
+
+        uint256 hash = mn.pubKeyCollateralAddress.GetHash();
+        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+        ss << hash;
+        ss << nTime;
+        uint256 score = ss.GetHash();
+        scoreMasternodes[score] = mn;
+    }
+
+    unsigned int scoreMnSize = scoreMasternodes.size();
+    if(scoreMnSize < g_nMasternodeMinCount)
+    {
+        LogPrintf("SPOS_Error:scoreMasternodes size:%d,g_nMasternodeMinCount:%d\n",scoreMnSize,g_nMasternodeMinCount);
+        g_nSelectMasterNodeRet = -1;
+        return;
+    }
+
+    //XJTODO remove it5
+    logCnt = 0;
+    for (auto& mnpair : scoreMasternodes)
+    {
+        logCnt++;
+        if(logCnt<=logMaxCnt)
+            LogPrintf("SPOS_Message:after sort:ip:%s,score:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
+                      ,mnpair.first.ToString(),mnpair.second.lastPing.sigTime,mnpair.second.sigTime,mnpair.second.nClientVersion);
+    }
+
+    unsigned int count = 0;
+    for (auto& mnpair : scoreMasternodes)
+    {
+        CMasternode& mn = mnpair.second;
+        g_vecResultMasternodes.push_back(mn);
+        count++;
+        if(count>=g_nMasternodeSPosCount)
+            break;
+    }
+
+    //random the master node
+    uint64_t now_hi = uint64_t(nTime) << 32;
+    for( uint32_t i = 0; i < g_vecResultMasternodes.size(); ++i )
+    {
+        /// High performance random generator
+        /// http://xorshift.di.unimi.it/
+        uint64_t k = now_hi + uint64_t(i)*2685821657736338717ULL;
+        k ^= (k >> 12);
+        k ^= (k << 25);
+        k ^= (k >> 27);
+        k *= 2685821657736338717ULL;
+
+        uint32_t jmax = g_vecResultMasternodes.size() - i;
+        uint32_t j = i + k%jmax;
+        std::swap( g_vecResultMasternodes[i],g_vecResultMasternodes[j] );
+    }
+
+    string localIpPortInfo = activeMasternode.service.ToString();
+    uint32_t size = g_vecResultMasternodes.size();
+    LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,min online masternode count:%d\n"
+              ,localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,strBlockTime,size,g_nMasternodeMinCount);
+    for( uint32_t i = 0; i < size; ++i )
+    {
+        const CMasternode& mn = g_vecResultMasternodes[i];
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.nClientVersion);
+    }
+
+    g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
+}
+
+void SelectSporkMessageMasterNode()
+{
+    if (!masternodeSync.IsMasternodeListSynced() || !masternodeSync.IsBlockchainSynced())
+        return;
+
+    std::map<COutPoint, CMasternode> mapMasternodes;
+    if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
+    {
+        std::map<COutPoint, CMasternode> fullmapMasternodes = mnodeman.GetFullMasternodeMap();
+
+        const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
+        std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
+        for (;it != vtempOutPointData.end(); it++)
+        {
+            COutPointData tempcoutpointdata = *it;
+            COutPoint tempcoutpoint;
+            tempcoutpoint.hash = SerializeHash(tempcoutpointdata.strtx);
+            tempcoutpoint.n = tempcoutpointdata.n;
+             std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
+            if (tempit != fullmapMasternodes.end())
+                mapMasternodes[tempcoutpoint] = tempit->second;
+        }
+    }
+    else
+        return;
+
+    if (mapMasternodes.empty())
+    {
+        LogPrintf("SPOS_Error:Spork mapMasternodes is empty\n");
+        return;
+    }
+
+    g_vecResultMasternodes.clear();
+    std::vector<CMasternode>().swap(g_vecResultMasternodes);
+
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->nTime);
+
+    //sort by score
+    std::map<uint256,CMasternode> scoreMasternodes;
+    for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
+    {
+        const CMasternode& mn = (*mnpair).second;
+        int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
+
+        //XJTODO
+        LogPrintf("SPOS_Message: Spork before sort:ip:%s,nActiveState:%d,onlineTime:%d,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP()
+                  ,mn.nActiveState,onlineTime,mn.nClientVersion,onlineTime < g_nMasternodeMinOnlineTime?0:1);
+
+        if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED) || onlineTime < g_nMasternodeMinOnlineTime)
+            continue;
+        if(mn.nClientVersion < SPOS_MIN_CLIENT_VERSION)
+            continue;
+
+        uint256 hash = mn.pubKeyCollateralAddress.GetHash();
+        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+        ss << hash;
+        ss << chainActive.Tip()->nTime;
+        uint256 score = ss.GetHash();
+        scoreMasternodes[score] = mn;
+    }
+
+    unsigned int scoreMnSize = scoreMasternodes.size();
+    if(scoreMnSize < g_nMasternodeMinCount)
+    {
+        LogPrintf("SPOS_Error: Spork scoreMasternodes size:%d,g_nMasternodeMinCount:%d\n",scoreMnSize,g_nMasternodeMinCount);
+        return;
+    }
+
+    //XJTODO remove it5
+    for (auto& mnpair : scoreMasternodes)
+    {
+        LogPrintf("SPOS_Message:Spork after sort:ip:%s,score:%s,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
+                  ,mnpair.first.ToString(),mnpair.second.nClientVersion);
+    }
+
+    unsigned int count = 0;
+    for (auto& mnpair : scoreMasternodes)
+    {
+        CMasternode& mn = mnpair.second;
+        g_vecResultMasternodes.push_back(mn);
+        count++;
+        if(count>=g_nMasternodeSPosCount)
+            break;
+    }
+
+    //random the master node
+    uint64_t now_hi = uint64_t(chainActive.Tip()->nTime) << 32;
+    for(uint32_t i = 0; i < g_vecResultMasternodes.size(); ++i)
+    {
+        /// High performance random generator
+        /// http://xorshift.di.unimi.it/
+        uint64_t k = now_hi + uint64_t(i)*2685821657736338717ULL;
+        k ^= (k >> 12);
+        k ^= (k << 25);
+        k ^= (k >> 27);
+        k *= 2685821657736338717ULL;
+
+        uint32_t jmax = g_vecResultMasternodes.size() - i;
+        uint32_t j = i + k%jmax;
+        std::swap( g_vecResultMasternodes[i],g_vecResultMasternodes[j] );
+    }
+
+    string localIpPortInfo = activeMasternode.service.ToString();
+    uint32_t size = g_vecResultMasternodes.size();
+    LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,min online masternode count:%d\n"
+              ,localIpPortInfo,chainActive.Height(),g_nStartNewLoopTime,strStartNewLoopTime,chainActive.Tip()->nTime,strBlockTime,size,g_nMasternodeMinCount);
+    for( uint32_t i = 0; i < size; ++i )
+    {
+        const CMasternode& mn = g_vecResultMasternodes[i];
+        LogPrintf("SPOS_Message:Spork masterNodeIP[%d]:%s,keyid:%s,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.nClientVersion);
+    }
 }

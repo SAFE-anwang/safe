@@ -14,11 +14,13 @@
 #include "netfulfilledman.h"
 #include "spork.h"
 #include "util.h"
+#include "main.h"
 
 class CMasternodeSync;
 CMasternodeSync masternodeSync;
 
 extern bool fGetCandyInfoStart;
+extern int64_t g_nMasternodeResetTime;
 
 void CMasternodeSync::Fail()
 {
@@ -155,7 +157,7 @@ void CMasternodeSync::ClearFulfilledRequests(CConnman& connman)
 void CMasternodeSync::ProcessTick(CConnman& connman)
 {
     static int nTick = 0;
-    if(nTick++ % MASTERNODE_SYNC_TICK_SECONDS != 0) return;
+    if(nTick++ % GetSyncTickSeconds() != 0) return;
 
     // reset the sync process if the last call to this function was more than 60 minutes ago (client was in sleep mode)
     static int64_t nTimeLastProcess = GetTime();
@@ -245,7 +247,7 @@ void CMasternodeSync::ProcessTick(CConnman& connman)
             // INITIAL TIMEOUT
 
             if(nRequestedMasternodeAssets == MASTERNODE_SYNC_WAITING) {
-                if(GetTime() - nTimeLastBumped > MASTERNODE_SYNC_TIMEOUT_SECONDS) {
+                if(GetTime() - nTimeLastBumped > GetSyncTimeoutSeconds()) {
                     // At this point we know that:
                     // a) there are peers (because we are looping on at least one of them);
                     // b) we waited for at least MASTERNODE_SYNC_TIMEOUT_SECONDS since we reached
@@ -263,7 +265,7 @@ void CMasternodeSync::ProcessTick(CConnman& connman)
             if(nRequestedMasternodeAssets == MASTERNODE_SYNC_LIST) {
                 LogPrint("masternode", "CMasternodeSync::ProcessTick -- nTick %d nRequestedMasternodeAssets %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, nRequestedMasternodeAssets, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
-                if(GetTime() - nTimeLastBumped > MASTERNODE_SYNC_TIMEOUT_SECONDS) {
+                if(GetTime() - nTimeLastBumped > GetSyncTimeoutSeconds()) {
                     LogPrintf("CMasternodeSync::ProcessTick -- nTick %d nRequestedMasternodeAssets %d -- timeout\n", nTick, nRequestedMasternodeAssets);
                     if (nRequestedMasternodeAttempt == 0) {
                         LogPrintf("CMasternodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetAssetName());
@@ -297,7 +299,7 @@ void CMasternodeSync::ProcessTick(CConnman& connman)
                 // check for timeout first
                 // This might take a lot longer than MASTERNODE_SYNC_TIMEOUT_SECONDS due to new blocks,
                 // but that should be OK and it should timeout eventually.
-                if(GetTime() - nTimeLastBumped > MASTERNODE_SYNC_TIMEOUT_SECONDS) {
+                if(GetTime() - nTimeLastBumped > GetSyncTimeoutSeconds()) {
                     LogPrintf("CMasternodeSync::ProcessTick -- nTick %d nRequestedMasternodeAssets %d -- timeout\n", nTick, nRequestedMasternodeAssets);
                     if (nRequestedMasternodeAttempt == 0) {
                         LogPrintf("CMasternodeSync::ProcessTick -- ERROR: failed to sync %s\n", GetAssetName());
@@ -343,7 +345,7 @@ void CMasternodeSync::ProcessTick(CConnman& connman)
                 LogPrint("gobject", "CMasternodeSync::ProcessTick -- nTick %d nRequestedMasternodeAssets %d nTimeLastBumped %lld GetTime() %lld diff %lld\n", nTick, nRequestedMasternodeAssets, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
 
                 // check for timeout first
-                if(GetTime() - nTimeLastBumped > MASTERNODE_SYNC_TIMEOUT_SECONDS) {
+                if(GetTime() - nTimeLastBumped > GetSyncTimeoutSeconds()) {
                     LogPrintf("CMasternodeSync::ProcessTick -- nTick %d nRequestedMasternodeAssets %d -- timeout\n", nTick, nRequestedMasternodeAssets);
                     if(nRequestedMasternodeAttempt == 0) {
                         LogPrintf("CMasternodeSync::ProcessTick -- WARNING: failed to sync %s\n", GetAssetName());
@@ -368,8 +370,8 @@ void CMasternodeSync::ProcessTick(CConnman& connman)
                         }
                         // make sure the condition below is checked only once per tick
                         if(nLastTick == nTick) continue;
-                        if(GetTime() - nTimeNoObjectsLeft > MASTERNODE_SYNC_TIMEOUT_SECONDS &&
-                            governance.GetVoteCount() - nLastVotes < std::max(int(0.0001 * nLastVotes), MASTERNODE_SYNC_TICK_SECONDS)
+                        if(GetTime() - nTimeNoObjectsLeft > GetSyncTimeoutSeconds() &&
+                            governance.GetVoteCount() - nLastVotes < std::max(int(0.0001 * nLastVotes), GetSyncTickSeconds())
                         ) {
                             // We already asked for all objects, waited for MASTERNODE_SYNC_TIMEOUT_SECONDS
                             // after that and less then 0.01% or MASTERNODE_SYNC_TICK_SECONDS
@@ -464,12 +466,16 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
     // Note: since we sync headers first, it should be ok to use this
     static bool fReachedBestHeader = false;
     bool fReachedBestHeaderNew = pindexNew->GetBlockHash() == pindexBestHeader->GetBlockHash();
-
     if (fReachedBestHeader && !fReachedBestHeaderNew) {
         // Switching from true to false means that we previousely stuck syncing headers for some reason,
         // probably initial timeout was not enough,
         // because there is no way we can update tip not having best header
-        Reset();
+        int64_t currTime = GetTime();
+        if(currTime-g_nMasternodeResetTime>150)//XJTODO use macro
+        {
+            Reset();
+            g_nMasternodeResetTime = currTime;
+        }
         fReachedBestHeader = false;
         return;
     }
@@ -484,4 +490,19 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
         // We must be at the tip already, let's move to the next asset.
         SwitchToNextAsset(connman);
     }
+}
+
+//XJTODO use macro
+int CMasternodeSync::GetSyncTickSeconds()
+{
+    if(IsStartSPosHeight(chainActive.Height()))
+        return 6;
+    return MASTERNODE_SYNC_TICK_SECONDS;
+}
+
+int CMasternodeSync::GetSyncTimeoutSeconds()
+{
+    if(IsStartSPosHeight(chainActive.Height()))
+        return 30;
+    return MASTERNODE_SYNC_TIMEOUT_SECONDS;
 }

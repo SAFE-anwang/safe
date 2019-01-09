@@ -11,6 +11,14 @@
 // generate blocks per year = 12 * BLOCKS_PER_MONTH
 #define BLOCKS_PER_YEAR     207360
 
+// SPOS generate blocks per day = 24 * 60 * 60 / 10
+#define SPOS_BLOCKS_PER_DAY      8640
+// SPOS generate blcoks per month = 30 * SPOS_BLOCKS_PER_DAY
+#define SPOS_BLOCKS_PER_MONTH    259200
+// SPOS generate blocks per year = 12 * SPOS_BLOCKS_PER_MONTH
+#define SPOS_BLOCKS_PER_YEAR     3110400
+
+
 #define MIN_MN_LOCKED_MONTH     6
 
 class CBlock;
@@ -19,6 +27,7 @@ class CBlockIndex;
 class CTxOut;
 class uint256;
 class CTransaction;
+class CMasternode;
 
 extern int g_nChainHeight;
 extern int g_nCriticalHeight;
@@ -29,7 +38,22 @@ extern std::string g_strCancelledSafeAddress;
 extern std::string g_strCancelledAssetAddress;
 extern std::string g_strPutCandyAddress;
 
+extern int g_nStartSPOSHeight;
+extern unsigned int g_nMasternodeSPosCount;
+extern int64_t g_nStartNewLoopTime;
+extern int g_nSposGeneratedIndex;
+extern std::vector<CMasternode> g_vecResultMasternodes;
+extern int64_t g_nSPOSAStartLockHeight;
+extern int g_nSelectMasterNodeRet;
+
+
+
+
+
+
 inline bool IsCriticalHeight(int nHeight) { return nHeight == g_nCriticalHeight; }
+
+inline bool IsStartSPosHeight(int nHeight) { return nHeight >= g_nStartSPOSHeight; }
 
 inline bool IsLockedMonthRange(int nMonth) { return (nMonth >= 1 && nMonth <= 120); }
 
@@ -55,5 +79,8 @@ int GetLockedMonthByHeight(const int& nheight, const CTxOut& txout);
 CAmount GetCancelledAmount(const int& nHeight);
 
 CAmount GetTxAdditionalFee(const CTransaction& tx);
+
+int GetPrevBlockHeight(const uint256& hash);
+
 
 #endif

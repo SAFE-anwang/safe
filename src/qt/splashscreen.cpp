@@ -44,7 +44,7 @@ SplashScreen::SplashScreen(Qt::WindowFlags f, const NetworkStyle *networkStyle) 
 
     // define text to place
     QString titleText       = tr("Safe Core");
-    QString versionText     = QString(tr("Version %1")).arg(QString::fromStdString(FormatFullVersion()));
+    QString versionText     = QString(tr("Version %1 Safe_Spos2")).arg(QString::fromStdString(FormatFullVersion()));
     QString copyrightTextDash   = QChar(0xA9)+QString(" 2014-%1 ").arg(COPYRIGHT_YEAR) + QString(tr("The Dash Core developers"));
     QString copyrightTextSafe   = QChar(0xA9)+QString(" 2018-%1 ").arg(SAFE_COPYRIGHT_YEAR) + QString(tr("The Safe Core developers"));
     QString titleAddText    = networkStyle->getTitleAddText();

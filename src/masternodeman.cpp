@@ -736,7 +736,8 @@ void CMasternodeMan::ProcessMasternodeConnections(CConnman& connman)
             if(privateSendClient.infoMixingMasternode.fInfoValid && pnode->addr == privateSendClient.infoMixingMasternode.addr)
                 return;
             LogPrintf("Closing Masternode connection: peer=%d, addr=%s\n", pnode->id, pnode->addr.ToString());
-            pnode->fDisconnect = true;
+            if(!fMasterNode)//XJTODO
+                pnode->fDisconnect = true;
         }
     });
 }
@@ -776,6 +777,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
     if (strCommand == NetMsgType::MNANNOUNCE) { //Masternode Broadcast
 
         CMasternodeBroadcast mnb;
+        mnb.nClientVersion = 0;
         vRecv >> mnb;
 
         pfrom->setAskFor.erase(mnb.GetHash());

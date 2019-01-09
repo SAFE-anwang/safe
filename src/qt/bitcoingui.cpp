@@ -37,6 +37,7 @@
 #include "masternode-sync.h"
 #include "masternodelist.h"
 #include "walletview.h"
+#include "main.h"
 
 #include <iostream>
 
@@ -601,7 +602,7 @@ void BitcoinGUI::createActions()
 void BitcoinGUI::createTitleBar()
 {
     titlebar = new TitleBar(this);
-    titlebar->setContent(tr("Safe Core") + "-" + tr("Wallet"));
+    titlebar->setContent(tr("Safe Core") + "-" + tr("Wallet (v2.5.0 Safe_Spos2)"));
     titlebar->setButtonType(MIN_MAX_BUTTON);
     titlebar->setWidth(this->width() - 2 * BORDER_SIZE);
     titlebar->setBorderWidth(2 * BORDER_SIZE);
@@ -1265,7 +1266,12 @@ void BitcoinGUI::updateHeadersSyncProgressLabel()
 {
     int64_t headersTipTime = clientModel->getHeaderTipTime();
     int headersTipHeight = clientModel->getHeaderTipHeight();
-    int estHeadersLeft = (GetTime() - headersTipTime) / Params().GetConsensus().nPowTargetSpacing;
+
+    int estHeadersLeft = 0;
+    if (headersTipHeight >= g_nStartSPOSHeight)
+        estHeadersLeft= (GetTime() - headersTipTime) / Params().GetConsensus().nSPOSTargetSpacing;
+    else
+        estHeadersLeft = (GetTime() - headersTipTime) / Params().GetConsensus().nPowTargetSpacing;
     if (estHeadersLeft > HEADER_HEIGHT_DELTA_SYNC)
         progressBarLabel->setText(tr("Syncing Headers (%1%)...").arg(QString::number(100.0 / (headersTipHeight+estHeadersLeft)*headersTipHeight, 'f', 1)));
 }
