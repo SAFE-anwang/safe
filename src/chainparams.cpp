@@ -128,10 +128,10 @@ public:
          */
         pchMessageStart[0] = 0x64;
         pchMessageStart[1] = 0x64;
-        pchMessageStart[2] = 0x62;
-        pchMessageStart[3] = 0xc2;
+        pchMessageStart[2] = 0x66;
+        pchMessageStart[3] = 0xc6;
         vAlertPubKey = ParseHex("03170ad9696fa0edb44e53cb706dd7985a5e0f94b3f3987acf6245339b65afbe80");
-        nDefaultPort = 4422;
+        nDefaultPort = 4466;
         nMaxTipAge = 365 * 24 * 60 * 60; // ~144 blocks behind -> 2 x fork detection time, was 24 * 60 * 60 in bitcoin
         nDelayGetHeadersTime = 365 * 24 * 60 * 60;
         nPruneAfterHeight = 100000;
@@ -141,14 +141,15 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0x000d8b21044326f9b58110404510ce2b4ee30af5d97dd7de30d551c34dfdc9a2"));
         assert(genesis.hashMerkleRoot == uint256S("0xe0028eb9648db56b1ac77cf090b99048a8007e2bb64b68f092c03c7f56a662c7"));
 
-        vSeeds.push_back(CDNSSeedData("123.207.33.176", "123.207.33.176"));
-        vSeeds.push_back(CDNSSeedData("115.159.235.177", "115.159.235.177"));
-        vSeeds.push_back(CDNSSeedData("123.206.90.90", "123.206.90.90"));
-        vSeeds.push_back(CDNSSeedData("119.29.66.245", "119.29.66.245"));
-        vSeeds.push_back(CDNSSeedData("119.29.216.77", "119.29.216.77"));
-        vSeeds.push_back(CDNSSeedData("119.29.161.75", "119.29.161.75"));
-        vSeeds.push_back(CDNSSeedData("119.29.99.238", "119.29.99.238"));
-        vSeeds.push_back(CDNSSeedData("119.29.220.213", "119.29.220.213"));
+        vSeeds.push_back(CDNSSeedData("47.254.40.246", "47.254.40.246"));
+        vSeeds.push_back(CDNSSeedData("47.254.40.7", "47.254.40.7"));
+        vSeeds.push_back(CDNSSeedData("47.88.48.112", "47.88.48.112"));
+        vSeeds.push_back(CDNSSeedData("47.254.39.43", "47.254.39.43"));
+        vSeeds.push_back(CDNSSeedData("47.88.51.64", "47.88.51.64"));
+        vSeeds.push_back(CDNSSeedData("47.254.70.224", "47.254.70.224"));
+        vSeeds.push_back(CDNSSeedData("47.254.28.127", "47.254.28.127"));
+        vSeeds.push_back(CDNSSeedData("47.254.74.169", "47.254.74.169"));
+        vSeeds.push_back(CDNSSeedData("47.254.29.224", "47.254.29.224"));
 
         // Safe addresses start with 'X'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,76);
@@ -245,10 +246,10 @@ public:
 
         pchMessageStart[0] = 0x54;
         pchMessageStart[1] = 0x54;
-        pchMessageStart[2] = 0x52;
-        pchMessageStart[3] = 0xb2;
+        pchMessageStart[2] = 0x56;
+        pchMessageStart[3] = 0xb6;
         vAlertPubKey = ParseHex("03777a1f1bdf88d2a7eda71bae56090fedbf53aedfa4213b5fc4cbb88cb8fd2ddd");
-        nDefaultPort = 14422;
+        nDefaultPort = 14466;
         nMaxTipAge = 0x7fffffff; // allow mining on top of old blocks for testnet
         nDelayGetHeadersTime = 24 * 60 * 60;
         nPruneAfterHeight = 1000;
@@ -261,10 +262,15 @@ public:
         vFixedSeeds.clear();
         vSeeds.clear();
 
-        vSeeds.push_back(CDNSSeedData("47.74.249.6", "47.74.249.6"));
-        vSeeds.push_back(CDNSSeedData("47.74.249.237", "47.74.249.237"));
-        vSeeds.push_back(CDNSSeedData("47.74.245.187", "47.74.245.187"));
-        vSeeds.push_back(CDNSSeedData("47.74.249.150", "47.74.249.150"));
+        vSeeds.push_back(CDNSSeedData("47.254.40.246", "47.254.40.246"));
+        vSeeds.push_back(CDNSSeedData("47.254.40.7", "47.254.40.7"));
+        vSeeds.push_back(CDNSSeedData("47.88.48.112", "47.88.48.112"));
+        vSeeds.push_back(CDNSSeedData("47.254.39.43", "47.254.39.43"));
+        vSeeds.push_back(CDNSSeedData("47.88.51.64", "47.88.51.64"));
+        vSeeds.push_back(CDNSSeedData("47.254.70.224", "47.254.70.224"));
+        vSeeds.push_back(CDNSSeedData("47.254.28.127", "47.254.28.127"));
+        vSeeds.push_back(CDNSSeedData("47.254.74.169", "47.254.74.169"));
+        vSeeds.push_back(CDNSSeedData("47.254.29.224", "47.254.29.224"));
 
         // Testnet Safe addresses start with 'y'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,140);
@@ -355,11 +361,11 @@ public:
 
         pchMessageStart[0] = 0x44;
         pchMessageStart[1] = 0x44;
-        pchMessageStart[2] = 0x42;
-        pchMessageStart[3] = 0xa2;
+        pchMessageStart[2] = 0x46;
+        pchMessageStart[3] = 0xa6;
         nMaxTipAge = 6 * 60 * 60; // ~144 blocks behind -> 2 x fork detection time, was 24 * 60 * 60 in bitcoin
         nDelayGetHeadersTime = 0; // never delay GETHEADERS in regtests
-        nDefaultPort = 24422;
+        nDefaultPort = 24466;
         nPruneAfterHeight = 1000;
 
         genesis = CreateGenesisBlock(1515222820, 1924, 0x1fffffff, 1, 50 * COIN);
