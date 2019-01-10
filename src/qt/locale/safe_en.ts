@@ -321,8 +321,8 @@
     </message>
     <message>
         <location line="-979"/>
-        <source>Wallet (v2.0.0 Safe_Spos2)</source>
-        <translation>Wallet (v2.0.0 Safe_Spos2)</translation>
+        <source>Wallet</source>
+        <translation>Wallet</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -4123,8 +4123,8 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <location line="+1"/>
-        <source>Version %1 Safe_Spos2</source>
-        <translation>Version %1 Safe_Spos2</translation>
+        <source>Version %1</source>
+        <translation>Version %1</translation>
     </message>
     <message>
         <location line="+1"/>
