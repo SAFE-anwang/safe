@@ -36,7 +36,7 @@ public:
 #if SCN_CURRENT == SCN__main
         nRPCPort = 5554;
 #elif SCN_CURRENT == SCN__dev
-        nRPCPort = 4421;
+        nRPCPort = 4465;
 #elif SCN_CURRENT == SCN__test
         nRPCPort = 4498;
 #else
