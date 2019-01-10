@@ -81,7 +81,7 @@ public:
 #elif SCN_CURRENT == SCN__dev
         nRPCPort = 24421;
 #elif SCN_CURRENT == SCN__test
-        nRPCPort = 14498;
+        nRPCPort = 24498;
 #else
 #error unsupported <safe chain name>
 #endif
