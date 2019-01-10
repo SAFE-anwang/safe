@@ -119,6 +119,11 @@ UniValue issueasset(const UniValue& params, bool fHelp)
     uint16_t nCandyExpired = 0;
     if(bPayCandy)
     {
+        
+        int nOffset = g_nChainHeight - g_nStartSPOSHeight - g_nSPOSAStartLockHeight;
+        if (nOffset < 0)
+            throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height + g_nSPOSAStartLockHeight));
+    
         if(params.size() < 11)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Need candy information");
 
@@ -511,6 +516,10 @@ UniValue putcandy(const UniValue& params, bool fHelp)
 
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
+    int nOffset = g_nChainHeight - g_nStartSPOSHeight - g_nSPOSAStartLockHeight;
+    if (nOffset < 0)
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height + g_nSPOSAStartLockHeight));
 
     uint256 assetId = uint256S(TrimString(params[0].get_str()));
     CAssetId_AssetInfo_IndexValue assetInfo;

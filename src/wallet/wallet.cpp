@@ -4904,10 +4904,7 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
                         continue;
 
                     int64_t ntempUnlockedHeightIn = 0;
-                    if (g_nChainHeight + 1 >= g_nStartSPOSHeight)
-                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * SPOS_BLOCKS_PER_MONTH;
-                    else
-                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * BLOCKS_PER_MONTH;
+                    ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * SPOS_BLOCKS_PER_MONTH;
 
                     CTxOut txout(recipient.nAmount, recipient.scriptPubKey, recipient.nLockedMonth <= 0 ? 0 : ntempUnlockedHeightIn);
                     if(recipient.fAsset)
