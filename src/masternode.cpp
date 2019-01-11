@@ -787,6 +787,9 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
         }
     }
 
+    LogPrintf("SPOS_Message:update ping time:%lld\n",sigTime);
+    pmn->lastPing.sigTime = sigTime;//XJTODO
+
     {
         LOCK(cs_main);
         BlockMap::iterator mi = mapBlockIndex.find(blockHash);
