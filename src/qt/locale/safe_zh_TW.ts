@@ -2161,13 +2161,9 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>ApplicationsRegistry</name>
-    <message>
-        <source>This feature is enabled when the block height is %1</source>
-        <translation>该功能在区块高度为 %1 时启用</translation>
-    </message>
    <message>
-        <source>This feature is enabled when the block height is %d</source>
-        <translation>該功能在區塊高度爲 %d 時啓用</translation>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>該功能在區塊高度爲 %1 時啓用</translation>
     </message>
    <message>
         <source>Personal name is internal reserved words, not allowed to use</source>
@@ -2370,11 +2366,7 @@ http://www.anwang.com/</translation>
     <name>AssetsDistribute</name>
     <message>
         <source>This feature is enabled when the block height is %1</source>
-        <translation>该功能在区块高度为 %1 时启用</translation>
-    </message>
-    <message>
-        <source>This feature is enabled when the block height is %d</source>
-        <translation>該功能在區塊高度爲 %d 時啓用</translation>
+        <translation>該功能在區塊高度爲 %1 時啓用</translation>
     </message>
     <message>
         <source>Put candy max %1 times,current can put %2 times.</source>
@@ -2747,6 +2739,10 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>CandyPage</name>
+    <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>該功能在區塊高度爲 %1 時啓用</translation>
+    </message>
     <message>
         <source>Failed to get the number of candy already received</source>
         <translation>獲取已領糖果數量失敗</translation>

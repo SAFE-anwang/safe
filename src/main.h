@@ -49,7 +49,7 @@ extern int g_nSelectMasterNodeRet;
 
 
 
-
+inline bool IsStartLockFeatureHeight(int nHeight) {return nHeight >= g_nStartSPOSHeight + g_nSPOSAStartLockHeight;}
 
 inline bool IsCriticalHeight(int nHeight) { return nHeight == g_nCriticalHeight; }
 

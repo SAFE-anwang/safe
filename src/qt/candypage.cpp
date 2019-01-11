@@ -773,6 +773,13 @@ bool CandyPage::putCandy()
         QMessageBox::warning(this, strPutCandy,tr("Synchronizing block data"),tr("Ok"));
         return false;
     }
+
+    if (!IsStartLockFeatureHeight(g_nChainHeight))
+    {
+        QMessageBox::warning(this, strPutCandy, tr("This feature is enabled when the block height is %1").arg(g_nStartSPOSHeight + g_nSPOSAStartLockHeight),tr("Ok"));
+        return false;
+    }
+
     std::string strAssetName = ui->assetsComboBox->currentText().trimmed().toStdString();
     uint256 assetId;
     if(ui->assetsComboBox->currentText().toStdString().empty())
