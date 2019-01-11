@@ -9103,11 +9103,15 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         logCnt++;
         if(logCnt<=logMaxCnt)
             LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%lld,pingTime:%lld,sigTime:%lld,nLastDsq:%lld,nTimeLastChecked:%lld,"
-                      "nTimeLastPaid:%lld,nTimeLastPing:%lld,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP(),mn.nActiveState,onlineTime,
-                      mn.lastPing.sigTime,mn.sigTime,mn.nLastDsq,mn.nTimeLastChecked,mn.nTimeLastPaid,mn.nTimeLastPing,mn.nClientVersion,
+                      "nTimeLastPaid:%lld,nTimeLastPing:%lld,nClientVersion:%d,blockTime:%lld,isOK:%d\n",mn.addr.ToStringIP(),mn.nActiveState,onlineTime,
+                      mn.lastPing.sigTime,mn.sigTime,mn.nLastDsq,mn.nTimeLastChecked,mn.nTimeLastPaid,mn.nTimeLastPing,mn.nClientVersion,nTime,
                       onlineTime < g_nMasternodeMinOnlineTime?0:1);
 
-        if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED) || onlineTime < g_nMasternodeMinOnlineTime)
+        if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED))
+            continue;
+        if(onlineTime < g_nMasternodeMinOnlineTime)
+            continue;
+        if(std::abs(mn.lastPing.sigTime-nTime)<600)
             continue;
         if(mn.nClientVersion < SPOS_MIN_CLIENT_VERSION)
             continue;
