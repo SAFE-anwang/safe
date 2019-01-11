@@ -9103,10 +9103,15 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         //XJTODO
         logCnt++;
         if(logCnt<=logMaxCnt)
-            LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%lld,pingTime:%lld,sigTime:%lld,nLastDsq:%lld,nTimeLastChecked:%lld,"
-                      "nTimeLastPaid:%lld,nTimeLastPing:%lld,nClientVersion:%d,blockTime:%lld,activeTime:%lld,isOK:%d\n",mn.addr.ToStringIP(),
-                      mn.nActiveState,onlineTime,mn.lastPing.sigTime,mn.sigTime,mn.nLastDsq,mn.nTimeLastChecked,mn.nTimeLastPaid,mn.nTimeLastPing,
-                      mn.nClientVersion,nTime,activeTime,onlineTime < g_nMasternodeMinOnlineTime?0:1);
+        {
+            string strPingTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", mn.lastPing.sigTime);
+            string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", mn.sigTime);
+            string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
+            LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%lld,pingTime:%lld(%s),sigTime:%lld(%s),nLastDsq:%lld,nTimeLastChecked:%lld,"
+                      "nTimeLastPaid:%lld,nTimeLastPing:%lld,nClientVersion:%d,blockTime:%lld(%s),activeTime:%lld,isOK:%d\n",mn.addr.ToStringIP(),
+                      mn.nActiveState,onlineTime,mn.lastPing.sigTime,strPingTime,mn.sigTime,strSigTime,mn.nLastDsq,mn.nTimeLastChecked,mn.nTimeLastPaid,
+                      mn.nTimeLastPing,mn.nClientVersion,nTime,strBlockTime,activeTime,onlineTime < g_nMasternodeMinOnlineTime?0:1);
+        }
 
         if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED))
             continue;

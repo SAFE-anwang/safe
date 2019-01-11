@@ -88,10 +88,11 @@ void CMasternodeMan::AskForMN(CNode* pnode, const COutPoint& outpoint, CConnman&
     if (it1 != mWeAskedForMasternodeListEntry.end()) {
         std::map<CNetAddr, int64_t>::iterator it2 = it1->second.find(pnode->addr);
         if (it2 != it1->second.end()) {
-            if (GetTime() < it2->second) {
+            if (GetTime() < it2->second && !pnode->fMasternodesFirstUpdate) {
                 // we've asked recently, should not repeat too often or we could get banned
                 return;
             }
+            pnode->fMasternodesFirstUpdate = false;
             // we asked this node for this outpoint but it's ok to ask again already
             LogPrintf("CMasternodeMan::AskForMN -- Asking same peer %s for missing masternode entry again: %s\n", pnode->addr.ToString(), outpoint.ToStringShort());
         } else {
@@ -405,8 +406,11 @@ void CMasternodeMan::DsegUpdate(CNode* pnode, CConnman& connman)
         if(!(pnode->addr.IsRFC1918() || pnode->addr.IsLocal())) {
             std::map<CNetAddr, int64_t>::iterator it = mWeAskedForMasternodeList.find(pnode->addr);
             if(it != mWeAskedForMasternodeList.end() && GetTime() < (*it).second) {
-                LogPrintf("CMasternodeMan::DsegUpdate -- we already asked %s for the list; skipping...\n", pnode->addr.ToString());
-                return;
+                if(!pnode->fMasternodesFirstUpdate)
+                {
+                    LogPrintf("CMasternodeMan::DsegUpdate -- we already asked %s for the list; skipping...\n", pnode->addr.ToString());
+                    return;
+                }
             }
         }
     }
@@ -414,6 +418,7 @@ void CMasternodeMan::DsegUpdate(CNode* pnode, CConnman& connman)
     connman.PushMessage(pnode, NetMsgType::DSEG, CTxIn());
     int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
     mWeAskedForMasternodeList[pnode->addr] = askAgain;
+    pnode->fMasternodesFirstUpdate = false;
 
     LogPrint("masternode", "CMasternodeMan::DsegUpdate -- asked %s for the list\n", pnode->addr.ToString());
 }
@@ -736,8 +741,7 @@ void CMasternodeMan::ProcessMasternodeConnections(CConnman& connman)
             if(privateSendClient.infoMixingMasternode.fInfoValid && pnode->addr == privateSendClient.infoMixingMasternode.addr)
                 return;
             LogPrintf("Closing Masternode connection: peer=%d, addr=%s\n", pnode->id, pnode->addr.ToString());
-            if(!fMasterNode)//XJTODO
-                pnode->fDisconnect = true;
+            pnode->fDisconnect = true;
         }
     });
 }
