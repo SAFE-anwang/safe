@@ -2736,6 +2736,10 @@ http://www.anwang.com/</translation>
 <context>
     <name>CandyPage</name>
     <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>该功能在区块高度为 %1 时启用</translation>
+    </message>
+    <message>
         <source>Failed to get the number of candy already received</source>
         <translation>获取已领糖果数量失败</translation>
     </message>
