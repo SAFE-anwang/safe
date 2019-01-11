@@ -787,9 +787,6 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
         }
     }
 
-    LogPrintf("SPOS_Message:update ping time:%lld\n",sigTime);
-    pmn->lastPing.sigTime = sigTime;//XJTODO
-
     {
         LOCK(cs_main);
         BlockMap::iterator mi = mapBlockIndex.find(blockHash);
@@ -848,10 +845,10 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
 void CMasternodePing::Relay(CConnman& connman)
 {
     // Do not relay until fully synced
-    if(!masternodeSync.IsSynced()) {
-        LogPrint("masternode", "CMasternodePing::Relay -- won't relay until fully synced\n");
-        return;
-    }
+//    if(!masternodeSync.IsSynced()) {
+//        LogPrint("masternode", "CMasternodePing::Relay -- won't relay until fully synced\n");
+//        return;
+//    }
 
     CInv inv(MSG_MASTERNODE_PING, GetHash());
     connman.RelayInv(inv);
