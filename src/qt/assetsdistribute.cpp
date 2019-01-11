@@ -579,7 +579,7 @@ bool AssetsDistribute::distributeAssets()
             QMessageBox::warning(assetsPage,msgboxTitle, tr("This feature is enabled when the block height is %1").arg(g_nStartSPOSHeight + g_nSPOSAStartLockHeight),tr("Ok"));
             return false;
         }
-    
+
         if (!amountFromString(ui->candyTotalValueLabel->text().trimmed().toStdString(), decimal, nCandyAmount))
             return false;
     }
