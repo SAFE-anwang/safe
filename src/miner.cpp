@@ -573,7 +573,8 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                         }
 #elif SCN_CURRENT == SCN__test
                         {
-                            int nTime = 4000;
+                            srand((unsigned int)time(NULL));
+                            int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", 4)) * 1000;
                             MilliSleep(nTime);
                         }
 #else
