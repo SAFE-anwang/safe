@@ -9097,7 +9097,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
     {
         const CMasternode& mn = (*mnpair).second;
-        int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
+        int64_t onlineTime = std::abs(nTime - mn.sigTime);
         int64_t activeTime = std::abs(mn.lastPing.sigTime-nTime);
 
         //XJTODO
