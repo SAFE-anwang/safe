@@ -148,10 +148,28 @@ bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout)
     if(txout.nUnlockedHeight <= 0)
         return false;
 
-    if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
-        return false;
+    int nTxheight = GetTxHeight(txHash);
+    if (nTxheight >= g_nStartSPOSHeight)
+    {
+        if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
+            return false;
+    }
+    else
+    {
+        if (txout.nUnlockedHeight >= g_nStartSPOSHeight)
+        {
+            int nSPOSLaveHeight = (txout.nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+            int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+            if (nTrueUnlockHeight <= g_nChainHeight) // unlocked
+                return false;
+        }
+        else
+        {
+            if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
+                return false;
+        }
+    }
 
-	int nTxheight = GetTxHeight(txHash);
     int64_t nOffset = txout.nUnlockedHeight - nTxheight;	
     if (nTxheight >= g_nStartSPOSHeight)
     {
@@ -173,8 +191,26 @@ bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout)
     if(txout.nUnlockedHeight <= 0)
         return false;
 
-    if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
-        return false;
+    if (nheight >= g_nStartSPOSHeight)
+    {
+        if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
+            return false;
+    }
+    else
+    {
+        if (txout.nUnlockedHeight >= g_nStartSPOSHeight)
+        {
+            int nSPOSLaveHeight = (txout.nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+            int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+            if (nTrueUnlockHeight <= g_nChainHeight) // unlocked
+                return false;
+        }
+        else
+        {
+            if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
+                return false;
+        }
+    }
 
     int64_t nOffset = txout.nUnlockedHeight - nheight;
 	

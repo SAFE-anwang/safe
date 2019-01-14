@@ -910,15 +910,33 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
             if(temptxout.nUnlockedHeight <= 0)
                 continue;
 
-            if(temptxout.nUnlockedHeight <= g_nChainHeight)
-                continue;
-
             int nTxHeight = g_nChainHeight + 1;
             if(!hashBlock.IsNull())
             {
                 BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
                 if(mi != mapBlockIndex.end() && (*mi).second)
                     nTxHeight = (*mi).second->nHeight;
+            }
+
+            if (nTxHeight >= g_nStartSPOSHeight)
+            {
+                if(temptxout.nUnlockedHeight <= g_nChainHeight)
+                    continue;
+            }
+            else
+            {
+                if (temptxout.nUnlockedHeight >= g_nStartSPOSHeight)
+                {
+                    int nSPOSLaveHeight = (temptxout.nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                    int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                    if (nTrueUnlockHeight <= g_nChainHeight)
+                        continue;
+                }
+                else
+                {
+                    if(temptxout.nUnlockedHeight <= g_nChainHeight)
+                        continue;
+                }
             }
 
             int64_t nOffset = temptxout.nUnlockedHeight - nTxHeight;
