@@ -9117,8 +9117,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
             continue;
         if(onlineTime < g_nMasternodeMinOnlineTime)
             continue;
-        if(activeTime > 3000)
-            continue;
+//        if(activeTime > 3000)
+//            continue;
         if(mn.nClientVersion < SPOS_MIN_CLIENT_VERSION)
             continue;
 
