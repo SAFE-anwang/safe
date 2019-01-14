@@ -7514,8 +7514,18 @@ static bool GetAllCandyInfo()
         }
         else
         {
-            if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
-                continue;
+            if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueBlockHeight < nCurrentHeight)
+                    continue;
+            }
+            else
+            {
+                if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                    continue;
+            }
         }
 
         CAmount nTotalSafe = 0;
@@ -8104,8 +8114,18 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
             }
             else
             {
-                if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
-                    continue;
+                if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight >= g_nStartSPOSHeight)
+                {
+                    int nSPOSLaveHeight = (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                    int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                    if (nTrueBlockHeight < nCurrentHeight)
+                        continue;
+                }
+                else
+                {
+                    if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
+                        continue;
+                }
             }
 
             if(nCandyHeight > nCurrentHeight)

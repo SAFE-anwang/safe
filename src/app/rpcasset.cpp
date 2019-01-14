@@ -673,11 +673,31 @@ UniValue getcandy(const UniValue& params, bool fHelp)
         }
         else
         {
-            if(nTxHeight + BLOCKS_PER_DAY > nCurrentHeight)
+            if (nTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (nTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueBlockHeight > nCurrentHeight)
+                    continue;
+            }
+            else
+            {
+                if(nTxHeight + BLOCKS_PER_DAY > nCurrentHeight)
                 continue;
-
-            if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
-                continue;
+            }
+            
+            if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueBlockHeight < nCurrentHeight)
+                    continue;
+            }
+            else
+            {
+                if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                    continue;
+            }
         }
 
         CAmount nTotalSafe = 0;
