@@ -564,11 +564,16 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
                     {
 #if SCN_CURRENT == SCN__main
                         //do nothing
-#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+#elif SCN_CURRENT == SCN__dev
                         {
                             srand((unsigned int)time(NULL));
                             //int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", 24)) * 1000;
                             int nTime = ((rand() % GetArg("-sleep_offset", 1)) + GetArg("-sleep_min", chainparams.GetConsensus().nPowTargetSpacing)) * 1000;
+                            MilliSleep(nTime);
+                        }
+#elif SCN_CURRENT == SCN__test
+                        {
+                            int nTime = 4;
                             MilliSleep(nTime);
                         }
 #else
