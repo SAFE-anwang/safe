@@ -350,6 +350,9 @@ UniValue transferasset(const UniValue& params, bool fHelp)
 
     if (params.size() > 3)
     {
+        if (!IsStartLockFeatureHeight(g_nChainHeight))
+            throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nStartSPOSHeight + g_nSPOSAStartLockHeight));
+    
         nLockedMonth = params[3].get_int();
         if (nLockedMonth != 0 && !IsLockedMonthRange(nLockedMonth))
             throw JSONRPCError(INVALID_LOCKEDMONTH, "Invalid locked month (min: 0, max: 120)");
