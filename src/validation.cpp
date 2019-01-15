@@ -1914,24 +1914,44 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             int nPrevTxHeight = GetTxHeight(out.hash);
             //if(fWithMempool)
             {
-                if(nPrevTxHeight >= nTxHeight)
+                if (nPrevTxHeight >= nTxHeight)
                     return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy txin");
 
-                if (nTxHeight >= g_nStartSPOSHeight)
+                if (nPrevTxHeight >= g_nStartSPOSHeight)
                 {
-                    if(nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
+                    if (nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
                         return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
 
-                    if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                    if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");     
                 }
                 else
                 {
-                    if(nPrevTxHeight+BLOCKS_PER_DAY>nTxHeight)
-                        return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
-
-                    if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                    if (nPrevTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
+                    {
+                        int nSPOSLaveHeight = (nPrevTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                        int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                        if (nTrueBlockHeight > nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                    }
+                    else
+                    {
+                        if (nPrevTxHeight + BLOCKS_PER_DAY > nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                    }
+                    
+                    if (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight >= g_nStartSPOSHeight)
+                    {
+                        int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                        int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                        if (nTrueBlockHeight < nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                    }
+                    else
+                    {
+                        if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                    }
                 }
             }
 
