@@ -685,6 +685,7 @@ void CMasternodeBroadcast::Relay(CConnman& connman)
         return;
     }
 
+    LogPrintf("SPOS_Test_TODO:CMasternodeBroadcast::Relay,%s\n",addr.ToString());
     CInv inv(MSG_MASTERNODE_ANNOUNCE, GetHash());
     connman.RelayInv(inv);
 }

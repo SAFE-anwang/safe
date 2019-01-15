@@ -741,6 +741,7 @@ void CMasternodeMan::ProcessMasternodeConnections(CConnman& connman)
             if(privateSendClient.infoMixingMasternode.fInfoValid && pnode->addr == privateSendClient.infoMixingMasternode.addr)
                 return;
             LogPrintf("Closing Masternode connection: peer=%d, addr=%s\n", pnode->id, pnode->addr.ToString());
+            //if(!fMasterNode)//XJTODO
             pnode->fDisconnect = true;
         }
     });
@@ -784,6 +785,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         mnb.nClientVersion = 0;
         vRecv >> mnb;
 
+        LogPrintf("SPOS_Message:processmsg:from:%s,mn:%s\n",pfrom->addr.ToString(),mnb.addr.ToString());
         pfrom->setAskFor.erase(mnb.GetHash());
 
         if(!masternodeSync.IsBlockchainSynced()) return;
@@ -891,6 +893,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
             CMasternodePing mnp = mnpair.second.lastPing;
             uint256 hashMNB = mnb.GetHash();
             uint256 hashMNP = mnp.GetHash();
+            LogPrintf("SPOS_Test_TODO:NetMsgType::DSEG,%s\n",mnb.addr.ToString());
             pfrom->PushInventory(CInv(MSG_MASTERNODE_ANNOUNCE, hashMNB));
             pfrom->PushInventory(CInv(MSG_MASTERNODE_PING, hashMNP));
             nInvCount++;
