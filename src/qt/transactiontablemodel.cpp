@@ -310,7 +310,7 @@ void TransactionTableModel::updateConfirmations()
     //  for all rows. Qt is smart enough to only actually request the data for the
     //  visible rows.
     int size = priv->size()-1;
-    int len = 1000;
+ /*   int len = 1000;
     int count = size/len;
     if(size%len!=0)
         count++;
@@ -324,9 +324,12 @@ void TransactionTableModel::updateConfirmations()
         startRow = endRow+1;
         endRow = endRow + len;
         MilliSleep(10);
+    }*/
+    if (size > 0)
+    {
+    	Q_EMIT dataChanged(index(0, columnStatus), index(size, columnStatus));
+	Q_EMIT dataChanged(index(0, columnToAddress), index(size, columnToAddress));
     }
-//    Q_EMIT dataChanged(index(0, columnStatus), index(size, columnStatus));
-//    Q_EMIT dataChanged(index(0, columnToAddress), index(size, columnToAddress));
 }
 
 int TransactionTableModel::rowCount(const QModelIndex &parent) const

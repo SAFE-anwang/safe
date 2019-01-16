@@ -940,8 +940,11 @@ bool CandyPage::putCandy()
 
 void CandyPage::copyVec()
 {
-    tmpAllCandyInfoVec.clear();
-    std::vector<CCandy_BlockTime_Info>().swap(tmpAllCandyInfoVec);
+	{
+		tmpAllCandyInfoVec.clear();
+		std::vector<CCandy_BlockTime_Info>().swap(tmpAllCandyInfoVec);
+	}
+
     int candyInfoVecSize = gAllCandyInfoVec.size();
     int nCurrentHeight = g_nChainHeight;
     for(int i=0;i<candyInfoVecSize;i++)

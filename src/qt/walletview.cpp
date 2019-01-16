@@ -654,3 +654,32 @@ void WalletView::candyTrxAmount(QString amount)
 {
     candyTransactionSum->setText(amount);
 }
+
+int WalletView::getPageType()
+{
+	QWidget *pCurrentWidget = currentWidget();
+	WalletModel::PageType pageType = WalletModel::NonePage;
+
+	if (pCurrentWidget == transactionsPage)
+	{
+		pageType = WalletModel::TransactionPage;
+	}
+	else if (pCurrentWidget == lockedTransactionsPage)
+	{
+		pageType = WalletModel::LockPage;
+	}
+	else if (pCurrentWidget == candyPage)
+	{
+		pageType = WalletModel::CandyPage;
+	}
+	else if (pCurrentWidget == assetsPage)
+	{
+		pageType = WalletModel::AssetPage;
+	}
+	else if (pCurrentWidget == applicationsPage)
+	{
+		pageType = WalletModel::AppPage;
+	}
+
+	return pageType;
+}

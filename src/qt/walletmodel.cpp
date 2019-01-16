@@ -5,6 +5,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "walletmodel.h"
+#include "walletview.h"
 
 #include "addresstablemodel.h"
 #include "guiconstants.h"
@@ -68,6 +69,7 @@ WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, Op
 {
     fHaveWatchOnly = wallet->HaveWatchOnly();
     fForceCheckBalanceChanged = false;
+	pWalletView = 0;
 
     assetsNamesInfo.clear();
 
@@ -169,15 +171,26 @@ void WalletModel::updateAllBalanceChanged(bool copyTmp)
         cachedPrivateSendRounds = privateSendClient.nPrivateSendRounds;
 
         checkBalanceChanged(copyTmp);
-        if(transactionTableModel)
-            transactionTableModel->updateConfirmations();
-        if(lockedTransactionTableModel)
-            lockedTransactionTableModel->updateConfirmations();
-        if(candyTableModel)
-            candyTableModel->updateConfirmations();
-        if(assetsDistributeTableModel)
+
+	WalletModel::PageType pageType = WalletModel::NonePage;
+	if (pWalletView)
+	{
+		pageType = (WalletModel::PageType)pWalletView->getPageType();
+	}
+
+    if(transactionTableModel && pageType == WalletModel::TransactionPage)
+        transactionTableModel->updateConfirmations();
+
+    if(lockedTransactionTableModel && pageType == WalletModel::LockPage)
+        lockedTransactionTableModel->updateConfirmations();
+
+    if(candyTableModel && pageType == WalletModel::CandyPage)
+        candyTableModel->updateConfirmations();
+        
+	if(assetsDistributeTableModel && pageType == WalletModel::AssetPage)
             assetsDistributeTableModel->updateConfirmations();
-        if(applicationsRegistTableModel)
+        
+	if(applicationsRegistTableModel && pageType == WalletModel::AppPage)
             applicationsRegistTableModel->updateConfirmations();
     }
 }
@@ -201,9 +214,12 @@ void WalletModel::checkBalanceChanged(bool copyTmp)
 {
     if(copyTmp)
     {
-        LOCK2(cs_main, wallet->cs_wallet);
-        wallet->mapWallet_tmp.clear();
-        std::map<uint256, CWalletTx>().swap(wallet->mapWallet_tmp);
+		{
+			wallet->mapWallet_tmp.clear();
+			std::map<uint256, CWalletTx>().swap(wallet->mapWallet_tmp);
+		}
+
+        LOCK2(cs_main, wallet->cs_wallet);        
         for (std::map<uint256, CWalletTx>::const_iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
             wallet->mapWallet_tmp[(*it).first] = (*it).second;
     }
@@ -1019,6 +1035,11 @@ bool WalletModel::abandonTransaction(uint256 hash) const
 bool WalletModel::hdEnabled() const
 {
     return wallet->IsHDEnabled();
+}
+
+void WalletModel::setWalletView(WalletView *walletView)
+{
+	pWalletView = walletView;
 }
 
 void EncryptWorker::doEncrypt()

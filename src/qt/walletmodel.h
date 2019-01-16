@@ -25,6 +25,7 @@ class TransactionTableModel;
 class WalletModelTransaction;
 class AssetsDisplayInfo;
 class UpdateConfirmWorker;
+class WalletView;
 
 class CCoinControl;
 class CKeyID;
@@ -172,6 +173,16 @@ public:
         Unlocked,               // wallet->IsCrypted() && !wallet->IsLocked()
     };
 
+	enum PageType
+	{
+		NonePage,
+		TransactionPage,
+		LockPage,
+		CandyPage,
+		AssetPage,
+		AppPage
+	};
+
     OptionsModel *getOptionsModel();
     AddressTableModel *getAddressTableModel();
     TransactionTableModel *getTransactionTableModel();
@@ -269,6 +280,8 @@ public:
 
     bool hdEnabled() const;
 
+	void setWalletView(WalletView *walletView);
+
 private:
     CWallet *wallet;
     bool fHaveWatchOnly;
@@ -303,6 +316,8 @@ private:
     int cachedNumBlocks;
     int cachedTxLocks;
     int cachedPrivateSendRounds;
+
+	WalletView *pWalletView;
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();

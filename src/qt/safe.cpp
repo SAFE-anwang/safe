@@ -320,17 +320,22 @@ void BitcoinCore::restart(QStringList args)
 
 void ThreadUpdateBalanceChanged(BitcoinApplication* app)
 {
-    static bool fOneThread;
+    static bool fOneThread = false;
     if(fOneThread) return;
     fOneThread = true;
+
+    WalletModel* wm = app->getWalletModel();
+    if (NULL == wm)
+    {
+	return ;
+    }
 
     RenameThread("updateBalanceChangedThread");
     while(true)
     {
         boost::this_thread::interruption_point();
-        WalletModel* wm = app->getWalletModel();
-        if(wm!=NULL)
-            wm->updateAllBalanceChanged(true);
+//            wm->updateAllBalanceChanged(true);
+        wm->pollBalanceChanged();
         MilliSleep(MODEL_UPDATE_DELAY);
     }
 }

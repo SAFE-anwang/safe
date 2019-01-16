@@ -63,6 +63,8 @@ public:
 
     void showOutOfSyncWarning(bool fShow);
 
+	int getPageType();
+
 private:
     ClientModel *clientModel;
     WalletModel *walletModel;
