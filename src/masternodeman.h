@@ -176,6 +176,8 @@ public:
 
     std::map<COutPoint, CMasternode> GetFullMasternodeMap() { return mapMasternodes; }
 
+    void GetFullMasternodeData(std::map<COutPoint, CMasternode> &mapOutMasternodes);
+
     bool GetMasternodeRanks(rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight = -1, int nMinProtocol = 0);
     bool GetMasternodeRank(const COutPoint &outpoint, int& nRankRet, int nBlockHeight = -1, int nMinProtocol = 0);
     bool GetMasternodeByRank(int nRank, masternode_info_t& mnInfoRet, int nBlockHeight = -1, int nMinProtocol = 0);

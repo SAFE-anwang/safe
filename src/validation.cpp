@@ -9089,7 +9089,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     std::map<COutPoint, CMasternode> mapMasternodes;
     if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
     {
-        std::map<COutPoint, CMasternode> fullmapMasternodes = mnodeman.GetFullMasternodeMap();
+        std::map<COutPoint, CMasternode> fullmapMasternodes;
+        mnodeman.GetFullMasternodeData(fullmapMasternodes);
 
         const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
         std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
@@ -9105,7 +9106,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
         }
     }
     else
-        mapMasternodes = mnodeman.GetFullMasternodeMap();
+        mnodeman.GetFullMasternodeData(mapMasternodes);
 
     g_vecResultMasternodes.clear();
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
@@ -9237,7 +9238,8 @@ void SelectSporkMessageMasterNode()
     std::map<COutPoint, CMasternode> mapMasternodes;
     if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
     {
-        std::map<COutPoint, CMasternode> fullmapMasternodes = mnodeman.GetFullMasternodeMap();
+        std::map<COutPoint, CMasternode> fullmapMasternodes;
+        mnodeman.GetFullMasternodeData(fullmapMasternodes);
 
         const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
         std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();

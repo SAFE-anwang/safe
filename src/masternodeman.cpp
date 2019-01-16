@@ -1616,3 +1616,13 @@ void CMasternodeMan::NotifyMasternodeUpdates(CConnman& connman)
     fMasternodesAdded = false;
     fMasternodesRemoved = false;
 }
+
+void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &mapOutMasternodes)
+{
+    LOCK2(cs_main, cs);
+
+    for (auto& mnpair : mapMasternodes)
+    {
+        mapOutMasternodes[mnpair.first] = mnpair.second;
+    }
+}
