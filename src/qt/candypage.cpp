@@ -798,7 +798,7 @@ bool CandyPage::putCandy()
 
     if (!IsStartLockFeatureHeight(g_nChainHeight))
     {
-        QMessageBox::warning(this, strPutCandy, tr("This feature is enabled when the block height is %1").arg(g_nStartSPOSHeight + g_nSPOSAStartLockHeight),tr("Ok"));
+        QMessageBox::warning(this, strPutCandy, tr("This feature is enabled when the block height is %1").arg(g_nProtocolV3Height),tr("Ok"));
         return false;
     }
 

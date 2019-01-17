@@ -107,7 +107,7 @@ extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinOnlineTime;
 extern unsigned int g_nMasternodeStatusEnable;
 extern unsigned int g_nMasternodeMinCount;
-extern int64_t g_nSPOSAStartLockHeight;
+extern int64_t g_nProtocolV3Height;
 
 std::unique_ptr<CConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
@@ -1541,7 +1541,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nMasternodeMinOnlineTime = GetArg("-masternode_min_online_time", g_nMasternodeMinOnlineTime);
     g_nMasternodeStatusEnable = GetArg("-masternode_status_enable", g_nMasternodeStatusEnable);
     g_nMasternodeMinCount = GetArg("-masternode_min_count", g_nMasternodeMinCount);
-    g_nSPOSAStartLockHeight = GetArg("-spos_start_lock_height", g_nSPOSAStartLockHeight);
+    g_nProtocolV3Height = GetArg("-spos_start_lock_height", g_nProtocolV3Height);
 
     bool fLoaded = false;
     while (!fLoaded) {

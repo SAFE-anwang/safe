@@ -513,7 +513,7 @@ UniValue sendwithlock(const UniValue& params, bool fHelp)
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
     if (!IsStartLockFeatureHeight(g_nChainHeight))
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nStartSPOSHeight + g_nSPOSAStartLockHeight));
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
     EnsureWalletIsUnlocked();
 
@@ -2940,7 +2940,7 @@ UniValue sendmanywithlock(const UniValue& params, bool fHelp)
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
     if (!IsStartLockFeatureHeight(g_nChainHeight))
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nStartSPOSHeight + g_nSPOSAStartLockHeight));
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
     EnsureWalletIsUnlocked();
 

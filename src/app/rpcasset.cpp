@@ -119,9 +119,6 @@ UniValue issueasset(const UniValue& params, bool fHelp)
     uint16_t nCandyExpired = 0;
     if(bPayCandy)
     {
-        if (!IsStartLockFeatureHeight(g_nChainHeight))
-            throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nStartSPOSHeight + g_nSPOSAStartLockHeight));
-    
         if(params.size() < 11)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Need candy information");
 
@@ -165,9 +162,8 @@ UniValue issueasset(const UniValue& params, bool fHelp)
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
-    int nOffset = g_nChainHeight - g_nProtocolV2Height;
-    if (nOffset < 0)
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height));
+    if (!IsStartLockFeatureHeight(g_nChainHeight))
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
     CAmount nCancelledValue = GetCancelledAmount(g_nChainHeight);
     if(!IsCancelledRange(nCancelledValue))
@@ -351,7 +347,7 @@ UniValue transferasset(const UniValue& params, bool fHelp)
     if (params.size() > 3)
     {
         if (!IsStartLockFeatureHeight(g_nChainHeight))
-            throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nStartSPOSHeight + g_nSPOSAStartLockHeight));
+            throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
     
         nLockedMonth = params[3].get_int();
         if (nLockedMonth != 0 && !IsLockedMonthRange(nLockedMonth))
@@ -519,7 +515,7 @@ UniValue putcandy(const UniValue& params, bool fHelp)
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
     if (!IsStartLockFeatureHeight(g_nChainHeight))
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nStartSPOSHeight + g_nSPOSAStartLockHeight));
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
     uint256 assetId = uint256S(TrimString(params[0].get_str()));
     CAssetId_AssetInfo_IndexValue assetInfo;

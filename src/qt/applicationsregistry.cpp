@@ -311,10 +311,9 @@ bool ApplicationsRegistry::applicationRegist()
         return false;
     }
 
-    int nOffset = g_nChainHeight - g_nProtocolV2Height;
-    if (nOffset < 0)
+    if (!IsStartLockFeatureHeight(g_nChainHeight))
     {
-        QMessageBox::warning(applicationPage,tr("Application registry"), tr("This feature is enabled when the block height is %1").arg(g_nProtocolV2Height),tr("Ok"));
+        QMessageBox::warning(applicationPage,tr("Application registry"), tr("This feature is enabled when the block height is %1").arg(g_nProtocolV3Height),tr("Ok"));
         return false;
     }
 

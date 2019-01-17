@@ -43,13 +43,14 @@ extern unsigned int g_nMasternodeSPosCount;
 extern int64_t g_nStartNewLoopTime;
 extern int g_nSposGeneratedIndex;
 extern std::vector<CMasternode> g_vecResultMasternodes;
-extern int64_t g_nSPOSAStartLockHeight;
 extern int g_nSelectMasterNodeRet;
 
+extern int g_nProtocolV3Height;
 
 
 
-inline bool IsStartLockFeatureHeight(int nHeight) {return nHeight >= g_nStartSPOSHeight + g_nSPOSAStartLockHeight;}
+
+inline bool IsStartLockFeatureHeight(const int& nHeight) {return nHeight >= g_nProtocolV3Height;}
 
 inline bool IsCriticalHeight(int nHeight) { return nHeight == g_nCriticalHeight; }
 
@@ -77,6 +78,12 @@ int GetLockedMonthByHeight(const int& nheight, const CTxOut& txout);
 
 
 CAmount GetCancelledAmount(const int& nHeight);
+
+CAmount GetPowCancelledAmount(const int& nHeight);
+
+CAmount GetSPOSCancelledAmount(const int& nHeight);
+
+
 
 CAmount GetTxAdditionalFee(const CTransaction& tx);
 

@@ -35,7 +35,6 @@ unsigned int g_nMasternodeStatusEnable = CMasternode::MASTERNODE_ENABLED;//1 mas
 unsigned int g_nMasternodeMinCount = 5;
 int64_t g_nLastSelectMasterNodeHeight = 0;
 std::vector<CMasternode> g_vecResultMasternodes;
-int64_t g_nSPOSAStartLockHeight = 2*SPOS_BLOCKS_PER_DAY;//2 days
 int g_nSelectMasterNodeRet = 0;//first time:0,select fail:-1,select succ:1
 int64_t g_nMasternodeResetTime = GetTime();
 
@@ -292,15 +291,53 @@ int GetLockedMonthByHeight(const int& nheight, const CTxOut& txout)
 
 CAmount GetCancelledAmount(const int &nHeight)
 {
+    CAmount value = 0;
+    if (nHeight >= g_nStartSPOSHeight)
+    {
+        value = GetSPOSCancelledAmount(nHeight);
+    }
+    else
+    {
+        value = GetPowCancelledAmount(nHeight);
+    }
+
+    return value;
+}
+
+CAmount GetTxAdditionalFee(const CTransaction& tx)
+{
+    CAmount nFee = 0;
+    BOOST_FOREACH(const CTxOut& txout, tx.vout)
+    {
+        const std::vector<unsigned char>& vReserve = txout.vReserve;
+        unsigned int nSize = vReserve.size();
+        if(nSize > TXOUT_RESERVE_MAX_SIZE)
+            return -1;
+
+        if(nSize <= TXOUT_RESERVE_MIN_SIZE)
+            continue;
+
+        if(nSize == 3000)
+        {
+            nFee += 0.001 * COIN;
+            continue;
+        }
+
+        nFee += (nSize / 300 + (nSize % 300 ? 1 : 0)) * 0.0001 * COIN;
+    }
+
+    return nFee;
+}
+
+CAmount GetPowCancelledAmount(const int& nHeight)
+{
     int nOffset = nHeight - g_nProtocolV2Height;
-    if(nOffset < 0)
+    if (nOffset < 0)
         return 0;
 
     int nMonth = 0;
-    if (nHeight >= g_nStartSPOSHeight)
-        nMonth = nOffset / SPOS_BLOCKS_PER_MONTH;
-    else
-        nMonth = nOffset / BLOCKS_PER_MONTH;
+    nMonth = nOffset / BLOCKS_PER_MONTH;
+
     if (nMonth == 0)
         return 500 * COIN;
 
@@ -340,27 +377,50 @@ CAmount GetCancelledAmount(const int &nHeight)
     return value;
 }
 
-CAmount GetTxAdditionalFee(const CTransaction& tx)
+CAmount GetSPOSCancelledAmount(const int& nHeight)
 {
-    CAmount nFee = 0;
-    BOOST_FOREACH(const CTxOut& txout, tx.vout)
+    int nOffset = nHeight - g_nProtocolV3Height;
+    if (nOffset < 0)
+        return 0;
+
+    int nMonth = 0;
+    nMonth = nOffset / SPOS_BLOCKS_PER_MONTH;
+
+    if (nMonth == 0)
+        return 500 * COIN;
+
+    double nLeft = 500.00;
+    for(int i = 1; i <= nMonth; i++)
     {
-        const std::vector<unsigned char>& vReserve = txout.vReserve;
-        unsigned int nSize = vReserve.size();
-        if(nSize > TXOUT_RESERVE_MAX_SIZE)
-            return -1;
+        nLeft *=  0.95;
 
-        if(nSize <= TXOUT_RESERVE_MIN_SIZE)
-            continue;
-
-        if(nSize == 3000)
+        // The decimal point precision is calculated to 2 decimal places
+        uint32_t thirddata = 0;
+        thirddata = (uint32_t)(nLeft * 1000) % 100 % 10;
+        if (thirddata > 4)
+            nLeft = (double)((uint32_t)(nLeft * 100) + 1) / 100;
+        else
         {
-            nFee += 0.001 * COIN;
-            continue;
+            if (thirddata == 4)
+            {
+                uint32_t fouthdata =0;
+                fouthdata = (uint32_t)(nLeft * 10000) % 1000 % 100 %10;
+                if (fouthdata > 4)
+                    nLeft = (double)((uint32_t)(nLeft * 100) + 1) / 100;
+                else
+                    nLeft = (double)((uint32_t)(nLeft * 100)) / 100;
+            }
+            else
+                nLeft = (double)((uint32_t)(nLeft * 100)) / 100;
         }
 
-        nFee += (nSize / 300 + (nSize % 300 ? 1 : 0)) * 0.0001 * COIN;
+        if (nLeft < 50)
+            nLeft = 50.00;
     }
 
-    return nFee;
+    CAmount value = nLeft * COIN;
+    if (value % 1000000 == 999999)
+        value += 1;
+
+    return value;
 }

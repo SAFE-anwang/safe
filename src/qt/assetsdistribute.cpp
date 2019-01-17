@@ -574,12 +574,6 @@ bool AssetsDistribute::distributeAssets()
     CAmount nCandyAmount = 0;
     if(bPayCandy)
     {
-        if (!IsStartLockFeatureHeight(g_nChainHeight))
-        {
-            QMessageBox::warning(assetsPage,msgboxTitle, tr("This feature is enabled when the block height is %1").arg(g_nStartSPOSHeight + g_nSPOSAStartLockHeight),tr("Ok"));
-            return false;
-        }
-
         if (!amountFromString(ui->candyTotalValueLabel->text().trimmed().toStdString(), decimal, nCandyAmount))
             return false;
     }
@@ -653,10 +647,9 @@ bool AssetsDistribute::distributeAssets()
         return false;
     }
 
-    int nOffset = g_nChainHeight - g_nProtocolV2Height;
-    if (nOffset < 0)
+    if (!IsStartLockFeatureHeight(g_nChainHeight))
     {
-        QMessageBox::warning(assetsPage,msgboxTitle, tr("This feature is enabled when the block height is %1").arg(g_nProtocolV2Height),tr("Ok"));
+        QMessageBox::warning(assetsPage,msgboxTitle, tr("This feature is enabled when the block height is %1").arg(g_nProtocolV3Height),tr("Ok"));
         return false;
     }
 

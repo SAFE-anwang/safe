@@ -278,7 +278,7 @@ void SendCoinsDialog::on_sendButton_clicked()
                 const SendCoinsRecipient& recipient = entry->getValue(fAssets);
                 if (recipient.nLockedMonth > 0 && !IsStartLockFeatureHeight(g_nChainHeight))
                 {
-                    QMessageBox::critical(this, tr("Safe Core"), tr("This feature is enabled when the block height is %1").arg(g_nStartSPOSHeight + g_nSPOSAStartLockHeight), tr("Yes"));
+                    QMessageBox::critical(this, tr("Safe Core"), tr("This feature is enabled when the block height is %1").arg(g_nProtocolV3Height), tr("Yes"));
                     valid = false;
                     break;
                 }
