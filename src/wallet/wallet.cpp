@@ -2657,16 +2657,9 @@ bool CWalletTx::IsTrusted() const
 bool CWalletTx::IsForbid()const
 {
     int nDepth = GetDepthInMainChain(false);
-    if (g_nChainHeight >= g_nStartSPOSHeight)
-    {
-        if(g_nChainHeight >= g_nProtocolV3Height && g_nChainHeight - nDepth + 1 < g_nCriticalHeight /*&& !bIsSpent*/)
-            return true;
-    }
-    else
-    {
-        if(g_nChainHeight >= g_nProtocolV2Height && g_nChainHeight - nDepth + 1 < g_nCriticalHeight /*&& !bIsSpent*/)
-            return true;
-    }
+
+    if(g_nChainHeight >= g_nProtocolV2Height && g_nChainHeight - nDepth + 1 < g_nCriticalHeight /*&& !bIsSpent*/)
+        return true;
 
     return false;
 }

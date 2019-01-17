@@ -2141,16 +2141,8 @@ std::string FormatStateMessage(const CValidationState &state)
 
 bool ExistForbidTxin(const int nHeight, const std::vector<int>& prevheights)
 {
-    if (nHeight >= g_nStartSPOSHeight)
-    {
-        if(nHeight < g_nProtocolV3Height)
-            return false;
-    }
-    else
-    {
-        if(nHeight < g_nProtocolV2Height)
-            return false;
-    }
+    if(nHeight < g_nProtocolV2Height)
+        return false;
 
     for(unsigned int i = 0; i < prevheights.size(); i++)
     {

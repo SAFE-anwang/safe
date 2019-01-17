@@ -382,17 +382,8 @@ static void BlockTipChanged(ClientModel *clientmodel, bool initialSync, const CB
         nLastUpdateNotification = now;
     }
     static bool update_forbit = false;
-
-    if (pIndex->nHeight >= g_nStartSPOSHeight)
-    {
-        if(!update_forbit&&pIndex->nHeight == g_nProtocolV3Height)
-            update_forbit = true;
-    }
-    else
-    {
-        if(!update_forbit&&pIndex->nHeight == g_nProtocolV2Height)
-            update_forbit = true;
-    }
+    if(!update_forbit&&pIndex->nHeight == g_nProtocolV2Height)
+        update_forbit = true;
     
     if(update_forbit)
     {
