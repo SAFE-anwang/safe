@@ -897,6 +897,13 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
     if(!GetBoolArg("-sposgen", false))
         return;
 
+    LogPrintf("local collateral address:%s\n", CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString());
+    if (!activeMasternode.pubKeyMasternode.IsValid())
+    {
+        LogPrintf("SPOS_Warning:only the master node needs to open SPOS mining\n");
+        return;
+    }
+
     LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_min_online_time:%d\n", g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeMinOnlineTime);
 
     static boost::thread_group* sposMinerThreads = NULL;
