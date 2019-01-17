@@ -107,7 +107,8 @@ extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinOnlineTime;
 extern unsigned int g_nMasternodeStatusEnable;
 extern unsigned int g_nMasternodeMinCount;
-extern int64_t g_nProtocolV3Height;
+extern int g_nProtocolV3Height;
+
 
 std::unique_ptr<CConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
