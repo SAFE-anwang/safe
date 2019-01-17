@@ -5602,7 +5602,8 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): block.nBits or block.nNonce not equal to 0,height:%d,",nHeight), REJECT_INVALID, "bad-nBits-nNonce", true);
 
     int64_t nNowTime = GetTime();
-    if (abs(block.GetBlockTime() - nNowTime) > AllowableErrorTime)
+    //Synchronization of old blocks will result in a large difference between block time and local time, and cannot be compared using absolute values.
+    if (block.GetBlockTime() - nNowTime > AllowableErrorTime)
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock():Block time(block.nTime:%lld) minus local time(now:%lld) exceeds allowable time error range(allowableErrorTime:%d),height:%d",
                                     block.GetBlockTime(), nNowTime,AllowableErrorTime,nHeight), REJECT_INVALID, "bad-nTime", true);
 
