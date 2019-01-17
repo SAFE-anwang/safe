@@ -897,7 +897,6 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
     if(!GetBoolArg("-sposgen", false))
         return;
 
-    LogPrintf("local collateral address:%s\n", CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString());
     if (!activeMasternode.pubKeyMasternode.IsValid())
     {
         LogPrintf("SPOS_Warning:only the master node needs to open SPOS mining\n");
