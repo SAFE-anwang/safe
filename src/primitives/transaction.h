@@ -250,6 +250,24 @@ public:
         return (nAppCmd == REGISTER_APP_CMD || nAppCmd == ADD_AUTH_CMD || nAppCmd == DELETE_AUTH_CMD || nAppCmd == CREATE_EXTEND_TX_CMD);
     }
 
+    bool IsSPOSSafeOnly() const
+     {
+         unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t) + 20;
+         if (vReserve.size() <= nFixedLen)
+             return false;
+    
+         unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
+    
+         std::vector<unsigned char> vchConAlg;
+         for(unsigned int k = 0; k < 4; k++)
+             vchConAlg.push_back(vReserve[nOffset++]);
+    
+         if (vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
+             return false;
+    
+         return true;
+     }
+
     bool IsSafeOnly(uint32_t* pAppCmd = NULL) const
     {
         if (IsSPOSSafeOnly())
@@ -264,24 +282,6 @@ public:
             *pAppCmd = nAppCmd;
 
         return (nAppCmd == TRANSFER_SAFE_CMD);
-    }
-
-    bool IsSPOSSafeOnly()
-    {
-        unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t) + 20;
-        if (vReserve.size() <= nFixedLen)
-            return false;
-
-        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
-
-        std::vector<unsigned char> vchConAlg;
-        for(unsigned int k = 0; k < 4; k++)
-            vchConAlg.push_back(vReserve[nOffset++]);
-
-        if (vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
-            return false;
-
-        return true;
     }
 
     uint256 GetHash() const;
