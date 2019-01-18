@@ -857,6 +857,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         // We could start processing this after masternode list is synced
         // but this is a heavy one so it's better to finish sync first.
         //XJTODO remove DSGE log
+        LogPrintf("SPOS_Message:DSGE start\n");
         if (!masternodeSync.IsSynced())
         {
             LogPrintf("SPOS_Message:DSGE is syncing\n");
@@ -892,7 +893,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                 //only main net use 3 hours
                 #if SCN_CURRENT == SCN__main
                 askAgain += DSEG_UPDATE_SECONDS;
-                LogPrintf("DSEG -- SCN__main, askAgain=%lld\n", askAgain);
+                LogPrintf("SPOS_Message::DSEG -- SCN__main, askAgain=%lld\n", askAgain);
                 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
                 LogPrintf("DSEG -- SCN__test, askAgain=%lld\n", askAgain);
                 #endif
