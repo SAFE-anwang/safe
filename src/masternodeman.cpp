@@ -742,7 +742,7 @@ void CMasternodeMan::ProcessMasternodeConnections(CConnman& connman)
                 return;
             LogPrintf("Closing Masternode connection: peer=%d, addr=%s\n", pnode->id, pnode->addr.ToString());
             //if(!fMasterNode)//XJTODO
-            pnode->fDisconnect = true;
+                pnode->fDisconnect = true;
         }
     });
 }
@@ -888,11 +888,13 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                               ,pfrom->addr.ToString(),currTime,strCurrTime,needAskTime,strNeedAskTime);
                     return;
                 }
+                int64_t askAgain = GetTime();
                 //only main net use 3 hours
                 #if SCN_CURRENT == SCN__main
-                int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
+                askAgain += DSEG_UPDATE_SECONDS;
+                LogPrintf("DSEG -- SCN__main, askAgain=%lld\n", askAgain);
                 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
-                int64_t askAgain = GetTime();
+                LogPrintf("DSEG -- SCN__test, askAgain=%lld\n", askAgain);
                 #endif
 
                 mAskedUsForMasternodeList[pfrom->addr] = askAgain;
