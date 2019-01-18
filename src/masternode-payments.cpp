@@ -658,7 +658,6 @@ void CMasternodePayments::CheckAndRemove()
 bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, std::string& strError, CConnman& connman)
 {
     masternode_info_t mnInfo;
-
     if(!mnodeman.GetMasternodeInfo(vinMasternode.prevout, mnInfo)) {
         strError = strprintf("Unknown Masternode: prevout=%s", vinMasternode.prevout.ToStringShort());
         // Only ask if we are already synced and still have no idea about that Masternode
@@ -1010,7 +1009,8 @@ bool CMasternodePayments::IsEnoughData()
 {
     float nAverageVotes = (MNPAYMENTS_SIGNATURES_TOTAL + MNPAYMENTS_SIGNATURES_REQUIRED) / 2;
     int nStorageLimit = GetStorageLimit();
-    return GetBlockCount() > nStorageLimit && GetVoteCount() > nStorageLimit * nAverageVotes;
+    int nBlockCount = GetBlockCount();
+    return nBlockCount > nStorageLimit && nBlockCount > nStorageLimit * nAverageVotes;
 }
 
 int CMasternodePayments::GetStorageLimit()

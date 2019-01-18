@@ -88,11 +88,11 @@ void CMasternodeMan::AskForMN(CNode* pnode, const COutPoint& outpoint, CConnman&
     if (it1 != mWeAskedForMasternodeListEntry.end()) {
         std::map<CNetAddr, int64_t>::iterator it2 = it1->second.find(pnode->addr);
         if (it2 != it1->second.end()) {
-            if (GetTime() < it2->second && !pnode->fMasternodesFirstUpdate) {
+            if (GetTime() < it2->second && !pnode->fFirstStartRequestOneMasternode) {
                 // we've asked recently, should not repeat too often or we could get banned
                 return;
             }
-            pnode->fMasternodesFirstUpdate = false;
+            pnode->fFirstStartRequestOneMasternode = false;
             // we asked this node for this outpoint but it's ok to ask again already
             LogPrintf("CMasternodeMan::AskForMN -- Asking same peer %s for missing masternode entry again: %s\n", pnode->addr.ToString(), outpoint.ToStringShort());
         } else {
@@ -406,7 +406,7 @@ void CMasternodeMan::DsegUpdate(CNode* pnode, CConnman& connman)
         if(!(pnode->addr.IsRFC1918() || pnode->addr.IsLocal())) {
             std::map<CNetAddr, int64_t>::iterator it = mWeAskedForMasternodeList.find(pnode->addr);
             if(it != mWeAskedForMasternodeList.end() && GetTime() < (*it).second) {
-                if(!pnode->fMasternodesFirstUpdate)
+                if(!pnode->fFirstStartRequestAllMasternodes)
                 {
                     LogPrintf("CMasternodeMan::DsegUpdate -- we already asked %s for the list; skipping...\n", pnode->addr.ToString());
                     return;
@@ -418,7 +418,7 @@ void CMasternodeMan::DsegUpdate(CNode* pnode, CConnman& connman)
     connman.PushMessage(pnode, NetMsgType::DSEG, CTxIn());
     int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
     mWeAskedForMasternodeList[pnode->addr] = askAgain;
-    pnode->fMasternodesFirstUpdate = false;
+    pnode->fFirstStartRequestAllMasternodes = false;
 
     LogPrint("masternode", "CMasternodeMan::DsegUpdate -- asked %s for the list\n", pnode->addr.ToString());
 }
@@ -856,7 +856,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         // Ignore such requests until we are fully synced.
         // We could start processing this after masternode list is synced
         // but this is a heavy one so it's better to finish sync first.
-        //XJTODO
+        //XJTODO remove DSGE log
         if (!masternodeSync.IsSynced())
         {
             LogPrintf("SPOS_Message:DSGE is syncing\n");
@@ -870,6 +870,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
         LOCK(cs);
 
+        //request all masternode list
         if(vin == CTxIn()) { //only should ask for this once
             //local network
             bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
@@ -887,13 +888,20 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                               ,pfrom->addr.ToString(),currTime,strCurrTime,needAskTime,strNeedAskTime);
                     return;
                 }
+                //only main net use 3 hours
+                #if SCN_CURRENT == SCN__main
                 int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
+                #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+                int64_t askAgain = GetTime();
+                #endif
+
                 mAskedUsForMasternodeList[pfrom->addr] = askAgain;
             }
         } //else, asking for a specific node which is ok
 
         int nInvCount = 0;
 
+        //reqeust single masternode,when ping,masternodevote by function AskForMN()
         for (auto& mnpair : mapMasternodes) {
             if (vin != CTxIn() && vin != mnpair.second.vin)
             {

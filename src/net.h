@@ -719,7 +719,8 @@ public:
 
     std::atomic_bool fPauseRecv;
     std::atomic_bool fPauseSend;
-    bool fMasternodesFirstUpdate = true;//XJTODO
+    bool fFirstStartRequestAllMasternodes = true;
+    bool fFirstStartRequestOneMasternode = true;
 protected:
 
     mapMsgCmdSize mapSendBytesPerMsgCmd;
