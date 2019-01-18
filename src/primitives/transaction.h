@@ -251,22 +251,22 @@ public:
     }
 
     bool IsSPOSSafeOnly() const
-     {
-         unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t) + 20;
-         if (vReserve.size() <= nFixedLen)
-             return false;
+    {
+        unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t) + 20;
+        if (vReserve.size() <= nFixedLen)
+            return false;
     
-         unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
+        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
     
-         std::vector<unsigned char> vchConAlg;
-         for(unsigned int k = 0; k < 4; k++)
-             vchConAlg.push_back(vReserve[nOffset++]);
+        std::vector<unsigned char> vchConAlg;
+        for(unsigned int k = 0; k < 4; k++)
+            vchConAlg.push_back(vReserve[nOffset++]);
     
-         if (vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
-             return false;
+        if (vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
+            return false;
     
-         return true;
-     }
+        return true;
+    }
 
     bool IsSafeOnly(uint32_t* pAppCmd = NULL) const
     {
