@@ -252,6 +252,9 @@ public:
 
     bool IsSafeOnly(uint32_t* pAppCmd = NULL) const
     {
+        if (IsSPOSSafeOnly())
+            return true;
+    
         unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
         if(vReserve.size() < nOffset + sizeof(uint32_t))
             return true;
@@ -261,6 +264,24 @@ public:
             *pAppCmd = nAppCmd;
 
         return (nAppCmd == TRANSFER_SAFE_CMD);
+    }
+
+    bool IsSPOSSafeOnly()
+    {
+        unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t) + 20;
+        if (vReserve.size() <= nFixedLen)
+            return false;
+
+        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
+
+        std::vector<unsigned char> vchConAlg;
+        for(unsigned int k = 0; k < 4; k++)
+            vchConAlg.push_back(vReserve[nOffset++]);
+
+        if (vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
+            return false;
+
+        return true;
     }
 
     uint256 GetHash() const;
