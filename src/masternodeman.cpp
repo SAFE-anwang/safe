@@ -882,6 +882,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                 string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", currTime);
                 int64_t needAskTime = it->second;
                 string strNeedAskTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", needAskTime);
+                LogPrintf("SPOS_Message::DSEG -- req CTxIn() a\n");
                 if (it != mAskedUsForMasternodeList.end() && it->second > GetTime()) {
                     Misbehaving(pfrom->GetId(), 34);
                     LogPrintf("DSEG -- peer already asked me for the list, peer=%d\n", pfrom->id);
@@ -889,16 +890,18 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                               ,pfrom->addr.ToString(),currTime,strCurrTime,needAskTime,strNeedAskTime);
                     return;
                 }
+                LogPrintf("SPOS_Message::DSEG -- req CTxIn() b\n");
                 int64_t askAgain = GetTime();
                 //only main net use 3 hours
                 #if SCN_CURRENT == SCN__main
                 askAgain += DSEG_UPDATE_SECONDS;
                 LogPrintf("SPOS_Message::DSEG -- SCN__main, askAgain=%lld\n", askAgain);
                 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
-                LogPrintf("DSEG -- SCN__test, askAgain=%lld\n", askAgain);
+                LogPrintf("SPOS_Message::DSEG -- SCN__test, askAgain=%lld\n", askAgain);
                 #endif
 
                 mAskedUsForMasternodeList[pfrom->addr] = askAgain;
+                LogPrintf("SPOS_Message::DSEG -- req CTxIn() c\n");
             }
         } //else, asking for a specific node which is ok
 
