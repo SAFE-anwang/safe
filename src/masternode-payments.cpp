@@ -12,6 +12,7 @@
 #include "netfulfilledman.h"
 #include "spork.h"
 #include "util.h"
+#include "main.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -411,7 +412,8 @@ void CMasternodePayments::ProcessMessage(CNode* pfrom, std::string& strCommand, 
 
         if(AddPaymentVote(vote)){
             vote.Relay(connman);
-            masternodeSync.BumpAssetLastTime("MASTERNODEPAYMENTVOTE");
+            if(!IsStartSPosHeight(vote.nBlockHeight))
+                masternodeSync.BumpAssetLastTime("MASTERNODEPAYMENTVOTE");
         }
     }
 }
