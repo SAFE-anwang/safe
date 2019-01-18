@@ -416,7 +416,7 @@ void CMasternodeMan::DsegUpdate(CNode* pnode, CConnman& connman)
     }
 
     connman.PushMessage(pnode, NetMsgType::DSEG, CTxIn());
-    int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
+    int64_t askAgain = GetTime() /*+ DSEG_UPDATE_SECONDS*/;
     mWeAskedForMasternodeList[pnode->addr] = askAgain;
     pnode->fFirstStartRequestAllMasternodes = false;
 
@@ -874,6 +874,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         //request all masternode list
         if(vin == CTxIn()) { //only should ask for this once
             //local network
+            LogPrintf("SPOS_Message:DSGE req CTxIn() 0a\n");
             bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
 
             if(!isLocal && Params().NetworkIDString() == CBaseChainParams::MAIN) {
@@ -882,7 +883,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                 string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", currTime);
                 int64_t needAskTime = it->second;
                 string strNeedAskTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", needAskTime);
-                LogPrintf("SPOS_Message::DSEG -- req CTxIn() a\n");
+                LogPrintf("SPOS_Message:DSGE req CTxIn() a\n");
                 if (it != mAskedUsForMasternodeList.end() && it->second > GetTime()) {
                     Misbehaving(pfrom->GetId(), 34);
                     LogPrintf("DSEG -- peer already asked me for the list, peer=%d\n", pfrom->id);
@@ -890,7 +891,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                               ,pfrom->addr.ToString(),currTime,strCurrTime,needAskTime,strNeedAskTime);
                     return;
                 }
-                LogPrintf("SPOS_Message::DSEG -- req CTxIn() b\n");
+                LogPrintf("SPOS_Message:DSGE req CTxIn() b\n");
                 int64_t askAgain = GetTime();
                 //only main net use 3 hours
                 #if SCN_CURRENT == SCN__main
@@ -901,7 +902,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                 #endif
 
                 mAskedUsForMasternodeList[pfrom->addr] = askAgain;
-                LogPrintf("SPOS_Message::DSEG -- req CTxIn() c\n");
+                LogPrintf("SPOS_Message:DSGE req CTxIn() c\n");
             }
         } //else, asking for a specific node which is ok
 
