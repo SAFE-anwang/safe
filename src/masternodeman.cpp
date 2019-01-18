@@ -856,7 +856,12 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         // Ignore such requests until we are fully synced.
         // We could start processing this after masternode list is synced
         // but this is a heavy one so it's better to finish sync first.
-        if (!masternodeSync.IsSynced()) return;
+        //XJTODO
+        if (!masternodeSync.IsSynced())
+        {
+            LogPrintf("SPOS_Message:DSGE is syncing\n");
+            return;
+        }
 
         CTxIn vin;
         vRecv >> vin;
@@ -871,9 +876,15 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
             if(!isLocal && Params().NetworkIDString() == CBaseChainParams::MAIN) {
                 std::map<CNetAddr, int64_t>::iterator it = mAskedUsForMasternodeList.find(pfrom->addr);
+                int64_t currTime = GetTime();
+                string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", currTime);
+                int64_t needAskTime = it->second;
+                string strNeedAskTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", needAskTime);
                 if (it != mAskedUsForMasternodeList.end() && it->second > GetTime()) {
                     Misbehaving(pfrom->GetId(), 34);
                     LogPrintf("DSEG -- peer already asked me for the list, peer=%d\n", pfrom->id);
+                    LogPrintf("SPOS_Message:DSGE peer already asked me for the list,peer:%s,currTime:%lld(%s),needAskTime:%lld(%s)\n"
+                              ,pfrom->addr.ToString(),currTime,strCurrTime,needAskTime,strNeedAskTime);
                     return;
                 }
                 int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
@@ -884,16 +895,28 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         int nInvCount = 0;
 
         for (auto& mnpair : mapMasternodes) {
-            if (vin != CTxIn() && vin != mnpair.second.vin) continue; // asked for specific vin but we are not there yet
-            if (mnpair.second.addr.IsRFC1918() || mnpair.second.addr.IsLocal()) continue; // do not send local network masternode
-            if (mnpair.second.IsUpdateRequired()) continue; // do not send outdated masternodes
+            if (vin != CTxIn() && vin != mnpair.second.vin)
+            {
+                LogPrintf("SPOS_Message:DSGE vin not exist\n");
+                continue; // asked for specific vin but we are not there yet
+            }
+            if (mnpair.second.addr.IsRFC1918() || mnpair.second.addr.IsLocal())
+            {
+                LogPrintf("SPOS_Message:DSGE ip is local:%s\n",mnpair.second.addr.ToStringIP());
+                continue; // do not send local network masternode
+            }
+            if (mnpair.second.IsUpdateRequired())
+            {
+                LogPrintf("SPOS_Message:DSGE no need update:%d\n",mnpair.second.nActiveState);
+                continue; // do not send outdated masternodes
+            }
 
             LogPrint("masternode", "DSEG -- Sending Masternode entry: masternode=%s  addr=%s\n", mnpair.first.ToStringShort(), mnpair.second.addr.ToString());
             CMasternodeBroadcast mnb = CMasternodeBroadcast(mnpair.second);
             CMasternodePing mnp = mnpair.second.lastPing;
             uint256 hashMNB = mnb.GetHash();
             uint256 hashMNP = mnp.GetHash();
-            LogPrintf("SPOS_Test_TODO:NetMsgType::DSEG,%s\n",mnb.addr.ToString());
+            LogPrintf("SPOS_Message:DSGE:push announce,%s\n",mnb.addr.ToString());
             pfrom->PushInventory(CInv(MSG_MASTERNODE_ANNOUNCE, hashMNB));
             pfrom->PushInventory(CInv(MSG_MASTERNODE_PING, hashMNP));
             nInvCount++;
@@ -903,6 +926,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
             if (vin.prevout == mnpair.first) {
                 LogPrintf("DSEG -- Sent 1 Masternode inv to peer %d\n", pfrom->id);
+                LogPrintf("SPOS_Message:DSGE:Sent 1 Masternode inv to peer,%s\n",mnb.addr.ToString());
                 return;
             }
         }
@@ -910,6 +934,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         if(vin == CTxIn()) {
             connman.PushMessage(pfrom, NetMsgType::SYNCSTATUSCOUNT, MASTERNODE_SYNC_LIST, nInvCount);
             LogPrintf("DSEG -- Sent %d Masternode invs to peer %d\n", nInvCount, pfrom->id);
+            LogPrintf("SPOS_Message:DSGE -- Sent %d Masternode invs to peer %d\n", nInvCount, pfrom->id);
             return;
         }
         // smth weird happen - someone asked us for vin we have no idea about?
