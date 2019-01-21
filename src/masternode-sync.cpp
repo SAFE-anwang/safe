@@ -471,7 +471,8 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
         // probably initial timeout was not enough,
         // because there is no way we can update tip not having best header
         int64_t currTime = GetTime();
-        if(currTime-g_nMasternodeResetTime>150)//XJTODO use macro
+        int64_t ret = currTime-g_nMasternodeResetTime;
+        if(ret>150)//XJTODO use macro
         {
             Reset();
             g_nMasternodeResetTime = currTime;

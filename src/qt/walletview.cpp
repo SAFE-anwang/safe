@@ -312,8 +312,6 @@ void WalletView::setClientModel(ClientModel *clientModel)
     if (settings.value("fShowMasternodesTab").toBool()) {
         masternodeListPage->setClientModel(clientModel);
     }
-    if(clientModel)
-        connect(clientModel,SIGNAL(updateForbitChanged(bool)),this,SLOT(updateAssetsDisplay(bool)));
 }
 
 void WalletView::setWalletModel(WalletModel *walletModel)

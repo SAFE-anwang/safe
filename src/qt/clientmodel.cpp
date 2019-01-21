@@ -222,11 +222,6 @@ void ClientModel::updateAsset(const QString &strAssetName)
     Q_EMIT assetFound(strAssetName);
 }
 
-void ClientModel::updateForbit()
-{
-    Q_EMIT updateForbitChanged(false);
-}
-
 void ClientModel::updateCandyPutVec()
 {
     Q_EMIT candyPutVec();
@@ -380,15 +375,6 @@ static void BlockTipChanged(ClientModel *clientmodel, bool initialSync, const CB
                                   Q_ARG(double, clientmodel->getVerificationProgress(pIndex)),
                                   Q_ARG(bool, fHeader));
         nLastUpdateNotification = now;
-    }
-    static bool update_forbit = false;
-    if(!update_forbit&&pIndex->nHeight == g_nProtocolV2Height)
-        update_forbit = true;
-    
-    if(update_forbit)
-    {
-        QMetaObject::invokeMethod(clientmodel, "updateForbit", Qt::QueuedConnection);
-        update_forbit = false;
     }
 }
 
