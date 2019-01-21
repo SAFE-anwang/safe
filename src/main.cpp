@@ -37,6 +37,7 @@ int64_t g_nLastSelectMasterNodeHeight = 0;
 std::vector<CMasternode> g_vecResultMasternodes;
 int g_nSelectMasterNodeRet = 0;//first time:0,select fail:-1,select succ:1
 int64_t g_nMasternodeResetTime = GetTime();
+int g_nMasternodeResetInterval = 150;
 
 CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)
 {
