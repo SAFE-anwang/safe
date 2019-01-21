@@ -328,6 +328,15 @@ bool ParseReserve(const vector<unsigned char>& vReserve, CAppHeader& header, vec
     if(vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32 + sizeof(uint32_t))
         return false;
 
+    //SPOS no need to parse 
+    unsigned int nStartSPOSOffset = TXOUT_RESERVE_MIN_SIZE;
+    std::vector<unsigned char> vchConAlg;
+    for(unsigned int k = 0; k < 4; k++)
+        vchConAlg.push_back(vReserve[nStartSPOSOffset++]);
+
+    if (vchConAlg[0] == 's' && vchConAlg[1] == 'p' && vchConAlg[2] == 'o' && vchConAlg[3] == 's')
+        return false;
+
     unsigned int nOffset = 0;
     ParseHeader(vReserve, header, nOffset);
 
