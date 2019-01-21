@@ -2520,7 +2520,7 @@ CAmount CWalletTx::GetAnonymizedCredit(bool fUseCache) const
         const CTxOut &txout = vout[i];
         const COutPoint outpoint = COutPoint(hashTx, i);
 
-        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOutByHeight(txHeight,txout) || txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE || !pwallet->IsDenominated(outpoint)) continue;
+        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOutByHeight(txHeight,txout) || (txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE && !txout.IsSPOSSafeOnly()) || !pwallet->IsDenominated(outpoint)) continue;
 
         const int nRounds = pwallet->GetOutpointPrivateSendRounds(outpoint);
         if(nRounds >= privateSendClient.nPrivateSendRounds){
@@ -2564,7 +2564,7 @@ CAmount CWalletTx::GetDenominatedCredit(bool unconfirmed, bool fUseCache) const
     {
         const CTxOut &txout = vout[i];
 
-        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOutByHeight(txHeight,txout) || txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE || !pwallet->IsDenominatedAmount(vout[i].nValue)) continue;
+        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOutByHeight(txHeight,txout) || (txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE && !txout.IsSPOSSafeOnly()) || !pwallet->IsDenominatedAmount(vout[i].nValue)) continue;
 
         nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE,false);
         if (!MoneyRange(nCredit))
@@ -3723,7 +3723,7 @@ bool CWallet::SelectCoinsGrouppedByAddresses(std::vector<CompactTallyItem>& vecT
         for (unsigned int i = 0; i < wtx.vout.size(); i++) {
             if(IsLockedTxOut(outpoint.hash, wtx.vout[i])) continue;
 
-            if(wtx.vout[i].vReserve.size() > TXOUT_RESERVE_MIN_SIZE) continue;
+            if(wtx.vout[i].vReserve.size() > TXOUT_RESERVE_MIN_SIZE && !wtx.vout[i].IsSPOSSafeOnly()) continue;
 
             CTxDestination txdest;
             if (!ExtractDestination(wtx.vout[i].scriptPubKey, txdest)) continue;
@@ -3914,7 +3914,7 @@ int CWallet::CountInputsWithAmount(CAmount nInputAmount)
                     COutput out = COutput(pcoin, i, nDepth, true, true);
                     COutPoint outpoint = COutPoint(out.tx->GetHash(), out.i);
                     if(IsLockedTxOut(out.tx->GetHash(), out.tx->vout[out.i])) continue;
-                    if(out.tx->vout[out.i].vReserve.size() > TXOUT_RESERVE_MIN_SIZE) continue;
+                    if(out.tx->vout[out.i].vReserve.size() > TXOUT_RESERVE_MIN_SIZE && !out.tx->vout[out.i].IsSPOSSafeOnly()) continue;
                     if(out.tx->vout[out.i].nValue != nInputAmount) continue;
                     if(!IsDenominatedAmount(pcoin->vout[i].nValue)) continue;
                     if(IsSpent(out.tx->GetHash(), i) || IsMine(pcoin->vout[i]) != ISMINE_SPENDABLE || !IsDenominated(outpoint)) continue;
