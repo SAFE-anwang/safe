@@ -424,9 +424,3 @@ CAmount GetSPOSCancelledAmount(const int& nHeight)
 
     return value;
 }
-
-int ConvertBlockHeight(const Consensus::Params& consensusParams)
-{
-    return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
-}
-

@@ -15,6 +15,8 @@
 #include "netfulfilledman.h"
 #include "util.h"
 #include "main.h"
+#include "validation.h"
+
 
 CGovernanceManager governance;
 

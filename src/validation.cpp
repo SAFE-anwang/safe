@@ -42,6 +42,8 @@
 #include "rpc/server.h"
 #include "masternode-sync.h"
 #include "messagesigner.h"
+#include "validation.h"
+
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -9348,4 +9350,9 @@ void SelectSporkMessageMasterNode()
         LogPrintf("SPOS_Message:Spork masterNodeIP[%d]:%s,keyid:%s,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
                   mn.pubKeyMasternode.GetID().ToString(),mn.nClientVersion);
     }
+}
+
+int ConvertBlockHeight(const Consensus::Params& consensusParams)
+{
+    return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
 }

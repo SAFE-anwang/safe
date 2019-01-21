@@ -13,6 +13,8 @@
 #include "spork.h"
 #include "util.h"
 #include "main.h"
+#include "validation.h"
+
 
 
 #include <boost/lexical_cast.hpp>

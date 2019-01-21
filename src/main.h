@@ -89,7 +89,6 @@ CAmount GetTxAdditionalFee(const CTransaction& tx);
 
 int GetPrevBlockHeight(const uint256& hash);
 
-int ConvertBlockHeight(const Consensus::Params& consensusParams);
 
 
 
