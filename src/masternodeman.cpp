@@ -896,12 +896,12 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                 int64_t askAgain = GetTime();
                 //only main net use 3 hours
                 #if SCN_CURRENT == SCN__main
-                askAgain += DSEG_UPDATE_SECONDS;
-                LogPrintf("SPOS_Message:DSEG -- SCN__main, askAgain=%lld\n", askAgain);
+                    askAgain += DSEG_UPDATE_SECONDS;
+                    LogPrintf("SPOS_Message:DSEG -- SCN__main, askAgain=%lld\n", askAgain);
                 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
-                LogPrintf("SPOS_Message:DSEG -- SCN__test, askAgain=%lld\n", askAgain);
+                    LogPrintf("SPOS_Message:DSEG -- SCN__test, askAgain=%lld\n", askAgain);
                 #else
-                #error unsupported <safe chain name>
+                    #error unsupported <safe chain name>
                 #endif
 
                 mAskedUsForMasternodeList[pfrom->addr] = askAgain;
