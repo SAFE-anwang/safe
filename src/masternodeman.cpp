@@ -875,7 +875,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         //request all masternode list
         if(vin == CTxIn()) { //only should ask for this once
             //local network
-            LogPrintf("SPOS_Message:DSGE req CTxIn() 0a\n");
+            LogPrintf("SPOS_Message:DSGE req CTxIn() 0\n");
             bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
 
             if(!isLocal && Params().NetworkIDString() == CBaseChainParams::MAIN) {
@@ -884,15 +884,12 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                 string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", currTime);
                 int64_t needAskTime = it->second;
                 string strNeedAskTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", needAskTime);
-                LogPrintf("SPOS_Message:DSGE req CTxIn() a\n");
                 if (it != mAskedUsForMasternodeList.end() && it->second > GetTime()) {
                     Misbehaving(pfrom->GetId(), 34);
-                    LogPrintf("DSEG -- peer already asked me for the list, peer=%d\n", pfrom->id);
                     LogPrintf("SPOS_Message:DSGE peer already asked me for the list,peer:%s,currTime:%lld(%s),needAskTime:%lld(%s)\n"
                               ,pfrom->addr.ToString(),currTime,strCurrTime,needAskTime,strNeedAskTime);
                     return;
                 }
-                LogPrintf("SPOS_Message:DSGE req CTxIn() b\n");
                 int64_t askAgain = GetTime();
                 //only main net use 3 hours
                 #if SCN_CURRENT == SCN__main

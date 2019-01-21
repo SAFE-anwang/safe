@@ -21,6 +21,7 @@ CMasternodeSync masternodeSync;
 
 extern bool fGetCandyInfoStart;
 extern int64_t g_nMasternodeResetTime;
+extern int g_nMasternodeResetInterval;
 
 void CMasternodeSync::Fail()
 {
@@ -472,7 +473,7 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
         // because there is no way we can update tip not having best header
         int64_t currTime = GetTime();
         int64_t ret = currTime-g_nMasternodeResetTime;
-        if(ret>150)//XJTODO use macro
+        if(ret>g_nMasternodeResetInterval)
         {
             Reset();
             g_nMasternodeResetTime = currTime;
