@@ -16,6 +16,8 @@
 
 #include <univalue.h>
 
+#include "main.h"
+
 // DECLARE GLOBAL VARIABLES FOR GOVERNANCE CLASSES
 CGovernanceTriggerManager triggerman;
 
@@ -523,8 +525,11 @@ CSuperblock(uint256& nHash)
 bool CSuperblock::IsValidBlockHeight(int nBlockHeight)
 {
     // SUPERBLOCKS CAN HAPPEN ONLY after hardfork and only ONCE PER CYCLE
+    int nSuperblockCycle = Params().GetConsensus().nSuperblockCycle;
+    if (IsStartSPosHeight(nBlockHeight))
+        nSuperblockCycle = Params().GetConsensus().nSuperblockCycle * ConvertBlockHeight(Params().GetConsensus());
     return nBlockHeight >= Params().GetConsensus().nSuperblockStartBlock &&
-            ((nBlockHeight % Params().GetConsensus().nSuperblockCycle) == 0);
+            ((nBlockHeight % nSuperblockCycle) == 0);
 }
 
 CAmount CSuperblock::GetPaymentsLimit(int nBlockHeight)
@@ -539,11 +544,18 @@ CAmount CSuperblock::GetPaymentsLimit(int nBlockHeight)
     int nBits = consensusParams.fPowAllowMinDifficultyBlocks ? UintToArith256(consensusParams.powLimit).GetCompact() : 1;
     // some part of all blocks issued during the cycle goes to superblock, see GetBlockSubsidy
     CAmount nSuperblockPartOfSubsidy = 0;
-    if (nBlockHeight >= g_nStartSPOSHeight)
+    CAmount nPaymentsLimit = 0;
+    if (IsStartSPosHeight(nBlockHeight))
+    {
         nSuperblockPartOfSubsidy = GetSPOSBlockSubsidy(nBlockHeight - 1, consensusParams, true);
+        nPaymentsLimit = nSuperblockPartOfSubsidy * consensusParams.nSuperblockCycle * ConvertBlockHeight(consensusParams);
+    }
     else
+    {
         nSuperblockPartOfSubsidy = GetBlockSubsidy(nBits, nBlockHeight - 1, consensusParams, true);
-    CAmount nPaymentsLimit = nSuperblockPartOfSubsidy * consensusParams.nSuperblockCycle;
+        nPaymentsLimit = nSuperblockPartOfSubsidy * consensusParams.nSuperblockCycle;
+    }
+
     LogPrint("gobject", "CSuperblock::GetPaymentsLimit -- Valid superblock height %d, payments max %lld\n", nBlockHeight, nPaymentsLimit);
 
     return nPaymentsLimit;

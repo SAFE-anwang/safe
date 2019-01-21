@@ -534,7 +534,7 @@ void CGovernanceManager::UpdateCachesAndClean()
 
             int64_t nSuperblockCycleSeconds = 0;
             if (chainActive.Height() >= g_nStartSPOSHeight)
-                nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nSPOSTargetSpacing;
+                nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * ConvertBlockHeight(Params().GetConsensus()) * Params().GetConsensus().nSPOSTargetSpacing;
             else
                 nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
             int64_t nTimeExpired = pObj->GetCreationTime() + 2 * nSuperblockCycleSeconds + GOVERNANCE_DELETION_DELAY;
@@ -879,7 +879,7 @@ bool CGovernanceManager::MasternodeRateCheck(const CGovernanceObject& govobj, bo
 
     int64_t nSuperblockCycleSeconds = 0;
     if (chainActive.Height() >= g_nStartSPOSHeight)
-        nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nSPOSTargetSpacing;
+        nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * ConvertBlockHeight(Params().GetConsensus()) * Params().GetConsensus().nSPOSTargetSpacing;
     else
         nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
 
@@ -1081,7 +1081,7 @@ void CGovernanceManager::CheckPostponedObjects(CConnman& connman)
     int64_t nNow = GetAdjustedTime();
     int64_t nSuperblockCycleSeconds = 0;
     if (chainActive.Height() >= g_nStartSPOSHeight)
-        nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nSPOSTargetSpacing;
+        nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * ConvertBlockHeight(Params().GetConsensus()) * Params().GetConsensus().nSPOSTargetSpacing;
     else
         nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
 

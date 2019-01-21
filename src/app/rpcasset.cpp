@@ -2079,6 +2079,9 @@ UniValue transfermanyasset(const UniValue& params, bool fHelp)
         int nLockedMonth = 0;
         if (!vlockmonth.isNull())
         {
+            if (!IsStartLockFeatureHeight(g_nChainHeight))
+                throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
+        
             if (!vlockmonth.isNum())
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter:lockTime");
             nLockedMonth = vlockmonth.get_int();

@@ -14,6 +14,7 @@
 #include "util.h"
 #include "main.h"
 
+
 #include <boost/lexical_cast.hpp>
 
 /** Object for who's going to get paid on which blocks */
@@ -47,7 +48,11 @@ bool IsBlockValueValid(const CBlock& block, int nBlockHeight, CAmount blockRewar
     const Consensus::Params& consensusParams = Params().GetConsensus();
 
     if(nBlockHeight < consensusParams.nSuperblockStartBlock) {
-        int nOffset = nBlockHeight % consensusParams.nBudgetPaymentsCycleBlocks;
+        int nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks;;
+        if (IsStartSPosHeight(nBlockHeight))
+            nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks * ConvertBlockHeight(consensusParams);
+
+        int nOffset = nBlockHeight % nBudgetPaymentsCycleBlocks;
         if(nBlockHeight >= consensusParams.nBudgetPaymentsStartBlock &&
             nOffset < consensusParams.nBudgetPaymentsWindowBlocks) {
             // NOTE: make sure SPORK_13_OLD_SUPERBLOCK_FLAG is disabled when 12.1 starts to go live
@@ -150,7 +155,11 @@ bool IsBlockPayeeValid(const CTransaction& txNew, int nBlockHeight, CAmount bloc
             return true;
         }
 
-        int nOffset = nBlockHeight % consensusParams.nBudgetPaymentsCycleBlocks;
+        int nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks;
+        if (IsStartSPosHeight(nBlockHeight))
+            nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks * ConvertBlockHeight(consensusParams);
+
+        int nOffset = nBlockHeight % nBudgetPaymentsCycleBlocks;
         if(nBlockHeight >= consensusParams.nBudgetPaymentsStartBlock &&
             nOffset < consensusParams.nBudgetPaymentsWindowBlocks) {
             if(!sporkManager.IsSporkActive(SPORK_13_OLD_SUPERBLOCK_FLAG)) {

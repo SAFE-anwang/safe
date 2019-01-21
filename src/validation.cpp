@@ -2884,9 +2884,10 @@ double ConvertBitsToDouble(unsigned int nBits)
 CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
 {
     CAmount nSubsidy = MiningIncentives;
+    int nSubsidyHalvingInterval = consensusParams.nSubsidyHalvingInterval * ConvertBlockHeight(consensusParams);
 
     // yearly decline of production by ~7.1% per year, projected ~18M coins max by year 2050+.
-    for (int i = consensusParams.nSubsidyHalvingInterval; i <= nPrevHeight; i += consensusParams.nSubsidyHalvingInterval) {
+    for (int i = nSubsidyHalvingInterval; i <= nPrevHeight; i += nSubsidyHalvingInterval) {
         nSubsidy -= nSubsidy/14;
     }
 
@@ -2965,7 +2966,9 @@ CAmount GetMasternodePayment(int nHeight, CAmount blockValue)
     CAmount ret = blockValue/5; // start at 20%
 
     int nMNPIBlock = Params().GetConsensus().nMasternodePaymentsIncreaseBlock;
-    int nMNPIPeriod = Params().GetConsensus().nMasternodePaymentsIncreasePeriod;
+    int nMNPIPeriod = Params().GetConsensus().nMasternodePaymentsIncreasePeriod;;
+    if (IsStartSPosHeight(nHeight))
+        nMNPIPeriod = Params().GetConsensus().nMasternodePaymentsIncreasePeriod * ConvertBlockHeight(Params().GetConsensus());
 
                                                                       // mainnet:
     if(nHeight > nMNPIBlock)                  ret += blockValue / 20; // 158000 - 25.0% - 2014-10-24
