@@ -14,6 +14,7 @@
 #include "messagesigner.h"
 #include "netfulfilledman.h"
 #include "util.h"
+#include "main.h"
 
 CGovernanceManager governance;
 

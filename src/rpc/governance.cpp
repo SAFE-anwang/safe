@@ -20,6 +20,7 @@
 #include "rpc/server.h"
 #include "util.h"
 #include "utilmoneystr.h"
+#include "main.h"
 
 #include <boost/lexical_cast.hpp>
 
