@@ -4714,7 +4714,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
-    //if(IsStartSPosHeight(pindex->nHeight+1))
+    if(IsStartSPosHeight(pindex->nHeight+1))
     {
         LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
         LOCK(cs_spos);
