@@ -9161,14 +9161,15 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
     g_vecResultMasternodes.clear();
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
 
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
     if (!bProcessSpork)
     {
         //1.3.3
         g_nStartNewLoopTime = (int64_t)nTime*1000;
         g_nSposGeneratedIndex = -2;
         g_nSelectMasterNodeRet = 1;
-        string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
-        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
+
         if(g_nStartNewLoopTime < nTime*1000)
         {
             LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",g_nStartNewLoopTime/1000,strStartNewLoopTime
@@ -9275,7 +9276,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
     string localIpPortInfo = activeMasternode.service.ToString();
     uint32_t size = g_vecResultMasternodes.size();
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,min online masternode count:%d\n"
-              ,localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,nTime,size,g_nMasternodeMinCount);
+              ,localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,strBlockTime,size,g_nMasternodeMinCount);
     for( uint32_t i = 0; i < size; ++i )
     {
         const CMasternode& mn = g_vecResultMasternodes[i];
