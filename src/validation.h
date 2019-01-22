@@ -1519,5 +1519,6 @@ void SelectMasterNode(unsigned int nNewBlockHeight,uint32_t nTime);
 
 void SelectSporkMessageMasterNode();
 
+bool isOnline(uint32_t nTime,int height);
 
 #endif // BITCOIN_VALIDATION_H

@@ -116,6 +116,7 @@ CAmount MiningIncentives = 45000000000;
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
 extern unsigned int g_nMasternodeMinOnlineTime;
+extern unsigned int g_nMasternodeMinActiveTime;
 extern CActiveMasternode activeMasternode;
 extern int64_t g_nLastSelectMasterNodeHeight;
 extern unsigned int g_nMasternodeStatusEnable;
@@ -4713,7 +4714,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
-    if(IsStartSPosHeight(pindex->nHeight+1))
+    //if(IsStartSPosHeight(pindex->nHeight+1))
     {
         LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
         LOCK(cs_spos);
@@ -9080,6 +9081,9 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     if(!masternodeSync.IsSynced())
         return;
 
+    if(!isOnline(nTime,nCurrBlockHeight))
+        return;
+
     if(g_nLastSelectMasterNodeHeight == nCurrBlockHeight)
     {
         LogPrintf("SPOS_Message:g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d,not SelectMasterNode\n",nCurrBlockHeight);
@@ -9145,7 +9149,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     {
         const CMasternode& mn = (*mnpair).second;
         int64_t onlineTime = mn.getOnlineTime();
-        int64_t activeTime = std::abs(mn.lastPing.sigTime-nTime);
+        int64_t activeTime = std::abs(nTime-mn.lastPing.sigTime);
 
         //XJTODO
         logCnt++;
@@ -9159,15 +9163,13 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
                       "nTimeLastPing:%lld,nClientVersion:%d,blockTime:%lld(%s),activeTime:%lld,startUpTime:%lld(%s),isOK:%d\n",
                       mn.addr.ToStringIP(),mn.nActiveState,onlineTime,mn.lastPing.sigTime,strPingTime,mn.sigTime,strSigTime,
                       mn.nTimeLastPing,mn.nClientVersion,nTime,strBlockTime,activeTime,mn.startUpTime,mn.startUpTime,strStartUpTime,
-                      onlineTime < g_nMasternodeMinOnlineTime?0:1);
+                      mn.isActive(nTime,nCurrBlockHeight)&&isOnline(nTime,nCurrBlockHeight)?1:0);
         }
 
         if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED))
             continue;
-        if(onlineTime < g_nMasternodeMinOnlineTime)
+        if(!mn.isActive(nTime,nCurrBlockHeight))
             continue;
-//        if(activeTime > 3000)
-//            continue;
         if(mn.nClientVersion < SPOS_MIN_CLIENT_VERSION)
             continue;
 
@@ -9357,4 +9359,18 @@ void SelectSporkMessageMasterNode()
 int ConvertBlockHeight(const Consensus::Params& consensusParams)
 {
     return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
+}
+
+//XJTODO test
+bool isOnline(uint32_t nTime,int nHeight)
+{
+    if(nTime<g_nStartUpTime)
+    {
+        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
+        string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartUpTime);
+        LogPrintf("SPOS_ERROR:block time:%d(%s) less than startUpTime:%d(%s),height:%d\n",nTime,strBlockTime,g_nStartUpTime,strSigTime,nHeight);
+        return false;
+    }
+    uint32_t online = nTime - g_nStartUpTime;
+    return online >= g_nMasternodeMinOnlineTime;
 }

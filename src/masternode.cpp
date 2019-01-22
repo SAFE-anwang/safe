@@ -16,6 +16,8 @@
 
 #include <boost/lexical_cast.hpp>
 
+extern unsigned int g_nMasternodeMinOnlineTime;
+extern unsigned int g_nMasternodeMinActiveTime;
 
 CMasternode::CMasternode() :
     masternode_info_t{ MASTERNODE_ENABLED, PROTOCOL_VERSION, GetAdjustedTime()},
@@ -881,7 +883,20 @@ void CMasternode::UpdateWatchdogVoteTime(uint64_t nVoteTime)
 
 int64_t CMasternode::getOnlineTime()const
 {
-    return std::abs(lastPing.sigTime - startUpTime);
+    return lastPing.sigTime - startUpTime;
+}
+
+bool CMasternode::isActive(uint32_t nTime,int nHeight) const
+{
+    if(nTime<sigTime)
+    {
+        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
+        string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", sigTime);
+        LogPrintf("SPOS_ERROR:block time:%d(%s) less than sigTime:%d(%s),nHeight:%d\n",nTime,strBlockTime,sigTime,strSigTime,nHeight);
+        return false;
+    }
+    uint32_t activeTime = nTime - sigTime;
+    return activeTime >= g_nMasternodeMinActiveTime;
 }
 
 /**

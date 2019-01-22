@@ -295,6 +295,8 @@ public:
 
     int64_t getOnlineTime()const;
 
+    bool isActive(uint32_t nTime,int nHeight)const;
+
     CMasternode& operator=(CMasternode const& from)
     {
         static_cast<masternode_info_t&>(*this)=from;
