@@ -399,7 +399,15 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,cons
     txCoinbase.vout[0].vReserve.push_back(pVersion[0]);
     txCoinbase.vout[0].vReserve.push_back(pVersion[1]);
 
-    //3.add serialize KeyID of public key
+    //3.add activeTime
+    uint32_t nActiveTime = mn.getActiveTime(pblock->nTime);
+    const unsigned char* pActiveTime = (const unsigned char*)&nActiveTime;
+    txCoinbase.vout[0].vReserve.push_back(pActiveTime[0]);
+    txCoinbase.vout[0].vReserve.push_back(pActiveTime[1]);
+    txCoinbase.vout[0].vReserve.push_back(pActiveTime[2]);
+    txCoinbase.vout[0].vReserve.push_back(pActiveTime[3]);
+
+    //4.add serialize KeyID of public key
     CDataStream ssKey(SER_DISK, CLIENT_VERSION);
     ssKey.reserve(1000);
     ssKey << mn.pubKeyMasternode.GetID();
@@ -408,7 +416,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,cons
     for(unsigned int i = 0; i < serialPubKeyId.size(); i++)
         txCoinbase.vout[0].vReserve.push_back(serialPubKeyId[i]);
 
-    //4.add the sign of safe+spos+version+pubkey
+    //5.add the sign of safe+spos+version+pubkey
     string strSignMessage= "";
     for(unsigned int i=0; i< txCoinbase.vout[0].vReserve.size();i++)
         strSignMessage.push_back(txCoinbase.vout[0].vReserve[i]);

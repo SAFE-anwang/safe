@@ -293,7 +293,9 @@ public:
 
     void UpdateWatchdogVoteTime(uint64_t nVoteTime = 0);
 
-    int64_t getOnlineTime()const;
+    uint32_t getOnlineTime(uint32_t nTime)const;
+
+    uint32_t getActiveTime(uint32_t nTime)const;
 
     bool isActive(uint32_t nTime,int nHeight)const;
 

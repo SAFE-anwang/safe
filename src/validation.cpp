@@ -9148,8 +9148,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
     {
         const CMasternode& mn = (*mnpair).second;
-        int64_t onlineTime = mn.getOnlineTime();
-        int64_t activeTime = std::abs(nTime-mn.lastPing.sigTime);
+        int64_t onlineTime = mn.getOnlineTime(nTime);
+        int64_t activeTime = mn.getActiveTime(nTime);
 
         //XJTODO
         logCnt++;
@@ -9284,7 +9284,7 @@ void SelectSporkMessageMasterNode()
     for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
     {
         const CMasternode& mn = (*mnpair).second;
-        int64_t onlineTime = mn.getOnlineTime();
+        int64_t onlineTime = mn.getOnlineTime(chainActive.Tip()->nTime);//SQTODO
 
         //XJTODO
         LogPrintf("SPOS_Message: Spork before sort:ip:%s,nActiveState:%d,onlineTime:%d,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP()
