@@ -9275,7 +9275,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
     string localIpPortInfo = activeMasternode.service.ToString();
     uint32_t size = g_vecResultMasternodes.size();
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,min online masternode count:%d\n"
-              ,localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,strBlockTime,size,g_nMasternodeMinCount);
+              ,localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,nTime,size,g_nMasternodeMinCount);
     for( uint32_t i = 0; i < size; ++i )
     {
         const CMasternode& mn = g_vecResultMasternodes[i];
