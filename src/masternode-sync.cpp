@@ -22,6 +22,7 @@ CMasternodeSync masternodeSync;
 extern bool fGetCandyInfoStart;
 extern int64_t g_nMasternodeResetTime;
 extern int g_nMasternodeResetInterval;
+extern int64_t g_nStartUpTime;
 
 void CMasternodeSync::Fail()
 {
@@ -92,6 +93,12 @@ void CMasternodeSync::SwitchToNextAsset(CConnman& connman)
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetAssetName(), GetTime() - nTimeAssetSyncStarted);
             nRequestedMasternodeAssets = MASTERNODE_SYNC_FINISHED;
             uiInterface.NotifyAdditionalDataSyncProgressChanged(1);
+            if(g_nStartUpTime==0)
+            {
+                g_nStartUpTime = pindexBestHeader->nTime;
+                string strStartUpTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartUpTime);
+                LogPrintf("SPOS_Message:init startUpTime:%lld(%s),height:%d\n",g_nStartUpTime,strStartUpTime,pindexBestHeader->nHeight);
+            }
             //try to activate our masternode if possible
             activeMasternode.ManageState(connman);
 

@@ -31,6 +31,8 @@ static const int MASTERNODE_POSE_BAN_MAX_SCORE          = 5;
 // sentinel version before sentinel ping implementation
 #define DEFAULT_SENTINEL_VERSION 0x010001
 
+extern int64_t g_nStartUpTime;
+
 class CMasternodePing
 {
 public:
@@ -98,7 +100,7 @@ struct masternode_info_t
     masternode_info_t(masternode_info_t const&) = default;
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime) :
-        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},nClientVersion{CLIENT_VERSION},startUpTime(0) {}
+        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},nClientVersion{CLIENT_VERSION},startUpTime(g_nStartUpTime) {}
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime,
                       COutPoint const& outpoint, CService const& addr,
@@ -108,7 +110,7 @@ struct masternode_info_t
         vin{outpoint}, addr{addr},
         pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
         nTimeLastWatchdogVote{tWatchdogV},nClientVersion{CLIENT_VERSION},
-        startUpTime(0){}
+        startUpTime(g_nStartUpTime){}
 
     int nActiveState = 0;
     int nProtocolVersion = 0;
