@@ -892,7 +892,7 @@ bool CMasternode::isActive(uint32_t nTime,int nHeight) const
     {
         string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
         string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", sigTime);
-        LogPrintf("SPOS_ERROR:block time:%d(%s) less than sigTime:%d(%s),nHeight:%d\n",nTime,strBlockTime,sigTime,strSigTime,nHeight);
+        LogPrintf("SPOS_Error:block time:%d(%s) less than sigTime:%d(%s),nHeight:%d\n",nTime,strBlockTime,sigTime,strSigTime,nHeight);
         return false;
     }
     uint32_t activeTime = nTime - sigTime;

@@ -9368,7 +9368,7 @@ bool isOnline(uint32_t nTime,int nHeight)
     {
         string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
         string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartUpTime);
-        LogPrintf("SPOS_ERROR:block time:%d(%s) less than startUpTime:%d(%s),height:%d\n",nTime,strBlockTime,g_nStartUpTime,strSigTime,nHeight);
+        LogPrintf("SPOS_Error:block time:%d(%s) less than startUpTime:%d(%s),height:%d\n",nTime,strBlockTime,g_nStartUpTime,strSigTime,nHeight);
         return false;
     }
     uint32_t online = nTime - g_nStartUpTime;
