@@ -9162,7 +9162,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
             LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%lld,pingTime:%lld(%s),sigTime:%lld(%s),"
                       "nTimeLastPing:%lld,nClientVersion:%d,blockTime:%lld(%s),activeTime:%lld,startUpTime:%lld(%s),isOK:%d\n",
                       mn.addr.ToStringIP(),mn.nActiveState,onlineTime,mn.lastPing.sigTime,strPingTime,mn.sigTime,strSigTime,
-                      mn.nTimeLastPing,mn.nClientVersion,nTime,strBlockTime,activeTime,mn.startUpTime,mn.startUpTime,strStartUpTime,
+                      mn.nTimeLastPing,mn.nClientVersion,nTime,strBlockTime,activeTime,mn.startUpTime,strStartUpTime,
                       mn.isActive(nTime,nCurrBlockHeight)&&isOnline(nTime,nCurrBlockHeight)?1:0);
         }
 
