@@ -663,7 +663,10 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         if(masternodeSPosCount == 0)
         {
             LogPrintf("SPOS_Warning:masternode is 0,select again\n");
-            SelectMasterNode(pindexPrev->nHeight,pindexPrev->nTime);
+            if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
+                SelectMasterNode(pindexPrev->nHeight,pindexPrev->nTime, true, false);
+            else
+                SelectMasterNode(pindexPrev->nHeight,pindexPrev->nTime, false, false);
             masternodeSPosCount = g_vecResultMasternodes.size();
             if(masternodeSPosCount == 0)
             {

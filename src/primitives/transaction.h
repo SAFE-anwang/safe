@@ -252,7 +252,7 @@ public:
 
     bool IsSPOSSafeOnly() const
     {
-        unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t) + 20;
+        unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t) + sizeof(uint32_t) + 20;
         if (vReserve.size() <= nFixedLen)
             return false;
     
