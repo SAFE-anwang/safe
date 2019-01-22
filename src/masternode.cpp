@@ -881,7 +881,7 @@ void CMasternode::UpdateWatchdogVoteTime(uint64_t nVoteTime)
     nTimeLastWatchdogVote = (nVoteTime == 0) ? GetAdjustedTime() : nVoteTime;
 }
 
-uint32_t CMasternode::getOnlineTime(uint32_t nTime)
+uint32_t CMasternode::getOnlineTime(uint32_t nTime,int nHeight)const
 {
     if(nTime<g_nStartUpTime)
     {
@@ -892,7 +892,7 @@ uint32_t CMasternode::getOnlineTime(uint32_t nTime)
     return nTime - g_nStartUpTime;
 }
 
-uint32_t CMasternode::getActiveTime(uint32_t nTime) const
+uint32_t CMasternode::getActiveTime(uint32_t nTime,int nHeight) const
 {
     if(nTime<sigTime)
     {
