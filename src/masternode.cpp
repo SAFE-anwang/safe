@@ -879,6 +879,11 @@ void CMasternode::UpdateWatchdogVoteTime(uint64_t nVoteTime)
     nTimeLastWatchdogVote = (nVoteTime == 0) ? GetAdjustedTime() : nVoteTime;
 }
 
+int64_t CMasternode::getOnlineTime()const
+{
+    return std::abs(lastPing.sigTime - startUpTime);
+}
+
 /**
 *   FLAG GOVERNANCE ITEMS AS DIRTY
 *

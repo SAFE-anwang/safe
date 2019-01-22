@@ -9144,7 +9144,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
     {
         const CMasternode& mn = (*mnpair).second;
-        int64_t onlineTime = std::abs(nTime - mn.sigTime);
+        int64_t onlineTime = mn.getOnlineTime();
         int64_t activeTime = std::abs(mn.lastPing.sigTime-nTime);
 
         //XJTODO
@@ -9154,10 +9154,12 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
             string strPingTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", mn.lastPing.sigTime);
             string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", mn.sigTime);
             string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
-            LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%lld,pingTime:%lld(%s),sigTime:%lld(%s),nLastDsq:%lld,nTimeLastChecked:%lld,"
-                      "nTimeLastPaid:%lld,nTimeLastPing:%lld,nClientVersion:%d,blockTime:%lld(%s),activeTime:%lld,isOK:%d\n",mn.addr.ToStringIP(),
-                      mn.nActiveState,onlineTime,mn.lastPing.sigTime,strPingTime,mn.sigTime,strSigTime,mn.nLastDsq,mn.nTimeLastChecked,mn.nTimeLastPaid,
-                      mn.nTimeLastPing,mn.nClientVersion,nTime,strBlockTime,activeTime,onlineTime < g_nMasternodeMinOnlineTime?0:1);
+            string strStartUpTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", mn.startUpTime);
+            LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%lld,pingTime:%lld(%s),sigTime:%lld(%s),"
+                      "nTimeLastPing:%lld,nClientVersion:%d,blockTime:%lld(%s),activeTime:%lld,startUpTime:%lld(%s),isOK:%d\n",
+                      mn.addr.ToStringIP(),mn.nActiveState,onlineTime,mn.lastPing.sigTime,strPingTime,mn.sigTime,strSigTime,
+                      mn.nTimeLastPing,mn.nClientVersion,nTime,strBlockTime,activeTime,mn.startUpTime,mn.startUpTime,strStartUpTime,
+                      onlineTime < g_nMasternodeMinOnlineTime?0:1);
         }
 
         if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED))
@@ -9191,8 +9193,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     {
         logCnt++;
         if(logCnt<=logMaxCnt)
-            LogPrintf("SPOS_Message:after sort:ip:%s,score:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
-                      ,mnpair.first.ToString(),mnpair.second.lastPing.sigTime,mnpair.second.sigTime,mnpair.second.nClientVersion);
+            LogPrintf("SPOS_Message:after sort:ip:%s,score:%s,pingTime:%lld,sigTime:%lld,startUpTime:%lld,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
+                      ,mnpair.first.ToString(),mnpair.second.lastPing.sigTime,mnpair.second.sigTime,mnpair.second.startUpTime,mnpair.second.nClientVersion);
     }
 
     unsigned int count = 0;
@@ -9229,8 +9231,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime)
     for( uint32_t i = 0; i < size; ++i )
     {
         const CMasternode& mn = g_vecResultMasternodes[i];
-        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
-                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.nClientVersion);
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,startUpTime:%lld,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.startUpTime,mn.nClientVersion);
     }
 
     g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
@@ -9280,7 +9282,7 @@ void SelectSporkMessageMasterNode()
     for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
     {
         const CMasternode& mn = (*mnpair).second;
-        int64_t onlineTime = mn.lastPing.sigTime - mn.sigTime;
+        int64_t onlineTime = mn.getOnlineTime();
 
         //XJTODO
         LogPrintf("SPOS_Message: Spork before sort:ip:%s,nActiveState:%d,onlineTime:%d,nClientVersion:%d,isOK:%d\n",mn.addr.ToStringIP()
@@ -9309,8 +9311,8 @@ void SelectSporkMessageMasterNode()
     //XJTODO remove it5
     for (auto& mnpair : scoreMasternodes)
     {
-        LogPrintf("SPOS_Message:Spork after sort:ip:%s,score:%s,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
-                  ,mnpair.first.ToString(),mnpair.second.nClientVersion);
+        LogPrintf("SPOS_Message:Spork after sort:ip:%s,score:%s,startUpTime:%lld,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
+                  ,mnpair.first.ToString(),mnpair.second.startUpTime,mnpair.second.nClientVersion);
     }
 
     unsigned int count = 0;

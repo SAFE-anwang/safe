@@ -98,7 +98,7 @@ struct masternode_info_t
     masternode_info_t(masternode_info_t const&) = default;
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime) :
-        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},nClientVersion{CLIENT_VERSION} {}
+        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},nClientVersion{CLIENT_VERSION},startUpTime(0) {}
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime,
                       COutPoint const& outpoint, CService const& addr,
@@ -107,7 +107,8 @@ struct masternode_info_t
         nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},
         vin{outpoint}, addr{addr},
         pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
-        nTimeLastWatchdogVote{tWatchdogV},nClientVersion{CLIENT_VERSION} {}
+        nTimeLastWatchdogVote{tWatchdogV},nClientVersion{CLIENT_VERSION},
+        startUpTime(0){}
 
     int nActiveState = 0;
     int nProtocolVersion = 0;
@@ -125,6 +126,7 @@ struct masternode_info_t
     int64_t nTimeLastPing = 0; //* not in CMN
     bool fInfoValid = false; //* not in CMN
     int nClientVersion = 0;
+    int64_t startUpTime = 0;//system start time
 };
 
 //
@@ -200,8 +202,11 @@ public:
         READWRITE(fAllowMixingTx);
         READWRITE(fUnitTest);
         READWRITE(mapGovernanceObjectsVotedOn);
-        if(CLIENT_VERSION>=SPOS_MIN_CLIENT_VERSION)
+        if(nVersion>=SPOS_MIN_CLIENT_VERSION)
+        {
             READWRITE(nClientVersion);
+            READWRITE(startUpTime);
+        }
     }
 
     // CALCULATE A RANK AGAINST OF GIVEN BLOCK
@@ -286,6 +291,8 @@ public:
 
     void UpdateWatchdogVoteTime(uint64_t nVoteTime = 0);
 
+    int64_t getOnlineTime()const;
+
     CMasternode& operator=(CMasternode const& from)
     {
         static_cast<masternode_info_t&>(*this)=from;
@@ -299,6 +306,7 @@ public:
         fUnitTest = from.fUnitTest;
         mapGovernanceObjectsVotedOn = from.mapGovernanceObjectsVotedOn;
         nClientVersion = from.nClientVersion;
+        startUpTime = from.startUpTime;
         return *this;
     }
 };
@@ -341,8 +349,11 @@ public:
         READWRITE(nProtocolVersion);
         READWRITE(lastPing);
         int sz = s.size();
-        if(CLIENT_VERSION>=SPOS_MIN_CLIENT_VERSION&&sz>0)
+        if(nVersion>=SPOS_MIN_CLIENT_VERSION&&sz>0)
+        {
             READWRITE(nClientVersion);
+            READWRITE(startUpTime);
+        }
     }
 
     uint256 GetHash() const
