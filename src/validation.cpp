@@ -5091,7 +5091,7 @@ static CBlockIndex* FindMostWorkChain() {
                 // Candidate chain is not usable (either invalid or missing data)
                 if (IsStartSPosHeight(pindexNew->nHeight))
                 {
-                    if (fFailedChain && (pindexBestInvalid == NULL || (pindexNew->nHeight > pindexBestInvalid->nHeight && pindexNew->nActiveTime > pindexBestInvalid->nActiveTime))
+                    if (fFailedChain && (pindexBestInvalid == NULL || (pindexNew->nHeight > pindexBestInvalid->nHeight && pindexNew->nActiveTime > pindexBestInvalid->nActiveTime)))
                         pindexBestInvalid = pindexNew;
                 }
                 else
