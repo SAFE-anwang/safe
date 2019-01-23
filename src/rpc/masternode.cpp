@@ -527,6 +527,11 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                 obj.push_back(Pair(strOutpoint, strAddress));
             } else if (strMode == "full") {
                 std::ostringstream streamFull;
+                CBlockIndex* pindex = NULL;
+                {
+                    LOCK(cs_main);
+                    pindex = chainActive.Tip();
+                }
                 streamFull << std::setw(18) <<
                                mn.GetStatus() << " " <<
                                mn.nProtocolVersion << " " <<
@@ -537,6 +542,7 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                                mn.GetLastPaidBlock() << " " <<
                                mn.addr.ToString()<< " " <<
                                mn.startUpTime<< " " <<
+                               mn.getOnlineTime(pindex->nTime,pindex->nHeight)<< " " <<
                                mn.nClientVersion;
                 std::string strFull = streamFull.str();
                 if (strFilter !="" && strFull.find(strFilter) == std::string::npos &&
