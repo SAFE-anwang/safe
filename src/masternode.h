@@ -204,7 +204,7 @@ public:
         READWRITE(fAllowMixingTx);
         READWRITE(fUnitTest);
         READWRITE(mapGovernanceObjectsVotedOn);
-        if(nVersion>=SPOS_MIN_CLIENT_VERSION)
+        if(CLIENT_VERSION>=SPOS_MIN_CLIENT_VERSION)
         {
             READWRITE(nClientVersion);
             READWRITE(startUpTime);
@@ -355,7 +355,7 @@ public:
         READWRITE(nProtocolVersion);
         READWRITE(lastPing);
         int sz = s.size();
-        if(nVersion>=SPOS_MIN_CLIENT_VERSION&&sz>0)
+        if(CLIENT_VERSION>=SPOS_MIN_CLIENT_VERSION&&sz>0)
         {
             READWRITE(nClientVersion);
             READWRITE(startUpTime);
