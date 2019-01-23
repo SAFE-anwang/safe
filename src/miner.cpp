@@ -399,15 +399,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,cons
     txCoinbase.vout[0].vReserve.push_back(pVersion[0]);
     txCoinbase.vout[0].vReserve.push_back(pVersion[1]);
 
-    //3.add activeTime
-    uint32_t nActiveTime = mn.getActiveTime(pblock->nTime,nHeight);
-    const unsigned char* pActiveTime = (const unsigned char*)&nActiveTime;
-    txCoinbase.vout[0].vReserve.push_back(pActiveTime[0]);
-    txCoinbase.vout[0].vReserve.push_back(pActiveTime[1]);
-    txCoinbase.vout[0].vReserve.push_back(pActiveTime[2]);
-    txCoinbase.vout[0].vReserve.push_back(pActiveTime[3]);
-
-    //4.add serialize KeyID of public key
+    //3.add serialize KeyID of public key
     CDataStream ssKey(SER_DISK, CLIENT_VERSION);
     ssKey.reserve(1000);
     ssKey << mn.pubKeyMasternode.GetID();
@@ -416,7 +408,7 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,cons
     for(unsigned int i = 0; i < serialPubKeyId.size(); i++)
         txCoinbase.vout[0].vReserve.push_back(serialPubKeyId[i]);
 
-    //5.add the sign of safe+spos+version+pubkey
+    //4.add the sign of safe+spos+version+pubkey
     string strSignMessage= "";
     for(unsigned int i=0; i< txCoinbase.vout[0].vReserve.size();i++)
         strSignMessage.push_back(txCoinbase.vout[0].vReserve[i]);
@@ -708,6 +700,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         CMasternode& mn = g_vecResultMasternodes[index];
         string masterIP = mn.addr.ToStringIP();
         string localIP = activeMasternode.service.ToStringIP();
+        unsigned int nHeight = pindexPrev->nHeight+1;
+        pblock->nNonce = mn.getActiveTime(pblock->nTime,nHeight);
 
         if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
         {
@@ -737,6 +731,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
                   ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,g_nStartNewLoopTime,pblock->nTime,g_nSposGeneratedIndex);
 
         SetThreadPriority(THREAD_PRIORITY_NORMAL);
+
         //coin base add extra data
         if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
             return;
