@@ -5091,7 +5091,7 @@ static CBlockIndex* FindMostWorkChain() {
                 // Candidate chain is not usable (either invalid or missing data)
                 if (IsStartSPosHeight(pindexNew->nHeight))
                 {
-                    if (fFailedChain && (pindexBestInvalid == NULL || pindexNew->nHeight > pindexBestInvalid->nHeight))
+                    if (fFailedChain && (pindexBestInvalid == NULL || (pindexNew->nHeight > pindexBestInvalid->nHeight && pindexNew->nActiveTime > pindexBestInvalid->nActiveTime))
                         pindexBestInvalid = pindexNew;
                 }
                 else
@@ -5404,8 +5404,13 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
         pindexNew->BuildSkip();
     }
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
+    if (IsStartSPosHeight(pindexNew->nHeight))
+    {
+        pindexNew->nActiveTime = (pindexNew->pprev ? pindexNew->pprev->nActiveTime: 0) + block.nNonce;
+    }
+    
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
-    if(IsStartSPosHeight(pindexNew->nHeight))
+    if (IsStartSPosHeight(pindexNew->nHeight))
     {
         if (pindexBestHeader == NULL || pindexBestHeader->nHeight < pindexNew->nHeight)
             pindexBestHeader = pindexNew;
@@ -5574,9 +5579,9 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
 }
 
 
-bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vector<unsigned char> &vchKeyId, std::vector<unsigned char> &vchSig, std::vector<unsigned char> &vchConAlg, uint16_t &nSPOSVersion, uint32_t &nActiveTime, string &strSigMessage)
+bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vector<unsigned char> &vchKeyId, std::vector<unsigned char> &vchSig, std::vector<unsigned char> &vchConAlg, uint16_t &nSPOSVersion, string &strSigMessage)
 {
-    unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + nConsensusAlgorithmLen + sizeof(nSPOSVersion) + sizeof(nActiveTime) + nKeyIdSize;
+    unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + nConsensusAlgorithmLen + sizeof(nSPOSVersion) + nKeyIdSize;
 
     if (vReserve.size() <= nFixedLen)
         return false;
@@ -5591,15 +5596,11 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
     nSPOSVersion = *(uint16_t*)&vReserve[nOffset];
     nOffset += sizeof(nSPOSVersion);
 
-    // 3. ActiveTime (4 bytes)
-    nActiveTime = *(uint32_t*)&vReserve[nOffset];
-    nOffset += sizeof(nActiveTime);
-
-    // 4. keyid (20 bytes)
+    // 3. keyid (20 bytes)
     for(unsigned int i = 0; i < nKeyIdSize; i++)
         vchKeyId.push_back(vReserve[nOffset++]);
 
-    // 5. vchSig
+    // 4. vchSig
     unsigned int nvchSigLen = vReserve.size() - nFixedLen;
     for (unsigned int j = 0; j < nvchSigLen; j++)
         vchSig.push_back(vReserve[nOffset++]);
@@ -5612,8 +5613,8 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
 
 bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight,bool fCheckPOW)
 {
-    if (block.nBits != 0 || block.nNonce != 0)
-        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): block.nBits or block.nNonce not equal to 0,height:%d,",nHeight), REJECT_INVALID, "bad-nBits-nNonce", true);
+    if (block.nBits != 0)
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): block.nBits  not equal to 0,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
 
     int64_t nNowTime = GetTime();
     //Synchronization of old blocks will result in a large difference between block time and local time, and cannot be compared using absolute values.
@@ -5629,9 +5630,9 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     std::vector<unsigned char> vchConAlg;
     string strSigMessage = "";
     uint16_t nSPOSVersion = 1;
-    uint32_t nActiveTime = 0;
+    uint32_t nActiveTime = block.nNonce;
 
-    if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, vchConAlg, nSPOSVersion, nActiveTime, strSigMessage) || vchConAlg.size() != nConsensusAlgorithmLen || vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
+    if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, vchConAlg, nSPOSVersion, strSigMessage) || vchConAlg.size() != nConsensusAlgorithmLen || vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): analysis CTxOut vReserve fail, height:%d, vchConAlg size:%d",nHeight,vchConAlg.size()), REJECT_INVALID, "bad-vReserve", true);
 
     CKeyID keyID;
@@ -6343,6 +6344,10 @@ bool static LoadBlockIndexDB()
     {
         CBlockIndex* pindex = item.second;
         pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + GetBlockProof(*pindex);
+        if (IsStartSPosHeight(pindex->nHeight))
+        {
+            pindex->nActiveTime = (pindex->pprev ? pindex->pprev->nActiveTime : 0) + pindex->nNonce;
+        }
         // We can link the chain of blocks for which we've received transactions at some point.
         // Pruned nodes may have deleted the block.
         if (pindex->nTx > 0) {

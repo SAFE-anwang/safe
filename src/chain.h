@@ -124,6 +124,9 @@ public:
     //! (memory only) Total amount of work (expected number of hashes) in the chain up to and including this block
     arith_uint256 nChainWork;
 
+    //! (memory only) Total amount of activetime (expected number of uint32_t) in the chain up to and including this block
+    arith_uint256 nActiveTime;
+
     //! Number of transactions in this block.
     //! Note: in a potential headers-first mode, this number cannot be relied upon
     unsigned int nTx;
@@ -156,6 +159,7 @@ public:
         nDataPos = 0;
         nUndoPos = 0;
         nChainWork = arith_uint256();
+        nActiveTime = 0;
         nTx = 0;
         nChainTx = 0;
         nStatus = 0;
