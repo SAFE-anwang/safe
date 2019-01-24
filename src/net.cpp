@@ -814,14 +814,11 @@ size_t CConnman::SocketSendData(CNode *pnode)
     std::deque<CSerializeData>::iterator it = pnode->vSendMsg.begin();
     size_t nSentSize = 0;
 
-    LogPrintf("SPOS_DSEG:push b:%s----------------------\n",pnode->addr.ToStringIP());
     while (it != pnode->vSendMsg.end()) {
         const CSerializeData &data = *it;
         assert(data.size() > pnode->nSendOffset);
-        LogPrintf("SPOS_DSEG:push c:%s----------------------\n",pnode->addr.ToStringIP());
         int nBytes = send(pnode->hSocket, &data[pnode->nSendOffset], data.size() - pnode->nSendOffset, MSG_NOSIGNAL | MSG_DONTWAIT);
         if (nBytes > 0) {
-            LogPrintf("SPOS_DSEG:push d:%s----------------------\n",pnode->addr.ToStringIP());
             pnode->nLastSend = GetSystemTimeInSeconds();
             pnode->nSendBytes += nBytes;
             pnode->nSendOffset += nBytes;
@@ -2840,7 +2837,6 @@ void CConnman::PushMessage(CNode* pnode, CDataStream& strm, const std::string& s
 {
     if(strm.empty())
         return;
-    LogPrintf("SPOS_DSEG:push:%s----------------------%s\n",pnode->addr.ToStringIP(),sCommand);
 
     unsigned int nSize = strm.size() - CMessageHeader::HEADER_SIZE;
     LogPrint("net", "sending %s (%d bytes) peer=%d\n",  SanitizeString(sCommand.c_str()), nSize, pnode->id);
@@ -2862,7 +2858,6 @@ void CConnman::PushMessage(CNode* pnode, CDataStream& strm, const std::string& s
             pnode->fPauseSend = true;
 
         // If write queue empty, attempt "optimistic write"
-        LogPrintf("SPOS_DSEG:push a:%s----------------------%s\n",pnode->addr.ToStringIP(),sCommand);
         if (optimisticSend == true)
             nBytesSent = SocketSendData(pnode);
     }

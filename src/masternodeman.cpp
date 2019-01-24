@@ -858,8 +858,6 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         // Ignore such requests until we are fully synced.
         // We could start processing this after masternode list is synced
         // but this is a heavy one so it's better to finish sync first.
-        //XJTODO remove DSGE log
-        LogPrintf("SPOS_Message:DSGE start\n");
         if (!masternodeSync.IsSynced())
         {
             LogPrintf("SPOS_Message:DSGE is syncing\n");
@@ -876,7 +874,6 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         //request all masternode list
         if(vin == CTxIn()) { //only should ask for this once
             //local network
-            LogPrintf("SPOS_Message:DSGE req CTxIn() 0\n");
             bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
 
             if(!isLocal && Params().NetworkIDString() == CBaseChainParams::MAIN) {
@@ -887,7 +884,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                 string strNeedAskTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", needAskTime);
                 if (it != mAskedUsForMasternodeList.end() && it->second > GetTime()) {
                     Misbehaving(pfrom->GetId(), 34);
-                    LogPrintf("SPOS_Message:DSGE peer already asked me for the list,peer:%s,currTime:%lld(%s),needAskTime:%lld(%s)\n"
+                    LogPrintf("SPOS_Warning:DSGE peer already asked me for the list,peer:%s,currTime:%lld(%s),needAskTime:%lld(%s)\n"
                               ,pfrom->addr.ToString(),currTime,strCurrTime,needAskTime,strNeedAskTime);
                     return;
                 }
@@ -903,7 +900,6 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                 #endif
 
                 mAskedUsForMasternodeList[pfrom->addr] = askAgain;
-                LogPrintf("SPOS_Message:DSGE req CTxIn() c\n");
             }
         } //else, asking for a specific node which is ok
 
@@ -913,17 +909,17 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         for (auto& mnpair : mapMasternodes) {
             if (vin != CTxIn() && vin != mnpair.second.vin)
             {
-                LogPrintf("SPOS_Message:DSGE vin not exist\n");
+                LogPrintf("SPOS_Warning:DSGE vin not exist\n");
                 continue; // asked for specific vin but we are not there yet
             }
             if (mnpair.second.addr.IsRFC1918() || mnpair.second.addr.IsLocal())
             {
-                LogPrintf("SPOS_Message:DSGE ip is local:%s\n",mnpair.second.addr.ToStringIP());
+                LogPrintf("SPOS_Warning:DSGE ip is local:%s\n",mnpair.second.addr.ToStringIP());
                 continue; // do not send local network masternode
             }
             if (mnpair.second.IsUpdateRequired())
             {
-                LogPrintf("SPOS_Message:DSGE no need update:%d\n",mnpair.second.nActiveState);
+                LogPrintf("SPOS_Warning:DSGE no need update:%d\n",mnpair.second.nActiveState);
                 continue; // do not send outdated masternodes
             }
 

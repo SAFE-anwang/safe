@@ -1114,6 +1114,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
 
 bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t nTimeReceived, CConnman& connman, std::atomic<bool>& interruptMsgProc)
 {
+    //LogPrintf("SPOS_Test:recv:%s %s\n",pfrom->addr.ToStringIP(),strCommand);
     const CChainParams& chainparams = Params();
     RandAddSeedPerfmon();
 
@@ -1409,7 +1410,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         LOCK(cs_main);
 
         std::vector<CInv> vToFetch;
-
+        static bool fStartUpAskAnnounce = true;
+        bool fAlreadyAskedAnnounce = false;
 
         for (unsigned int nInv = 0; nInv < vInv.size(); nInv++)
         {
@@ -1426,6 +1428,11 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             pfrom->AddInventoryKnown(inv);
 
             bool fAlreadyHave = AlreadyHave(inv);
+            if(inv.type==MSG_MASTERNODE_ANNOUNCE&&fStartUpAskAnnounce)
+            {
+                fAlreadyAskedAnnounce = true;
+                fAlreadyHave = false;
+            }
             LogPrint("net", "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
 
             if (inv.type == MSG_BLOCK) {
@@ -1472,6 +1479,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
             // Track requests for our stuff
             GetMainSignals().Inventory(inv.hash);
+        }
+        if(fAlreadyAskedAnnounce){
+            fStartUpAskAnnounce = false;
         }
 
         if (!vToFetch.empty())
@@ -2802,10 +2812,18 @@ bool SendMessages(CNode* pto, CConnman& connman, std::atomic<bool>& interruptMsg
         //
         // Message: getdata (non-blocks)
         //
+        static bool fStartUpAskAnnounce = true;
+        bool fAlreadyAskedAnnounce = false;
         while (!pto->fDisconnect && !pto->mapAskFor.empty() && (*pto->mapAskFor.begin()).first <= nNow)
         {
             const CInv& inv = (*pto->mapAskFor.begin()).second;
-            if (!AlreadyHave(inv))
+            bool fAlreadyHave = AlreadyHave(inv);
+            if(inv.type == MSG_MASTERNODE_ANNOUNCE && fStartUpAskAnnounce)
+            {
+                fAlreadyAskedAnnounce = true;
+                fAlreadyHave = false;
+            }
+            if (!fAlreadyHave)
             {
                 LogPrint("net", "SendMessages -- GETDATA -- requesting inv = %s peer=%d\n", inv.ToString(), pto->id);
                 vGetData.push_back(inv);
@@ -2822,6 +2840,10 @@ bool SendMessages(CNode* pto, CConnman& connman, std::atomic<bool>& interruptMsg
             }
             pto->mapAskFor.erase(pto->mapAskFor.begin());
         }
+        if(fAlreadyAskedAnnounce){
+            fStartUpAskAnnounce = false;
+        }
+
         if (!vGetData.empty()) {
             connman.PushMessage(pto, NetMsgType::GETDATA, vGetData);
             LogPrint("net", "SendMessages -- GETDATA -- pushed size = %lu peer=%d\n", vGetData.size(), pto->id);
