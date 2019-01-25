@@ -130,7 +130,6 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *platformStyle, const NetworkStyle *n
     rpcConsole(0),
     helpMessageDialog(0),
     modalOverlay(0),
-    bUpdateAssetsDisplay(true),
     prevBlocks(0),
     spinnerFrame(0),
     platformStyle(platformStyle)
@@ -988,6 +987,14 @@ void BitcoinGUI::removeAllWallets()
     setWalletActionsEnabled(false);
     walletFrame->removeAllWallets();
 }
+
+void BitcoinGUI::ShowHistoryPage(const QString& name)
+{
+	if (!walletFrame)
+		return ;
+	return walletFrame->ShowHistoryPage(name);
+}
+
 #endif // ENABLE_WALLET
 
 void BitcoinGUI::setWalletActionsEnabled(bool enabled)
@@ -1428,12 +1435,6 @@ void BitcoinGUI::setAdditionalDataSyncProgress(double nSyncProgress)
         progressBar->setValue(nSyncProgress * 1000000000.0 + 0.5);
     }
 
-    if(bUpdateAssetsDisplay)
-    {
-        if(masternodeSync.IsSynced()||nSyncProgress>=0.5)
-            if(walletFrame->updateAssetsDisplay())
-                bUpdateAssetsDisplay = false;
-    }
     strSyncStatus = QString(masternodeSync.GetSyncStatus().c_str());
     progressBarLabel->setText(strSyncStatus);
     tooltip = strSyncStatus + QString("<br>") + tooltip;

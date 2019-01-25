@@ -63,12 +63,25 @@ void TransactionTablePriv::refreshWallet()
     qDebug() << "TransactionTablePriv::refreshWallet";
     cachedWallet.clear();
     {
+		QMap<QString, AssetsDisplayInfo> mapTempAssetList;
+
         LOCK2(cs_main, wallet->cs_wallet);
         for(std::map<uint256, CWalletTx>::iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
         {
             if(TransactionRecord::showTransaction(it->second))
-                cachedWallet.append(TransactionRecord::decomposeTransaction(wallet, it->second, showType,parent->getAssetsNamesUnits()));
+				cachedWallet.append(TransactionRecord::decomposeTransaction(wallet, it->second, showType, mapTempAssetList)); 
         }
+
+		QMap<QString, AssetsDisplayInfo>::iterator itAsset = mapTempAssetList.begin();
+		QMap<QString, AssetsDisplayInfo> &mapStoreAssetList = parent->getAssetsNamesUnits();
+		while (itAsset != mapTempAssetList.end())
+		{
+			if (mapStoreAssetList.find(itAsset.key()) == mapStoreAssetList.end())
+			{
+				mapStoreAssetList.insert(itAsset.key(), itAsset.value());
+			}
+			itAsset++;
+		}
     }
 }
 
@@ -108,6 +121,8 @@ void TransactionTablePriv::updateWallet(const uint256 &hash, int status, bool sh
         }
         if(showTransaction)
         {
+			QMap<QString, AssetsDisplayInfo> mapTempAssetList;
+
             LOCK2(cs_main, wallet->cs_wallet);
             // Find transaction in wallet
             std::map<uint256, CWalletTx>::iterator mi = wallet->mapWallet.find(hash);
@@ -117,7 +132,7 @@ void TransactionTablePriv::updateWallet(const uint256 &hash, int status, bool sh
                 break;
             }
             // Added -- insert at the right position
-            QList<TransactionRecord> toInsert = TransactionRecord::decomposeTransaction(wallet, mi->second, showType,parent->getAssetsNamesUnits());
+            QList<TransactionRecord> toInsert = TransactionRecord::decomposeTransaction(wallet, mi->second, showType, mapTempAssetList);
             if(!toInsert.isEmpty()) /* only if something to insert */
             {
                 parent->beginInsertRows(QModelIndex(), lowerIndex, lowerIndex+toInsert.size()-1);
@@ -134,6 +149,17 @@ void TransactionTablePriv::updateWallet(const uint256 &hash, int status, bool sh
                 }
                 parent->endInsertRows();
             }
+
+			QMap<QString, AssetsDisplayInfo>::iterator itAsset = mapTempAssetList.begin();
+			QMap<QString, AssetsDisplayInfo> &mapStoreAssetList = parent->getAssetsNamesUnits();
+			while (itAsset != mapTempAssetList.end())
+			{
+				if (mapStoreAssetList.find(itAsset.key()) == mapStoreAssetList.end())
+				{
+					mapStoreAssetList.insert(itAsset.key(), itAsset.value());
+				}
+				itAsset++;
+			}
         }
         break;
     case CT_DELETED:
@@ -256,7 +282,9 @@ TransactionTableModel::TransactionTableModel(const PlatformStyle *platformStyle,
     columnToAddress = TransactionTableModel::TransactionColumnToAddress;
     columnAmount = TransactionTableModel::TransactionColumnAmount;
 
-    priv->refreshWallet();
+	bIsRefreshWallet = false;
+
+ //   priv->refreshWallet();
 
     connect(walletModel->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
 
@@ -310,25 +338,10 @@ void TransactionTableModel::updateConfirmations()
     //  for all rows. Qt is smart enough to only actually request the data for the
     //  visible rows.
     int size = priv->size()-1;
- /*   int len = 1000;
-    int count = size/len;
-    if(size%len!=0)
-        count++;
-    int startRow = 0,endRow = len;
-    for(int i=1;i<=count;i++)
-    {
-        if(endRow>size)
-            endRow = size;
-        Q_EMIT dataChanged(index(startRow, columnStatus), index(endRow, columnStatus));
-        Q_EMIT dataChanged(index(startRow, columnToAddress), index(endRow, columnToAddress));
-        startRow = endRow+1;
-        endRow = endRow + len;
-        MilliSleep(10);
-    }*/
     if (size > 0)
     {
     	Q_EMIT dataChanged(index(0, columnStatus), index(size, columnStatus));
-	Q_EMIT dataChanged(index(0, columnToAddress), index(size, columnToAddress));
+		Q_EMIT dataChanged(index(0, columnToAddress), index(size, columnToAddress));
     }
 }
 
@@ -1094,4 +1107,20 @@ void TransactionTableModel::setUpdatingWallet(bool updatingWallet)
 bool TransactionTableModel::getUpdatingWallet()
 {
     return fUpdatingWallet;
+}
+
+bool TransactionTableModel::isRefreshWallet()
+{
+	return bIsRefreshWallet;
+}
+
+void TransactionTableModel::setRefreshWalletFlag(bool flag)
+{
+	bIsRefreshWallet = flag;
+}
+
+void TransactionTableModel::refreshPage()
+{
+	beginResetModel();
+	endResetModel();
 }

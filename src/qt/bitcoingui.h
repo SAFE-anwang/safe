@@ -71,6 +71,9 @@ public:
     bool setCurrentWallet(const QString& name);
     void removeAllWallets();
     void updateCentralTitle(const QString& title);
+
+	void ShowHistoryPage(const QString& name);
+
     //void handleResize();
 #endif // ENABLE_WALLET
     bool enableWallet;
@@ -145,7 +148,6 @@ private:
     RPCConsole *rpcConsole;
     HelpMessageDialog *helpMessageDialog;
     ModalOverlay *modalOverlay;
-    bool bUpdateAssetsDisplay;
 
     /** Keep track of previous number of blocks, to detect progress */
     int prevBlocks;

@@ -410,6 +410,10 @@ void CandyView::contextualMenu(const QPoint &point)
     if(!index.isValid())
         return;
     QModelIndexList selection = candyView->selectionModel()->selectedRows(0);
+	if (selection.isEmpty())
+	{
+		return;
+	}
 
     // check if transaction can be abandoned, disable context menu action in case it doesn't
     uint256 hash;

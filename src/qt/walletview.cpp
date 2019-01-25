@@ -26,6 +26,7 @@
 #include "assetsdistributerecordview.h"
 #include "applicationsregistrecordview.h"
 #include "applicationspage.h"
+#include "guiconstants.h"
 
 #include "ui_interface.h"
 
@@ -38,6 +39,11 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QVBoxLayout>
+
+#include <boost/thread.hpp>
+
+extern boost::thread_group *g_threadGroup;
+void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView);
 
 WalletView::WalletView(const PlatformStyle *platformStyle, QWidget *parent):
     QStackedWidget(parent),
@@ -272,6 +278,11 @@ WalletView::WalletView(const PlatformStyle *platformStyle, QWidget *parent):
     // Pass through messages from distributeRecordView
     connect(applicationsView,SIGNAL(message(QString,QString,uint)),this,SIGNAL(message(QString,QString,uint)));
 
+
+	qRegisterMetaType<TransactionTableModel * >("TransactionTableModel *");
+
+	connect(this, SIGNAL(refreshFinished(TransactionTableModel*)), this, SLOT(refreshFinished_slot(TransactionTableModel*)));
+
 }
 
 WalletView::~WalletView()
@@ -312,6 +323,8 @@ void WalletView::setClientModel(ClientModel *clientModel)
     if (settings.value("fShowMasternodesTab").toBool()) {
         masternodeListPage->setClientModel(clientModel);
     }
+    if(clientModel)
+        connect(clientModel,SIGNAL(updateForbitChanged(bool)),this,SLOT(updateAssetsDisplay(bool)));
 }
 
 void WalletView::setWalletModel(WalletModel *walletModel)
@@ -366,11 +379,12 @@ void WalletView::setWalletModel(WalletModel *walletModel)
         connect(walletModel->getCandyTableModel(),SIGNAL(updateAssets(int,bool,QString)),this,SLOT(updateAssetsInfo(int,bool,QString)));
 
         //update once
-        overviewPage->updateAssetsInfo();
+/*        overviewPage->updateAssetsInfo();
         receiveCoinsPage->updateAssetsInfo();
         sendCoinsPage->updateAssetsInfo();
         assetsPage->updateAssetsInfo();
         candyPage->updateAssetsInfo();
+*/
     }
 }
 
@@ -439,16 +453,31 @@ void WalletView::gotoOverviewPage()
 
 void WalletView::gotoHistoryPage()
 {
+	if (!walletModel->getTransactionTableModel()->isRefreshWallet() && g_threadGroup != NULL)
+	{
+		walletModel->getTransactionTableModel()->setRefreshWalletFlag(true);
+		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getTransactionTableModel(), this));
+	}
     setCurrentWidget(transactionsPage);
 }
 
 void WalletView::gotoLockedHistoryPage()
 {
+	if (!walletModel->getLockedTransactionTableModel()->isRefreshWallet() && g_threadGroup != NULL)
+	{
+		walletModel->getLockedTransactionTableModel()->setRefreshWalletFlag(true);
+		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getLockedTransactionTableModel(), this));
+	}
     setCurrentWidget(lockedTransactionsPage);
 }
 
 void WalletView::gotoAssetsPage()
 {
+	if (!walletModel->getAssetsDistributeTableModel()->isRefreshWallet() && g_threadGroup != NULL)
+	{
+		walletModel->getAssetsDistributeTableModel()->setRefreshWalletFlag(true);
+		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getAssetsDistributeTableModel(), this));
+	}
     setCurrentWidget(assetsPage);
 }
 
@@ -459,6 +488,12 @@ void WalletView::gotoApplicationPage()
 
 void WalletView::gotoCandyPage()
 {
+	if (!walletModel->getCandyTableModel()->isRefreshWallet() && g_threadGroup != NULL)
+	{
+		walletModel->getCandyTableModel()->setRefreshWalletFlag(true);
+		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getCandyTableModel(), this));
+	}
+
     setCurrentWidget(candyPage);
 }
 
@@ -680,4 +715,82 @@ int WalletView::getPageType()
 	}
 
 	return pageType;
+}
+
+void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView)
+{
+	if (NULL == txModel)
+	{
+		return ;
+	}
+
+	RenameThread("RefreshWalletData");
+	txModel->refreshWallet();
+	if (txModel == walletView->getWalletMode()->getTransactionTableModel())
+	{
+		MilliSleep(2000);
+	}
+
+	Q_EMIT walletView->refreshFinished(txModel);
+}
+
+void ThreadUpdateBalanceChanged(WalletModel *walletModel)
+{
+	static bool fOneThread = false;
+	if (fOneThread)
+	{
+		return;
+	}
+
+	fOneThread = true;
+	if (NULL == walletModel)
+	{
+		return;
+	}
+
+	RenameThread("updateBalanceChangedThread");
+	while (true)
+	{
+		boost::this_thread::interruption_point();
+		walletModel->pollBalanceChanged();
+		MilliSleep(MODEL_UPDATE_DELAY);
+	}
+}
+
+void WalletView::ShowHistoryPage()
+{
+	if (!walletModel->getTransactionTableModel()->isRefreshWallet() && g_threadGroup != NULL)
+	{
+		walletModel->getTransactionTableModel()->setRefreshWalletFlag(true);
+		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getTransactionTableModel(), this));
+	}
+}
+
+void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
+{
+	if (txModel != NULL)
+	{
+		txModel->refreshPage();
+	}
+
+	if (txModel == walletModel->getTransactionTableModel())
+	{
+		overviewPage->updateAssetsInfo();
+		receiveCoinsPage->updateAssetsInfo();
+		sendCoinsPage->updateAssetsInfo();
+		g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, walletModel));
+	}
+	else if (txModel == walletModel->getAssetsDistributeTableModel())
+	{
+		assetsPage->updateAssetsInfo();
+	}
+	else if (txModel == walletModel->getCandyTableModel())
+	{
+		candyPage->updateAssetsInfo();
+	}
+}
+
+WalletModel *WalletView::getWalletMode()
+{
+	return walletModel;
 }

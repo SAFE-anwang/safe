@@ -17,6 +17,7 @@
 #include "candytablemodel.h"
 #include "assetsdistributerecordmodel.h"
 #include "applicationsregistrecordmodel.h"
+#include "masternode-sync.h"
 
 #include "base58.h"
 #include "keystore.h"
@@ -171,27 +172,33 @@ void WalletModel::updateAllBalanceChanged(bool copyTmp)
         cachedPrivateSendRounds = privateSendClient.nPrivateSendRounds;
 
         checkBalanceChanged(copyTmp);
+		
+		if (!masternodeSync.IsSynced())
+		{
+			return ;
+		}
 
-	WalletModel::PageType pageType = WalletModel::NonePage;
-	if (pWalletView)
-	{
-		pageType = (WalletModel::PageType)pWalletView->getPageType();
-	}
+		WalletModel::PageType pageType = WalletModel::NonePage;
+		if (pWalletView)
+		{
+			pageType = (WalletModel::PageType)pWalletView->getPageType();
+		}
 
-    if(transactionTableModel && pageType == WalletModel::TransactionPage)
-        transactionTableModel->updateConfirmations();
 
-    if(lockedTransactionTableModel && pageType == WalletModel::LockPage)
-        lockedTransactionTableModel->updateConfirmations();
+        if(transactionTableModel && pageType == WalletModel::TransactionPage)
+            transactionTableModel->updateConfirmations();
 
-    if(candyTableModel && pageType == WalletModel::CandyPage)
-        candyTableModel->updateConfirmations();
-        
-	if(assetsDistributeTableModel && pageType == WalletModel::AssetPage)
-            assetsDistributeTableModel->updateConfirmations();
-        
-	if(applicationsRegistTableModel && pageType == WalletModel::AppPage)
-            applicationsRegistTableModel->updateConfirmations();
+		if (lockedTransactionTableModel && pageType == WalletModel::LockPage)
+			lockedTransactionTableModel->updateConfirmations();
+
+		if (candyTableModel && pageType == WalletModel::CandyPage)
+			candyTableModel->updateConfirmations();
+
+		if (assetsDistributeTableModel && pageType == WalletModel::AssetPage)
+			assetsDistributeTableModel->updateConfirmations();
+
+		if (applicationsRegistTableModel && pageType == WalletModel::AppPage)
+			applicationsRegistTableModel->updateConfirmations();
     }
 }
 
@@ -200,6 +207,7 @@ void WalletModel::pollBalanceChanged()
     // Get required locks upfront. This avoids the GUI from getting stuck on
     // periodical polls if the core is holding the locks for a longer time -
     // for example, during a wallet rescan.
+
     TRY_LOCK(cs_main, lockMain);
     if(!lockMain)
         return;

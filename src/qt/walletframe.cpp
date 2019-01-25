@@ -112,17 +112,6 @@ void WalletFrame::showOutOfSyncWarning(bool fShow)
         i.value()->showOutOfSyncWarning(fShow);
 }
 
-bool WalletFrame::updateAssetsDisplay()
-{
-    WalletView* walletView = currentWalletView();
-    if(walletView)
-    {
-        walletView->updateAssetsDisplay();
-        return true;
-    }
-    return false;
-}
-
 void WalletFrame::gotoOverviewPage()
 {
     QMap<QString, WalletView*>::const_iterator i;
@@ -284,4 +273,13 @@ WalletView *WalletFrame::currentWalletView()
 void WalletFrame::outOfSyncWarningClicked()
 {
     Q_EMIT requestedSyncWarningInfo();
+}
+
+void WalletFrame::ShowHistoryPage(const QString& name)
+{
+	WalletView *walletView = mapWalletViews.value(name);
+	if (walletView != NULL)
+	{
+		walletView->ShowHistoryPage();
+	}
 }

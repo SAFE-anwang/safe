@@ -124,6 +124,7 @@ Q_SIGNALS:
 
     void candyPut(const QString& strAssetId, const QString& strAssetName, const quint8& nAssetDecimals, const qint64& nCandyAmount, const quint16& nCandyExpired, const QString& strTime, const QString& strTxId, const quint32& nIndex);
     void candyPutVec();
+    void updateForbitChanged(bool updateAsset);
 
 public Q_SLOTS:
     void updateTimer();
@@ -133,6 +134,7 @@ public Q_SLOTS:
     void updateAlert(const QString &hash, int status);
     void updateBanlist();
     void updateAsset(const QString& strAssetName);
+    void updateForbit();
     void updateCandyPutVec();
 };
 

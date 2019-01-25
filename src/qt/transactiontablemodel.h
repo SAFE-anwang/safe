@@ -150,6 +150,9 @@ public:
     void emitUpdateAsset(bool updateAll,bool bConfirmedNewAssets,const QString& strAssetName);
     void setUpdatingWallet(bool updatingWallet);
     bool getUpdatingWallet();
+	bool isRefreshWallet();
+	void setRefreshWalletFlag(bool flag);
+	void refreshPage();
 
 private:
     CWallet* wallet;
@@ -163,6 +166,8 @@ private:
     int columnToAddress;
     int columnAmount;
     bool fUpdatingWallet;
+
+	bool bIsRefreshWallet;
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();

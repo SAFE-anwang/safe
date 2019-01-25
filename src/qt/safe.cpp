@@ -87,6 +87,8 @@ Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin);
 Q_DECLARE_METATYPE(bool*)
 Q_DECLARE_METATYPE(CAmount)
 
+boost::thread_group *g_threadGroup = NULL;
+
 static void InitMessage(const std::string &message)
 {
     LogPrintf("init message: %s\n", message);
@@ -182,7 +184,6 @@ public Q_SLOTS:
     void initialize();
     void shutdown();
     void restart(QStringList args);
-    void updateBalanceChanged();
 
 Q_SIGNALS:
     void initializeResult(int retval);
@@ -246,7 +247,6 @@ Q_SIGNALS:
     void requestedShutdown();
     void stopThread();
     void splashFinished(QWidget *window);
-    void updateBalanceChanged();
 
 private:
     QThread *coreThread;
@@ -284,6 +284,7 @@ void BitcoinCore::initialize()
 
     try
     {
+		g_threadGroup = &threadGroup;
         qDebug() << __func__ << ": Running AppInit2 in thread";
         int rv = AppInit2(threadGroup, scheduler,true);
         Q_EMIT initializeResult(rv);
@@ -316,34 +317,6 @@ void BitcoinCore::restart(QStringList args)
             handleRunawayException(NULL);
         }
     }
-}
-
-void ThreadUpdateBalanceChanged(BitcoinApplication* app)
-{
-    static bool fOneThread = false;
-    if(fOneThread) return;
-    fOneThread = true;
-
-    WalletModel* wm = app->getWalletModel();
-    if (NULL == wm)
-    {
-	return ;
-    }
-
-    RenameThread("updateBalanceChangedThread");
-    while(true)
-    {
-        boost::this_thread::interruption_point();
-//            wm->updateAllBalanceChanged(true);
-        wm->pollBalanceChanged();
-        MilliSleep(MODEL_UPDATE_DELAY);
-    }
-}
-
-void BitcoinCore::updateBalanceChanged()
-{
-    BitcoinApplication* app = (BitcoinApplication*)sender();
-    threadGroup.create_thread(boost::bind(&ThreadUpdateBalanceChanged, app));
 }
 
 void BitcoinCore::shutdown()
@@ -463,7 +436,6 @@ void BitcoinApplication::startThread()
     connect(this, SIGNAL(requestedInitialize()), executor, SLOT(initialize()));
     connect(this, SIGNAL(requestedShutdown()), executor, SLOT(shutdown()));
     connect(window, SIGNAL(requestedRestart(QStringList)), executor, SLOT(restart(QStringList)));
-    connect(this,SIGNAL(updateBalanceChanged()),executor,SLOT(updateBalanceChanged()));
     /*  make sure executor object is deleted in its own thread */
     connect(this, SIGNAL(stopThread()), executor, SLOT(deleteLater()));
     connect(this, SIGNAL(stopThread()), coreThread, SLOT(quit()));
@@ -561,7 +533,7 @@ void BitcoinApplication::initializeResult(int retval)
                          window, SLOT(message(QString,QString,unsigned int)));
         QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
 
-        Q_EMIT updateBalanceChanged();
+		window->ShowHistoryPage(BitcoinGUI::DEFAULT_WALLET);
 #endif
     } else {
         quit(); // Exit main loop

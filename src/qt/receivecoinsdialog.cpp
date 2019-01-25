@@ -152,7 +152,7 @@ void ReceiveCoinsDialog::updateAssetsFound(const QString &assetName)
 
 void ReceiveCoinsDialog::updateAssetsInfo(const QString &assetName)
 {
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+//    LOCK2(cs_main, pwalletMain->cs_wallet);
     bool addOneAsset = !assetName.isEmpty();
     std::vector<uint256>  assetIdVec;
     if(addOneAsset)
