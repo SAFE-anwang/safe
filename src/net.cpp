@@ -1872,7 +1872,6 @@ void CConnman::ThreadMnbRequestConnections()
         std::set<uint256>::iterator it = p.second.begin();
         while(it != p.second.end()) {
             if(*it != uint256()) {
-                LogPrintf("SPOS_Test_TODO:ThreadMnbRequestConnections,%s\n",p.first.ToString());
                 vToFetch.push_back(CInv(MSG_MASTERNODE_ANNOUNCE, *it));
                 LogPrint("masternode", "ThreadMnbRequestConnections -- asking for mnb %s from addr=%s\n", it->ToString(), p.first.ToString());
             }

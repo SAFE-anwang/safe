@@ -1410,6 +1410,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         LOCK(cs_main);
 
         std::vector<CInv> vToFetch;
+        //startup ask announce once
         static bool fStartUpAskAnnounce = true;
         bool fAlreadyAskedAnnounce = false;
 
