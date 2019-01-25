@@ -227,6 +227,9 @@ QVariant LockedTransactionTableModel::data(const QModelIndex &index, int role) c
 
 QVariant LockedTransactionTableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
+    if(section<=0)
+        return QVariant();
+
     if(orientation == Qt::Horizontal)
     {
         if(role == Qt::DisplayRole)
