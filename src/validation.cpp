@@ -7404,8 +7404,18 @@ bool GetAddressAmountByHeight(const int& nHeight, const std::string& strAddress,
     }
     else
     {
-        if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * BLOCKS_PER_MONTH)
-            return error("%s: cannot get address amount out of 3 months", __func__);
+        if (nHeight + 3 * BLOCKS_PER_MONTH >= g_nStartSPOSHeight)
+        {
+            int nSPOSLaveHeight = (nHeight + 3 * BLOCKS_PER_MONTH - g_nStartSPOSHeight) * ConvertBlockHeight(Params().GetConsensus());
+            int nTrueThreeMonthBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+            if (nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > nTrueThreeMonthBlockHeight)
+                return error("%s: cannot get address amount out of 3 months", __func__);
+        }
+        else
+        {
+            if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * BLOCKS_PER_MONTH)
+                return error("%s: cannot get address amount out of 3 months", __func__);
+        }
     }
 
     vector<int> vChangeHeight;
@@ -8760,7 +8770,16 @@ static bool WriteChangeInfo(const CChangeInfo& changeInfo)
         if (changeInfo.nHeight >= g_nStartSPOSHeight)
             nEndHeight = changeInfo.nHeight - 3 * SPOS_BLOCKS_PER_MONTH;
         else
-            nEndHeight = changeInfo.nHeight - 3 * BLOCKS_PER_MONTH;
+        {
+            if (changeInfo.nHeight + 3 * BLOCKS_PER_MONTH >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (changeInfo.nHeight + 3 * BLOCKS_PER_MONTH - g_nStartSPOSHeight) * ConvertBlockHeight(Params().GetConsensus());
+                int nTrueThreeMonthBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                nEndHeight = changeInfo.nHeight - nTrueThreeMonthBlockHeight;
+            }
+            else
+                nEndHeight = changeInfo.nHeight - 3 * BLOCKS_PER_MONTH;
+        }
         if(nEndHeight >= changeInfo.nLastCandyHeight)
             nEndHeight = changeInfo.nLastCandyHeight;
         DeleteFilesToHeight(nEndHeight);
