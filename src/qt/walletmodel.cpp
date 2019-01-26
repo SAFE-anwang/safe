@@ -165,6 +165,13 @@ void WalletModel::updateAllBalanceChanged(bool copyTmp)
 {
     if(fForceCheckBalanceChanged || chainActive.Height() != cachedNumBlocks || privateSendClient.nPrivateSendRounds != cachedPrivateSendRounds || cachedTxLocks != nCompleteTXLocks)
     {
+		bool bUpdateConfirmations = false;
+
+		if (chainActive.Height() != cachedNumBlocks)
+		{
+			bUpdateConfirmations = true;
+		}
+		
         fForceCheckBalanceChanged = false;
 
         // Balance and number of transactions might have changed
@@ -173,7 +180,7 @@ void WalletModel::updateAllBalanceChanged(bool copyTmp)
 
         checkBalanceChanged(copyTmp);
 		
-		if (!masternodeSync.IsSynced())
+		if (!masternodeSync.IsSynced() || !bUpdateConfirmations)
 		{
 			return ;
 		}
@@ -183,8 +190,7 @@ void WalletModel::updateAllBalanceChanged(bool copyTmp)
 		{
 			pageType = (WalletModel::PageType)pWalletView->getPageType();
 		}
-
-
+		
         if(transactionTableModel && pageType == WalletModel::TransactionPage)
             transactionTableModel->updateConfirmations();
 
