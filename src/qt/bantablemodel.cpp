@@ -138,7 +138,7 @@ QVariant BanTableModel::headerData(int section, Qt::Orientation orientation, int
 {
     if(orientation == Qt::Horizontal)
     {
-        if(role == Qt::DisplayRole && section < columns.size())
+        if(role == Qt::DisplayRole && section>=0 && section<columns.size())
         {
             return columns[section];
         }

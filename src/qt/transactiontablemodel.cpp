@@ -953,11 +953,13 @@ QVariant TransactionTableModel::headerData(int section, Qt::Orientation orientat
     {
         if(role == Qt::DisplayRole)
         {
-            return columns[section];
+            if(section>=0 && section<columns.size())
+                return columns[section];
         }
         else if (role == Qt::TextAlignmentRole)
         {
-            return column_alignments[section];
+            if(section>=0 && section<columns.size())
+                return column_alignments[section];
         }
         else if (role == Qt::ToolTipRole)
         {
