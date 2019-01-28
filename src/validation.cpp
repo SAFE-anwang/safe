@@ -9164,6 +9164,7 @@ void SelectMasterNodeByPayment(unsigned int nCurrBlockHeight, uint32_t nTime, co
     bool fFilterSpent = true;
     if (bSpork)
     {
+        LogPrintf("SPOS_Message:Spork message select official master node\n");
         std::map<COutPoint, CMasternode> fullmapMasternodes;
         mnodeman.GetFullMasternodeData(fullmapMasternodes,fFilterSpent);
 
@@ -9234,6 +9235,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
     std::map<COutPoint, CMasternode> mapMasternodes;
     if (bSpork)
     {
+        LogPrintf("SPOS_Message:Spork message select official master node\n");
         std::map<COutPoint, CMasternode> fullmapMasternodes;
         mnodeman.GetFullMasternodeData(fullmapMasternodes);
 
