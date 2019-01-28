@@ -224,32 +224,6 @@ public:
         return (nValue == -1);
     }
 
-    bool IsAsset(uint32_t* pAppCmd = NULL) const
-    {
-        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
-        if(vReserve.size() < nOffset + sizeof(uint32_t))
-            return false;
-
-        uint32_t nAppCmd = *(uint32_t*)&vReserve[nOffset];
-        if(pAppCmd)
-            *pAppCmd = nAppCmd;
-
-        return (nAppCmd == ISSUE_ASSET_CMD || nAppCmd == ADD_ASSET_CMD || nAppCmd == TRANSFER_ASSET_CMD || nAppCmd == DESTORY_ASSET_CMD || nAppCmd == CHANGE_ASSET_CMD || nAppCmd == PUT_CANDY_CMD || nAppCmd == GET_CANDY_CMD);
-    }
-
-    bool IsApp(uint32_t* pAppCmd = NULL) const
-    {
-        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
-        if(vReserve.size() < nOffset + sizeof(uint32_t))
-            return false;
-
-        uint32_t nAppCmd = *(uint32_t*)&vReserve[nOffset];
-        if(pAppCmd)
-            *pAppCmd = nAppCmd;
-
-        return (nAppCmd == REGISTER_APP_CMD || nAppCmd == ADD_AUTH_CMD || nAppCmd == DELETE_AUTH_CMD || nAppCmd == CREATE_EXTEND_TX_CMD);
-    }
-
     bool IsSPOSSafeOnly() const
     {
         unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t) + 20;
@@ -266,6 +240,38 @@ public:
             return false;
     
         return true;
+    }
+
+    bool IsAsset(uint32_t* pAppCmd = NULL) const
+    {
+        if (IsSPOSSafeOnly())
+            return false;
+
+        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
+        if(vReserve.size() < nOffset + sizeof(uint32_t))
+            return false;
+
+        uint32_t nAppCmd = *(uint32_t*)&vReserve[nOffset];
+        if(pAppCmd)
+            *pAppCmd = nAppCmd;
+
+        return (nAppCmd == ISSUE_ASSET_CMD || nAppCmd == ADD_ASSET_CMD || nAppCmd == TRANSFER_ASSET_CMD || nAppCmd == DESTORY_ASSET_CMD || nAppCmd == CHANGE_ASSET_CMD || nAppCmd == PUT_CANDY_CMD || nAppCmd == GET_CANDY_CMD);
+    }
+
+    bool IsApp(uint32_t* pAppCmd = NULL) const
+    {
+        if (IsSPOSSafeOnly())
+            return false;
+
+        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
+        if(vReserve.size() < nOffset + sizeof(uint32_t))
+            return false;
+
+        uint32_t nAppCmd = *(uint32_t*)&vReserve[nOffset];
+        if(pAppCmd)
+            *pAppCmd = nAppCmd;
+
+        return (nAppCmd == REGISTER_APP_CMD || nAppCmd == ADD_AUTH_CMD || nAppCmd == DELETE_AUTH_CMD || nAppCmd == CREATE_EXTEND_TX_CMD);
     }
 
     bool IsSafeOnly(uint32_t* pAppCmd = NULL) const
