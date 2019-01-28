@@ -9137,6 +9137,77 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
     return true;
 }
 
+void SelectMasterNodeByPayment(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork)
+{
+    if(!masternodeSync.IsSynced())
+        return;
+
+    if(!isOnline(nTime,nCurrBlockHeight))
+        return;
+
+    if (!bProcessSpork)
+    {
+        if(g_nLastSelectMasterNodeHeight == nCurrBlockHeight)
+        {
+            LogPrintf("SPOS_Message:g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d,not SelectMasterNode\n",nCurrBlockHeight);
+            return;
+        }
+
+        unsigned int ret = nCurrBlockHeight % g_nMasternodeSPosCount;
+        if(ret != 0 )
+            return;
+    }
+
+    LogPrintf("SPOS_Info:--------------------------------------------------------\n");
+    LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d.\n",nCurrBlockHeight);
+    std::map<COutPoint, CMasternode> mapMasternodes;
+    bool fFilterSpent = true;
+    if (bSpork)
+    {
+        std::map<COutPoint, CMasternode> fullmapMasternodes;
+        mnodeman.GetFullMasternodeData(fullmapMasternodes,fFilterSpent);
+
+        const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
+        std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
+        for (;it != vtempOutPointData.end(); it++)
+        {
+            COutPointData tempcoutpointdata = *it;
+            COutPoint tempcoutpoint;
+            tempcoutpoint.hash = SerializeHash(tempcoutpointdata.strtx);
+            tempcoutpoint.n = tempcoutpointdata.n;
+             std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
+            if (tempit != fullmapMasternodes.end())
+                mapMasternodes[tempcoutpoint] = tempit->second;
+        }
+    }
+    else
+        mnodeman.GetFullMasternodeData(mapMasternodes,fFilterSpent);
+
+    g_vecResultMasternodes.clear();
+    std::vector<CMasternode>().swap(g_vecResultMasternodes);
+
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
+    if (!bProcessSpork)
+    {
+        //1.3.3
+        g_nStartNewLoopTime = (int64_t)nTime*1000;
+        g_nSposGeneratedIndex = -2;
+        g_nSelectMasterNodeRet = 1;
+
+        if(g_nStartNewLoopTime < nTime*1000)
+        {
+            LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",g_nStartNewLoopTime/1000,strStartNewLoopTime
+                      ,nTime,strBlockTime);
+            g_nSelectMasterNodeRet = -1;
+            return;
+        }
+    }
+
+    int logMaxCnt = 20,logCnt = 0;
+    std::map<uint256,CMasternode> scoreMasternodes;
+}
+
 void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork)
 {
     if(!masternodeSync.IsSynced())

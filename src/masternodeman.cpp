@@ -14,6 +14,7 @@
 #include "privatesend-client.h"
 #include "util.h"
 #include "config/safe-chain.h"
+#include "main.h"
 
 /** Masternode manager */
 CMasternodeMan mnodeman;
@@ -1655,12 +1656,22 @@ void CMasternodeMan::NotifyMasternodeUpdates(CConnman& connman)
     fMasternodesRemoved = false;
 }
 
-void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &mapOutMasternodes)
+void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &mapOutMasternodes, bool fFilterSpent, int nHeight)
 {
     LOCK2(cs_main, cs);
 
     for (auto& mnpair : mapMasternodes)
     {
-        mapOutMasternodes[mnpair.first] = mnpair.second;
+        if(!fFilterSpent)
+        {
+            mapOutMasternodes[mnpair.first] = mnpair.second;
+            continue;
+        }
+        int nHeightRet;
+        CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,nHeightRet);
+        int depth = nHeight - nHeightRet;
+        if (err != CMasternode::COLLATERAL_UTXO_NOT_FOUND && depth>SPOS_BLOCKS_PER_DAY*3) {
+            mapOutMasternodes[mnpair.first] = mnpair.second;
+        }
     }
 }
