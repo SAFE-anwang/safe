@@ -9291,6 +9291,7 @@ void SelectMasterNodeByPayment(unsigned int nCurrBlockHeight, uint32_t nTime, co
 
 void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork)
 {
+    /*only for test
     if (bSpork)
         LogPrintf("SPOS_Info:SPORK_6_SPOS_ENABLED is valid\n");
 
@@ -9320,7 +9321,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
             LogPrintf("SPOS_Message:ret:%d\n", ret);
             return;
         }
-    }
+    }*/
 
     LogPrintf("SPOS_Info:--------------------------------------------------------\n");
     LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d.\n",nCurrBlockHeight);
