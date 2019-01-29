@@ -37,13 +37,20 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
             strLogMsg = strprintf("SPORK -- hash: %s id: %d value: %10d bestHeight: %d peer=%d", hash.ToString(), spork.nSporkID, spork.nValue, chainActive.Height(), pfrom->id);
         }
 
-        LogPrintf("SPOS_SPORK CSporkManager::ProcessSpork -- nSporkID:%d--- nValue:%lld\n", spork.nSporkID, spork.nValue);
-        if (spork.nSporkID == SPORK_6_SPOS_ENABLED && spork.nValue != 4070908800ULL && chainActive.Height() == spork.nValue)
-        {
-            SelectMasterNode(chainActive.Height(), chainActive.Tip()->nTime, true, true);
-        }
-
         if(mapSporksActive.count(spork.nSporkID)) {
+            if (spork.nSporkID == SPORK_6_SPOS_ENABLED)
+            {
+                if (!spork.CheckSignature()) {
+                    LogPrintf("CSporkManager::ProcessSpork -- invalid signature\n");
+                    Misbehaving(pfrom->GetId(), 100);
+                    return;
+                }
+                else
+                {
+                    SelectMasterNodeForSpork(spork.nSporkID, spork.nValue);
+                }
+            }
+        
             if (mapSporksActive[spork.nSporkID].nTimeSigned >= spork.nTimeSigned) {
                 LogPrint("spork", "%s seen\n", strLogMsg);
                 return;
@@ -63,6 +70,8 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
         mapSporks[hash] = spork;
         mapSporksActive[spork.nSporkID] = spork;
         spork.Relay(connman);
+
+        SelectMasterNodeForSpork(spork.nSporkID, spork.nValue);
 
         //does a task if needed
         ExecuteSpork(spork.nSporkID, spork.nValue);
@@ -245,6 +254,15 @@ bool CSporkManager::SetPrivKey(std::string strPrivKey)
         return false;
     }
 }
+
+void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
+{
+    if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED) && chainActive.Height() == nValue)
+    {
+        SelectMasterNode(chainActive.Height(), chainActive.Tip()->nTime, true, true);
+    }
+}
+
 
 bool CSporkMessage::Sign(std::string strSignKey)
 {

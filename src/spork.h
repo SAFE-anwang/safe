@@ -129,6 +129,8 @@ public:
     std::string GetSporkNameByID(int nSporkID);
 
     bool SetPrivKey(std::string strPrivKey);
+
+    void SelectMasterNodeForSpork(int nSporkID, int nValue);
 };
 
 #endif
