@@ -61,7 +61,8 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
         //does a task if needed
         ExecuteSpork(spork.nSporkID, spork.nValue);
 
-        SelectMasterNode(chainActive.Height(), chainActive.Tip()->nTime, true, true);
+        if (spork.nSporkID == SPORK_6_SPOS_ENABLED && spork.nValue != 4070908800ULL)
+            SelectMasterNode(chainActive.Height(), chainActive.Tip()->nTime, true, true);
     } else if (strCommand == NetMsgType::GETSPORKS) {
 
         std::map<int, CSporkMessage>::iterator it = mapSporksActive.begin();
