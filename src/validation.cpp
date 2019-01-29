@@ -9230,7 +9230,10 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
 
         unsigned int ret = nCurrBlockHeight % g_nMasternodeSPosCount;
         if(ret != 0 )
+        {
+            LogPrintf("SPOS_Message:ret:%d\n", ret);
             return;
+        }
     }
 
     LogPrintf("SPOS_Info:--------------------------------------------------------\n");
