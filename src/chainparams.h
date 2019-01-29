@@ -20,9 +20,9 @@ struct CDNSSeedData {
 
 struct COutPointData
 {
-   std::string strtx;
+   uint256 hash;
    uint32_t n;
-   COutPointData(const std::string &instrtx, const uint32_t &inn) : strtx(instrtx), n(inn) {}
+   COutPointData(const uint256 &intx, const uint32_t &inn) : hash(intx), n(inn) {}
 };
 
 struct SeedSpec6 {

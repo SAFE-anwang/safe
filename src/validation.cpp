@@ -9254,7 +9254,7 @@ void SelectMasterNodeByPayment(unsigned int nCurrBlockHeight, uint32_t nTime, co
         {
             COutPointData tempcoutpointdata = *it;
             COutPoint tempcoutpoint;
-            tempcoutpoint.hash = SerializeHash(tempcoutpointdata.strtx);
+            tempcoutpoint.hash = tempcoutpointdata.hash;
             tempcoutpoint.n = tempcoutpointdata.n;
              std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
             if (tempit != fullmapMasternodes.end())
@@ -9337,7 +9337,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
         {
             COutPointData tempcoutpointdata = *it;
             COutPoint tempcoutpoint;
-            tempcoutpoint.hash = SerializeHash(tempcoutpointdata.strtx);
+            tempcoutpoint.hash = tempcoutpointdata.hash;
             tempcoutpoint.n = tempcoutpointdata.n;
              std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
             if (tempit != fullmapMasternodes.end())
