@@ -37,9 +37,8 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
             strLogMsg = strprintf("SPORK -- hash: %s id: %d value: %10d bestHeight: %d peer=%d", hash.ToString(), spork.nSporkID, spork.nValue, chainActive.Height(), pfrom->id);
         }
 
-        //only for test
         LogPrintf("SPOS_SPORK CSporkManager::ProcessSpork -- nSporkID:%d--- nValue:%lld\n", spork.nSporkID, spork.nValue);
-        if (spork.nSporkID == SPORK_6_SPOS_ENABLED && spork.nValue != 4070908800ULL)
+        if (spork.nSporkID == SPORK_6_SPOS_ENABLED && spork.nValue != 4070908800ULL && chainActive.Height() == spork.nValue)
         {
             SelectMasterNode(chainActive.Height(), chainActive.Tip()->nTime, true, true);
         }
@@ -67,12 +66,6 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
 
         //does a task if needed
         ExecuteSpork(spork.nSporkID, spork.nValue);
-
-        /*LogPrintf("SPOS_SPORK CSporkManager::ProcessSpork -- nSporkID:%d--- nValue:%lld\n", spork.nSporkID, spork.nValue);
-        if (spork.nSporkID == SPORK_6_SPOS_ENABLED && spork.nValue != 4070908800ULL)
-        {
-            SelectMasterNode(chainActive.Height(), chainActive.Tip()->nTime, true, true);
-        }*/
     } else if (strCommand == NetMsgType::GETSPORKS) {
 
         std::map<int, CSporkMessage>::iterator it = mapSporksActive.begin();
