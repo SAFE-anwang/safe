@@ -9291,6 +9291,12 @@ void SelectMasterNodeByPayment(unsigned int nCurrBlockHeight, uint32_t nTime, co
 
 void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork)
 {
+    if (bSpork)
+        LogPrintf("SPOS_Info:SPORK_6_SPOS_ENABLED is valid\n");
+
+    if (bProcessSpork)
+        LogPrintf("SPOS_Info:spork message trigger\n");
+
     if(!masternodeSync.IsSynced())
         return;
 
