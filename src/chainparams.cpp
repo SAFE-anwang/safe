@@ -520,16 +520,16 @@ public:
         vSeeds.push_back(CDNSSeedData("47.254.74.169", "47.254.74.169"));
         vSeeds.push_back(CDNSSeedData("47.254.29.224", "47.254.29.224"));
 
-        vcoutpointdata.push_back(COutPointData("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb", 0));
-        vcoutpointdata.push_back(COutPointData("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb", 1));
-        vcoutpointdata.push_back(COutPointData("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb", 2));
-        vcoutpointdata.push_back(COutPointData("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb", 3));
-        vcoutpointdata.push_back(COutPointData("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb", 4));
-        vcoutpointdata.push_back(COutPointData("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb", 5));
-        vcoutpointdata.push_back(COutPointData("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb", 6));
-        vcoutpointdata.push_back(COutPointData("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb", 7));
-        vcoutpointdata.push_back(COutPointData("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb", 8));
-        vcoutpointdata.push_back(COutPointData("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb", 9));
+        vcoutpointdata.push_back(COutPointData(uint256S("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb"), 0));
+        vcoutpointdata.push_back(COutPointData(uint256S("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb"), 1));
+        vcoutpointdata.push_back(COutPointData(uint256S("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb"), 2));
+        vcoutpointdata.push_back(COutPointData(uint256S("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb"), 3));
+        vcoutpointdata.push_back(COutPointData(uint256S("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb"), 4));
+        vcoutpointdata.push_back(COutPointData(uint256S("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb"), 5));
+        vcoutpointdata.push_back(COutPointData(uint256S("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb"), 6));
+        vcoutpointdata.push_back(COutPointData(uint256S("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb"), 7));
+        vcoutpointdata.push_back(COutPointData(uint256S("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb"), 8));
+        vcoutpointdata.push_back(COutPointData(uint256S("36e3af40931c4b80952bf5ef0843f89b04d3f84262e4b9f3ed7db6affe522afb"), 9));
 
         // Safe addresses start with 'X'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,76);
@@ -870,14 +870,14 @@ public:
         vSeeds.push_back(CDNSSeedData("47.74.249.237", "47.74.249.237"));
         vSeeds.push_back(CDNSSeedData("47.74.249.6", "47.74.249.6"));
 
-        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 0));
-        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 1));
-        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 2));
-        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 3));
-        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 4));
-        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 5));
-        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 6));
-        vcoutpointdata.push_back(COutPointData("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07", 7));
+        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 0));
+        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 1));
+        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 2));
+        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 3));
+        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 4));
+        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 5));
+        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 6));
+        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 7));
 
         // Safe addresses start with 'X'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,76);
