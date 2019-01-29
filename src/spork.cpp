@@ -257,6 +257,7 @@ bool CSporkManager::SetPrivKey(std::string strPrivKey)
 
 void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
 {
+    LogPrintf("CSporkManager::SelectMasterNodeForSpork -- nSporkID:%d---chainActive height:%d----nValue:%d\n", nSporkID, chainActive.Height(), nValue);
     if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED) && chainActive.Height() == nValue)
     {
         SelectMasterNode(chainActive.Height(), chainActive.Tip()->nTime, true, true);
