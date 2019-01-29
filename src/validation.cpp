@@ -9215,7 +9215,10 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
         return;
 
     if(!isOnline(nTime,nCurrBlockHeight))
+    {
+        LogPrintf("SPOS_Message:online time is less than g_nMasternodeMinOnlineTime, nTime:%d, g_nStartUpTime:%d , g_nMasternodeMinOnlineTime:%d\n", nTime, g_nStartUpTime, g_nMasternodeMinOnlineTime);
         return;
+    }
 
     if (!bProcessSpork)
     {
