@@ -26,7 +26,10 @@ std::string g_strCancelledSafeAddress = "XagqqFetxiDb9wbartKDrXgnqLah9fKoTx"; //
 std::string g_strCancelledAssetAddress = "XagqqFetxiDb9wbartKDrXgnqLahHSe2VE"; // asset's black hold address (hash160: 0x0000...02)
 std::string g_strPutCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLahUovwfs"; // candy's black hold address (hash160: 0x0000...03)
 
-int g_nStartSPOSHeight = 32205;//XJTODO
+//XJTODO
+int g_nStartSPOSHeight = 32205;
+int g_nSaveMasternodePayeeHeight = 30000;
+
 unsigned int g_nMasternodeSPosCount = 9;
 unsigned int g_nMasternodeMinActiveTime = 86400*3;
 unsigned int g_nMasternodeMinOnlineTime = 86400;

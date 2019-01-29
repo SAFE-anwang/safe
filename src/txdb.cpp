@@ -47,6 +47,7 @@ static const string DB_GETCANDY_INDEX = "getcandy";
 static const string DB_CANDYHEIGHT_TOTALAMOUNT_INDEX = "candyheight_totalamount";
 static const string DB_CANDYHEIGHT_INDEX = "candyheight";
 static const string DB_GETCANDYCOUNT_INDEX = "getcandycount";
+static const string DB_MASTERNODE_PAYEE_INDEX ="masternode_payee";
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {
@@ -1252,6 +1253,49 @@ bool CBlockTreeDB::Read_GetCandyCount_Index(const uint256& assetId, const COutPo
             {
                 return error("failed to get getcandy index value");
             }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return ret;
+}
+
+bool CBlockTreeDB::Write_MasternodePayee_Index(const std::string& strPubKeyCollateralAddress, const CMasternodePayee_IndexValue& value)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Write(make_pair(DB_MASTERNODE_PAYEE_INDEX, strPubKeyCollateralAddress), value);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_MasternodePayee_Index(const string &strPubKeyCollateralAddress)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Erase(make_pair(DB_MASTERNODE_PAYEE_INDEX, strPubKeyCollateralAddress));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_MasternodePayee_Index(const string &strPubKeyCollateralAddress, CMasternodePayee_IndexValue &value)
+{
+    return Read(make_pair(DB_MASTERNODE_PAYEE_INDEX, strPubKeyCollateralAddress), value) && g_nChainHeight >= value.nHeight;
+}
+
+bool CBlockTreeDB::Is_Exists_MasternodePayee_Key(const string &strPubKeyCollateralAddress)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(make_pair(DB_MASTERNODE_PAYEE_INDEX, strPubKeyCollateralAddress));
+
+    bool ret = false;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, std::string> key;
+        if (pcursor->GetKey(key) && key.first == DB_MASTERNODE_PAYEE_INDEX && key.second == strPubKeyCollateralAddress)
+        {
+            ret = true;
+            break;
         }
         else
         {

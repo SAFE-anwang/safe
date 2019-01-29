@@ -1539,6 +1539,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 
     //XJTODO annote it
     g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
+    g_nSaveMasternodePayeeHeight = GetArg("-save_masternode_payee_height", g_nSaveMasternodePayeeHeight);
     g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
     g_nMasternodeMinOnlineTime = GetArg("-masternode_min_online_time", g_nMasternodeMinOnlineTime);
     g_nMasternodeMinActiveTime = GetArg("-masternode_min_active_time", g_nMasternodeMinActiveTime);

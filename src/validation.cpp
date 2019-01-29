@@ -3570,6 +3570,8 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> > getCandy_index;
     std::vector<std::pair<CAssetTx_IndexKey, int> > assetTx_index;
     std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> getCandyCount_index;
+    std::string strPubKeyCollateralAddress = "";
+    CMasternodePayee_IndexValue masternodePayment_IndexValue;
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
@@ -3860,6 +3862,24 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         }
     }
 
+    const CTransaction& tx = block.vtx[0];
+    if(tx.vout.size()>1&&pindex->nHeight>=g_nSaveMasternodePayeeHeight)
+    {
+        CTxDestination dest;
+        int paymentIndex = 1;
+        if (ExtractDestination(tx.vout[paymentIndex].scriptPubKey, dest))
+        {
+            CBitcoinAddress pubKeyCollateralAddress(dest);
+            CKeyID keyid;
+            if(pubKeyCollateralAddress.GetKeyID(keyid))
+            {
+                strPubKeyCollateralAddress = keyid.ToString();
+                masternodePayment_IndexValue.nHeight = pindex->nHeight;
+                masternodePayment_IndexValue.blockTime = pindex->nTime;
+            }
+        }
+    }
+
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 
@@ -3933,6 +3953,27 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                     return AbortNode(state, "Failed to write getCandyCount index");
             }
             ++iter;
+        }
+    }
+
+    //remove masternode payee
+    if(strPubKeyCollateralAddress.size())
+    {
+        if(pblocktree->Is_Exists_MasternodePayee_Key(strPubKeyCollateralAddress))
+        {
+            CMasternodePayee_IndexValue value;
+            if(!pblocktree->Read_MasternodePayee_Index(strPubKeyCollateralAddress,value))
+                return AbortNode(state, "Failed to read masternode payee index");
+            if(!pblocktree->Erase_MasternodePayee_Index(strPubKeyCollateralAddress))
+                return AbortNode(state, "Failed to erase masternode payee index");
+            masternodePayment_IndexValue.nPayeeTimes = value.nPayeeTimes - 1;
+            if(masternodePayment_IndexValue.nPayeeTimes>0)
+            {
+                if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
+                    return AbortNode(state, "Failed to write masternode payee index");
+            }
+            LogPrint("masternode","remove masternode payee:strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
+                     masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
         }
     }
     return fClean;
@@ -4205,6 +4246,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> > getCandy_index;
     std::vector<std::pair<CAssetTx_IndexKey, int> > assetTx_index;
     std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> getCandyCount_index;
+    std::string strPubKeyCollateralAddress = "";
+    CMasternodePayee_IndexValue masternodePayment_IndexValue;
 
     map<string, CAmount> mapAddressAmount;
 
@@ -4580,6 +4623,25 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         return state.DoS(0, error("ConnectBlock(SAFE): couldn't find masternode or superblock payments"),
                                 REJECT_INVALID, "bad-cb-payee");
     }
+
+    const CTransaction& tx = block.vtx[0];
+    if(tx.vout.size()>1&&pindex->nHeight>=g_nSaveMasternodePayeeHeight)
+    {
+        CTxDestination dest;
+        int paymentIndex = 1;
+        if (ExtractDestination(tx.vout[paymentIndex].scriptPubKey, dest))
+        {
+            CBitcoinAddress pubKeyCollateralAddress(dest);
+            CKeyID keyid;
+            if(pubKeyCollateralAddress.GetKeyID(keyid))
+            {
+                strPubKeyCollateralAddress = keyid.ToString();
+                masternodePayment_IndexValue.nHeight = pindex->nHeight;
+                masternodePayment_IndexValue.blockTime = pindex->nTime;
+            }
+        }
+    }
+
     // END SAFE
 
     if (!control.Wait())
@@ -4683,6 +4745,24 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             LogPrint("asset","check-getcandy:leveldb_add_candy:%s,%s,currAmount:%d,totalAmount:%d\n",key.assetId.ToString(),key.out.ToString()
                       ,deltaValue.nGetCandyCount,value.nGetCandyCount);
         }
+    }
+
+    //add masternode payee
+    if(strPubKeyCollateralAddress.size())
+    {
+        if(pblocktree->Is_Exists_MasternodePayee_Key(strPubKeyCollateralAddress))
+        {
+            CMasternodePayee_IndexValue value;
+            if(!pblocktree->Read_MasternodePayee_Index(strPubKeyCollateralAddress,value))
+                return AbortNode(state, "Failed to read masternode payee index");
+            if(!pblocktree->Erase_MasternodePayee_Index(strPubKeyCollateralAddress))
+                return AbortNode(state, "Failed to erase masternode payee index");
+            masternodePayment_IndexValue.nPayeeTimes = value.nPayeeTimes + 1;
+        }
+        if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
+            return AbortNode(state, "Failed to write masternode payee index");
+        LogPrint("masternode","add masternode payee:strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
+                 masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
     }
 
     while(GetChangeInfoListSize() >= g_nListChangeInfoLimited)

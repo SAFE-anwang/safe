@@ -39,6 +39,7 @@ extern std::string g_strCancelledAssetAddress;
 extern std::string g_strPutCandyAddress;
 
 extern int g_nStartSPOSHeight;
+extern int g_nSaveMasternodePayeeHeight;
 extern unsigned int g_nMasternodeSPosCount;
 extern int64_t g_nStartNewLoopTime;
 extern int g_nSposGeneratedIndex;

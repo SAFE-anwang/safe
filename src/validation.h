@@ -721,6 +721,26 @@ struct CGetCandy_IndexValue
     }
 };
 
+struct CMasternodePayee_IndexValue
+{
+    int nPayeeTimes;
+    int nHeight;
+    int64_t blockTime;
+    CMasternodePayee_IndexValue(const int& height = 0,const int64_t& time=0,const int& paymentTimes=1)
+        :nHeight(height),blockTime(time),nPayeeTimes(paymentTimes){
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nPayeeTimes);
+        READWRITE(nHeight);
+        READWRITE(blockTime);
+    }
+};
+
 struct CHeight_IndexKey
 {
     int nHeight;

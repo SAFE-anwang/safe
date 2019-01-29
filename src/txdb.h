@@ -154,6 +154,11 @@ public:
     bool Erase_GetCandyCount_Index(const CGetCandyCount_IndexKey& key);
     bool Read_GetCandyCount_Index(const uint256& assetId, const COutPoint& out,CGetCandyCount_IndexValue& getCandyCountvalue);
     bool Is_Exists_GetCandyCount_Key(const uint256& assetId, const COutPoint& out);
+
+    bool Write_MasternodePayee_Index(const std::string& strPubKeyCollateralAddress, const CMasternodePayee_IndexValue& value);
+    bool Erase_MasternodePayee_Index(const std::string& strPubKeyCollateralAddress);
+    bool Read_MasternodePayee_Index(const std::string& strPubKeyCollateralAddress, CMasternodePayee_IndexValue& value);
+    bool Is_Exists_MasternodePayee_Key(const std::string& strPubKeyCollateralAddress);
 };
 
 #endif // BITCOIN_TXDB_H
