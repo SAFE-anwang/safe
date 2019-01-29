@@ -20,8 +20,11 @@ std::map<uint256, CSporkMessage> mapSporks;
 
 void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv, CConnman& connman)
 {
+    LogPrintf("CSporkManager::ProcessSpork 1\n");
+
     if(fLiteMode) return; // disable all Safe specific functionality
 
+    LogPrintf("CSporkManager::ProcessSpork 2\n");
     if (strCommand == NetMsgType::SPORK) {
 
         CSporkMessage spork;
@@ -34,6 +37,7 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
             LOCK(cs_main);
             pfrom->setAskFor.erase(hash);
             if(!chainActive.Tip()) return;
+            LogPrintf("CSporkManager::ProcessSpork 3\n");
             strLogMsg = strprintf("SPORK -- hash: %s id: %d value: %10d bestHeight: %d peer=%d", hash.ToString(), spork.nSporkID, spork.nValue, chainActive.Height(), pfrom->id);
         }
 
@@ -43,6 +47,7 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
                 if (!spork.CheckSignature()) {
                     LogPrintf("CSporkManager::ProcessSpork -- invalid signature\n");
                     Misbehaving(pfrom->GetId(), 100);
+                    LogPrintf("CSporkManager::ProcessSpork 4\n");
                     return;
                 }
                 else
