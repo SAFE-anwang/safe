@@ -9349,7 +9349,7 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
             }
         }
 
-        LogPrintf("SPOS_Message:the master node list size:%d\n", mapMasternodes.size());
+        LogPrintf("SPOS_Message:the master node mapMasternodes size:%d, fullmapMasternodes size:%d \n", mapMasternodes.size(), fullmapMasternodes.size());
     }
     else
         mnodeman.GetFullMasternodeData(mapMasternodes);
