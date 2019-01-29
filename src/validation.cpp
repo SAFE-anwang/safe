@@ -9250,7 +9250,13 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
              std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
             if (tempit != fullmapMasternodes.end())
                 mapMasternodes[tempcoutpoint] = tempit->second;
+            else
+            {
+                LogPrintf("SPOS_Message:the master node does not exist\n");
+            }
         }
+
+        LogPrintf("SPOS_Message:the master node list size:%d\n", mapMasternodes.size());
     }
     else
         mnodeman.GetFullMasternodeData(mapMasternodes);
