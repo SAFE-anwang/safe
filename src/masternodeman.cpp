@@ -1670,7 +1670,7 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
         int nHeightRet;
         CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,nHeightRet);
         int depth = nHeight - nHeightRet;
-        if (err != CMasternode::COLLATERAL_UTXO_NOT_FOUND && depth > SPOS_BLOCKS_PER_DAY*3 && mnpair.second.nClientVersion = SPOS_MIN_CLIENT_VERSION) {
+        if (err != CMasternode::COLLATERAL_UTXO_NOT_FOUND && depth > SPOS_BLOCKS_PER_DAY*3 && mnpair.second.nClientVersion == SPOS_MIN_CLIENT_VERSION) {
             mapOutMasternodes[mnpair.first] = mnpair.second;
         }
     }
