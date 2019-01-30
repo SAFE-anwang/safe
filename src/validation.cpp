@@ -9404,7 +9404,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(strPubKeyCollateralAddress);
         if (tempit != mapAllPayeeInfo.end())
         {
-            uint32_t nIntervalTime = nTime - tempit->seconde.blockTime;
+            uint32_t nIntervalTime = nTime - tempit->second.blockTime;
             if (nIntervalTime <= interval)
             {
                 mapMasternodesL1[it->first] = it->second;
