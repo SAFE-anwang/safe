@@ -9396,7 +9396,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     std::vector<CMasternode> vecResultMasternodesL2;
     std::vector<CMasternode> vecResultMasternodesL3;
 
-    std::map<COutPoint, CMasternode>::interator it = mapMasternodes.begin();
+    std::map<COutPoint, CMasternode>::iterator it = mapMasternodes.begin();
     for (; it != mapMasternodes; it++)
     {
         const CMasternode& mn = it->second;
