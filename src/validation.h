@@ -23,6 +23,8 @@
 #include "app/app.h"
 
 #include "masternode.h"
+#include "masternodeman.h"
+
 
 #include <algorithm>
 #include <exception>
