@@ -9397,7 +9397,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     std::vector<CMasternode> vecResultMasternodesL3;
 
     std::map<COutPoint, CMasternode>::iterator it = mapMasternodes.begin();
-    for (; it != mapMasternodes; it++)
+    for (; it != mapMasternodes.end(); it++)
     {
         const CMasternode& mn = it->second;
         std::string strPubKeyCollateralAddress = mn.pubKeyCollateralAddress.GetID().ToString();
