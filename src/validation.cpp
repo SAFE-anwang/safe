@@ -9401,7 +9401,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     {
         const CMasternode& mn = it->second;
         std::string strPubKeyCollateralAddress = mn.pubKeyCollateralAddress.GetID().ToString();
-        std::map<std::string,CMasternodePayee_IndexValue>::iterotar tempit = mapAllPayeeInfo.find(strPubKeyCollateralAddress);
+        std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(strPubKeyCollateralAddress);
         if (tempit != mapAllPayeeInfo.end())
         {
             uint32_t nIntervalTime = nTime - tempit->seconde.blockTime;
