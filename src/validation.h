@@ -22,6 +22,8 @@
 #include "spentindex.h"
 #include "app/app.h"
 
+#include "masternode.h"
+
 #include <algorithm>
 #include <exception>
 #include <map>
