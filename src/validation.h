@@ -22,9 +22,6 @@
 #include "spentindex.h"
 #include "app/app.h"
 
-#include "masternode.h"
-#include "masternodeman.h"
-
 
 #include <algorithm>
 #include <exception>
@@ -1559,10 +1556,6 @@ void SelectMasterNode(unsigned int nNewBlockHeight, uint32_t nTime, const bool b
 bool isOnline(uint32_t nTime,int height);
 
 void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork);
-
-void GetAllgPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue> &mapAllPayeeInfo);
-
-void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode> vecResultMasternodes, uint32_t nTime);
 
 
 #endif // BITCOIN_VALIDATION_H

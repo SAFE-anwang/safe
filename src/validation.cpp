@@ -9248,6 +9248,75 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
     return true;
 }
 
+
+void GetAllgPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo)
+{
+    std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
+
+    for (auto& Payeepair : gAllPayeeInfoMap)
+    {
+        mapAllPayeeInfo[Payeepair.first] = Payeepair.second;
+    }
+}
+
+void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode> vecResultMasternodes, uint32_t nTime)
+{
+    //sort by score
+    int logMaxCnt = 20, logCnt = 0;
+    std::map<uint256, CMasternode> scoreMasternodes;
+    for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
+    {
+        const CMasternode& mn = (*mnpair).second;
+
+        //XJTODO
+        logCnt++;
+        if (logCnt<=logMaxCnt)
+        {
+            LogPrintf("SPOS_Message:before sort:ip:%s, nActiveState:%d, nClientVersion:%\n", mn.addr.ToStringIP(), mn.nActiveState, mn.nClientVersion);
+        }
+
+        uint256 hash = mn.pubKeyCollateralAddress.GetHash();
+        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+        ss << hash;
+        ss << nTime;
+        uint256 score = ss.GetHash();
+        scoreMasternodes[score] = mn;
+    }
+
+    //XJTODO remove it5
+    logCnt = 0;
+    for (auto& mnpair : scoreMasternodes)
+    {
+        logCnt++;
+        if(logCnt<=logMaxCnt)
+            LogPrintf("SPOS_Message:after sort:ip:%s, score:%s, nClientVersion:%d\n", mnpair.second.addr.ToStringIP() ,mnpair.first.ToString(), mnpair.second.nClientVersion);
+    }
+
+    for (auto& mnpair : scoreMasternodes)
+    {
+        CMasternode& mn = mnpair.second;
+        vecResultMasternodes.push_back(mn);
+    }
+
+    //random the master node
+    uint64_t now_hi = uint64_t(nTime) << 32;
+    for( uint32_t i = 0; i < vecResultMasternodes.size(); ++i )
+    {
+        /// High performance random generator
+        /// http://xorshift.di.unimi.it/
+        uint64_t k = now_hi + uint64_t(i)*2685821657736338717ULL;
+        k ^= (k >> 12);
+        k ^= (k << 25);
+        k ^= (k >> 27);
+        k *= 2685821657736338717ULL;
+
+        uint32_t jmax = vecResultMasternodes.size() - i;
+        uint32_t j = i + k%jmax;
+        std::swap(vecResultMasternodes[i], vecResultMasternodes[j]);
+    }
+}
+
+
 void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork)
 {
     if(!masternodeSync.IsSynced())
@@ -9653,71 +9722,4 @@ bool isOnline(uint32_t nTime,int nHeight)
     }
     uint32_t online = nTime - g_nStartUpTime;
     return online >= g_nMasternodeMinOnlineTime;
-}
-
-void GetAllgPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo)
-{
-    std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
-
-    for (auto& Payeepair : gAllPayeeInfoMap)
-    {
-        mapAllPayeeInfo[Payeepair.first] = Payeepair.second;
-    }
-}
-
-void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode> vecResultMasternodes, uint32_t nTime)
-{
-    //sort by score
-    int logMaxCnt = 20, logCnt = 0;
-    std::map<uint256, CMasternode> scoreMasternodes;
-    for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
-    {
-        const CMasternode& mn = (*mnpair).second;
-
-        //XJTODO
-        logCnt++;
-        if (logCnt<=logMaxCnt)
-        {
-            LogPrintf("SPOS_Message:before sort:ip:%s, nActiveState:%d, nClientVersion:%\n", mn.addr.ToStringIP(), mn.nActiveState, mn.nClientVersion);
-        }
-
-        uint256 hash = mn.pubKeyCollateralAddress.GetHash();
-        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
-        ss << hash;
-        ss << nTime;
-        uint256 score = ss.GetHash();
-        scoreMasternodes[score] = mn;
-    }
-
-    //XJTODO remove it5
-    logCnt = 0;
-    for (auto& mnpair : scoreMasternodes)
-    {
-        logCnt++;
-        if(logCnt<=logMaxCnt)
-            LogPrintf("SPOS_Message:after sort:ip:%s, score:%s, nClientVersion:%d\n", mnpair.second.addr.ToStringIP() ,mnpair.first.ToString(), mnpair.second.nClientVersion);
-    }
-
-    for (auto& mnpair : scoreMasternodes)
-    {
-        CMasternode& mn = mnpair.second;
-        vecResultMasternodes.push_back(mn);
-    }
-
-    //random the master node
-    uint64_t now_hi = uint64_t(nTime) << 32;
-    for( uint32_t i = 0; i < vecResultMasternodes.size(); ++i )
-    {
-        /// High performance random generator
-        /// http://xorshift.di.unimi.it/
-        uint64_t k = now_hi + uint64_t(i)*2685821657736338717ULL;
-        k ^= (k >> 12);
-        k ^= (k << 25);
-        k ^= (k >> 27);
-        k *= 2685821657736338717ULL;
-
-        uint32_t jmax = vecResultMasternodes.size() - i;
-        uint32_t j = i + k%jmax;
-        std::swap(vecResultMasternodes[i], vecResultMasternodes[j]);
-    }
 }
