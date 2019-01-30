@@ -723,9 +723,9 @@ struct CGetCandy_IndexValue
 
 struct CMasternodePayee_IndexValue
 {
-    int nPayeeTimes;
     int nHeight;
     int64_t blockTime;
+    int nPayeeTimes;
     CMasternodePayee_IndexValue(const int& height = 0,const int64_t& time=0,const int& paymentTimes=1)
         :nHeight(height),blockTime(time),nPayeeTimes(paymentTimes){
     }

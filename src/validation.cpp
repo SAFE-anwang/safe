@@ -9222,9 +9222,6 @@ void SelectMasterNodeByPayment(unsigned int nCurrBlockHeight, uint32_t nTime, co
     if(!masternodeSync.IsSynced())
         return;
 
-    if(!isOnline(nTime,nCurrBlockHeight))
-        return;
-
     if (!bProcessSpork)
     {
         if(g_nLastSelectMasterNodeHeight == nCurrBlockHeight)
@@ -9246,7 +9243,7 @@ void SelectMasterNodeByPayment(unsigned int nCurrBlockHeight, uint32_t nTime, co
     {
         LogPrintf("SPOS_Message:Spork message select official master node\n");
         std::map<COutPoint, CMasternode> fullmapMasternodes;
-        mnodeman.GetFullMasternodeData(fullmapMasternodes,fFilterSpent);
+        mnodeman.GetFullMasternodeData(fullmapMasternodes,fFilterSpent,nCurrBlockHeight);
 
         const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
         std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
@@ -9262,7 +9259,7 @@ void SelectMasterNodeByPayment(unsigned int nCurrBlockHeight, uint32_t nTime, co
         }
     }
     else
-        mnodeman.GetFullMasternodeData(mapMasternodes,fFilterSpent);
+        mnodeman.GetFullMasternodeData(mapMasternodes,fFilterSpent,nCurrBlockHeight);
 
     g_vecResultMasternodes.clear();
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
