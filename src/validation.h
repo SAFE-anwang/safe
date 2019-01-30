@@ -272,6 +272,11 @@ CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
 
 int ConvertBlockHeight(const Consensus::Params& consensusParams);
 
+void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork);
+
+void GetAllgPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue> &mapAllPayeeInfo);
+
+void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode> vecResultMasternodes, uint32_t nTime);
 
 
 /**

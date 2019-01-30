@@ -36,7 +36,11 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
         {
             LOCK(cs_main);
             pfrom->setAskFor.erase(hash);
-            if(!chainActive.Tip()) return;
+            if(!chainActive.Tip()) 
+            {
+                LogPrintf("CSporkManager::ProcessSpork chainActive.Tip() is NULL\n");
+                return;
+            }
             LogPrintf("CSporkManager::ProcessSpork 3\n");
             strLogMsg = strprintf("SPORK -- hash: %s id: %d value: %10d bestHeight: %d peer=%d", hash.ToString(), spork.nSporkID, spork.nValue, chainActive.Height(), pfrom->id);
         }
@@ -265,7 +269,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
     LogPrintf("CSporkManager::SelectMasterNodeForSpork -- nSporkID:%d---chainActive height:%d----nValue:%d\n", nSporkID, chainActive.Height(), nValue);
     if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED) && chainActive.Height() == nValue)
     {
-        SelectMasterNode(chainActive.Height(), chainActive.Tip()->nTime, true, true);
+        SelectMasterNodeByPayee(chainActive.Height(), chainActive.Tip()->nTime, true, true);
     }
 }
 
