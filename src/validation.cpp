@@ -122,6 +122,9 @@ extern int64_t g_nLastSelectMasterNodeHeight;
 extern unsigned int g_nMasternodeStatusEnable;
 extern unsigned int g_nMasternodeMinCount;
 
+std::mutex g_mutexAllPayeeInfo;
+std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
+
 const static int M = 2000; //Maximum number of digits
 int numA[M];
 int numB[M];
@@ -3972,6 +3975,10 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                 if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
                     return AbortNode(state, "Failed to write masternode payee index");
             }
+            {
+                std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
+                gAllPayeeInfoMap[strPubKeyCollateralAddress] = masternodePayment_IndexValue;
+            }
             LogPrint("masternode","remove masternode payee:strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
                      masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
         }
@@ -4761,6 +4768,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
         if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
             return AbortNode(state, "Failed to write masternode payee index");
+        {
+            std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
+            gAllPayeeInfoMap[strPubKeyCollateralAddress] = masternodePayment_IndexValue;
+        }
         LogPrint("masternode","add masternode payee:strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
                  masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
     }

@@ -109,6 +109,8 @@ extern unsigned int g_nMasternodeMinActiveTime;
 extern unsigned int g_nMasternodeStatusEnable;
 extern unsigned int g_nMasternodeMinCount;
 extern int g_nProtocolV3Height;
+extern std::mutex g_mutexAllPayeeInfo;
+extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
 
 
 std::unique_ptr<CConnman> g_connman;
@@ -2092,6 +2094,14 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 
     // Generate coins in the background
     GenerateBitcoins(GetBoolArg("-gen", DEFAULT_GENERATE), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
+
+    {
+        std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
+        if(!pblocktree->Read_MasternodePayee_Index(gAllPayeeInfoMap));
+        {
+            LogPrintf("SPOS_Error:init read masternode payee fail\n");
+        }
+    }
 
     GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", DEFAULT_GENERATE), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
 

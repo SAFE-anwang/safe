@@ -721,6 +721,22 @@ struct CGetCandy_IndexValue
     }
 };
 
+struct CIterator_MasternodePayeeKey
+{
+    std::string strPubKeyCollateralAddress;
+
+    CIterator_MasternodePayeeKey(const std::string& strAddress = "") : strPubKeyCollateralAddress(strAddress) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(LIMITED_STRING(strPubKeyCollateralAddress, MAX_ADDRESS_SIZE));
+    }
+};
+
 struct CMasternodePayee_IndexValue
 {
     int nHeight;

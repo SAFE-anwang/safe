@@ -1282,6 +1282,37 @@ bool CBlockTreeDB::Read_MasternodePayee_Index(const string &strPubKeyCollateralA
     return Read(make_pair(DB_MASTERNODE_PAYEE_INDEX, strPubKeyCollateralAddress), value) && g_nChainHeight >= value.nHeight;
 }
 
+bool CBlockTreeDB::Read_MasternodePayee_Index(std::map<string, CMasternodePayee_IndexValue> &mapPayeeInfo)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(make_pair(DB_MASTERNODE_PAYEE_INDEX, CIterator_MasternodePayeeKey()));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, std::string> key;
+        if (pcursor->GetKey(key) && key.first == DB_MASTERNODE_PAYEE_INDEX)
+        {
+            CMasternodePayee_IndexValue value;
+            if(pcursor->GetValue(value))
+            {
+                mapPayeeInfo[key.second] = value;
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get putcandy index value");
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return mapPayeeInfo.size();
+}
+
 bool CBlockTreeDB::Is_Exists_MasternodePayee_Key(const string &strPubKeyCollateralAddress)
 {
     boost::scoped_ptr<CDBIterator> pcursor(NewIterator());

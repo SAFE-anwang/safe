@@ -158,6 +158,7 @@ public:
     bool Write_MasternodePayee_Index(const std::string& strPubKeyCollateralAddress, const CMasternodePayee_IndexValue& value);
     bool Erase_MasternodePayee_Index(const std::string& strPubKeyCollateralAddress);
     bool Read_MasternodePayee_Index(const std::string& strPubKeyCollateralAddress, CMasternodePayee_IndexValue& value);
+    bool Read_MasternodePayee_Index(std::map<std::string,CMasternodePayee_IndexValue>& mapPayeeInfo);
     bool Is_Exists_MasternodePayee_Key(const std::string& strPubKeyCollateralAddress);
 };
 
