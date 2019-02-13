@@ -1114,7 +1114,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
 
 bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t nTimeReceived, CConnman& connman, std::atomic<bool>& interruptMsgProc)
 {
-    //LogPrintf("SPOS_Test:recv:%s %s\n",pfrom->addr.ToStringIP(),strCommand);
+    LogPrintf("SPOS_Test:recv:%s %s\n",pfrom->addr.ToStringIP(),strCommand);
     const CChainParams& chainparams = Params();
     RandAddSeedPerfmon();
 
