@@ -9249,7 +9249,7 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
 }
 
 
-void GetAllgPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo)
+void GetAllPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo)
 {
     std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
 
@@ -9259,7 +9259,7 @@ void GetAllgPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue>& mapA
     }
 }
 
-void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode> vecResultMasternodes, uint32_t nTime)
+void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes, uint32_t nTime)
 {
     //sort by score
     int logMaxCnt = 20, logCnt = 0;
@@ -9386,7 +9386,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     unsigned int nTotalMasternode = mapMasternodes.size();
     int64_t interval = nTotalMasternode * Params().GetConsensus().nSPOSTargetSpacing;
     std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
-    GetAllgPayeeInfoMap(mapAllPayeeInfo);
+    GetAllPayeeInfoMap(mapAllPayeeInfo);
     
     std::map<COutPoint, CMasternode> mapMasternodesL1,mapMasternodesL2,mapMasternodesL3;
 
