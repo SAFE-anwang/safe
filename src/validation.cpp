@@ -9383,18 +9383,14 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     }
 
     //4.1
-    int nTotalMasternode = mapMasternodes.size();
+    unsigned int nTotalMasternode = mapMasternodes.size();
     int64_t interval = nTotalMasternode * Params().GetConsensus().nSPOSTargetSpacing;
     std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
     GetAllgPayeeInfoMap(mapAllPayeeInfo);
     
-    std::map<COutPoint, CMasternode> mapMasternodesL1;
-    std::map<COutPoint, CMasternode> mapMasternodesL2;
-    std::map<COutPoint, CMasternode> mapMasternodesL3;
+    std::map<COutPoint, CMasternode> mapMasternodesL1,mapMasternodesL2,mapMasternodesL3;
 
-    std::vector<CMasternode> vecResultMasternodesL1;
-    std::vector<CMasternode> vecResultMasternodesL2;
-    std::vector<CMasternode> vecResultMasternodesL3;
+    std::vector<CMasternode> vecResultMasternodesL1,vecResultMasternodesL2,vecResultMasternodesL3;
 
     std::map<COutPoint, CMasternode>::iterator it = mapMasternodes.begin();
     for (; it != mapMasternodes.end(); it++)
@@ -9425,16 +9421,14 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nTime);
 
     //5
-    int nP1 = 0;
-    int nP2 = 0;
-    int nP3 = 0;
-
-    nP1 = (vecResultMasternodesL1.size() / nTotalMasternode) * g_nMasternodeSPosCount;
-    nP2 = (vecResultMasternodesL2.size() / nTotalMasternode) * g_nMasternodeSPosCount;
-    nP3 = (vecResultMasternodesL3.size() / nTotalMasternode) * g_nMasternodeSPosCount;
+    unsigned int nP1 = (vecResultMasternodesL1.size() / nTotalMasternode) * g_nMasternodeSPosCount;
+    unsigned int nP2 = (vecResultMasternodesL2.size() / nTotalMasternode) * g_nMasternodeSPosCount;
+    unsigned int nP3 = (vecResultMasternodesL3.size() / nTotalMasternode) * g_nMasternodeSPosCount;
 
     g_vecResultMasternodes.clear();
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
+    LogPrintf("SPOS_Message:scoreMasternodes size:%d, g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d\n",
+              nMnSize, g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3);
     if (nTotalMasternode <= g_nMasternodeSPosCount)
     {
         for (std::vector<CMasternode>::iterator itL1 = vecResultMasternodesL1.begin(); itL1 != vecResultMasternodesL1.end(); itL1++)
@@ -9449,25 +9443,26 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         unsigned int nMnSize = g_vecResultMasternodes.size();
         if (nMnSize < g_nMasternodeMinCount)
         {
-            LogPrintf("SPOS_Error:scoreMasternodes size:%d, g_nMasternodeMinCount:%d\n", nMnSize, g_nMasternodeMinCount);
+            LogPrintf("SPOS_Error:scoreMasternodes size:%d, g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d\n",
+                      nMnSize, g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3);
             g_nSelectMasterNodeRet = -1;
             return;
         }
     }
     else
     {
-        if (nP1 + nP2 + nP3 == g_nMasternodeSPosCount)
+        if ((nP1 + nP2 + nP3) == g_nMasternodeSPosCount)
         {
-            for (int i = 0; i < nP1; i++)
+            for (unsigned int i = 0; i < nP1; i++)
                 g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
 
-            for (int j = 0; j < nP2; j++)
+            for (unsigned int j = 0; j < nP2; j++)
                 g_vecResultMasternodes.push_back(vecResultMasternodesL2[j]);
 
-            for (int k = 0; k < nP3; k++)
+            for (unsigned int k = 0; k < nP3; k++)
                 g_vecResultMasternodes.push_back(vecResultMasternodesL3[k]);
         }
-        else if (nP1 + nP2 + nP3 < g_nMasternodeSPosCount)
+        else if ((nP1 + nP2 + nP3) < g_nMasternodeSPosCount)
         {
             int nRemainNum = g_nMasternodeSPosCount - nP1 + nP2 + nP3;
 
@@ -9480,28 +9475,28 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
             if (nP3 > nMax)
                 nMax = nP3;
 
-            for (int i = 0; i < nP1; i++)
+            for (unsigned int i = 0; i < nP1; i++)
                 g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
 
-            for (int j = 0; j < nP2; j++)
+            for (unsigned int j = 0; j < nP2; j++)
                 g_vecResultMasternodes.push_back(vecResultMasternodesL2[j]);
 
-            for (int k = 0; k < nP3; k++)
+            for (unsigned int k = 0; k < nP3; k++)
                 g_vecResultMasternodes.push_back(vecResultMasternodesL3[k]);
 
             if (nMax == nP1)
             {
-                for (int m = nP1; m < nRemainNum; m++)
+                for (unsigned int m = nP1; m < nRemainNum; m++)
                     g_vecResultMasternodes.push_back(vecResultMasternodesL1[m]);
             }
             else if (nMax == nP2)
             {
-                for (int n = nP2; n < nRemainNum; n++)
+                for (unsigned int n = nP2; n < nRemainNum; n++)
                     g_vecResultMasternodes.push_back(vecResultMasternodesL2[n]);
             }
             else if (nMax == nP3)
             {
-                for (int o = nP3; o < nRemainNum; o++)
+                for (unsigned int o = nP3; o < nRemainNum; o++)
                     g_vecResultMasternodes.push_back(vecResultMasternodesL3[o]);
             }
         }
