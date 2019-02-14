@@ -9428,7 +9428,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     g_vecResultMasternodes.clear();
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
     LogPrintf("SPOS_Message:scoreMasternodes size:%d, g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d\n",
-              nMnSize, g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3);
+              g_vecResultMasternodes.size(), g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3);
     if (nTotalMasternode <= g_nMasternodeSPosCount)
     {
         for (std::vector<CMasternode>::iterator itL1 = vecResultMasternodesL1.begin(); itL1 != vecResultMasternodesL1.end(); itL1++)
