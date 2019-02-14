@@ -9421,9 +9421,9 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nTime);
 
     //5
-    unsigned int nP1 = (vecResultMasternodesL1.size() / nTotalMasternode) * g_nMasternodeSPosCount;
-    unsigned int nP2 = (vecResultMasternodesL2.size() / nTotalMasternode) * g_nMasternodeSPosCount;
-    unsigned int nP3 = (vecResultMasternodesL3.size() / nTotalMasternode) * g_nMasternodeSPosCount;
+    unsigned int nP1 = ((double)vecResultMasternodesL1.size() / nTotalMasternode) * g_nMasternodeSPosCount;
+    unsigned int nP2 = ((double)vecResultMasternodesL2.size() / nTotalMasternode) * g_nMasternodeSPosCount;
+    unsigned int nP3 = ((double)vecResultMasternodesL3.size() / nTotalMasternode) * g_nMasternodeSPosCount;
 
     g_vecResultMasternodes.clear();
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
