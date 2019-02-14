@@ -1114,7 +1114,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
 
 bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t nTimeReceived, CConnman& connman, std::atomic<bool>& interruptMsgProc)
 {
-    LogPrintf("SPOS_Test:recv:%s %s\n",pfrom->addr.ToStringIP(),strCommand);
+    //LogPrintf("SPOS_Test:recv:%s %s\n",pfrom->addr.ToStringIP(),strCommand);
     const CChainParams& chainparams = Params();
     RandAddSeedPerfmon();
 
@@ -1562,33 +1562,27 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
     else if (strCommand == NetMsgType::GETHEADERS)
     {
-        LogPrintf("SPOS testgetheaders 0.0");
         CBlockLocator locator;
         uint256 hashStop;
         vRecv >> locator >> hashStop;
 
         LOCK(cs_main);
-        LogPrintf("SPOS testgetheaders 0.1");
         if (IsInitialBlockDownload() && !pfrom->fWhitelisted) {
             LogPrint("net", "Ignoring getheaders from peer=%d because node is in initial block download\n", pfrom->id);
             return true;
         }
-        LogPrintf("SPOS testgetheaders 0.2");
         CNodeState *nodestate = State(pfrom->GetId());
         CBlockIndex* pindex = NULL;
         if (locator.IsNull())
         {
-            LogPrintf("SPOS testgetheaders 0.3");
             // If locator is null, return the hashStop block
             BlockMap::iterator mi = mapBlockIndex.find(hashStop);
             if (mi == mapBlockIndex.end())
                 return true;
             pindex = (*mi).second;
-            LogPrintf("SPOS testgetheaders 0.4");
         }
         else
         {
-            LogPrintf("SPOS testgetheaders 0.5");
             // Find the last block the caller has in the main chain
             pindex = FindForkInGlobalIndex(chainActive, locator);
             if (pindex)
@@ -1598,7 +1592,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         // we must use CBlocks, as CBlockHeaders won't include the 0x00 nTx count at the end
         vector<CBlock> vHeaders;
         int nLimit = MAX_HEADERS_RESULTS;
-        LogPrintf("SPOS testgetheaders 0.6");
         LogPrint("net", "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.ToString(), pfrom->id);
         for (; pindex; pindex = chainActive.Next(pindex))
         {
