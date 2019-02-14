@@ -19,6 +19,7 @@
 /** Masternode manager */
 CMasternodeMan mnodeman;
 extern int64_t g_nStartUpTime;
+extern unsigned int g_nMasternodeMinActiveTime;
 
 const std::string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-7";
 
@@ -1669,8 +1670,8 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
         }
         int nHeightRet;
         CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,nHeightRet);
-        int depth = nHeight - nHeightRet;
-        if (err != CMasternode::COLLATERAL_UTXO_NOT_FOUND && depth > SPOS_BLOCKS_PER_DAY*3 && mnpair.second.nClientVersion == SPOS_MIN_CLIENT_VERSION) {
+        unsigned int depth = nHeight - nHeightRet;
+        if (err != CMasternode::COLLATERAL_UTXO_NOT_FOUND && depth > g_nMasternodeMinActiveTime && mnpair.second.nClientVersion == SPOS_MIN_CLIENT_VERSION) {
             mapOutMasternodes[mnpair.first] = mnpair.second;
         }
     }
