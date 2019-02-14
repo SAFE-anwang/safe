@@ -9390,8 +9390,6 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     
     std::map<COutPoint, CMasternode> mapMasternodesL1,mapMasternodesL2,mapMasternodesL3;
 
-    std::vector<CMasternode> vecResultMasternodesL1,vecResultMasternodesL2,vecResultMasternodesL3;
-
     std::map<COutPoint, CMasternode>::iterator it = mapMasternodes.begin();
     for (; it != mapMasternodes.end(); it++)
     {
@@ -9416,6 +9414,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         }
     }
 
+    std::vector<CMasternode> vecResultMasternodesL1,vecResultMasternodesL2,vecResultMasternodesL3;
     SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nTime);
     SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nTime);
     SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nTime);
@@ -9427,8 +9426,9 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
 
     g_vecResultMasternodes.clear();
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
-    LogPrintf("SPOS_Message:scoreMasternodes size:%d, g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d\n",
-              g_vecResultMasternodes.size(), g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3);
+    LogPrintf("SPOS_Message:scoreMasternodes size:%d, g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,"
+              "mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",g_vecResultMasternodes.size(), g_nMasternodeMinCount,
+              nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3,mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
     if (nTotalMasternode <= g_nMasternodeSPosCount)
     {
         for (std::vector<CMasternode>::iterator itL1 = vecResultMasternodesL1.begin(); itL1 != vecResultMasternodesL1.end(); itL1++)
