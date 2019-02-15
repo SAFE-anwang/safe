@@ -4772,7 +4772,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
             gAllPayeeInfoMap[strPubKeyCollateralAddress] = masternodePayment_IndexValue;
         }
-        LogPrint("masternode","add masternode payee:strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
+        LogPrintf("SPOS_Info:add masternode payee:strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
                  masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
     }
 
@@ -9412,6 +9412,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         }else
         {
             uint32_t nIntervalTime = nTime - tempit->second.blockTime;
+            LogPrintf("SPOS_Message:found payee,strPubKeyCollateralAddress:%s,nIntervalTime:%d\n",strPubKeyCollateralAddress,nIntervalTime);
             if (nIntervalTime <= interval)
                 mapMasternodesL1[it->first] = it->second;
             else if (nIntervalTime > interval && nIntervalTime <=  2 *interval)
