@@ -9437,10 +9437,6 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     g_vecResultMasternodes.clear();
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
     unsigned int nMnSize = nP1 + nP2 + nP3;
-    LogPrintf("SPOS_Message:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
-              "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
-              nMnSize,g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3,
-              mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
     if (nMnSize < g_nMasternodeMinCount)
     {
         LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
@@ -9457,12 +9453,6 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
     CalculateIncreaseMasternode(nRemainNum,nP3Increase,vec3Size,nP3);
 
-    LogPrintf("SPOS_Message:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
-              "payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),"
-              "nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,nTotalMasternode,
-              mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
-              nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
-
     for (unsigned int i = 0; i < nP1+nP1Increase; i++)
         g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
 
@@ -9475,11 +9465,22 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     if (!bProcessSpork)
         g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
 
-    LogPrintf("SPOS_Message:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
-              "payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),"
-              "nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,nTotalMasternode,
-              mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
+    string localIpPortInfo = activeMasternode.service.ToString();
+    uint32_t size = g_vecResultMasternodes.size();
+    LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,"
+              "min online masternode count:%d\n",localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,
+              strBlockTime,size,g_nMasternodeMinCount);
+
+    LogPrintf("SPOS_Message:mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
+              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,
+              nTotalMasternode,mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
               nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
+    for( uint32_t i = 0; i < size; ++i )
+    {
+        const CMasternode& mn = g_vecResultMasternodes[i];
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,startUpTime:%lld,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.startUpTime,mn.nClientVersion);
+    }
 }
 
 void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork)
