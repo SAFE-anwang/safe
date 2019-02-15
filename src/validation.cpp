@@ -9259,6 +9259,16 @@ void GetAllPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue>& mapAl
     }
 }
 
+void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vecSize,unsigned int nPercentCnt)
+{
+    if(nRemainNum > 0)
+    {
+        nIncrease = vecSize - nPercentCnt;
+        nIncrease = nIncrease > nRemainNum ? nRemainNum : nRemainNum - nIncrease;
+        nRemainNum = nRemainNum - nIncrease;
+    }
+}
+
 void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes, uint32_t nTime)
 {
     //sort by score
@@ -9417,90 +9427,59 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nTime);
 
     //5
-    unsigned int nP1 = ((double)vecResultMasternodesL1.size() / nTotalMasternode) * g_nMasternodeSPosCount;
-    unsigned int nP2 = ((double)vecResultMasternodesL2.size() / nTotalMasternode) * g_nMasternodeSPosCount;
-    unsigned int nP3 = ((double)vecResultMasternodesL3.size() / nTotalMasternode) * g_nMasternodeSPosCount;
+    unsigned int vec1Size = vecResultMasternodesL1.size();
+    unsigned int vec2Size = vecResultMasternodesL2.size();
+    unsigned int vec3Size = vecResultMasternodesL3.size();
+    unsigned int nP1 = ((double)vec1Size / nTotalMasternode) * g_nMasternodeSPosCount;
+    unsigned int nP2 = ((double)vec2Size / nTotalMasternode) * g_nMasternodeSPosCount;
+    unsigned int nP3 = ((double)vec3Size / nTotalMasternode) * g_nMasternodeSPosCount;
 
     g_vecResultMasternodes.clear();
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
-    LogPrintf("SPOS_Message:scoreMasternodes size:%d, g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,"
-              "mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",g_vecResultMasternodes.size(), g_nMasternodeMinCount,
-              nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3,mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
-    if (nTotalMasternode <= g_nMasternodeSPosCount)
+    unsigned int nMnSize = nP1 + nP2 + nP3;
+    LogPrintf("SPOS_Message:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
+              "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
+              nMnSize,g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3,
+              mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
+    if (nMnSize < g_nMasternodeMinCount)
     {
-        for (std::vector<CMasternode>::iterator itL1 = vecResultMasternodesL1.begin(); itL1 != vecResultMasternodesL1.end(); itL1++)
-            g_vecResultMasternodes.push_back(*itL1);
-
-        for (std::vector<CMasternode>::iterator itL2 = vecResultMasternodesL2.begin(); itL2 != vecResultMasternodesL2.end(); itL2++)
-            g_vecResultMasternodes.push_back(*itL2);
-
-        for (std::vector<CMasternode>::iterator itL3 = vecResultMasternodesL3.begin(); itL3 != vecResultMasternodesL3.end(); itL3++)
-            g_vecResultMasternodes.push_back(*itL3);
-
-        unsigned int nMnSize = g_vecResultMasternodes.size();
-        if (nMnSize < g_nMasternodeMinCount)
-        {
-            LogPrintf("SPOS_Error:scoreMasternodes size:%d, g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d\n",
-                      nMnSize, g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3);
-            g_nSelectMasterNodeRet = -1;
-            return;
-        }
+        LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
+                  "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
+                  nMnSize,g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3,
+                  mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
+        g_nSelectMasterNodeRet = -1;
+        return;
     }
-    else
-    {
-        if ((nP1 + nP2 + nP3) == g_nMasternodeSPosCount)
-        {
-            for (unsigned int i = 0; i < nP1; i++)
-                g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
 
-            for (unsigned int j = 0; j < nP2; j++)
-                g_vecResultMasternodes.push_back(vecResultMasternodesL2[j]);
+    int nRemainNum = g_nMasternodeSPosCount - nMnSize;
+    int nP1Increase = 0,nP2Increase = 0,nP3Increase = 0;
+    CalculateIncreaseMasternode(nRemainNum,nP1Increase,vec1Size,nP1);
+    CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
+    CalculateIncreaseMasternode(nRemainNum,nP3Increase,vec3Size,nP3);
 
-            for (unsigned int k = 0; k < nP3; k++)
-                g_vecResultMasternodes.push_back(vecResultMasternodesL3[k]);
-        }
-        else if ((nP1 + nP2 + nP3) < g_nMasternodeSPosCount)
-        {
-            int nRemainNum = g_nMasternodeSPosCount - nP1 + nP2 + nP3;
+    LogPrintf("SPOS_Message:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
+              "payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),"
+              "nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,nTotalMasternode,
+              mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
+              nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
 
-            int nMax = 0;
-            if (nP1 > nP2)
-                nMax = nP1;
-            else
-                nMax = nP2;
+    for (unsigned int i = 0; i < nP1+nP1Increase; i++)
+        g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
 
-            if (nP3 > nMax)
-                nMax = nP3;
+    for (unsigned int j = 0; j < nP2+nP2Increase; j++)
+        g_vecResultMasternodes.push_back(vecResultMasternodesL2[j]);
 
-            for (unsigned int i = 0; i < nP1; i++)
-                g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
-
-            for (unsigned int j = 0; j < nP2; j++)
-                g_vecResultMasternodes.push_back(vecResultMasternodesL2[j]);
-
-            for (unsigned int k = 0; k < nP3; k++)
-                g_vecResultMasternodes.push_back(vecResultMasternodesL3[k]);
-
-            if (nMax == nP1)
-            {
-                for (unsigned int m = nP1; m < nRemainNum; m++)
-                    g_vecResultMasternodes.push_back(vecResultMasternodesL1[m]);
-            }
-            else if (nMax == nP2)
-            {
-                for (unsigned int n = nP2; n < nRemainNum; n++)
-                    g_vecResultMasternodes.push_back(vecResultMasternodesL2[n]);
-            }
-            else if (nMax == nP3)
-            {
-                for (unsigned int o = nP3; o < nRemainNum; o++)
-                    g_vecResultMasternodes.push_back(vecResultMasternodesL3[o]);
-            }
-        }
-    }
+    for (unsigned int k = 0; k < nP3+nP3Increase; k++)
+        g_vecResultMasternodes.push_back(vecResultMasternodesL3[k]);
 
     if (!bProcessSpork)
         g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
+
+    LogPrintf("SPOS_Message:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
+              "payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),"
+              "nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,nTotalMasternode,
+              mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
+              nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
 }
 
 void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork)
