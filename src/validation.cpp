@@ -9454,13 +9454,16 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
     CalculateIncreaseMasternode(nRemainNum,nP3Increase,vec3Size,nP3);
 
-    for (unsigned int i = 0; i < nP1+nP1Increase; i++)
+    unsigned int nP1Total = nP1+nP1Increase;
+    for (unsigned int i = 0; i < nP1Total; i++)
         g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
 
-    for (unsigned int j = 0; j < nP2+nP2Increase; j++)
+    unsigned int nP2Total = nP2+nP2Increase;
+    for (unsigned int j = 0; j < nP2Total; j++)
         g_vecResultMasternodes.push_back(vecResultMasternodesL2[j]);
 
-    for (unsigned int k = 0; k < nP3+nP3Increase; k++)
+    unsigned int nP3Total = nP3 + nP3Increase;
+    for (unsigned int k = 0; k < nP3Total; k++)
         g_vecResultMasternodes.push_back(vecResultMasternodesL3[k]);
 
     if (!bProcessSpork)
@@ -9480,9 +9483,14 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
               nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
     for( uint32_t i = 0; i < size; ++i )
     {
+        string nPStr = "P3";
+        if(i<nP1Total)
+            nPStr = "P1";
+        else if(i< (nP1Total + nP2Total))
+            nPStr = "P2";
         const CMasternode& mn = g_vecResultMasternodes[i];
-        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,startUpTime:%lld,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
-                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.startUpTime,mn.nClientVersion);
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,startUpTime:%lld,nClientVersion:%d,location:%s\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.startUpTime,mn.nClientVersion,nPStr);
     }
 }
 
