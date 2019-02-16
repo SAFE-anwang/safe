@@ -9264,7 +9264,7 @@ void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vec
     if(nRemainNum > 0)
     {
         nIncrease = vecSize - nPercentCnt;
-        nIncrease = nIncrease > nRemainNum ? nRemainNum : nRemainNum - nIncrease;
+        nIncrease = nIncrease >= nRemainNum ? nRemainNum : nRemainNum - nIncrease;
         nRemainNum = nRemainNum - nIncrease;
     }
 }
@@ -9282,7 +9282,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         logCnt++;
         if (logCnt<=logMaxCnt)
         {
-            LogPrintf("SPOS_Message:before sort:ip:%s, nActiveState:%d, nClientVersion:%\n", mn.addr.ToStringIP(), mn.nActiveState, mn.nClientVersion);
+            LogPrintf("SPOS_Message:before sort:ip:%s, nActiveState:%d, nClientVersion:%d\n", mn.addr.ToStringIP(), mn.nActiveState, mn.nClientVersion);
         }
 
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
