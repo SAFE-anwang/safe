@@ -525,9 +525,7 @@ CSuperblock(uint256& nHash)
 bool CSuperblock::IsValidBlockHeight(int nBlockHeight)
 {
     // SUPERBLOCKS CAN HAPPEN ONLY after hardfork and only ONCE PER CYCLE
-    int nSuperblockCycle = Params().GetConsensus().nSuperblockCycle;
-    if (IsStartSPosHeight(nBlockHeight))
-        nSuperblockCycle = Params().GetConsensus().nSuperblockCycle * ConvertBlockHeight(Params().GetConsensus());
+    int nSuperblockCycle = Params().GetConsensus().nSuperblockCycle * ConvertBlockParameterByHeight(nBlockHeight, Params().GetConsensus());
     return nBlockHeight >= Params().GetConsensus().nSuperblockStartBlock &&
             ((nBlockHeight % nSuperblockCycle) == 0);
 }

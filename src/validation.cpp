@@ -2972,9 +2972,7 @@ CAmount GetMasternodePayment(int nHeight, CAmount blockValue)
     CAmount ret = blockValue/5; // start at 20%
 
     int nMNPIBlock = Params().GetConsensus().nMasternodePaymentsIncreaseBlock;
-    int nMNPIPeriod = Params().GetConsensus().nMasternodePaymentsIncreasePeriod;;
-    if (IsStartSPosHeight(nHeight))
-        nMNPIPeriod = Params().GetConsensus().nMasternodePaymentsIncreasePeriod * ConvertBlockHeight(Params().GetConsensus());
+    int nMNPIPeriod = Params().GetConsensus().nMasternodePaymentsIncreasePeriod * ConvertBlockParameterByHeight(nHeight, Params().GetConsensus());
 
                                                                       // mainnet:
     if(nHeight > nMNPIBlock)                  ret += blockValue / 20; // 158000 - 25.0% - 2014-10-24
@@ -9692,6 +9690,15 @@ int ConvertBlockHeight(const Consensus::Params& consensusParams)
 {
     return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
 }
+
+int ConvertBlockParameterByHeight(const int &nHeight, const Consensus::Params& consensusParams)
+{
+    if (IsStartSPosHeight(nHeight))
+        return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
+    else
+        return 1;
+}
+
 
 //XJTODO test
 bool isOnline(uint32_t nTime,int nHeight)

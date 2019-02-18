@@ -273,6 +273,8 @@ CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
 
 int ConvertBlockHeight(const Consensus::Params& consensusParams);
 
+int ConvertBlockParameterByHeight(const int &nHeight, const Consensus::Params& consensusParams);
+
 
 /**
  * Prune block and undo files (blk???.dat and undo???.dat) so that the disk space used is less than a user-defined target.

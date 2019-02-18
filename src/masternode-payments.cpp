@@ -50,10 +50,7 @@ bool IsBlockValueValid(const CBlock& block, int nBlockHeight, CAmount blockRewar
     const Consensus::Params& consensusParams = Params().GetConsensus();
 
     if(nBlockHeight < consensusParams.nSuperblockStartBlock) {
-        int nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks;;
-        if (IsStartSPosHeight(nBlockHeight))
-            nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks * ConvertBlockHeight(consensusParams);
-
+        int nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks * ConvertBlockParameterByHeight(nBlockHeight, consensusParams);
         int nOffset = nBlockHeight % nBudgetPaymentsCycleBlocks;
         if(nBlockHeight >= consensusParams.nBudgetPaymentsStartBlock &&
             nOffset < consensusParams.nBudgetPaymentsWindowBlocks) {
@@ -157,10 +154,7 @@ bool IsBlockPayeeValid(const CTransaction& txNew, int nBlockHeight, CAmount bloc
             return true;
         }
 
-        int nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks;
-        if (IsStartSPosHeight(nBlockHeight))
-            nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks * ConvertBlockHeight(consensusParams);
-
+        int nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks * ConvertBlockParameterByHeight(nBlockHeight, consensusParams);
         int nOffset = nBlockHeight % nBudgetPaymentsCycleBlocks;
         if(nBlockHeight >= consensusParams.nBudgetPaymentsStartBlock &&
             nOffset < consensusParams.nBudgetPaymentsWindowBlocks) {
