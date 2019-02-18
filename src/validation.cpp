@@ -9374,20 +9374,18 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
 
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
     string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
-    if (!bProcessSpork)
-    {
-        //1.3.3
-        g_nStartNewLoopTime = (int64_t)nTime*1000;
-        g_nSposGeneratedIndex = -2;
-        g_nSelectMasterNodeRet = 1;
 
-        if(g_nStartNewLoopTime < nTime*1000)
-        {
-            LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",g_nStartNewLoopTime/1000,strStartNewLoopTime
-                      ,nTime,strBlockTime);
-            g_nSelectMasterNodeRet = -1;
-            return;
-        }
+    //1.3.3
+    g_nStartNewLoopTime = (int64_t)nTime*1000;
+    g_nSposGeneratedIndex = -2;
+    g_nSelectMasterNodeRet = 1;
+
+    if(g_nStartNewLoopTime < nTime*1000)
+    {
+        LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",g_nStartNewLoopTime/1000,strStartNewLoopTime
+                  ,nTime,strBlockTime);
+        g_nSelectMasterNodeRet = -1;
+        return;
     }
 
     //4.1

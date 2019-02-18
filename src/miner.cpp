@@ -687,7 +687,11 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         int64_t nTimeIntervalCnt = (nTimeInerval / interval - 2);
         //to avoid nTimeIntervalCnt=masternodeSPosCount,first time nTimeIntervalCnt:-1,index:-1
         if(nTimeIntervalCnt<0)
+        {
+            LogPrintf("SPOS_Warning:interval:%lld,nTimeInerval:%lld,nTimeIntervalCnt:%lld\n", interval, nTimeInerval, nTimeIntervalCnt);
             return;
+        }
+
         index = nTimeIntervalCnt % masternodeSPosCount;
         nNextTime = g_nStartNewLoopTime + (nTimeIntervalCnt+1)*interval*1000;
 
@@ -705,7 +709,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
         if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
         {
-            if(nNewBlockHeight != nWaitBlockHeight && pblock->nTime != nNextLogTime)
+            //SQTODo
+            //if(nNewBlockHeight != nWaitBlockHeight && pblock->nTime != nNextLogTime)
             {
                 LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.blockTime:%lld,g_nStartNewLoopTime:%lld,"
                           "local collateral address:%s,masternode collateral address:%s\n",index,masterIP,pindexPrev->nHeight
