@@ -20,11 +20,8 @@ std::map<uint256, CSporkMessage> mapSporks;
 
 void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv, CConnman& connman)
 {
-    LogPrintf("CSporkManager::ProcessSpork 1\n");
-
     if(fLiteMode) return; // disable all Safe specific functionality
 
-    LogPrintf("CSporkManager::ProcessSpork 2\n");
     if (strCommand == NetMsgType::SPORK) {
 
         CSporkMessage spork;
@@ -41,7 +38,7 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
                 LogPrintf("CSporkManager::ProcessSpork chainActive.Tip() is NULL\n");
                 return;
             }
-            LogPrintf("CSporkManager::ProcessSpork 3\n");
+
             strLogMsg = strprintf("SPORK -- hash: %s id: %d value: %10d bestHeight: %d peer=%d", hash.ToString(), spork.nSporkID, spork.nValue, chainActive.Height(), pfrom->id);
         }
 
