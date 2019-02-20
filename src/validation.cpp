@@ -9466,7 +9466,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
 
     g_vecResultMasternodes.clear();
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
-    unsigned int nMnSize = nP1 + nP2 + nP3;
+    unsigned int nMnSize = vec1Size + vec2Size + vec3Size;
     if (nMnSize < g_nMasternodeMinCount)
     {
         LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
