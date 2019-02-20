@@ -699,6 +699,9 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                         if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
                             return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
                     }
+
+                    if (!IsStartLockFeatureHeight(chainActive.Height()))
+                        return state.DoS(50, false, REJECT_INVALID, "new_tx: lock function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
                 }
             }
         }
@@ -762,7 +765,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
     return true;
 }
 
-bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view, map<CPutCandy_IndexKey, CAmount>& mapAssetGetCandy, const bool fWithMempool)
+bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view, map<CPutCandy_IndexKey, CAmount>& mapAssetGetCandy, const bool &fWithMempool)
 {
     if(tx.IsCoinBase())
         return true;
@@ -788,6 +791,12 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
 
         if(header.nAppCmd == ISSUE_ASSET_CMD)
         {
+            if (fWithMempool)
+            {
+                if (!IsStartLockFeatureHeight(chainActive.Height()))
+                    return state.DoS(50, false, REJECT_INVALID, "asset_tx: issue asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
+            }
+        
             CAssetData assetData;
             if(!ParseIssueData(vData, assetData))
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse issue txout reserve failed");
@@ -834,6 +843,12 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == PUT_CANDY_CMD)
         {
+            if (fWithMempool)
+            {
+                if (!IsStartLockFeatureHeight(chainActive.Height()))
+                    return state.DoS(50, false, REJECT_INVALID, "put_candy: put candy function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
+            }
+
             CPutCandyData putData;
             if(!ParsePutCandyData(vData, putData))
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse putcandy txout reserve failed");
@@ -1009,6 +1024,12 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
 
         if(header.nAppCmd == REGISTER_APP_CMD)
         {
+            if (fWithMempool)
+            {
+                if (!IsStartLockFeatureHeight(chainActive.Height()))
+                    return state.DoS(50, false, REJECT_INVALID, "register_app: register app function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
+            }
+
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "register_app: conflict with locked txout");
 
@@ -1349,6 +1370,12 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == ISSUE_ASSET_CMD)
         {
+            if (fWithMempool)
+            {
+                if (!IsStartLockFeatureHeight(chainActive.Height()))
+                    return state.DoS(50, false, REJECT_INVALID, "issue_asset: issue asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
+            }
+
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "issue_asset: conflict with locked txout");
 
@@ -1735,6 +1762,12 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == PUT_CANDY_CMD)
         {
+            if (fWithMempool)
+            {
+                if (!IsStartLockFeatureHeight(chainActive.Height()))
+                    return state.DoS(50, false, REJECT_INVALID, "put_candy: put candy function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
+            }
+
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "put_candy: conflict with locked txout");
 

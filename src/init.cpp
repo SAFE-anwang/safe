@@ -111,6 +111,8 @@ extern unsigned int g_nMasternodeMinCount;
 extern int g_nProtocolV3Height;
 extern std::mutex g_mutexAllPayeeInfo;
 extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
+extern int64_t AllowableErrorTime;
+
 
 
 std::unique_ptr<CConnman> g_connman;
@@ -1548,6 +1550,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nMasternodeStatusEnable = GetArg("-masternode_status_enable", g_nMasternodeStatusEnable);
     g_nMasternodeMinCount = GetArg("-masternode_min_count", g_nMasternodeMinCount);
     g_nProtocolV3Height = GetArg("-spos_start_lock_height", g_nProtocolV3Height);
+    AllowableErrorTime = GetArg("-spos_allowable_error_time", AllowableErrorTime);
 
     bool fLoaded = false;
     while (!fLoaded) {
