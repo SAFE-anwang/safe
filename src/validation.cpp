@@ -5816,27 +5816,25 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
                          nHeight, keyID.ToString()), REJECT_INVALID, "bad-keyid", true);
     }
 
-    if (isOnline(block.nTime, nHeight))
-    {
-        if(mnSize == 0)
-            return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
-                                        ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-mnSize", true);
-        int32_t interval = (block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1;
-        int32_t nIndex = interval % mnSize;
-        if(nIndex<0)
-            return state.DoS(100,error("SPOS_Error CheckSPOSBlock():incorrect index value,height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
-                                       ,nHeight,nIndex,block.GetBlockTime(),g_nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
-        const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
+    if(mnSize == 0)
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
+                                    ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-mnSize", true);
+    int32_t interval = (block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+    int32_t nIndex = interval % mnSize;
+    if(nIndex<0)
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():incorrect index value,height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
+                                   ,nHeight,nIndex,block.GetBlockTime(),g_nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
+    const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
 
-        CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
+    CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
-        if (keyID != mnkeyID)
-            return state.DoS(100, error("SPOS_Error CheckSPOSBlock():block keyid error, height:%d,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
-                                        "ip:%s,blocktime:%lld,startlooptime:%lld\n"
-                                        ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
-                                        ,block.GetBlockTime(),g_nStartNewLoopTime)
-                                        , REJECT_INVALID, "bad-blockaddress", true);
-    }*/
+    if (keyID != mnkeyID)
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():block keyid error, height:%d,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
+                                    "ip:%s,blocktime:%lld,startlooptime:%lld\n"
+                                    ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
+                                    ,block.GetBlockTime(),g_nStartNewLoopTime)
+                                    , REJECT_INVALID, "bad-blockaddress", true);
+   */
 
     if(fCheckPOW)
         LogPrintf("SPOS_Message:check spos block,height:%d,strKeyID:%s\n",nHeight, keyID.ToString());
@@ -9518,8 +9516,8 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         else if(i< (nP1Total + nP2Total))
             nPStr = "P2";
         const CMasternode& mn = g_vecResultMasternodes[i];
-        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,startUpTime:%lld,nClientVersion:%d,location:%s\n", i, mn.addr.ToStringIP(),
-                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.startUpTime,mn.nClientVersion,nPStr);
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d,location:%s\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.nClientVersion,nPStr);
     }
 }
 
@@ -9533,12 +9531,6 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
 
     if(!masternodeSync.IsSynced())
         return;
-
-    if(!isOnline(nTime,nCurrBlockHeight))
-    {
-        LogPrintf("SPOS_Message:online time is less than g_nMasternodeMinOnlineTime, nTime:%d, g_nStartUpTime:%d , g_nMasternodeMinOnlineTime:%d\n", nTime, g_nStartUpTime, g_nMasternodeMinOnlineTime);
-        return;
-    }
 
     if (!bProcessSpork)
     {
@@ -9623,7 +9615,6 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
     for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
     {
         const CMasternode& mn = (*mnpair).second;
-        int64_t onlineTime = mn.getOnlineTime(nTime,nCurrBlockHeight);
         int64_t activeTime = mn.getActiveTime(nTime,nCurrBlockHeight);
 
         //XJTODO
@@ -9633,12 +9624,11 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
             string strPingTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", mn.lastPing.sigTime);
             string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", mn.sigTime);
             string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
-            string strStartUpTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", mn.startUpTime);
-            LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,onlineTime:%lld,pingTime:%lld(%s),sigTime:%lld(%s),"
-                      "nTimeLastPing:%lld,nClientVersion:%d,blockTime:%lld(%s),activeTime:%lld,startUpTime:%lld(%s),isOK:%d\n",
-                      mn.addr.ToStringIP(),mn.nActiveState,onlineTime,mn.lastPing.sigTime,strPingTime,mn.sigTime,strSigTime,
-                      mn.nTimeLastPing,mn.nClientVersion,nTime,strBlockTime,activeTime,mn.startUpTime,strStartUpTime,
-                      mn.isActive(nTime,nCurrBlockHeight)&&isOnline(nTime,nCurrBlockHeight)?1:0);
+            LogPrintf("SPOS_Message:before sort:ip:%s,nActiveState:%d,pingTime:%lld(%s),sigTime:%lld(%s),"
+                      "nTimeLastPing:%lld,nClientVersion:%d,blockTime:%lld(%s),activeTime:%lld,isOK:%d\n",
+                      mn.addr.ToStringIP(),mn.nActiveState,mn.lastPing.sigTime,strPingTime,mn.sigTime,strSigTime,
+                      mn.nTimeLastPing,mn.nClientVersion,nTime,strBlockTime,activeTime,
+                      mn.isActive(nTime,nCurrBlockHeight));
         }
 
         if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED))
@@ -9671,8 +9661,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
     {
         logCnt++;
         if(logCnt<=logMaxCnt)
-            LogPrintf("SPOS_Message:after sort:ip:%s,score:%s,pingTime:%lld,sigTime:%lld,startUpTime:%lld,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
-                      ,mnpair.first.ToString(),mnpair.second.lastPing.sigTime,mnpair.second.sigTime,mnpair.second.startUpTime,mnpair.second.nClientVersion);
+            LogPrintf("SPOS_Message:after sort:ip:%s,score:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d\n",mnpair.second.addr.ToStringIP()
+                      ,mnpair.first.ToString(),mnpair.second.lastPing.sigTime,mnpair.second.sigTime,mnpair.second.nClientVersion);
     }
 
     unsigned int count = 0;
@@ -9709,8 +9699,8 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
     for( uint32_t i = 0; i < size; ++i )
     {
         const CMasternode& mn = g_vecResultMasternodes[i];
-        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,startUpTime:%lld,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
-                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.startUpTime,mn.nClientVersion);
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s,keyid:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.nClientVersion);
     }
 
     if (!bProcessSpork)
@@ -9728,19 +9718,4 @@ int ConvertBlockParameterByHeight(const int &nHeight, const Consensus::Params& c
         return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
     else
         return 1;
-}
-
-
-//XJTODO test
-bool isOnline(uint32_t nTime,int nHeight)
-{
-    if(nTime<g_nStartUpTime)
-    {
-        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
-        string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartUpTime);
-        LogPrintf("SPOS_Error:block time:%d(%s) less than startUpTime:%d(%s),height:%d\n",nTime,strBlockTime,g_nStartUpTime,strSigTime,nHeight);
-        return false;
-    }
-    uint32_t online = nTime - g_nStartUpTime;
-    return online >= g_nMasternodeMinOnlineTime;
 }

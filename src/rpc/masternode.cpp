@@ -541,8 +541,6 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                                mn.GetLastPaidTime() << " "  << std::setw(6) <<
                                mn.GetLastPaidBlock() << " " <<
                                mn.addr.ToString()<< " " <<
-                               mn.startUpTime<< " " <<
-                               mn.getOnlineTime(pindex->nTime,pindex->nHeight)<< " " <<
                                mn.nClientVersion;
                 std::string strFull = streamFull.str();
                 if (strFilter !="" && strFull.find(strFilter) == std::string::npos &&

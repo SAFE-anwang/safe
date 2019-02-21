@@ -880,17 +880,6 @@ void CMasternode::UpdateWatchdogVoteTime(uint64_t nVoteTime)
     nTimeLastWatchdogVote = (nVoteTime == 0) ? GetAdjustedTime() : nVoteTime;
 }
 
-uint32_t CMasternode::getOnlineTime(uint32_t nTime,int nHeight)const
-{
-    if(nTime<startUpTime)
-    {
-        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
-        string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", startUpTime);
-        LogPrintf("SPOS_Error:block times:%d(%s) less than startUpTime:%d(%s),height:%d\n",nTime,strBlockTime,startUpTime,strSigTime,nHeight);
-    }
-    return nTime - startUpTime;
-}
-
 uint32_t CMasternode::getActiveTime(uint32_t nTime,int nHeight) const
 {
     if(nTime<sigTime)

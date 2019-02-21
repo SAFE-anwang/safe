@@ -100,7 +100,7 @@ struct masternode_info_t
     masternode_info_t(masternode_info_t const&) = default;
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime) :
-        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},nClientVersion{CLIENT_VERSION},startUpTime(g_nStartUpTime) {}
+        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},nClientVersion{CLIENT_VERSION}
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime,
                       COutPoint const& outpoint, CService const& addr,
@@ -109,8 +109,7 @@ struct masternode_info_t
         nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},
         vin{outpoint}, addr{addr},
         pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
-        nTimeLastWatchdogVote{tWatchdogV},nClientVersion{CLIENT_VERSION},
-        startUpTime(g_nStartUpTime){}
+        nTimeLastWatchdogVote{tWatchdogV},nClientVersion{CLIENT_VERSION}
 
     int nActiveState = 0;
     int nProtocolVersion = 0;
@@ -128,7 +127,6 @@ struct masternode_info_t
     int64_t nTimeLastPing = 0; //* not in CMN
     bool fInfoValid = false; //* not in CMN
     int nClientVersion = 0;
-    int64_t startUpTime = 0;//system start time
 };
 
 //
@@ -207,7 +205,6 @@ public:
         if(CLIENT_VERSION>=SPOS_MIN_CLIENT_VERSION)
         {
             READWRITE(nClientVersion);
-            READWRITE(startUpTime);
         }
     }
 
@@ -293,8 +290,6 @@ public:
 
     void UpdateWatchdogVoteTime(uint64_t nVoteTime = 0);
 
-    uint32_t getOnlineTime(uint32_t nTime,int nHeight)const;
-
     uint32_t getActiveTime(uint32_t nTime,int nHeight)const;
 
     bool isActive(uint32_t nTime,int nHeight)const;
@@ -312,7 +307,6 @@ public:
         fUnitTest = from.fUnitTest;
         mapGovernanceObjectsVotedOn = from.mapGovernanceObjectsVotedOn;
         nClientVersion = from.nClientVersion;
-        startUpTime = from.startUpTime;
         return *this;
     }
 };
@@ -358,7 +352,6 @@ public:
         if(CLIENT_VERSION>=SPOS_MIN_CLIENT_VERSION&&sz>0)
         {
             READWRITE(nClientVersion);
-            READWRITE(startUpTime);
         }
     }
 

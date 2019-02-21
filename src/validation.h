@@ -1555,8 +1555,6 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
 
 void SelectMasterNode(unsigned int nNewBlockHeight, uint32_t nTime, const bool bSpork = false, const bool bProcessSpork = false);
 
-bool isOnline(uint32_t nTime,int height);
-
 void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork);
 
 
