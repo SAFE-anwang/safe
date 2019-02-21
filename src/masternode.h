@@ -109,7 +109,7 @@ struct masternode_info_t
         nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},
         vin{outpoint}, addr{addr},
         pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
-        nTimeLastWatchdogVote{tWatchdogV},nClientVersion{CLIENT_VERSION}
+        nTimeLastWatchdogVote{tWatchdogV},nClientVersion{CLIENT_VERSION}{}
 
     int nActiveState = 0;
     int nProtocolVersion = 0;
