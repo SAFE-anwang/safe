@@ -9439,7 +9439,8 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         }else
         {
             uint32_t nIntervalTime = nTime - tempit->second.blockTime;
-            LogPrintf("SPOS_Message:found payee,strPubKeyCollateralAddress:%s,nIntervalTime:%d\n",strPubKeyCollateralAddress,nIntervalTime);
+            LogPrintf("SPOS_Message:found payee,ip:%s,strPubKeyCollateralAddress:%s,nIntervalTime:%d,nPayeeTimes:%d,lastHeight:%d\n",
+                      mn.addr.ToStringIP(),strPubKeyCollateralAddress,nIntervalTime,tempit->second.nPayeeTimes,tempit->second.nHeight);
             if (nIntervalTime <= interval)
                 mapMasternodesL1[it->first] = it->second;
             else if (nIntervalTime > interval && nIntervalTime <=  2 *interval)
