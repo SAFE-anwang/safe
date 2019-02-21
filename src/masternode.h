@@ -100,7 +100,7 @@ struct masternode_info_t
     masternode_info_t(masternode_info_t const&) = default;
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime) :
-        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},nClientVersion{CLIENT_VERSION}
+        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},nClientVersion{CLIENT_VERSION}{}
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime,
                       COutPoint const& outpoint, CService const& addr,
