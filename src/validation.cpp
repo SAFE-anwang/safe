@@ -9419,6 +9419,13 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         return;
     }
 
+    if(mapMasternodes.empty())
+    {
+        LogPrintf("SPOS_Error:mapMasternodes is empty\n");
+        g_nSelectMasterNodeRet = -1;
+        return;
+    }
+
     //4.1
     unsigned int nTotalMasternode = mapMasternodes.size();
     int64_t interval = nTotalMasternode * Params().GetConsensus().nSPOSTargetSpacing;

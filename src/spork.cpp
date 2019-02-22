@@ -263,7 +263,12 @@ bool CSporkManager::SetPrivKey(std::string strPrivKey)
 
 void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
 {
-    LogPrintf("CSporkManager::SelectMasterNodeForSpork -- nSporkID:%d---chainActive height:%d----nValue:%d\n", nSporkID, chainActive.Height(), nValue);
+    LogPrintf("SPOS_Message:SelectMasterNodeForSpork -- nSporkID:%d---chainActive height:%d----nValue:%d\n", nSporkID, chainActive.Height(), nValue);
+    if (IsSporkActive(SPORK_6_SPOS_ENABLED))
+        LogPrintf("SPOS_Message:SPORK_6_SPOS_ENABLED is open\n");
+    else
+        LogPrintf("SPOS_Message:SPORK_6_SPOS_ENABLED is close\n");
+    
     if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED) && chainActive.Height() == nValue)
     {
         SelectMasterNodeByPayee(chainActive.Height(), chainActive.Tip()->nTime, true, true);
