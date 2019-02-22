@@ -9482,17 +9482,17 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
     CalculateIncreaseMasternode(nRemainNum,nP1Increase,vec1Size,nP1);
 
-    unsigned int nP3Total = nP3 + nP3Increase;
-    for (unsigned int k = 0; k < nP3Total; k++)
-        g_vecResultMasternodes.push_back(vecResultMasternodesL3[k]);
+    unsigned int nP1Total = nP1+nP1Increase;
+    for (unsigned int i = 0; i < nP1Total; i++)
+        g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
 
     unsigned int nP2Total = nP2+nP2Increase;
     for (unsigned int j = 0; j < nP2Total; j++)
         g_vecResultMasternodes.push_back(vecResultMasternodesL2[j]);
 
-    unsigned int nP1Total = nP1+nP1Increase;
-    for (unsigned int i = 0; i < nP1Total; i++)
-        g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
+    unsigned int nP3Total = nP3 + nP3Increase;
+    for (unsigned int k = 0; k < nP3Total; k++)
+        g_vecResultMasternodes.push_back(vecResultMasternodesL3[k]);
 
     if (!bProcessSpork)
         g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
