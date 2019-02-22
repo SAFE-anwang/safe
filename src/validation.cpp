@@ -9478,9 +9478,9 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
 
     int nRemainNum = g_nMasternodeSPosCount - nMnSize;
     int nP1Increase = 0,nP2Increase = 0,nP3Increase = 0;
-    CalculateIncreaseMasternode(nRemainNum,nP1Increase,vec1Size,nP1);
-    CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
     CalculateIncreaseMasternode(nRemainNum,nP3Increase,vec3Size,nP3);
+    CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
+    CalculateIncreaseMasternode(nRemainNum,nP1Increase,vec1Size,nP1);
 
     unsigned int nP3Total = nP3 + nP3Increase;
     for (unsigned int k = 0; k < nP3Total; k++)
