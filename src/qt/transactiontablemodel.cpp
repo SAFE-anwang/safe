@@ -19,6 +19,7 @@
 #include "util.h"
 #include "wallet/wallet.h"
 #include "main.h"
+#include "chainparams.h"
 
 #include <QColor>
 #include <QDateTime>
@@ -27,6 +28,8 @@
 #include <QList>
 
 #include <boost/foreach.hpp>
+
+extern int g_nStartSPOSHeight;
 
 // Amount column is right-aligned it contains numbers
 static int column_alignments[] = {
@@ -509,6 +512,12 @@ QString TransactionTableModel::formatUnlockedHeight(const TransactionRecord *wtx
 {
     if(wtx->nUnlockedHeight)
     {
+        if (wtx->nTxHeight < g_nStartSPOSHeight && wtx->nUnlockedHeight >= g_nStartSPOSHeight)
+        {
+            int nSPOSLaveHeight = (wtx->nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+            int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+            return QString::number(nTrueUnlockHeight);
+        }
         return QString::number(wtx->nUnlockedHeight);
     }
     else

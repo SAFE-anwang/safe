@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <string>
 
+extern int g_nStartSPOSHeight;
+
 bool TransactionDesc::needDisplay(int descColumn, int showType, int type)
 {
     bool ret = false;
@@ -520,7 +522,15 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
                 strHTML += "<b>" + tr("Locked amount") + ":</b> " + BitcoinUnits::formatHtmlWithUnit(rec->assetsData.nDecimals, rec->nLockedAmount, true,BitcoinUnits::separatorAlways,true,QString::fromStdString(rec->assetsData.strAssetUnit)) + "<br>";
         }
         if(needDisplay(DescColumnUnlockedHeight,showType))
-            strHTML += "<b>" + tr("Unlocked height") + ":</b> " + QString::number(rec->nUnlockedHeight) + "<br>";
+        {
+            int64_t unlockedHeight = rec->nUnlockedHeight;
+            if (rec->nTxHeight < g_nStartSPOSHeight && rec->nUnlockedHeight >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (rec->nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                unlockedHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+            }
+            strHTML += "<b>" + tr("Unlocked height") + ":</b> " + QString::number(unlockedHeight) + "<br>";
+        }
     }
 
     //
