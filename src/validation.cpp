@@ -9483,7 +9483,8 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         return;
     }
 
-    int nRemainNum = g_nMasternodeSPosCount - nMnSize;
+    unsigned int nSelectTotal = nP1 + nP2 + nP3;
+    int nRemainNum = g_nMasternodeSPosCount - nSelectTotal;
     int nP1Increase = 0,nP2Increase = 0,nP3Increase = 0;
 
     CalculateIncreaseMasternode(nRemainNum,nP1Increase,vec1Size,nP1);
@@ -9510,8 +9511,8 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
 
     //no \n,connect two log str
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,"
-              "min online masternode count:%d,",localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,
-              strBlockTime,size,g_nMasternodeMinCount);
+              "min online masternode count:%d,nRemainNum:%d",localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,
+              strBlockTime,size,g_nMasternodeMinCount,nRemainNum);
 
     LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
               "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,
