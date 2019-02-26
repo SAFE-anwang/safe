@@ -9307,7 +9307,6 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
     {
         const CMasternode& mn = (*mnpair).second;
 
-        //XJTODO
         logCnt++;
         if (logCnt<=logMaxCnt)
         {
@@ -9322,7 +9321,6 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         scoreMasternodes[score] = mn;
     }
 
-    //XJTODO remove it5
     logCnt = 0;
     for (auto& mnpair : scoreMasternodes)
     {
@@ -9627,7 +9625,6 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
         const CMasternode& mn = (*mnpair).second;
         int64_t activeTime = mn.getActiveTime(nTime,nCurrBlockHeight);
 
-        //XJTODO
         logCnt++;
         if(logCnt<=logMaxCnt)
         {
@@ -9665,7 +9662,6 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
         return;
     }
 
-    //XJTODO remove it5
     logCnt = 0;
     for (auto& mnpair : scoreMasternodes)
     {

@@ -745,7 +745,7 @@ void CMasternodeMan::ProcessMasternodeConnections(CConnman& connman)
             if(privateSendClient.infoMixingMasternode.fInfoValid && pnode->addr == privateSendClient.infoMixingMasternode.addr)
                 return;
             LogPrintf("Closing Masternode connection: peer=%d, addr=%s\n", pnode->id, pnode->addr.ToString());
-            //if(!fMasterNode)//XJTODO
+            //if(!fMasterNode)//XJTODO this code is no need
                 pnode->fDisconnect = true;
         }
     });
