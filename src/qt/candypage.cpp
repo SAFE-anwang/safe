@@ -280,7 +280,7 @@ void CandyPage::getCandy(QPushButton *btn)
     if(nCurrentHeight < neededHeight)
     {
         int seconds = 0;
-        if (nTxHeight >= g_nStartSPOSHeight)
+        if (neededHeight >= g_nStartSPOSHeight)
             seconds = (neededHeight-nCurrentHeight)*Params().GetConsensus().nSPOSTargetSpacing;
         else
             seconds = (neededHeight-nCurrentHeight)*Params().GetConsensus().nPowTargetSpacing;
