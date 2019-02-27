@@ -1541,7 +1541,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     LogPrintf("* Using %.1fMiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
 
-    //XJTODO annote it
+#if SCN_CURRENT == SCN__main
+                        //do nothing
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
     g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
     g_nSaveMasternodePayeeHeight = GetArg("-save_masternode_payee_height", g_nSaveMasternodePayeeHeight);
     g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
@@ -1551,6 +1553,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nMasternodeMinCount = GetArg("-masternode_min_count", g_nMasternodeMinCount);
     g_nProtocolV3Height = GetArg("-spos_start_lock_height", g_nProtocolV3Height);
     AllowableErrorTime = GetArg("-spos_allowable_error_time", AllowableErrorTime);
+#else
+#error unsupported <safe chain name>
+#endif
 
     bool fLoaded = false;
     while (!fLoaded) {
