@@ -1671,7 +1671,7 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
         CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,nHeightRet);
         unsigned int depth = nHeight - nHeightRet;
         unsigned int activeTime = depth * Params().GetConsensus().nSPOSTargetSpacing;
-        if (err != CMasternode::COLLATERAL_UTXO_NOT_FOUND && activeTime > g_nMasternodeMinActiveTime && mnpair.second.nClientVersion == SPOS_MIN_CLIENT_VERSION) {
+        if (err == CMasternode::COLLATERAL_OK && activeTime > g_nMasternodeMinActiveTime && mnpair.second.nClientVersion == SPOS_MIN_CLIENT_VERSION) {
             mapOutMasternodes[mnpair.first] = mnpair.second;
         }
     }
