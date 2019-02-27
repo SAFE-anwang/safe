@@ -34,7 +34,7 @@ int g_nSaveMasternodePayeeHeight = 30000;
 
 unsigned int g_nMasternodeSPosCount = 9;
 unsigned int g_nMasternodeMinActiveTime = 86400*3;
-unsigned int g_nMasternodeMinOnlineTime = 86400;
+unsigned int g_nMasternodeMinOnlineTime = 3600;
 int64_t g_nStartNewLoopTime = 0;
 int g_nSposGeneratedIndex = -2;
 unsigned int g_nMasternodeStatusEnable = CMasternode::MASTERNODE_ENABLED;//1 means masternode status must enable,0 means status can be other
