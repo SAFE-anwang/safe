@@ -66,6 +66,9 @@ UniValue issueasset(const UniValue& params, bool fHelp)
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
+    if (!IsStartLockFeatureHeight(g_nChainHeight))
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
+
     boost::regex regname("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9\u4e00-\u9fa5]{1,20}");
     string strShortName = TrimString(params[0].get_str());
     if(strShortName.empty() || strShortName.size() > MAX_SHORTNAME_SIZE || IsContainSpace(strShortName) || !boost::regex_match(strShortName, regname))
@@ -162,9 +165,6 @@ UniValue issueasset(const UniValue& params, bool fHelp)
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
-    if (!IsStartLockFeatureHeight(g_nChainHeight))
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
     CAmount nCancelledValue = GetCancelledAmount(g_nChainHeight);
     if(!IsCancelledRange(nCancelledValue))
         throw JSONRPCError(INVALID_CANCELLED_SAFE, "Invalid cancelled safe amount");
@@ -239,6 +239,9 @@ UniValue addissueasset(const UniValue& params, bool fHelp)
 
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
+    if (!IsStartLockFeatureHeight(g_nChainHeight))
+        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
     uint256 assetId = uint256S(TrimString(params[0].get_str()));
     CAssetId_AssetInfo_IndexValue assetInfo;

@@ -807,6 +807,12 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == ADD_ASSET_CMD)
         {
+            if (fWithMempool)
+            {
+                if (!IsStartLockFeatureHeight(chainActive.Height()))
+                    return state.DoS(50, false, REJECT_INVALID, "asset_tx: add asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
+            }
+
             CCommonData addData;
             if(!ParseCommonData(vData, addData))
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse add txout reserve failed");
@@ -1519,6 +1525,12 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == ADD_ASSET_CMD)
         {
+            if (fWithMempool)
+            {
+                if (!IsStartLockFeatureHeight(chainActive.Height()))
+                    return state.DoS(50, false, REJECT_INVALID, "add_asset: add asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
+            }
+        
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "add_asset: conflict with locked txout");
 
@@ -1579,6 +1591,12 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == TRANSFER_ASSET_CMD)
         {
+            if (fWithMempool && txout.nUnlockedHeight > 0)
+            {
+                if (!IsStartLockFeatureHeight(chainActive.Height()))
+                    return state.DoS(50, false, REJECT_INVALID, "transfer_asset: transfer lock asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
+            }
+        
             if(header.appId.GetHex() != g_strSafeAssetId)
                 return state.DoS(50, false, REJECT_INVALID, "transfer_asset: invalid safe-asset app id in header, " + header.appId.GetHex());
 
@@ -5783,6 +5801,11 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         return state.DoS(100,error("SPOS_Error CheckSPOSBlock():incorrect index value,height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
                                    ,nHeight,nIndex,block.GetBlockTime(),g_nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
     const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
+
+    uint32_t tempMnActiveTime = mnTemp.getActiveTime(block.nTime, nHeight);
+    if (block.nNonce <= g_nMasternodeMinActiveTime || block.nNonce > tempMnActiveTime)
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():block.nNonce value error,height:%d, block.nNonce:%d,tempMnActiveTime:%d"
+                                   ,nHeight,block.nNonce,tempMnActiveTime),REJECT_INVALID,"bad-nNonce",true);
 
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
