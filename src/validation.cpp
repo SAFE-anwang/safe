@@ -4647,10 +4647,13 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if(CheckCriticalBlock(block))
         blockReward = nFees + g_nCriticalReward;
     else
-        if (pindex->pprev->nHeight >= g_nStartSPOSHeight)
+    {
+        if (pindex->nHeight >= g_nStartSPOSHeight)
             blockReward = nFees + GetSPOSBlockSubsidy(pindex->pprev->nHeight, chainparams.GetConsensus());
         else
             blockReward = nFees + GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, chainparams.GetConsensus());
+    }
+
     std::string strError = "";
     if (!IsBlockValueValid(block, pindex->nHeight, blockReward, strError)) {
         return state.DoS(0, error("ConnectBlock(SAFE): %s", strError), REJECT_INVALID, "bad-cb-amount");
@@ -8662,10 +8665,12 @@ bool LoadChangeInfoToList()
         if(CheckCriticalBlock(block))
             blockReward = g_nCriticalReward;
         else
-            if (pindex->pprev->nHeight >= g_nStartSPOSHeight)
+        {
+            if (pindex->nHeight >= g_nStartSPOSHeight)
                 blockReward = GetSPOSBlockSubsidy(pindex->pprev->nHeight, Params().GetConsensus());
             else
                 blockReward = GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, Params().GetConsensus());
+        }
 
         g_listChangeInfo.push_back(CChangeInfo(pindex->nHeight, g_nLastCandyHeight, blockReward, bExistCandy, mapAddressAmount));
 
