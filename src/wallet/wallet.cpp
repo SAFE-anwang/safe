@@ -4038,6 +4038,15 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
         return false;
     }
 
+    if (fUseInstantSend)
+    {
+        if (!IsStartLockFeatureHeight(chainActive.Height()))
+        {
+            strFailReason = _("Instant send is not yet enabled");
+            return false;            
+        }
+    }
+
     CAmount nFeePay = fUseInstantSend ? CTxLockRequest().GetMinFee() : 0;
 
     CAmount nValue = 0;
