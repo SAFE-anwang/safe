@@ -11,12 +11,16 @@
 #include "memusage.h"
 #include "serialize.h"
 #include "uint256.h"
+#include "consensus/consensus.h"
+#include "chainparams.h"
 
 #include <assert.h>
 #include <stdint.h>
 
 #include <boost/foreach.hpp>
 #include <boost/unordered_map.hpp>
+
+extern int g_nStartSPOSHeight;
 
 /** 
  * Pruned version of CTransaction: only retains metadata and unspent transaction outputs
@@ -150,6 +154,20 @@ public:
 
     bool IsCoinBase() const {
         return fCoinBase;
+    }
+
+    bool IsMaturity(int nSpendHeight) const {
+        if(nSpendHeight<=g_nStartSPOSHeight)
+            return nSpendHeight - nHeight >= COINBASE_MATURITY;
+
+        int coinbase_maturity_spos = COINBASE_MATURITY*Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing;
+        if(nHeight > g_nStartSPOSHeight)
+            return nSpendHeight - nHeight >= coinbase_maturity_spos;
+
+        int powHeight = g_nStartSPOSHeight - nHeight;
+        double percent = 1.0 - (double)powHeight/COINBASE_MATURITY;
+        int retHeight = percent*coinbase_maturity_spos + 1;
+        return nSpendHeight >= retHeight;
     }
 
     unsigned int GetSerializeSize(int nType, int nVersion) const {

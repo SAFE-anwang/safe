@@ -30,6 +30,8 @@ static const int COINBASE_MATURITY = 10;
 #error unsupported <safe chain name>
 #endif
 
+static const int COINBASE_MATURITY_SPOS = COINBASE_MATURITY*15;
+
 /** Flags for nSequence and nLockTime locks */
 enum {
     /* Interpret sequence numbers as relative lock-time constraints. */

@@ -6277,7 +6277,11 @@ int CMerkleTx::GetBlocksToMaturity() const
 {
     if (!IsCoinBase())
         return 0;
-    return max(0, (COINBASE_MATURITY+1) - GetDepthInMainChain());
+    const CBlockIndex *pindexRet;
+    int depth = GetDepthInMainChain(pindexRet);
+    if(pindexRet->nHeight > g_nStartSPOSHeight)
+        return max(0, (COINBASE_MATURITY_SPOS+1) - depth);
+    return max(0, (COINBASE_MATURITY+1) - depth);
 }
 
 
