@@ -13,6 +13,8 @@
 #include "masternodeman.h"
 #include "messagesigner.h"
 #include "util.h"
+#include "validation.h"
+
 
 #include <univalue.h>
 
@@ -580,8 +582,8 @@ bool CGovernanceObject::IsCollateralValid(std::string& strError, bool& fMissingC
         }
     }
 
-    if(nConfirmationsIn < GOVERNANCE_FEE_CONFIRMATIONS) {
-        strError = strprintf("Collateral requires at least %d confirmations to be relayed throughout the network (it has only %d)", GOVERNANCE_FEE_CONFIRMATIONS, nConfirmationsIn);
+    if(nConfirmationsIn < GOVERNANCE_FEE_CONFIRMATIONS * ConvertBlockConfirmationsByHeight(chainActive.Height())) {
+        strError = strprintf("Collateral requires at least %d confirmations to be relayed throughout the network (it has only %d)", GOVERNANCE_FEE_CONFIRMATIONS * ConvertBlockConfirmationsByHeight(chainActive.Height()), nConfirmationsIn);
         if (nConfirmationsIn >= GOVERNANCE_MIN_RELAY_FEE_CONFIRMATIONS) {
             fMissingConfirmations = true;
             strError += ", pre-accepted -- waiting for required confirmations";

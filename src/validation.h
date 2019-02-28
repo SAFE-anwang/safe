@@ -275,6 +275,10 @@ int ConvertBlockHeight(const Consensus::Params& consensusParams);
 
 int ConvertBlockParameterByHeight(const int &nHeight, const Consensus::Params& consensusParams);
 
+int ConvertBlockConfirmationsByHeight(const int&nHeight);
+
+int ConvertBlockConfirmations();
+
 
 /**
  * Prune block and undo files (blk???.dat and undo???.dat) so that the disk space used is less than a user-defined target.

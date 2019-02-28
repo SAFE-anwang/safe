@@ -3136,7 +3136,7 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
 			}
 
             // do not use IX for inputs that have less then INSTANTSEND_CONFIRMATIONS_REQUIRED blockchain confirmations
-            if (fUseInstantSend && nDepth < INSTANTSEND_CONFIRMATIONS_REQUIRED)
+            if (fUseInstantSend && nDepth < INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmations())
                 continue;
 
             // We should not consider coins which aren't at least in our mempool
@@ -4176,7 +4176,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     } else if (nValueIn < nValueToSelect) {
                         strFailReason = _("Insufficient funds.");
                         if (fUseInstantSend) // could be not true but most likely that's the reason
-                            strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED);
+                            strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmations());
                         else if (GetBalance() >= nValueToSelect)
                             strFailReason = _("Reach the current change limit,please try again later.");
                     }
@@ -4534,7 +4534,7 @@ bool CWallet::CreateAppTransaction(const CAppHeader* pHeader, const void* pBody,
                             if (GetBalance(false, NULL, pSafeAddress) < nValueToSelect)
                                 strFailReason = strprintf(_("Please transfer at least 0.01 SAFE to address(%s)."), pSafeAddress->ToString());
                             else if(fUseInstantSend)
-                                strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED);
+                                strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmations());
                             else
                                 strFailReason = _("Reach the current change limit,please try again later.");
                             return false;

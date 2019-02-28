@@ -616,6 +616,9 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
     }
     else if(nType == FROM_NEW) // tx from new tx
     {
+        if (!IsStartLockFeatureHeight(chainActive.Height()))
+            return state.DoS(50, false, REJECT_INVALID, "new_tx: lock function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
+
         if(tx.nVersion < SAFE_TX_VERSION_2) // all new tx must be 102
             return state.DoS(50, false, REJECT_INVALID, "new_tx: bad tx version");
     }
@@ -699,9 +702,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                         if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
                             return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
                     }
-
-                    if (!IsStartLockFeatureHeight(chainActive.Height()))
-                        return state.DoS(50, false, REJECT_INVALID, "new_tx: lock function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
                 }
             }
         }
@@ -2250,9 +2250,18 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         return state.Invalid(false, REJECT_ALREADY_KNOWN, "txn-already-in-mempool");
 
     // If this is a Transaction Lock Request check to see if it's valid
-    if(instantsend.HasTxLockRequest(hash) && !CTxLockRequest(tx).IsValid())
-        return state.DoS(10, error("AcceptToMemoryPool : CTxLockRequest %s is invalid", hash.ToString()),
+    if (instantsend.HasTxLockRequest(hash))
+    {
+        if (!CTxLockRequest(tx).IsValid())
+            return state.DoS(10, error("AcceptToMemoryPool : CTxLockRequest %s is invalid", hash.ToString()),
                             REJECT_INVALID, "bad-txlockrequest");
+        else
+        {
+            if (!IsStartLockFeatureHeight(chainActive.Height()))
+                return state.DoS(10, error("AcceptToMemoryPool : This feature is enabled when the block height is %d",  g_nProtocolV3Height),
+                                 REJECT_INVALID, "bad-instantsendheight");
+        }
+    }
 
     // Check for conflicts with a completed Transaction Lock
     BOOST_FOREACH(const CTxIn &txin, tx.vin)
@@ -9752,4 +9761,20 @@ int ConvertBlockParameterByHeight(const int &nHeight, const Consensus::Params& c
         return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
     else
         return 1;
+}
+
+int ConvertBlockConfirmationsByHeight(const int&nHeight)
+{
+    const Consensus::Params& consensusParams = Params().GetConsensus();
+
+    if (IsStartSPosHeight(nHeight))
+        return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
+    else
+        return 1;
+}
+
+int ConvertBlockConfirmations()
+{
+     const Consensus::Params& consensusParams = Params().GetConsensus();
+     return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
 }
