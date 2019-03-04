@@ -9406,7 +9406,11 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
 
         unsigned int ret = nCurrBlockHeight % g_nMasternodeSPosCount;
         if(ret != 0 )
+        {
+            if((nCurrBlockHeight+1) == (unsigned int)g_nStartSPOSHeight)
+                LogPrintf("SPOS_Warning:error g_nStartSPOSHeight config,please check config\n");
             return;
+        }
     }
 
     LogPrintf("SPOS_Info:--------------------------------------------------------\n");

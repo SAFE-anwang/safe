@@ -104,7 +104,7 @@ static const bool DEFAULT_DISABLE_SAFEMODE = false;
 static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
 extern int g_nStartSPOSHeight;
 extern unsigned int g_nMasternodeSPosCount;
-extern unsigned int g_nMasternodeMinOnlineTime;
+extern unsigned int g_nMasternodeMinOnlineTime;//TODO remove it
 extern unsigned int g_nMasternodeMinActiveTime;
 extern unsigned int g_nMasternodeStatusEnable;
 extern unsigned int g_nMasternodeMinCount;
