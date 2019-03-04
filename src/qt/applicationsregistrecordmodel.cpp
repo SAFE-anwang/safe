@@ -178,13 +178,17 @@ QVariant ApplicationsRegistRecordModel::headerData(int section, Qt::Orientation 
     {
         if(role == Qt::DisplayRole)
         {
-            if(section>=0 && section<columns.size())
-                return columns[section];
+			if (section >= 0 && section < columns.size())
+			{
+				return columns[section];
+			}
         }
         else if (role == Qt::TextAlignmentRole)
         {
-            if(section>=0 && section<columns.size())
-                return column_alignments_for_applications_regist[section];
+			if (section >= 0 && section < sizeof(column_alignments_for_applications_regist) / sizeof(int))
+			{
+				return column_alignments_for_applications_regist[section];
+			}
         }
         else if (role == Qt::ToolTipRole)
         {
