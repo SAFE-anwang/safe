@@ -616,9 +616,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
     }
     else if(nType == FROM_NEW) // tx from new tx
     {
-        if (!IsStartLockFeatureHeight(chainActive.Height()))
-            return state.DoS(50, false, REJECT_INVALID, "new_tx: lock function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
         if(tx.nVersion < SAFE_TX_VERSION_2) // all new tx must be 102
             return state.DoS(50, false, REJECT_INVALID, "new_tx: bad tx version");
     }
@@ -688,6 +685,9 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
             }
             else
             {
+                if (!IsStartLockFeatureHeight(chainActive.Height()))
+                    return state.DoS(50, false, REJECT_INVALID, "new_tx: lock function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
+
                 if(masternodeSync.IsBlockchainSynced())
                 {
                     int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
