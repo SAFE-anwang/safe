@@ -168,6 +168,8 @@ private:
     bool fUpdatingWallet;
 
 	bool bIsRefreshWallet;
+	
+	int nUpdateCount;
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();

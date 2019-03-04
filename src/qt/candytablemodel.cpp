@@ -194,13 +194,17 @@ QVariant CandyTableModel::headerData(int section, Qt::Orientation orientation, i
     {
         if(role == Qt::DisplayRole)
         {
-            if(section>=0 && section<columns.size())
-                return columns[section];
+			if (section >= 0 && section < columns.size())
+			{
+				return columns[section];
+			}
         }
         else if (role == Qt::TextAlignmentRole)
         {
-            if(section>=0 && section<columns.size())
-                return column_alignments_for_candy[section];
+			if (section >= 0 && section < sizeof(column_alignments_for_candy) / sizeof(int))
+			{
+				return column_alignments_for_candy[section];
+			}
         }
         else if (role == Qt::ToolTipRole)
         {

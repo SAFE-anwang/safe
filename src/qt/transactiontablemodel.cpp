@@ -286,6 +286,7 @@ TransactionTableModel::TransactionTableModel(const PlatformStyle *platformStyle,
     columnAmount = TransactionTableModel::TransactionColumnAmount;
 
 	bIsRefreshWallet = false;
+	nUpdateCount = 0;
 
  //   priv->refreshWallet();
 
@@ -340,6 +341,17 @@ void TransactionTableModel::updateConfirmations()
     // Invalidate status (number of confirmations) and (possibly) description
     //  for all rows. Qt is smart enough to only actually request the data for the
     //  visible rows.
+    nUpdateCount++;
+    if (nUpdateCount > 10000)
+    {
+	nUpdateCount = 10000;
+    }
+
+    if (nUpdateCount < 30)
+    {
+	return ;
+    }
+
     int size = priv->size()-1;
     if (size > 0)
     {
@@ -962,13 +974,17 @@ QVariant TransactionTableModel::headerData(int section, Qt::Orientation orientat
     {
         if(role == Qt::DisplayRole)
         {
-            if(section>=0 && section<columns.size())
-                return columns[section];
+			if (section >= 0 && section < columns.size())
+			{
+				return columns[section];
+			}
         }
         else if (role == Qt::TextAlignmentRole)
         {
-            if(section>=0 && section<columns.size())
-                return column_alignments[section];
+			if (section >= 0 && section < sizeof(column_alignments) / sizeof(int))
+			{
+				return column_alignments[section];
+			}
         }
         else if (role == Qt::ToolTipRole)
         {
