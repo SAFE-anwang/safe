@@ -119,7 +119,6 @@ extern unsigned int g_nMasternodeMinOnlineTime;
 extern unsigned int g_nMasternodeMinActiveTime;
 extern CActiveMasternode activeMasternode;
 extern int64_t g_nLastSelectMasterNodeHeight;
-extern unsigned int g_nMasternodeStatusEnable;
 extern unsigned int g_nMasternodeMinCount;
 
 std::mutex g_mutexAllPayeeInfo;
@@ -9679,8 +9678,6 @@ void SelectMasterNode(unsigned int nCurrBlockHeight, uint32_t nTime, const bool 
                       mn.isActive(nTime,nCurrBlockHeight));
         }
 
-        if((mn.nActiveState != CMasternode::MASTERNODE_ENABLED && g_nMasternodeStatusEnable==CMasternode::MASTERNODE_ENABLED))
-            continue;
         if(!mn.isActive(nTime,nCurrBlockHeight))
             continue;
         if(mn.nClientVersion < SPOS_MIN_CLIENT_VERSION)

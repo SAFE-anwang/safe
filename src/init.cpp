@@ -106,7 +106,6 @@ extern int g_nStartSPOSHeight;
 extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinOnlineTime;//TODO remove it
 extern unsigned int g_nMasternodeMinActiveTime;
-extern unsigned int g_nMasternodeStatusEnable;
 extern unsigned int g_nMasternodeMinCount;
 extern int g_nProtocolV3Height;
 extern std::mutex g_mutexAllPayeeInfo;
@@ -1549,7 +1548,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
     g_nMasternodeMinOnlineTime = GetArg("-masternode_min_online_time", g_nMasternodeMinOnlineTime);
     g_nMasternodeMinActiveTime = GetArg("-masternode_min_active_time", g_nMasternodeMinActiveTime);
-    g_nMasternodeStatusEnable = GetArg("-masternode_status_enable", g_nMasternodeStatusEnable);
     g_nMasternodeMinCount = GetArg("-masternode_min_count", g_nMasternodeMinCount);
     g_nProtocolV3Height = GetArg("-spos_start_lock_height", g_nProtocolV3Height);
     AllowableErrorTime = GetArg("-spos_allowable_error_time", AllowableErrorTime);
