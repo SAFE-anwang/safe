@@ -105,7 +105,20 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     txNew.vin.resize(1);
     txNew.vin[0].prevout.SetNull();
     txNew.vout.resize(1);
-    txNew.vout[0].scriptPubKey = scriptPubKeyIn;
+
+    masternode_info_t mnInfoRet;
+    if(!activeMasternode.outpoint.IsNull()&&mnodeman.GetMasternodeInfo(activeMasternode.outpoint,mnInfoRet))
+    {
+        CScript sposPayee = GetScriptForDestination(mnInfoRet.pubKeyCollateralAddress.GetID());
+        txNew.vout[0].scriptPubKey = sposPayee;
+        LogPrintf("SPOS_Message:create block find the outpoint(%s),masternode pubKeyCollateralAddress:%s,masternode:%s\n"
+                  ,activeMasternode.outpoint.ToString(),mnInfoRet.pubKeyCollateralAddress.GetID().ToString()
+                  ,mnInfoRet.addr.ToStringIP());
+    }else
+    {
+        txNew.vout[0].scriptPubKey = scriptPubKeyIn;
+        LogPrintf("SPOS_Error:create block not find the outpoint(%s)\n",activeMasternode.outpoint.ToString());
+    }
 
     // Largest block you're willing to create:
     unsigned int nBlockMaxSize = GetArg("-blockmaxsize", DEFAULT_BLOCK_MAX_SIZE);
