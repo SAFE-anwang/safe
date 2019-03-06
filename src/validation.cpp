@@ -115,7 +115,7 @@ int64_t AllowableErrorTime = 2;
 CAmount MiningIncentives = 45000000000;
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
-extern unsigned int g_nMasternodeMinActiveTime;
+extern unsigned int g_nMasternodeCanBeSelectedTime;
 extern CActiveMasternode activeMasternode;
 extern int64_t g_nLastSelectMasterNodeHeight;
 extern unsigned int g_nMasternodeMinCount;
@@ -5810,9 +5810,9 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
 
     uint32_t tempMnActiveTime = mnTemp.getActiveTime(block.nTime, nHeight);
-    if (block.nNonce <= g_nMasternodeMinActiveTime || block.nNonce > tempMnActiveTime)
-        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():the block.nNonce is less than or equal to the minimum activation time of the master node of the limit or block.nNonce is greater than the active time of the master node, height:%d, block.nNonce:%d, g_nMasternodeMinActiveTime:%d, tempMnActiveTime:%d",
-                                   nHeight, block.nNonce, g_nMasternodeMinActiveTime, tempMnActiveTime), REJECT_INVALID,"bad-nNonce", true);
+    if (block.nNonce <= g_nMasternodeCanBeSelectedTime || block.nNonce > tempMnActiveTime)
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():the block.nNonce is less than or equal to the master node can be selected time of the limit or block.nNonce is greater than the active time of the master node, height:%d, block.nNonce:%d, g_nMasternodeCanBeSelectedTime:%d, tempMnActiveTime:%d",
+                                   nHeight, block.nNonce, g_nMasternodeCanBeSelectedTime, tempMnActiveTime), REJECT_INVALID,"bad-nNonce", true);
 
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 

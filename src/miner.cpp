@@ -57,7 +57,7 @@ extern int g_nStartSPOSHeight;
 extern CMasternodeMan mnodeman;
 extern CActiveMasternode activeMasternode;
 extern unsigned int g_nMasternodeSPosCount;
-extern unsigned int g_nMasternodeMinActiveTime;
+extern unsigned int g_nMasternodeCanBeSelectedTime;
 extern int64_t g_nStartNewLoopTime;
 extern std::vector<CMasternode> g_vecResultMasternodes;
 extern std::map<CNetAddr, LocalServiceInfo> mapLocalHost;
@@ -749,9 +749,9 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
             return;
 
-        if (pblock->nNonce <= g_nMasternodeMinActiveTime)
+        if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
         {
-            LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the minimum activation time of the master node of the limit. pblock->nNonce:%d, g_nMasternodeMinActiveTime:%d\n", pblock->nNonce, g_nMasternodeMinActiveTime);
+            LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the master node can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n", pblock->nNonce, g_nMasternodeCanBeSelectedTime);
             return;
         }
     }
@@ -932,8 +932,8 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
     if((g_nStartSPOSHeight-1)%g_nMasternodeSPosCount!=0)
         LogPrintf("SPOS_Warning:invalid spos height or spos count config\n");
 
-    LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_min_active_time:%d\n"
-              , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeMinActiveTime);
+    LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_can_be_selected_time:%d\n"
+              , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeCanBeSelectedTime);
 
     static boost::thread_group* sposMinerThreads = NULL;
 

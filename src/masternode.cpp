@@ -16,7 +16,7 @@
 
 #include <boost/lexical_cast.hpp>
 
-extern unsigned int g_nMasternodeMinActiveTime;
+extern unsigned int g_nMasternodeCanBeSelectedTime;
 
 CMasternode::CMasternode() :
     masternode_info_t{ MASTERNODE_ENABLED, PROTOCOL_VERSION, GetAdjustedTime()},
@@ -900,7 +900,7 @@ bool CMasternode::isActive(uint32_t nTime,int nHeight) const
         return false;
     }
     uint32_t activeTime = nTime - sigTime;
-    return activeTime >= g_nMasternodeMinActiveTime;
+    return activeTime >= g_nMasternodeCanBeSelectedTime;
 }
 
 /**

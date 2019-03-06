@@ -19,7 +19,7 @@
 /** Masternode manager */
 CMasternodeMan mnodeman;
 extern int64_t g_nStartUpTime;
-extern unsigned int g_nMasternodeMinActiveTime;
+extern unsigned int g_nMasternodeCanBeSelectedTime;
 
 const std::string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-7";
 
@@ -1671,7 +1671,7 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
         CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,nHeightRet);
         unsigned int depth = nHeight - nHeightRet;
         unsigned int activeTime = depth * Params().GetConsensus().nSPOSTargetSpacing;
-        if (err == CMasternode::COLLATERAL_OK && activeTime > g_nMasternodeMinActiveTime && mnpair.second.nClientVersion == SPOS_MIN_CLIENT_VERSION) {
+        if (err == CMasternode::COLLATERAL_OK && activeTime > g_nMasternodeCanBeSelectedTime && mnpair.second.nClientVersion == SPOS_MIN_CLIENT_VERSION) {
             mapOutMasternodes[mnpair.first] = mnpair.second;
         }
     }

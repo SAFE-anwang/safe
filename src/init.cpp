@@ -104,7 +104,7 @@ static const bool DEFAULT_DISABLE_SAFEMODE = false;
 static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
 extern int g_nStartSPOSHeight;
 extern unsigned int g_nMasternodeSPosCount;
-extern unsigned int g_nMasternodeMinActiveTime;
+extern unsigned int g_nMasternodeCanBeSelectedTime;
 extern unsigned int g_nMasternodeMinCount;
 extern int g_nProtocolV3Height;
 extern std::mutex g_mutexAllPayeeInfo;
@@ -1545,7 +1545,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
     g_nSaveMasternodePayeeHeight = GetArg("-save_masternode_payee_height", g_nSaveMasternodePayeeHeight);
     g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
-    g_nMasternodeMinActiveTime = GetArg("-masternode_min_active_time", g_nMasternodeMinActiveTime);
+    g_nMasternodeCanBeSelectedTime = GetArg("-masternode_can_be_selected_time", g_nMasternodeCanBeSelectedTime);
     g_nMasternodeMinCount = GetArg("-masternode_min_count", g_nMasternodeMinCount);
     g_nProtocolV3Height = GetArg("-spos_start_lock_height", g_nProtocolV3Height);
     AllowableErrorTime = GetArg("-spos_allowable_error_time", AllowableErrorTime);
