@@ -16,7 +16,6 @@
 
 #include <boost/lexical_cast.hpp>
 
-extern unsigned int g_nMasternodeMinOnlineTime;
 extern unsigned int g_nMasternodeMinActiveTime;
 
 CMasternode::CMasternode() :

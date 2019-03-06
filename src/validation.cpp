@@ -115,7 +115,6 @@ int64_t AllowableErrorTime = 2;
 CAmount MiningIncentives = 45000000000;
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
-extern unsigned int g_nMasternodeMinOnlineTime;
 extern unsigned int g_nMasternodeMinActiveTime;
 extern CActiveMasternode activeMasternode;
 extern int64_t g_nLastSelectMasterNodeHeight;

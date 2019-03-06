@@ -57,7 +57,6 @@ extern int g_nStartSPOSHeight;
 extern CMasternodeMan mnodeman;
 extern CActiveMasternode activeMasternode;
 extern unsigned int g_nMasternodeSPosCount;
-extern unsigned int g_nMasternodeMinOnlineTime;
 extern unsigned int g_nMasternodeMinActiveTime;
 extern int64_t g_nStartNewLoopTime;
 extern std::vector<CMasternode> g_vecResultMasternodes;
@@ -924,8 +923,8 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
         return;
     }
 
-    LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_min_online_time:%d,masternode_min_active_time:%d\n"
-              , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeMinOnlineTime,g_nMasternodeMinActiveTime);
+    LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_min_active_time:%d\n"
+              , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeMinActiveTime);
 
     static boost::thread_group* sposMinerThreads = NULL;
 
