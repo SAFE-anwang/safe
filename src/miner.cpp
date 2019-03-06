@@ -748,6 +748,12 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         //coin base add extra data
         if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
             return;
+
+        if (pblock->nNonce <= g_nMasternodeMinActiveTime)
+        {
+            LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the minimum activation time of the master node of the limit. pblock->nNonce:%d, g_nMasternodeMinActiveTime:%d\n", pblock->nNonce, g_nMasternodeMinActiveTime);
+            return;
+        }
     }
 
     CValidationState state;
