@@ -111,8 +111,8 @@ std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
 int64_t AllowableErrorTime = 2;
-//CAmount MiningIncentives = 334559821;
-CAmount MiningIncentives = 45000000000;
+//CAmount nMiningIncentives = 334559821;
+CAmount nMiningIncentives = 450000000;
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
@@ -2947,7 +2947,7 @@ double ConvertBitsToDouble(unsigned int nBits)
 
 CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
 {
-    CAmount nSubsidy = MiningIncentives;
+    CAmount nSubsidy = nMiningIncentives;
     int nSubsidyHalvingInterval = consensusParams.nSubsidyHalvingInterval * ConvertBlockHeight(consensusParams);
 
     // yearly decline of production by ~7.1% per year, projected ~18M coins max by year 2050+.
