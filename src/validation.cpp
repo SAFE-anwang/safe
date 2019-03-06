@@ -5811,63 +5811,18 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
 
     uint32_t tempMnActiveTime = mnTemp.getActiveTime(block.nTime, nHeight);
     if (block.nNonce <= g_nMasternodeMinActiveTime || block.nNonce > tempMnActiveTime)
-        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():block.nNonce value error,height:%d, block.nNonce:%d,tempMnActiveTime:%d"
-                                   ,nHeight,block.nNonce,tempMnActiveTime),REJECT_INVALID,"bad-nNonce",true);
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():block.nNonce is less than or equal to g_nMasternodeMinActiveTime or block.nNonce is greater than the active time of the master node, height:%d, block.nNonce:%d, g_nMasternodeMinActiveTime:%d, tempMnActiveTime:%d",
+                                   nHeight, block.nNonce, g_nMasternodeMinActiveTime, tempMnActiveTime), REJECT_INVALID,"bad-nNonce", true);
 
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
     if (keyID != mnkeyID)
-        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():block keyid error, height:%d,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
                                     "ip:%s,blocktime:%lld,startlooptime:%lld\n"
                                     ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
                                     ,block.GetBlockTime(),g_nStartNewLoopTime)
                                     , REJECT_INVALID, "bad-blockaddress", true);
 
-    /*
-    std::map<COutPoint, CMasternode> mapMasternodes;
-    mnodeman.GetFullMasternodeData(mapMasternodes);
-    bool bfoundKeyID = false;
-    for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
-    {
-      	const CMasternode& mn = (*mnpair).second;
-      	CKeyID mnkeyID = mn.pubKeyMasternode.GetID();
-      	if (keyID == mnkeyID)
-      	{
-  		    bfoundKeyID = true;
- 			int64_t nmnActiveTime = mn.getActiveTime(block.nTime, nHeight);
- 			if (nActiveTime > nmnActiveTime || nmnActiveTime < g_nMasternodeMinActiveTime)
-            {
-                return state.DoS(100, error("SPOS_Error CheckSPOSBlock():block activation time error, height:%d, nActiveTime:%d, nmnActiveTime:%d",
-                                 nHeight, nActiveTime, nmnActiveTime), REJECT_INVALID, "bad-activetime", true);
-            }
-      	}
-    }
-
-    if (!bfoundKeyID)
-    {
-        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():the master node keyID does not exist, height:%d, keyID:%s",
-                         nHeight, keyID.ToString()), REJECT_INVALID, "bad-keyid", true);
-    }
-
-    if(mnSize == 0)
-        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
-                                    ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-mnSize", true);
-    int32_t interval = (block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1;
-    int32_t nIndex = interval % mnSize;
-    if(nIndex<0)
-        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():incorrect index value,height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
-                                   ,nHeight,nIndex,block.GetBlockTime(),g_nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
-    const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
-
-    CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
-
-    if (keyID != mnkeyID)
-        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():block keyid error, height:%d,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
-                                    "ip:%s,blocktime:%lld,startlooptime:%lld\n"
-                                    ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
-                                    ,block.GetBlockTime(),g_nStartNewLoopTime)
-                                    , REJECT_INVALID, "bad-blockaddress", true);
-   */
 
     if(fCheckPOW)
         LogPrintf("SPOS_Message:check spos block,height:%d,strKeyID:%s\n",nHeight, keyID.ToString());
