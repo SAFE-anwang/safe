@@ -923,6 +923,9 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
         return;
     }
 
+    if((g_nStartSPOSHeight-1)%g_nMasternodeSPosCount!=0)
+        LogPrintf("SPOS_Warning:invalid spos height or spos count config\n");
+
     LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_min_active_time:%d\n"
               , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeMinActiveTime);
 
