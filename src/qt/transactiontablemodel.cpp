@@ -520,29 +520,33 @@ QString TransactionTableModel::formatLockedMonth(const TransactionRecord *rec) c
     return QString();
 }
 
-QString TransactionTableModel::formatUnlockedHeight(const TransactionRecord *wtx) const
+int64_t TransactionTableModel::getRealUnlockHeight(const TransactionRecord *wtx) const
 {
+    int64_t nRealUnlockHeight = wtx->nUnlockedHeight;
     if(wtx->nUnlockedHeight)
     {
         if (wtx->nTxHeight < g_nStartSPOSHeight && wtx->nUnlockedHeight >= g_nStartSPOSHeight)
         {
             int nSPOSLaveHeight = (wtx->nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-            int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-            return QString::number(nTrueUnlockHeight);
+            nRealUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
         }
-        return QString::number(wtx->nUnlockedHeight);
     }
-    else
-    {
-        return QString();
-    }
+    return nRealUnlockHeight;
+}
+
+QString TransactionTableModel::formatUnlockedHeight(const TransactionRecord *wtx) const
+{
+    int64_t nRealUnlockHeight = getRealUnlockHeight(wtx);
+    if(nRealUnlockHeight!=0)
+        return QString::number(nRealUnlockHeight);
+    return QString();
 }
 
 QString TransactionTableModel::formatLockedStatus(const TransactionRecord *wtx) const
 {
     if(wtx->status.status == TransactionStatus::Conflicted)
         return tr("Invalid: Conflicted");
-    if(wtx->nUnlockedHeight <= g_nChainHeight)
+    if(getRealUnlockHeight(wtx) <= g_nChainHeight)
         return tr("Unlocked");
     else
         return tr("Locking");
