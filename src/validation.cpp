@@ -5811,7 +5811,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
 
     uint32_t tempMnActiveTime = mnTemp.getActiveTime(block.nTime, nHeight);
     if (block.nNonce <= g_nMasternodeMinActiveTime || block.nNonce > tempMnActiveTime)
-        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():block.nNonce is less than or equal to g_nMasternodeMinActiveTime or block.nNonce is greater than the active time of the master node, height:%d, block.nNonce:%d, g_nMasternodeMinActiveTime:%d, tempMnActiveTime:%d",
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():the block.nNonce is less than or equal to the minimum activation time of the master node of the limit or block.nNonce is greater than the active time of the master node, height:%d, block.nNonce:%d, g_nMasternodeMinActiveTime:%d, tempMnActiveTime:%d",
                                    nHeight, block.nNonce, g_nMasternodeMinActiveTime, tempMnActiveTime), REJECT_INVALID,"bad-nNonce", true);
 
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
