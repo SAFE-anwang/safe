@@ -197,7 +197,6 @@ private:
     QString formatAssetsAddress(const TransactionRecord *wtx)const;
 
     QString formatCandyAmount(const TransactionRecord *wtx, bool showUnconfirmed=true, BitcoinUnits::SeparatorStyle separators=BitcoinUnits::separatorStandard) const;
-    int64_t getRealUnlockHeight(const TransactionRecord *wtx)const;
 
 Q_SIGNALS:
     void updateAssets(int,bool,QString);

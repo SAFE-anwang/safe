@@ -109,7 +109,7 @@ QVariant LockedTransactionTableModel::data(const QModelIndex &index, int role) c
         case LockedColumnLockedMonth:
             return formatLockedMonth(rec);
         case LockedColumnUnlockedHeight:
-            return qint64(rec->nUnlockedHeight);
+            return qint64(rec->getRealUnlockHeight());
         case LockedColumnLockedStatus:
             return formatLockedStatus(rec);
         }
@@ -127,9 +127,9 @@ QVariant LockedTransactionTableModel::data(const QModelIndex &index, int role) c
             return addressColor(rec);
         if(index.column() == LockedColumnLockedStatus &&  rec->status.status == TransactionStatus::Conflicted)
             return COLOR_UNCONFIRMED;
-        if(index.column() == LockedColumnLockedStatus && rec->nUnlockedHeight > g_nChainHeight)
+        if(index.column() == LockedColumnLockedStatus && rec->getRealUnlockHeight() > g_nChainHeight)
             return COLOR_NEGATIVE;
-        if(index.column() == LockedColumnLockedStatus && rec->nUnlockedHeight <= g_nChainHeight)
+        if(index.column() == LockedColumnLockedStatus && rec->getRealUnlockHeight() <= g_nChainHeight)
             return QColor(0, 128, 0);
         break;
     }

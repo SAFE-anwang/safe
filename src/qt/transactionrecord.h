@@ -160,6 +160,8 @@ public:
     static bool getReserveData(const CWallet *wallet,const CWalletTx &wtx,QList<TransactionRecord> &parts,TransactionRecord& sub,const CTxOut& txout,int showType,QMap<QString, AssetsDisplayInfo> &assetNamesUnits
                                  ,CAmount& nAssetDebit,bool getAddress=true);
 
+    int64_t getRealUnlockHeight()const;
+
     /** @name Immutable transaction attributes
       @{*/
     uint256 hash;

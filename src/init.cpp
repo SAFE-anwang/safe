@@ -2107,7 +2107,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         }
     }
 
-    GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", DEFAULT_GENERATE), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
+    GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", !fHaveGUI), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
 
     // ********************************************************* Step 13: finished
 

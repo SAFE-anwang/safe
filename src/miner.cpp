@@ -920,9 +920,6 @@ void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainpar
 
 void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman)
 {
-    if(!GetBoolArg("-sposgen", false))
-        return;
-
     if (!activeMasternode.pubKeyMasternode.IsValid())
     {
         LogPrintf("SPOS_Warning:only the master node needs to open SPOS mining\n");
@@ -932,8 +929,16 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
     if((g_nStartSPOSHeight-1)%g_nMasternodeSPosCount!=0)
         LogPrintf("SPOS_Warning:invalid spos height or spos count config\n");
 
-    LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_can_be_selected_time:%d\n"
-              , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeCanBeSelectedTime);
+    if(fGenerate)
+    {
+        LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_can_be_selected_time:%d\n"
+                  , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeCanBeSelectedTime);
+    }else
+    {
+        LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_can_be_selected_time:%d,no generate,need to set sposgen 1\n"
+                  , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeCanBeSelectedTime);
+    }
+
 
     static boost::thread_group* sposMinerThreads = NULL;
 

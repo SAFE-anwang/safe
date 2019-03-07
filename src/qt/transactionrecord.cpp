@@ -16,6 +16,7 @@
 #include "privatesend.h"
 #include "app/app.h"
 #include "main.h"
+#include "chainparams.h"
 
 #include <stdint.h>
 #include <vector>
@@ -24,6 +25,8 @@ using std::vector;
 #include <boost/foreach.hpp>
 
 extern int g_nChainHeight;
+
+extern int g_nStartSPOSHeight;
 
 /* Return positive answer if transaction should be shown in list.
  */
@@ -81,6 +84,20 @@ bool TransactionRecord::needParseAppAssetData(int appCmd, int showType)
         break;
     }
     return ret;
+}
+
+int64_t TransactionRecord::getRealUnlockHeight() const
+{
+    int64_t nRealUnlockHeight = nUnlockedHeight;
+    if(nUnlockedHeight)
+    {
+        if (nTxHeight < g_nStartSPOSHeight && nUnlockedHeight >= g_nStartSPOSHeight)
+        {
+            int nSPOSLaveHeight = (nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+            nRealUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+        }
+    }
+    return nRealUnlockHeight;
 }
 
 //get transfer safe or app or asset data
@@ -845,12 +862,13 @@ bool TransactionRecord::updateStatus(const CWalletTx &wtx)
         return true;
     }
     //last time lock,current unlock
-    if(nLastLockStatus&&nUnlockedHeight<=g_nChainHeight)
+    int64_t realUnlockHeight = getRealUnlockHeight();
+    if(nLastLockStatus&&realUnlockHeight<=g_nChainHeight)
     {
         nLastLockStatus = false;
         return true;
     }
-    if(nUnlockedHeight>g_nChainHeight)
+    if(realUnlockHeight>g_nChainHeight)
         nLastLockStatus = true;
     return false;
 }
