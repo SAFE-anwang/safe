@@ -683,13 +683,12 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
             }
             else
             {
-                if (!IsStartLockFeatureHeight(chainActive.Height()))
-                    return state.DoS(50, false, REJECT_INVALID, "new_tx: lock function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
                 if(masternodeSync.IsBlockchainSynced())
                 {
-                    int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
+                    if (!IsStartLockFeatureHeight(chainActive.Height()))
+                        return state.DoS(50, false, REJECT_INVALID, "new_tx: lock function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
+                    int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
                     if (nTxHeight >= g_nStartSPOSHeight)
                     {
                         if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
@@ -789,11 +788,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
 
         if(header.nAppCmd == ISSUE_ASSET_CMD)
         {
-            if (fWithMempool)
-            {
-                if (!IsStartLockFeatureHeight(chainActive.Height()))
-                    return state.DoS(50, false, REJECT_INVALID, "asset_tx: issue asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-            }
+            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: issue asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
         
             CAssetData assetData;
             if(!ParseIssueData(vData, assetData))
@@ -805,11 +801,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == ADD_ASSET_CMD)
         {
-            if (fWithMempool)
-            {
-                if (!IsStartLockFeatureHeight(chainActive.Height()))
-                    return state.DoS(50, false, REJECT_INVALID, "asset_tx: add asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-            }
+            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: add asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
             CCommonData addData;
             if(!ParseCommonData(vData, addData))
@@ -847,11 +840,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == PUT_CANDY_CMD)
         {
-            if (fWithMempool)
-            {
-                if (!IsStartLockFeatureHeight(chainActive.Height()))
-                    return state.DoS(50, false, REJECT_INVALID, "put_candy: put candy function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-            }
+            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
+                return state.DoS(50, false, REJECT_INVALID, "put_candy: put candy function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
             CPutCandyData putData;
             if(!ParsePutCandyData(vData, putData))
@@ -1028,11 +1018,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
 
         if(header.nAppCmd == REGISTER_APP_CMD)
         {
-            if (fWithMempool)
-            {
-                if (!IsStartLockFeatureHeight(chainActive.Height()))
-                    return state.DoS(50, false, REJECT_INVALID, "register_app: register app function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-            }
+            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
+                return state.DoS(50, false, REJECT_INVALID, "register_app: register app function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "register_app: conflict with locked txout");
@@ -1374,11 +1361,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == ISSUE_ASSET_CMD)
         {
-            if (fWithMempool)
-            {
-                if (!IsStartLockFeatureHeight(chainActive.Height()))
-                    return state.DoS(50, false, REJECT_INVALID, "issue_asset: issue asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-            }
+            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
+                return state.DoS(50, false, REJECT_INVALID, "issue_asset: issue asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "issue_asset: conflict with locked txout");
@@ -1523,11 +1507,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == ADD_ASSET_CMD)
         {
-            if (fWithMempool)
-            {
-                if (!IsStartLockFeatureHeight(chainActive.Height()))
-                    return state.DoS(50, false, REJECT_INVALID, "add_asset: add asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-            }
+            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
+                return state.DoS(50, false, REJECT_INVALID, "add_asset: add asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
         
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "add_asset: conflict with locked txout");
@@ -1589,11 +1570,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == TRANSFER_ASSET_CMD)
         {
-            if (fWithMempool && txout.nUnlockedHeight > 0)
-            {
-                if (!IsStartLockFeatureHeight(chainActive.Height()))
-                    return state.DoS(50, false, REJECT_INVALID, "transfer_asset: transfer lock asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-            }
+            if (fWithMempool && txout.nUnlockedHeight > 0 &&masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
+                return state.DoS(50, false, REJECT_INVALID, "transfer_asset: transfer lock asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
         
             if(header.appId.GetHex() != g_strSafeAssetId)
                 return state.DoS(50, false, REJECT_INVALID, "transfer_asset: invalid safe-asset app id in header, " + header.appId.GetHex());
@@ -1778,11 +1756,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == PUT_CANDY_CMD)
         {
-            if (fWithMempool)
-            {
-                if (!IsStartLockFeatureHeight(chainActive.Height()))
-                    return state.DoS(50, false, REJECT_INVALID, "put_candy: put candy function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-            }
+            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
+                return state.DoS(50, false, REJECT_INVALID, "put_candy: put candy function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "put_candy: conflict with locked txout");
