@@ -9353,7 +9353,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
 
 void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork)
 {
-    if(!masternodeSync.IsSynced())
+    if(!masternodeSync.IsSynced()&&g_vecResultMasternodes.empty())
         return;
 
     if (!bProcessSpork)
@@ -9371,6 +9371,14 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
                 LogPrintf("SPOS_Warning:error g_nStartSPOSHeight config,please check config\n");
             return;
         }
+    }
+
+    if(!masternodeSync.IsSynced())
+    {
+        g_vecResultMasternodes.clear();
+        std::vector<CMasternode>().swap(g_vecResultMasternodes);
+        LogPrintf("SPOS_Warning:masternode is syncing,wait next loop to select masternode\n");
+        return;
     }
 
     LogPrintf("SPOS_Info:--------------------------------------------------------\n");
@@ -9399,8 +9407,11 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     else
         mnodeman.GetFullMasternodeData(mapMasternodes,fFilterSpent,nCurrBlockHeight);
 
-    g_vecResultMasternodes.clear();
-    std::vector<CMasternode>().swap(g_vecResultMasternodes);
+    if(!g_vecResultMasternodes.empty())
+    {
+        g_vecResultMasternodes.clear();
+        std::vector<CMasternode>().swap(g_vecResultMasternodes);
+    }
 
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
     string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
@@ -9430,7 +9441,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     int64_t interval = nTotalMasternode * Params().GetConsensus().nSPOSTargetSpacing;
     std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
     GetAllPayeeInfoMap(mapAllPayeeInfo);
-    
+
     std::map<COutPoint, CMasternode> mapMasternodesL1,mapMasternodesL2,mapMasternodesL3;
 
     std::map<COutPoint, CMasternode>::iterator it = mapMasternodes.begin();
@@ -9469,8 +9480,6 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     unsigned int nP2 = ((double)vec2Size / nTotalMasternode) * g_nMasternodeSPosCount;
     unsigned int nP3 = ((double)vec3Size / nTotalMasternode) * g_nMasternodeSPosCount;
 
-    g_vecResultMasternodes.clear();
-    std::vector<CMasternode>().swap(g_vecResultMasternodes);
     unsigned int nMnSize = vec1Size + vec2Size + vec3Size;
     if (nMnSize < g_nMasternodeMinCount)
     {
