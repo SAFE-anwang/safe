@@ -9352,7 +9352,8 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     {
         g_vecResultMasternodes.clear();
         std::vector<CMasternode>().swap(g_vecResultMasternodes);
-        LogPrintf("SPOS_Warning:masternode is syncing,wait next loop to select masternode\n");
+        g_nSelectMasterNodeRet = 0;//reset ret
+        LogPrintf("SPOS_Warning:masternode is syncing,reset g_nSelectMasterNodeRet,wait next loop to select masternode\n");
         return;
     }
 
