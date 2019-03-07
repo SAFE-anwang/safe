@@ -321,7 +321,7 @@ void ProcessBlockAvailability(NodeId nodeid) {
 
     if (!state->hashLastUnknownBlock.IsNull()) {
         BlockMap::iterator itOld = mapBlockIndex.find(state->hashLastUnknownBlock);
-        if (itOld != mapBlockIndex.end() && itOld->second->nChainWork > 0) {
+        if (itOld != mapBlockIndex.end()) {
             if (IsStartSPosHeight(itOld->second->nHeight))
             {
                 if (state->pindexBestKnownBlock == NULL || itOld->second->nHeight >= state->pindexBestKnownBlock->nHeight)
@@ -329,8 +329,11 @@ void ProcessBlockAvailability(NodeId nodeid) {
             } 
             else
             {
-                if (state->pindexBestKnownBlock == NULL || itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
-                    state->pindexBestKnownBlock = itOld->second;
+                if (itOld->second->nChainWork > 0)
+                {
+                    if (state->pindexBestKnownBlock == NULL || itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
+                        state->pindexBestKnownBlock = itOld->second;
+                }
             }
             state->hashLastUnknownBlock.SetNull();
         }
@@ -345,7 +348,7 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
     ProcessBlockAvailability(nodeid);
 
     BlockMap::iterator it = mapBlockIndex.find(hash);
-    if (it != mapBlockIndex.end() && it->second->nChainWork > 0) {
+    if (it != mapBlockIndex.end()) {
         // An actually better block was announced.
         if (IsStartSPosHeight(it->second->nHeight))
         {
@@ -354,8 +357,11 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
         }
         else
         {
-            if (state->pindexBestKnownBlock == NULL || it->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
-                state->pindexBestKnownBlock = it->second;
+            if (it->second->nChainWork > 0)
+            {
+                if (state->pindexBestKnownBlock == NULL || it->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
+                    state->pindexBestKnownBlock = it->second;
+            }
         }
     } else {
         // An unknown block was announced; just assume that the latest one is the best one.

@@ -184,9 +184,9 @@ namespace {
         bool operator()(CBlockIndex *pa, CBlockIndex *pb) const {
             if(IsStartSPosHeight(pa->nHeight)||IsStartSPosHeight(pb->nHeight))
             {
-                if (pa->nHeight > pb->nHeight)
+                if (pa->nHeight > pb->nHeight && pa->nActiveTime > pb->nActiveTime)
                     return false;
-                if (pa->nHeight < pb->nHeight)
+                if (pa->nHeight < pb->nHeight && pa->nActiveTime < pb->nActiveTime)
                     return true;
             }
             // First sort by most total work, ...
@@ -5553,10 +5553,14 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
         pindexNew->nHeight = pindexNew->pprev->nHeight + 1;
         pindexNew->BuildSkip();
     }
-    pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
+
     if (IsStartSPosHeight(pindexNew->nHeight))
     {
         pindexNew->nActiveTime = (pindexNew->pprev ? pindexNew->pprev->nActiveTime: 0) + block.nNonce;
+    }
+    else
+    {
+        pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
     }
     
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
@@ -6471,10 +6475,13 @@ bool static LoadBlockIndexDB()
     BOOST_FOREACH(const PAIRTYPE(int, CBlockIndex*)& item, vSortedByHeight)
     {
         CBlockIndex* pindex = item.second;
-        pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + GetBlockProof(*pindex);
         if (IsStartSPosHeight(pindex->nHeight))
         {
             pindex->nActiveTime = (pindex->pprev ? pindex->pprev->nActiveTime : 0) + pindex->nNonce;
+        }
+        else
+        {
+            pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + GetBlockProof(*pindex);
         }
         // We can link the chain of blocks for which we've received transactions at some point.
         // Pruned nodes may have deleted the block.
