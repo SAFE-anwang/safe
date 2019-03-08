@@ -2230,7 +2230,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
                             REJECT_INVALID, "bad-txlockrequest");
         else
         {
-            if (!IsStartLockFeatureHeight(chainActive.Height()))
+            if (masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
                 return state.DoS(10, error("AcceptToMemoryPool : This feature is enabled when the block height is %d",  g_nProtocolV3Height),
                                  REJECT_INVALID, "bad-instantsendheight");
         }
