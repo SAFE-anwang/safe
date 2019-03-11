@@ -389,14 +389,19 @@ CAmount GetSPOSCancelledAmount(const int& nHeight)
     if (nOffset < 0)
         return 0;
 
+    int nPowFromSPOSHeight = g_nProtocolV3Height - g_nProtocolV2Height;
+    int nPowFromSPOSMonth = nPowFromSPOSHeight / BLOCKS_PER_MONTH;
+
     int nMonth = 0;
     nMonth = nOffset / SPOS_BLOCKS_PER_MONTH;
 
-    if (nMonth == 0)
+    int nTotalMonth = nPowFromSPOSMonth + nMonth;
+
+    if (nTotalMonth == 0)
         return 500 * COIN;
 
     double nLeft = 500.00;
-    for(int i = 1; i <= nMonth; i++)
+    for(int i = 1; i <= nTotalMonth; i++)
     {
         nLeft *=  0.95;
 
