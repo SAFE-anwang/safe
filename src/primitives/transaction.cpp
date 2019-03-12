@@ -14,7 +14,7 @@ int g_nChainHeight = -1;
 #if SCN_CURRENT == SCN__main
 int g_nProtocolV1Height = 809220;
 int g_nProtocolV2Height = 943809;
-int g_nProtocolV3Height = 1040398;
+int g_nProtocolV3Height = 1040398;//SQTODO
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
 int g_nProtocolV1Height = 200;
 int g_nProtocolV2Height = 400;

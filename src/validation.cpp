@@ -111,8 +111,7 @@ std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
 int64_t AllowableErrorTime = 2;
-//CAmount nMiningIncentives = 334559821;
-CAmount nMiningIncentives = 450000000;
+CAmount nMiningIncentives = 450000000;//SQTODO
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
