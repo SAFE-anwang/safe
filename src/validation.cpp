@@ -2922,7 +2922,7 @@ double ConvertBitsToDouble(unsigned int nBits)
 
 CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
 {
-    CAmount nSubsidy = nMiningIncentives;
+    CAmount nSubsidy = nMiningIncentives / ConvertBlockConfirmations();
     int nSubsidyHalvingInterval = consensusParams.nSubsidyHalvingInterval * ConvertBlockHeight(consensusParams);
 
     // yearly decline of production by ~7.1% per year, projected ~18M coins max by year 2050+.
