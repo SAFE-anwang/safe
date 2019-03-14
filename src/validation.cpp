@@ -563,6 +563,22 @@ bool GetTxOutAddress(const CTxOut& txout, string* pAddress)
     return true;
 }
 
+bool CheckUnlockedHeight(const int32_t& nTxVersion, const int64_t& nOffset)
+{
+    if (nTxVersion >= SAFE_TX_VERSION_3)
+    {
+        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
+            return false;
+    }
+    else
+    {
+         if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+            return false;
+    }
+
+    return true;
+}
+
 bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enum CTxSrcType& nType, const int& nHeight)
 {
     int nTxHeight = 0;
@@ -650,54 +666,25 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
             if(nType == FROM_BLOCK)
             {
                 int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-
-                if (nTxHeight >= g_nStartSPOSHeight)
-                {
-                    if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
-                        return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height" + strprintf(",txout.nUnlockedHeight:%lld,nTxHeight:%lld,nOffset:%lld", txout.nUnlockedHeight, nTxHeight, nOffset));
-                }
-                else
-                {
-                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                        return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height");
-                }
+                if (!CheckUnlockedHeight(tx.nVersion, nOffset))
+                    return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height");
             }
             else if(nType == FROM_WALLET)
             {
                 if(!blockHash.IsNull())
                 {
                     int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-
-                    if (nTxHeight >= g_nStartSPOSHeight)
-                    {
-                        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
-                            return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height" + strprintf(",txout.nUnlockedHeight:%lld,nTxHeight:%lld,nOffset:%lld", txout.nUnlockedHeight, nTxHeight, nOffset));
-                    }
-                    else
-                    {
-                        if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                            return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height");
-                    }
+                    if (!CheckUnlockedHeight(tx.nVersion, nOffset))
+                        return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height");
                 }
             }
             else
             {
                 if(masternodeSync.IsBlockchainSynced())
                 {
-                    if (!IsStartLockFeatureHeight(chainActive.Height()))
-                        return state.DoS(50, false, REJECT_INVALID, "new_tx: lock function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
                     int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-                    if (nTxHeight >= g_nStartSPOSHeight)
-                    {
-                        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
-                            return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height" + strprintf(",txout.nUnlockedHeight:%lld,nTxHeight:%lld,nOffset:%lld", txout.nUnlockedHeight, nTxHeight, nOffset));
-                    }
-                    else
-                    {
-                        if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                            return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
-                    }
+                    if (!CheckUnlockedHeight(tx.nVersion, nOffset))
+                        return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
                 }
             }
         }
@@ -787,9 +774,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
 
         if(header.nAppCmd == ISSUE_ASSET_CMD)
         {
-            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
-                return state.DoS(50, false, REJECT_INVALID, "asset_tx: issue asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-        
             CAssetData assetData;
             if(!ParseIssueData(vData, assetData))
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse issue txout reserve failed");
@@ -800,9 +784,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == ADD_ASSET_CMD)
         {
-            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
-                return state.DoS(50, false, REJECT_INVALID, "asset_tx: add asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
             CCommonData addData;
             if(!ParseCommonData(vData, addData))
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse add txout reserve failed");
@@ -839,9 +820,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == PUT_CANDY_CMD)
         {
-            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
-                return state.DoS(50, false, REJECT_INVALID, "put_candy: put candy function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
             CPutCandyData putData;
             if(!ParsePutCandyData(vData, putData))
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse putcandy txout reserve failed");
@@ -1017,9 +995,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
 
         if(header.nAppCmd == REGISTER_APP_CMD)
         {
-            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
-                return state.DoS(50, false, REJECT_INVALID, "register_app: register app function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "register_app: conflict with locked txout");
 
@@ -1360,9 +1335,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == ISSUE_ASSET_CMD)
         {
-            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
-                return state.DoS(50, false, REJECT_INVALID, "issue_asset: issue asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "issue_asset: conflict with locked txout");
 
@@ -1506,9 +1478,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == ADD_ASSET_CMD)
         {
-            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
-                return state.DoS(50, false, REJECT_INVALID, "add_asset: add asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-        
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "add_asset: conflict with locked txout");
 
@@ -1569,9 +1538,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == TRANSFER_ASSET_CMD)
         {
-            if (fWithMempool && txout.nUnlockedHeight > 0 &&masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
-                return state.DoS(50, false, REJECT_INVALID, "transfer_asset: transfer lock asset function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-        
             if(header.appId.GetHex() != g_strSafeAssetId)
                 return state.DoS(50, false, REJECT_INVALID, "transfer_asset: invalid safe-asset app id in header, " + header.appId.GetHex());
 
@@ -1755,9 +1721,6 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
         }
         else if(header.nAppCmd == PUT_CANDY_CMD)
         {
-            if (fWithMempool && masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
-                return state.DoS(50, false, REJECT_INVALID, "put_candy: put candy function is disabled" + strprintf(",This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
             if(txout.nUnlockedHeight > 0)
                 return state.DoS(50, false, REJECT_INVALID, "put_candy: conflict with locked txout");
 
@@ -1940,46 +1903,60 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             if(GetGetCandyAmount(candyData.assetId, out, strAddress, nAmount, fWithMempool))
                 return state.DoS(10, false, REJECT_INVALID, "get_candy: current user got candy already, " + out.ToString());
 
-            int nPrevTxHeight = GetTxHeight(out.hash);
+            int32_t nVersion = 0;
+            int nPrevTxHeight = GetTxHeight(out.hash, NULL, &nVersion);
+            if (nVersion <= 0)
+                return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid tx txin version");
             //if(fWithMempool)
             {
                 if (nPrevTxHeight >= nTxHeight)
                     return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy txin");
 
-                if (nPrevTxHeight >= g_nStartSPOSHeight)
+                if (nVersion >= SAFE_TX_VERSION_3)
                 {
-                    if (nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
+                     if (nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
                         return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
 
                     if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");     
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
                 }
                 else
                 {
-                    if (nPrevTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
+                    if (nPrevTxHeight >= g_nStartSPOSHeight)
                     {
-                        int nSPOSLaveHeight = (nPrevTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-                        int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-                        if (nTrueBlockHeight > nTxHeight)
+                        if (nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
                             return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+
+                        if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");     
                     }
                     else
                     {
-                        if (nPrevTxHeight + BLOCKS_PER_DAY > nTxHeight)
-                            return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
-                    }
-                    
-                    if (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight >= g_nStartSPOSHeight)
-                    {
-                        int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-                        int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-                        if (nTrueBlockHeight < nTxHeight)
-                            return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
-                    }
-                    else
-                    {
-                        if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                            return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                        if (nPrevTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
+                        {
+                            int nSPOSLaveHeight = (nPrevTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                            int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                            if (nTrueBlockHeight > nTxHeight)
+                                return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                        }
+                        else
+                        {
+                            if (nPrevTxHeight + BLOCKS_PER_DAY > nTxHeight)
+                                return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                        }
+                        
+                        if (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight >= g_nStartSPOSHeight)
+                        {
+                            int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                            int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                            if (nTrueBlockHeight < nTxHeight)
+                                return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                        }
+                        else
+                        {
+                            if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                                return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                        }
                     }
                 }
             }
@@ -2222,18 +2199,9 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         return state.Invalid(false, REJECT_ALREADY_KNOWN, "txn-already-in-mempool");
 
     // If this is a Transaction Lock Request check to see if it's valid
-    if (instantsend.HasTxLockRequest(hash))
-    {
-        if (!CTxLockRequest(tx).IsValid())
+    if (instantsend.HasTxLockRequest(hash) && !CTxLockRequest(tx).IsValid())
             return state.DoS(10, error("AcceptToMemoryPool : CTxLockRequest %s is invalid", hash.ToString()),
                             REJECT_INVALID, "bad-txlockrequest");
-        else
-        {
-            if (masternodeSync.IsBlockchainSynced() && !IsStartLockFeatureHeight(chainActive.Height()))
-                return state.DoS(10, error("AcceptToMemoryPool : This feature is enabled when the block height is %d",  g_nProtocolV3Height),
-                                 REJECT_INVALID, "bad-instantsendheight");
-        }
-    }
 
     // Check for conflicts with a completed Transaction Lock
     BOOST_FOREACH(const CTxIn &txin, tx.vin)

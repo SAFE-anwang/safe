@@ -67,15 +67,15 @@ CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev, const int nVersion, co
 
 bool CheckCriticalBlock(const CBlockHeader& block);
 
-int GetTxHeight(const uint256& txHash, uint256* pBlockHash = NULL);
+int GetTxHeight(const uint256& txHash, uint256* pBlockHash = NULL, int32_t* pVersion = NULL);
 
 bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout);
 
-bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout);
+bool IsLockedTxOutByHeight(const int& nHeight, const CTxOut& txout, const int32_t& nVersion);
 
 int GetLockedMonth(const uint256& txHash, const CTxOut& txout);
 
-int GetLockedMonthByHeight(const int& nheight, const CTxOut& txout);
+int GetLockedMonthByHeight(const int& nHeight, const CTxOut& txout, const int32_t& nVersion);
 
 
 CAmount GetCancelledAmount(const int& nHeight);

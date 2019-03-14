@@ -1275,6 +1275,9 @@ enum CTxSrcType{
     FROM_WALLET,
     FROM_NEW
 };
+
+bool CheckUnlockedHeight(const int32_t& nTxVersion, const int64_t& nOffset);
+
 /** Context-independent validity checks */
 bool CheckTransaction(const CTransaction& tx, CValidationState& state, const enum CTxSrcType& nType, const int& nHeight = -1);
 

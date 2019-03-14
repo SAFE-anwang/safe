@@ -2111,7 +2111,8 @@ CAmount CWalletTx::GetLockedCredit(const bool fAsset, const uint256* pAssetId, c
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
-    int txHeight = GetTxHeight(hashTx);
+    int32_t nVersion = 0;
+    int txHeight = GetTxHeight(hashTx,NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         if (pwallet->IsSpent(hashTx, i))
@@ -2127,7 +2128,7 @@ CAmount CWalletTx::GetLockedCredit(const bool fAsset, const uint256* pAssetId, c
                 continue;
         }
 
-        if(!IsLockedTxOutByHeight(txHeight,txout)) // unlocked txout
+        if(!IsLockedTxOutByHeight(txHeight,txout, nVersion)) // unlocked txout
             continue;
 
         if((fAsset && !txout.IsAsset()) || (!fAsset && txout.IsAsset()))
@@ -2208,7 +2209,8 @@ CAmount CWalletTx::GetAvailableCredit(const bool fAsset, const uint256* pAssetId
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
-    int txHeight = GetTxHeight(hashTx);
+    int32_t nVersion = 0;
+    int txHeight = GetTxHeight(hashTx, NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         if (pwallet->IsSpent(hashTx, i))
@@ -2224,7 +2226,7 @@ CAmount CWalletTx::GetAvailableCredit(const bool fAsset, const uint256* pAssetId
                 continue;
         }
 
-        if(IsLockedTxOutByHeight(txHeight,txout)) // locked txout
+        if(IsLockedTxOutByHeight(txHeight,txout, nVersion)) // locked txout
             continue;
 
         if((fAsset && !txout.IsAsset()) || (!fAsset && txout.IsAsset()))
@@ -2312,7 +2314,8 @@ CAmount CWalletTx::GetLockedWatchOnlyCredit(const bool fAsset, const uint256* pA
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
-    int txHeight = GetTxHeight(hashTx);
+    int32_t nVersion = 0;
+    int txHeight = GetTxHeight(hashTx, NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         if (pwallet->IsSpent(hashTx, i))
@@ -2328,7 +2331,7 @@ CAmount CWalletTx::GetLockedWatchOnlyCredit(const bool fAsset, const uint256* pA
                 continue;
         }
 
-        if(!IsLockedTxOutByHeight(txHeight,txout)) // unlocked txout
+        if(!IsLockedTxOutByHeight(txHeight,txout, nVersion)) // unlocked txout
             continue;
 
         if((fAsset && !txout.IsAsset()) || (!fAsset && txout.IsAsset()))
@@ -2409,7 +2412,8 @@ CAmount CWalletTx::GetAvailableWatchOnlyCredit(const bool fAsset, const uint256*
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
-    int txHeight = GetTxHeight(hashTx);
+    int32_t nVersion = 0;
+    int txHeight = GetTxHeight(hashTx, NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         if (pwallet->IsSpent(hashTx, i))
@@ -2425,7 +2429,7 @@ CAmount CWalletTx::GetAvailableWatchOnlyCredit(const bool fAsset, const uint256*
                 continue;
         }
 
-        if(IsLockedTxOutByHeight(txHeight,txout)) // locked txout
+        if(IsLockedTxOutByHeight(txHeight,txout, nVersion)) // locked txout
             continue;
 
         if((fAsset && !txout.IsAsset()) || (!fAsset && txout.IsAsset()))
@@ -2514,13 +2518,14 @@ CAmount CWalletTx::GetAnonymizedCredit(bool fUseCache) const
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
-    int txHeight = GetTxHeight(hashTx);
+    int32_t nVersion = 0;
+    int txHeight = GetTxHeight(hashTx, NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         const CTxOut &txout = vout[i];
         const COutPoint outpoint = COutPoint(hashTx, i);
 
-        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOutByHeight(txHeight,txout) || (txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE && !txout.IsSPOSSafeOnly()) || !pwallet->IsDenominated(outpoint)) continue;
+        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOutByHeight(txHeight,txout, nVersion) || (txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE && !txout.IsSPOSSafeOnly()) || !pwallet->IsDenominated(outpoint)) continue;
 
         const int nRounds = pwallet->GetOutpointPrivateSendRounds(outpoint);
         if(nRounds >= privateSendClient.nPrivateSendRounds){
@@ -2559,12 +2564,13 @@ CAmount CWalletTx::GetDenominatedCredit(bool unconfirmed, bool fUseCache) const
 
     CAmount nCredit = 0;
     uint256 hashTx = GetHash();
-    int txHeight = GetTxHeight(hashTx);
+    int32_t nVersion = 0;
+    int txHeight = GetTxHeight(hashTx, NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
         const CTxOut &txout = vout[i];
 
-        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOutByHeight(txHeight,txout) || (txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE && !txout.IsSPOSSafeOnly()) || !pwallet->IsDenominatedAmount(vout[i].nValue)) continue;
+        if(pwallet->IsSpent(hashTx, i) || IsLockedTxOutByHeight(txHeight,txout, nVersion) || (txout.vReserve.size() > TXOUT_RESERVE_MIN_SIZE && !txout.IsSPOSSafeOnly()) || !pwallet->IsDenominatedAmount(vout[i].nValue)) continue;
 
         nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE,false);
         if (!MoneyRange(nCredit))
@@ -3136,7 +3142,7 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
 			}
 
             // do not use IX for inputs that have less then INSTANTSEND_CONFIRMATIONS_REQUIRED blockchain confirmations
-            if (fUseInstantSend && nDepth < INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmations())
+            if (fUseInstantSend && nDepth < INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmationsByHeight(nBlockHeight))
                 continue;
 
             // We should not consider coins which aren't at least in our mempool
@@ -3159,7 +3165,7 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
 
             for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
                 //if(!fContainLockedTxOut && IsLockedTxOut(wtxid, pcoin->vout[i]) && nCoinType != ONLY_1000)
-                if(!fContainLockedTxOut && IsLockedTxOutByHeight(nBlockHeight, pcoin->vout[i]) && nCoinType != ONLY_1000)
+                if(!fContainLockedTxOut && IsLockedTxOutByHeight(nBlockHeight, pcoin->vout[i], pcoin->nVersion) && nCoinType != ONLY_1000)
                     continue;
 
                 if((fAsset && !pcoin->vout[i].IsAsset()) || (!fAsset && pcoin->vout[i].IsAsset()))
@@ -3221,13 +3227,13 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
                 if(nCoinType == ONLY_DENOMINATED) {
                     found = IsDenominatedAmount(pcoin->vout[i].nValue);
                 } else if(nCoinType == ONLY_NOT1000IFMN) {
-                    found = !(fMasterNode && pcoin->vout[i].nValue == 1000*COIN && GetLockedMonthByHeight(nBlockHeight, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH);
+                    found = !(fMasterNode && pcoin->vout[i].nValue == 1000*COIN && GetLockedMonthByHeight(nBlockHeight, pcoin->vout[i], pcoin->nVersion) >= MIN_MN_LOCKED_MONTH);
                 } else if(nCoinType == ONLY_NONDENOMINATED_NOT1000IFMN) {
                     if (IsCollateralAmount(pcoin->vout[i].nValue)) continue; // do not use collateral amounts
                     found = !IsDenominatedAmount(pcoin->vout[i].nValue);
-                    if(found && fMasterNode) found = !(pcoin->vout[i].nValue == 1000*COIN && GetLockedMonthByHeight(nBlockHeight, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH); // do not use Hot MN funds
+                    if(found && fMasterNode) found = !(pcoin->vout[i].nValue == 1000*COIN && GetLockedMonthByHeight(nBlockHeight, pcoin->vout[i], pcoin->nVersion) >= MIN_MN_LOCKED_MONTH); // do not use Hot MN funds
                 } else if(nCoinType == ONLY_1000) {
-                    found = (pcoin->vout[i].nValue == 1000*COIN && GetLockedMonthByHeight(nBlockHeight, pcoin->vout[i]) >= MIN_MN_LOCKED_MONTH);
+                    found = (pcoin->vout[i].nValue == 1000*COIN && GetLockedMonthByHeight(nBlockHeight, pcoin->vout[i], pcoin->nVersion) >= MIN_MN_LOCKED_MONTH);
                 } else if(nCoinType == ONLY_PRIVATESEND_COLLATERAL) {
                     found = IsCollateralAmount(pcoin->vout[i].nValue);
                 } else {
@@ -4185,7 +4191,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     } else if (nValueIn < nValueToSelect) {
                         strFailReason = _("Insufficient funds.");
                         if (fUseInstantSend) // could be not true but most likely that's the reason
-                            strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmations());
+                            strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmationsByHeight(chainActive.Height()));
                         else if (GetBalance() >= nValueToSelect)
                             strFailReason = _("Reach the current change limit,please try again later.");
                     }
@@ -4552,7 +4558,7 @@ bool CWallet::CreateAppTransaction(const CAppHeader* pHeader, const void* pBody,
                             if (GetBalance(false, NULL, pSafeAddress) < nValueToSelect)
                                 strFailReason = strprintf(_("Please transfer at least 0.01 SAFE to address(%s)."), pSafeAddress->ToString());
                             else if(fUseInstantSend)
-                                strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmations());
+                                strFailReason = strprintf(_("InstantSend requires inputs with at least %d confirmations, you might need to wait a few minutes and try again."), INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmationsByHeight(chainActive.Height()));
                             else
                                 strFailReason = _("Reach the current change limit,please try again later.");
                             return false;

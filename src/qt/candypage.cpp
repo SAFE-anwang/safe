@@ -257,24 +257,32 @@ void CandyPage::getCandy(QPushButton *btn)
     }
 
     uint256 blockHash;
-    int nTxHeight = GetTxHeight(out.hash, &blockHash);
-    if(blockHash.IsNull())
+    int32_t nVersion = 0;
+    int nTxHeight = GetTxHeight(out.hash, &blockHash, &nVersion);
+    if(blockHash.IsNull() || nVersion <= 0)
     {
         QMessageBox::warning(this, strGetCandy,tr("Get candy transaction height fail"),tr("Ok"));
         return;
     }
     int neededHeight = 0;
-    if (nTxHeight >= g_nStartSPOSHeight)
+    if (nVersion >= SAFE_TX_VERSION_3)
         neededHeight = nTxHeight + SPOS_BLOCKS_PER_DAY;
     else
     {
-        if (nTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
+        if (nTxHeight >= g_nStartSPOSHeight)
         {
-            int nSPOSLaveHeight = (nTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-            neededHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+            neededHeight = nTxHeight + SPOS_BLOCKS_PER_DAY;
         }
         else
-            neededHeight = nTxHeight + BLOCKS_PER_DAY;
+        {
+            if (nTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (nTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                neededHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+            }
+            else
+                neededHeight = nTxHeight + BLOCKS_PER_DAY;
+        }
     }
 
     if(nCurrentHeight < neededHeight)
@@ -295,7 +303,7 @@ void CandyPage::getCandy(QPushButton *btn)
         return;
     }
 
-    if (nTxHeight >= g_nStartSPOSHeight)
+    if (nVersion >= SAFE_TX_VERSION_3)
     {
         if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
         {
@@ -306,11 +314,9 @@ void CandyPage::getCandy(QPushButton *btn)
     }
     else
     {
-        if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight >= g_nStartSPOSHeight)
+        if (nTxHeight >= g_nStartSPOSHeight)
         {
-            int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-            int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-            if (nTrueBlockHeight < nCurrentHeight)
+            if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
             {
                 QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
                 updateCurrentPage();
@@ -319,11 +325,25 @@ void CandyPage::getCandy(QPushButton *btn)
         }
         else
         {
-            if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+            if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight >= g_nStartSPOSHeight)
             {
-                QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
-                updateCurrentPage();
-                return;
+                int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueBlockHeight < nCurrentHeight)
+                {
+                    QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
+                    updateCurrentPage();
+                    return;
+                }
+            }
+            else
+            {
+                if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                {
+                    QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
+                    updateCurrentPage();
+                    return;
+                }
             }
         }
     }

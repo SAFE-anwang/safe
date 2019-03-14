@@ -131,12 +131,15 @@ bool CheckCriticalBlock(const CBlockHeader& block)
     return false;
 }
 
-int GetTxHeight(const uint256& txHash, uint256* pBlockHash)
+int GetTxHeight(const uint256& txHash, uint256* pBlockHash, int32_t* pVersion)
 {
     CTransaction txTmp;
     uint256 hashBlock = uint256();
     if(GetTransaction(txHash, txTmp, Params().GetConsensus(), hashBlock, true) && hashBlock != uint256())
     {
+        if (pVersion)
+            *pVersion = txTmp.nVersion;
+
         BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
         if(mi != mapBlockIndex.end() && (*mi).second)
         {
@@ -153,82 +156,84 @@ bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout)
     if(txout.nUnlockedHeight <= 0)
         return false;
 
-    int nTxheight = GetTxHeight(txHash);
-    if (nTxheight >= g_nStartSPOSHeight)
+    int32_t nVersion;
+    int nTxheight = GetTxHeight(txHash, NULL, &nVersion);
+    if (nVersion >= SAFE_TX_VERSION_3)
     {
         if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
             return false;
     }
     else
     {
-        if (txout.nUnlockedHeight >= g_nStartSPOSHeight)
+        if (nTxheight >= g_nStartSPOSHeight)
         {
-            int nSPOSLaveHeight = (txout.nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-            int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-            if (nTrueUnlockHeight <= g_nChainHeight) // unlocked
+            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockConfirmations();
+            if (nTrueUnlockedHeight <= g_nChainHeight) // unlocked
                 return false;
         }
         else
         {
-            if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
-                return false;
+            if (txout.nUnlockedHeight >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (txout.nUnlockedHeight - g_nStartSPOSHeight) * ConvertBlockConfirmations();
+                int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueUnlockHeight <= g_nChainHeight) // unlocked
+                    return false;
+            }
+            else
+            {
+                if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
+                    return false;
+            }
         }
     }
 
-    int64_t nOffset = txout.nUnlockedHeight - nTxheight;	
-    if (nTxheight >= g_nStartSPOSHeight)
-    {
-        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH) // invalid
-            return false;
-    }
-    else
-    {
-        if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
-            return false;
-    }
+    int64_t nOffset = txout.nUnlockedHeight - nTxheight;
+    if (!CheckUnlockedHeight(nVersion, nOffset))
+        return false;
 
     return true;
-
 }
 
-bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout)
+bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout, const int32_t& nVersion)
 {
     if(txout.nUnlockedHeight <= 0)
         return false;
 
-    if (nheight >= g_nStartSPOSHeight)
+    if (nVersion >= SAFE_TX_VERSION_3)
     {
         if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
             return false;
     }
     else
     {
-        if (txout.nUnlockedHeight >= g_nStartSPOSHeight)
+        if (nheight >= g_nStartSPOSHeight)
         {
-            int nSPOSLaveHeight = (txout.nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-            int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-            if (nTrueUnlockHeight <= g_nChainHeight) // unlocked
+            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockConfirmations();
+            if (nTrueUnlockedHeight < g_nChainHeight)
                 return false;
         }
         else
         {
-            if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
-                return false;
+            if (txout.nUnlockedHeight >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (txout.nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueUnlockHeight <= g_nChainHeight) // unlocked
+                    return false;
+            }
+            else
+            {
+                if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
+                    return false;
+            }
         }
     }
 
     int64_t nOffset = txout.nUnlockedHeight - nheight;
-	
-	if (nheight >= g_nStartSPOSHeight)
-    {
-        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH) // invalid
-            return false;
-    }
-	else
-	{
-		if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
-        	return false;
-	}
+    if (!CheckUnlockedHeight(nVersion, nOffset))
+        return false;
+   
     return true;
 }
 
@@ -237,22 +242,32 @@ int GetLockedMonth(const uint256& txHash, const CTxOut& txout)
     if(txout.nUnlockedHeight <= 0)
         return 0;
 
-    int nHeight = GetTxHeight(txHash);
+    int32_t nVersion;
+    int nHeight = GetTxHeight(txHash, NULL, &nVersion);
     if(txout.nUnlockedHeight < nHeight)
         return 0;
 
     int m1 = 0;
     int m2= 0;
 
-    if (nHeight >= g_nStartSPOSHeight)
+    if (nVersion >= SAFE_TX_VERSION_3)
     {
         m1 = (txout.nUnlockedHeight - nHeight) / SPOS_BLOCKS_PER_MONTH;
         m2 = (txout.nUnlockedHeight - nHeight) % SPOS_BLOCKS_PER_MONTH;
     }
     else
     {
-        m1 = (txout.nUnlockedHeight - nHeight) / BLOCKS_PER_MONTH;
-        m2 = (txout.nUnlockedHeight - nHeight) % BLOCKS_PER_MONTH;
+        if (nHeight >= g_nStartSPOSHeight)
+        {
+            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockConfirmations();
+            m1 = (nTrueUnlockedHeight - nHeight) / SPOS_BLOCKS_PER_MONTH;
+            m2 = (nTrueUnlockedHeight - nHeight) % SPOS_BLOCKS_PER_MONTH;
+        }
+        else
+        {
+            m1 = (txout.nUnlockedHeight - nHeight) / BLOCKS_PER_MONTH;
+            m2 = (txout.nUnlockedHeight - nHeight) % BLOCKS_PER_MONTH;
+        }
     }
 
     if(m2 != 0)
@@ -264,26 +279,35 @@ int GetLockedMonth(const uint256& txHash, const CTxOut& txout)
     return m1;
 }
 
-int GetLockedMonthByHeight(const int& nheight, const CTxOut& txout)
+int GetLockedMonthByHeight(const int& nHeight, const CTxOut& txout, const int32_t& nVersion)
 {
     if(txout.nUnlockedHeight <= 0)
         return 0;
 
-    if(txout.nUnlockedHeight < nheight)
+    if(txout.nUnlockedHeight < nHeight)
         return 0;
 
 	int m1 = 0;
 	int m2 = 0;
 
-	if (nheight >= g_nStartSPOSHeight)
+    if (nVersion >= SAFE_TX_VERSION_3)
     {
-        m1 = (txout.nUnlockedHeight - nheight) / SPOS_BLOCKS_PER_MONTH;
-        m2 = (txout.nUnlockedHeight - nheight) % SPOS_BLOCKS_PER_MONTH;
+        m1 = (txout.nUnlockedHeight - nHeight) / SPOS_BLOCKS_PER_MONTH;
+        m2 = (txout.nUnlockedHeight - nHeight) % SPOS_BLOCKS_PER_MONTH;
     }
     else
     {
-        m1 = (txout.nUnlockedHeight - nheight) / BLOCKS_PER_MONTH;
-        m2 = (txout.nUnlockedHeight - nheight) % BLOCKS_PER_MONTH;
+        if (nHeight >= g_nStartSPOSHeight)
+        {
+            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockConfirmations();
+            m1 = (nTrueUnlockedHeight - nHeight) / SPOS_BLOCKS_PER_MONTH;
+            m2 = (nTrueUnlockedHeight - nHeight) % SPOS_BLOCKS_PER_MONTH;
+        }
+        else
+        {
+            m1 = (txout.nUnlockedHeight - nHeight) / BLOCKS_PER_MONTH;
+            m2 = (txout.nUnlockedHeight - nHeight) % BLOCKS_PER_MONTH;
+        }
     }
 
     if(m2 != 0)
