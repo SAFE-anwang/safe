@@ -240,9 +240,6 @@ UniValue addissueasset(const UniValue& params, bool fHelp)
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
-    if (!IsStartLockFeatureHeight(g_nChainHeight))
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
     uint256 assetId = uint256S(TrimString(params[0].get_str()));
     CAssetId_AssetInfo_IndexValue assetInfo;
     if(assetId.IsNull() || !GetAssetInfoByAssetId(assetId, assetInfo, false))
@@ -658,12 +655,11 @@ UniValue getcandy(const UniValue& params, bool fHelp)
             continue;
 
         uint256 blockHash;
-        int32_t nVersion = 0;
-        int nTxHeight = GetTxHeight(out.hash, &blockHash, &nVersion);
-        if(blockHash.IsNull() || nVersion <= 0)
+        int nTxHeight = GetTxHeight(out.hash, &blockHash);
+        if(blockHash.IsNull())
             continue;
 
-        if (nVersion >= SAFE_TX_VERSION_3)
+        if (nTxHeight >= g_nStartSPOSHeight)
         {
             if(nTxHeight + SPOS_BLOCKS_PER_DAY > nCurrentHeight)
                 continue;
@@ -673,44 +669,32 @@ UniValue getcandy(const UniValue& params, bool fHelp)
         }
         else
         {
-            if (nTxHeight >= g_nStartSPOSHeight)
+            if (nTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
             {
-                if(nTxHeight + SPOS_BLOCKS_PER_DAY > nCurrentHeight)
-                    continue;
-
-                if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                int nSPOSLaveHeight = (nTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueBlockHeight > nCurrentHeight)
                     continue;
             }
             else
             {
-                if (nTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
-                {
-                    int nSPOSLaveHeight = (nTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-                    int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-                    if (nTrueBlockHeight > nCurrentHeight)
-                        continue;
-                }
-                else
-                {
-                    if(nTxHeight + BLOCKS_PER_DAY > nCurrentHeight)
+                if(nTxHeight + BLOCKS_PER_DAY > nCurrentHeight)
+                continue;
+            }
+            
+            if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueBlockHeight < nCurrentHeight)
                     continue;
-                }
-                
-                if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight >= g_nStartSPOSHeight)
-                {
-                    int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-                    int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-                    if (nTrueBlockHeight < nCurrentHeight)
-                        continue;
-                }
-                else
-                {
-                    if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
-                        continue;
-                }
+            }
+            else
+            {
+                if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                    continue;
             }
         }
-
         CAmount nTotalSafe = 0;
         if(!GetTotalAmountByHeight(nTxHeight, nTotalSafe))
         {

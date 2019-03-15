@@ -170,7 +170,7 @@ bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout)
     {
         if (nTxheight >= g_nStartSPOSHeight)
         {
-            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockConfirmations();
+            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockNum();
             if (nTrueUnlockedHeight <= g_nChainHeight) // unlocked
                 return false;
         }
@@ -178,7 +178,7 @@ bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout)
         {
             if (txout.nUnlockedHeight >= g_nStartSPOSHeight)
             {
-                int nSPOSLaveHeight = (txout.nUnlockedHeight - g_nStartSPOSHeight) * ConvertBlockConfirmations();
+                int nSPOSLaveHeight = (txout.nUnlockedHeight - g_nStartSPOSHeight) * ConvertBlockNum();
                 int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
                 if (nTrueUnlockHeight <= g_nChainHeight) // unlocked
                     return false;
@@ -212,7 +212,7 @@ bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout, const int32_
     {
         if (nheight >= g_nStartSPOSHeight)
         {
-            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockConfirmations();
+            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockNum();
             if (nTrueUnlockedHeight < g_nChainHeight)
                 return false;
         }
@@ -220,7 +220,7 @@ bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout, const int32_
         {
             if (txout.nUnlockedHeight >= g_nStartSPOSHeight)
             {
-                int nSPOSLaveHeight = (txout.nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nSPOSLaveHeight = (txout.nUnlockedHeight - g_nStartSPOSHeight) * ConvertBlockNum();
                 int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
                 if (nTrueUnlockHeight <= g_nChainHeight) // unlocked
                     return false;
@@ -262,7 +262,7 @@ int GetLockedMonth(const uint256& txHash, const CTxOut& txout)
     {
         if (nHeight >= g_nStartSPOSHeight)
         {
-            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockConfirmations();
+            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockNum();
             m1 = (nTrueUnlockedHeight - nHeight) / SPOS_BLOCKS_PER_MONTH;
             m2 = (nTrueUnlockedHeight - nHeight) % SPOS_BLOCKS_PER_MONTH;
         }
@@ -302,7 +302,7 @@ int GetLockedMonthByHeight(const int& nHeight, const CTxOut& txout, const int32_
     {
         if (nHeight >= g_nStartSPOSHeight)
         {
-            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockConfirmations();
+            int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockNum();
             m1 = (nTrueUnlockedHeight - nHeight) / SPOS_BLOCKS_PER_MONTH;
             m2 = (nTrueUnlockedHeight - nHeight) % SPOS_BLOCKS_PER_MONTH;
         }

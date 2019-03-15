@@ -828,12 +828,6 @@ bool AssetsDistribute::addAssets()
         return false;
     }
 
-    if (!IsStartLockFeatureHeight(g_nChainHeight))
-    {
-        QMessageBox::warning(assetsPage,msgboxTitle, tr("This feature is enabled when the block height is %1").arg(g_nProtocolV3Height),tr("Ok"));
-        return false;
-    }
-
     if(pwalletMain->GetBalance() <= 0)
     {
         CAmount neededAmount = 0.01 * COIN;

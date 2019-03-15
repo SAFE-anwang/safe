@@ -1903,60 +1903,46 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             if(GetGetCandyAmount(candyData.assetId, out, strAddress, nAmount, fWithMempool))
                 return state.DoS(10, false, REJECT_INVALID, "get_candy: current user got candy already, " + out.ToString());
 
-            int32_t nVersion = 0;
-            int nPrevTxHeight = GetTxHeight(out.hash, NULL, &nVersion);
-            if (nVersion <= 0)
-                return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid tx txin version");
+            int nPrevTxHeight = GetTxHeight(out.hash);
             //if(fWithMempool)
             {
                 if (nPrevTxHeight >= nTxHeight)
                     return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy txin");
 
-                if (nVersion >= SAFE_TX_VERSION_3)
+                if (nPrevTxHeight >= g_nStartSPOSHeight)
                 {
-                     if (nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
+                    if (nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
                         return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
 
                     if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");     
                 }
                 else
                 {
-                    if (nPrevTxHeight >= g_nStartSPOSHeight)
+                    if (nPrevTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
                     {
-                        if (nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
+                        int nSPOSLaveHeight = (nPrevTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                        int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                        if (nTrueBlockHeight > nTxHeight)
                             return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
-
-                        if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                            return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");     
                     }
                     else
                     {
-                        if (nPrevTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
-                        {
-                            int nSPOSLaveHeight = (nPrevTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-                            int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-                            if (nTrueBlockHeight > nTxHeight)
-                                return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
-                        }
-                        else
-                        {
-                            if (nPrevTxHeight + BLOCKS_PER_DAY > nTxHeight)
-                                return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
-                        }
-                        
-                        if (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight >= g_nStartSPOSHeight)
-                        {
-                            int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-                            int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-                            if (nTrueBlockHeight < nTxHeight)
-                                return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
-                        }
-                        else
-                        {
-                            if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                                return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
-                        }
+                        if (nPrevTxHeight + BLOCKS_PER_DAY > nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                    }
+                    
+                    if (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight >= g_nStartSPOSHeight)
+                    {
+                        int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                        int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                        if (nTrueBlockHeight < nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                    }
+                    else
+                    {
+                        if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
                     }
                 }
             }
@@ -2368,7 +2354,6 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
                 continue;
 
             int64_t nOffset = txout.nUnlockedHeight - coins->nHeight;
-
             if (!CheckUnlockedHeight(tx.nVersion, nOffset))
                 continue;
 
@@ -2882,7 +2867,7 @@ double ConvertBitsToDouble(unsigned int nBits)
 
 CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
 {
-    CAmount nSubsidy = nMiningIncentives / ConvertBlockConfirmations();
+    CAmount nSubsidy = nMiningIncentives / ConvertBlockNum();
     int nSubsidyHalvingInterval = consensusParams.nSubsidyHalvingInterval * ConvertBlockHeight(consensusParams);
 
     // yearly decline of production by ~7.1% per year, projected ~18M coins max by year 2050+.
@@ -9680,7 +9665,7 @@ int ConvertBlockConfirmationsByHeight(const int&nHeight)
         return 1;
 }
 
-int ConvertBlockConfirmations()
+int ConvertBlockNum()
 {
      const Consensus::Params& consensusParams = Params().GetConsensus();
      return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;

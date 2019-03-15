@@ -918,24 +918,33 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
                     nTxHeight = (*mi).second->nHeight;
             }
 
-            if (nTxHeight >= g_nStartSPOSHeight)
+            if (tx.nVersion >= SAFE_TX_VERSION_3)
             {
                 if(temptxout.nUnlockedHeight <= g_nChainHeight)
                     continue;
             }
             else
             {
-                if (temptxout.nUnlockedHeight >= g_nStartSPOSHeight)
+                if (nTxHeight >= g_nStartSPOSHeight)
                 {
-                    int nSPOSLaveHeight = (temptxout.nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-                    int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
-                    if (nTrueUnlockHeight <= g_nChainHeight)
+                    int64_t nTrueUnlockedHeight = temptxout.nUnlockedHeight * ConvertBlockNum();
+                    if (nTrueUnlockedHeight < g_nChainHeight)
                         continue;
                 }
                 else
                 {
-                    if(temptxout.nUnlockedHeight <= g_nChainHeight)
-                        continue;
+                    if (temptxout.nUnlockedHeight >= g_nStartSPOSHeight)
+                    {
+                        int nSPOSLaveHeight = (temptxout.nUnlockedHeight - g_nStartSPOSHeight) * ConvertBlockNum();
+                        int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                        if (nTrueUnlockHeight <= g_nChainHeight)
+                            continue;
+                    }
+                    else
+                    {
+                        if(temptxout.nUnlockedHeight <= g_nChainHeight)
+                            continue;
+                    }
                 }
             }
 

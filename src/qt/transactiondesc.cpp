@@ -523,12 +523,29 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
         }
         if(needDisplay(DescColumnUnlockedHeight,showType))
         {
-            int64_t unlockedHeight = rec->nUnlockedHeight;
-            if (rec->nTxHeight < g_nStartSPOSHeight && rec->nUnlockedHeight >= g_nStartSPOSHeight)
+            int64_t unlockedHeight = 0;
+            if (wtx.nVersion>= SAFE_TX_VERSION_3)
             {
-                int nSPOSLaveHeight = (rec->nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-                unlockedHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                unlockedHeight = rec->nUnlockedHeight;
             }
+            else
+            {
+                 if (rec->nTxHeight >=  g_nStartSPOSHeight)
+                 {
+                    unlockedHeight = rec->nUnlockedHeight * ConvertBlockNum();
+                 }
+                 else
+                 {
+                    if (rec->nUnlockedHeight >= g_nStartSPOSHeight)
+                    {
+                        int nSPOSLaveHeight = (rec->nUnlockedHeight - g_nStartSPOSHeight) * ConvertBlockNum();
+                        unlockedHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                    }
+                    else
+                        unlockedHeight = rec->nUnlockedHeight;
+                 }
+            }
+
             strHTML += "<b>" + tr("Unlocked height") + ":</b> " + QString::number(unlockedHeight) + "<br>";
         }
     }

@@ -277,7 +277,7 @@ int ConvertBlockParameterByHeight(const int &nHeight, const Consensus::Params& c
 
 int ConvertBlockConfirmationsByHeight(const int&nHeight);
 
-int ConvertBlockConfirmations();
+int ConvertBlockNum();
 
 
 /**

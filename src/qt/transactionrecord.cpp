@@ -88,13 +88,29 @@ bool TransactionRecord::needParseAppAssetData(int appCmd, int showType)
 
 int64_t TransactionRecord::getRealUnlockHeight() const
 {
-    int64_t nRealUnlockHeight = nUnlockedHeight;
-    if(nUnlockedHeight)
+    int64_t nRealUnlockHeight = 0;
+    if (nUnlockedHeight)
     {
-        if (nTxHeight < g_nStartSPOSHeight && nUnlockedHeight >= g_nStartSPOSHeight)
+        if (nVersion>= SAFE_TX_VERSION_3)
         {
-            int nSPOSLaveHeight = (nUnlockedHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
-            nRealUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+            nRealUnlockHeight = nUnlockedHeight;
+        }
+        else
+        {
+             if (nTxHeight >=  g_nStartSPOSHeight)
+             {
+                nRealUnlockHeight = nUnlockedHeight * ConvertBlockNum();
+             }
+             else
+             {
+                if (nUnlockedHeight >= g_nStartSPOSHeight)
+                {
+                    int nSPOSLaveHeight = (nUnlockedHeight - g_nStartSPOSHeight) * ConvertBlockNum();
+                    nRealUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                }
+                else
+                    nRealUnlockHeight = nUnlockedHeight;
+             }
         }
     }
     return nRealUnlockHeight;
@@ -222,7 +238,7 @@ void TransactionRecord::decomposeToMe(const CWallet *wallet, const CWalletTx &wt
             isminetype mine = wallet->IsMine(txout);
             if(mine)
             {
-                TransactionRecord sub(hash, nTime);
+                TransactionRecord sub(hash, nTime, wtx.nVersion);
                 CTxDestination address;
                 sub.idx = parts.size(); // sequence number
                 sub.credit = txout.nValue;
@@ -262,7 +278,7 @@ void TransactionRecord::decomposeToMe(const CWallet *wallet, const CWalletTx &wt
         for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
         {
             const CTxOut& txout = wtx.vout[nOut];
-            TransactionRecord sub(hash, nTime);
+            TransactionRecord sub(hash, nTime, wtx.nVersion);
             if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut))
                 sub.bForbidDash = true;
             if(getReserveData(wallet,wtx,parts,sub,txout,showType,assetNamesUnits,nAssetDebit))
@@ -280,7 +296,7 @@ void TransactionRecord::decomposeToMe(const CWallet *wallet, const CWalletTx &wt
             isminetype mine = wallet->IsMine(txout);
             if(mine)
             {
-                TransactionRecord sub(hash, nTime);
+                TransactionRecord sub(hash, nTime, wtx.nVersion);
                 if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut))
                     sub.bForbidDash = true;
                 CTxDestination address;
@@ -328,7 +344,7 @@ void TransactionRecord::decomposeFromMeToMe(const CWallet *wallet, const CWallet
     // TODO: this section still not accurate but covers most cases,
     // might need some additional work however
 
-    TransactionRecord sub(hash, nTime);
+    TransactionRecord sub(hash, nTime, wtx.nVersion);
     // Payment to self by default
     sub.type = TransactionRecord::SendToSelf;
     sub.address = "";
@@ -452,7 +468,7 @@ void TransactionRecord::decomposeFromMeToMe(const CWallet *wallet, const CWallet
                 CTxDestination dest;
                 if(!ExtractDestination(txout.scriptPubKey, dest))
                     continue;
-                TransactionRecord sub(hash, nTime);
+                TransactionRecord sub(hash, nTime, wtx.nVersion);
                 CAmount assetDebit = -nAssetDebit;
                 if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
                     sub.bForbidDash = true;
@@ -507,7 +523,7 @@ void TransactionRecord::decomposeFromMe(const CWallet *wallet, const CWalletTx &
         for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
         {
             const CTxOut& txout = wtx.vout[nOut];
-            TransactionRecord sub(hash, nTime);
+            TransactionRecord sub(hash, nTime, wtx.nVersion);
             if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
                 sub.bForbidDash = true;
             }
@@ -567,7 +583,7 @@ void TransactionRecord::decomposeFromMe(const CWallet *wallet, const CWalletTx &
                 CTxDestination dest;
                 if(!ExtractDestination(txout.scriptPubKey, dest))
                     continue;
-                TransactionRecord sub(hash, nTime);
+                TransactionRecord sub(hash, nTime, wtx.nVersion);
                 if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
                     sub.bForbidDash = true;
                 }
@@ -585,7 +601,7 @@ void TransactionRecord::decomposeFromMe(const CWallet *wallet, const CWalletTx &
                 const CTxOut& txout = wtx.vout[nOut];
                 if(txout.nUnlockedHeight <= 0)
                     continue;
-                TransactionRecord sub(hash, nTime);
+                TransactionRecord sub(hash, nTime, wtx.nVersion);
                 if(wtx.IsForbid()&&!wallet->IsSpent(wtx.GetHash(), nOut)){
                     sub.bForbidDash = true;
                 }
@@ -720,7 +736,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
         {
             if(showType == SHOW_TX)
             {
-                TransactionRecord sub(hash, nTime, TransactionRecord::PrivateSendDenominate, "", -nDebit, nCredit);
+                TransactionRecord sub(hash, nTime, TransactionRecord::PrivateSendDenominate, "", -nDebit, nCredit, wtx.nVersion);
                 int nOut = 0;
                 BOOST_FOREACH(const CTxOut& txout, wtx.vout)
                 {
@@ -753,7 +769,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             //
             if(showType == SHOW_TX)
             {
-                TransactionRecord sub(hash, nTime, TransactionRecord::Other, "", nNet, 0);
+                TransactionRecord sub(hash, nTime, TransactionRecord::Other, "", nNet, 0, wtx.nVersion);
                 if(wtx.IsForbid())
                     sub.bForbidDash = true;
                 parts.append(sub);
@@ -891,19 +907,28 @@ QString TransactionRecord::formatSubTxId(const uint256 &hash, int vout)
 
 void TransactionRecord::updateLockedMonth()
 {
-    if(nUnlockedHeight > 0)
+    if (nUnlockedHeight > 0)
     {
         int m1 = 0;
         int m2 = 0;
-        if (nTxHeight >= g_nStartSPOSHeight)
+        if (nVersion >= SAFE_TX_VERSION_3)
         {
             m1 = (nUnlockedHeight - nTxHeight) / SPOS_BLOCKS_PER_MONTH;
             m2 = (nUnlockedHeight - nTxHeight) % SPOS_BLOCKS_PER_MONTH;
         }
         else
         {
-            m1 = (nUnlockedHeight - nTxHeight) / BLOCKS_PER_MONTH;
-            m2 = (nUnlockedHeight - nTxHeight) % BLOCKS_PER_MONTH;
+            if (nTxHeight >= g_nStartSPOSHeight)
+            {
+                int64_t nTrueUnlockedHeight = nUnlockedHeight * ConvertBlockNum();
+                m1 = (nTrueUnlockedHeight - nTxHeight) / SPOS_BLOCKS_PER_MONTH;
+                m2 = (nTrueUnlockedHeight - nTxHeight) % SPOS_BLOCKS_PER_MONTH;
+            }
+            else
+            {
+                m1 = (nUnlockedHeight - nTxHeight) / BLOCKS_PER_MONTH;
+                m2 = (nUnlockedHeight - nTxHeight) % BLOCKS_PER_MONTH;
+            }
         }
 
         if(m2 != 0)

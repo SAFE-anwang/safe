@@ -125,23 +125,23 @@ public:
     TransactionRecord():
         hash(), time(0), type(Other), address(""), debit(0), assetDebit(0),credit(0),assetCredit(0),bSAFETransaction(true),bLocked(false), nLockedAmount(0),nLastLockStatus(false),nUnlockedHeight(0)
         ,bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),appHeader(),bIssueAsset(false),transferSafeData()
-        ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth("")
+        ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth(""), nVersion(0)
     {
     }
 
-    TransactionRecord(uint256 hash, qint64 time):
+    TransactionRecord(uint256 hash, qint64 time, const int32_t& nVersion):
             hash(hash), time(time), type(Other), address(""), debit(0),assetDebit(0),credit(0),assetCredit(0),bSAFETransaction(true), bLocked(false), nLockedAmount(0),nLastLockStatus(false),nUnlockedHeight(0)
             ,bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),appHeader(),bIssueAsset(false),transferSafeData()
-            ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth("")
+            ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth(""), nVersion(nVersion)
     {
     }
 
     TransactionRecord(uint256 hash, qint64 time,
                 Type type, const std::string &address,
-                const CAmount& debit, const CAmount& credit):
+                const CAmount& debit, const CAmount& credit, const int32_t& nVersion):
             hash(hash), time(time), type(type), address(address), debit(debit), assetDebit(0),credit(credit),assetCredit(0),bSAFETransaction(true),bLocked(false), nLockedAmount(0),nLastLockStatus(false)
             ,nUnlockedHeight(0),bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),bIssueAsset(false),appHeader(),transferSafeData()
-            ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth("")
+            ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth(""), nVersion(nVersion)
     {
     }
 
@@ -199,6 +199,8 @@ public:
 
     int64_t nTxHeight;
     QString strLockedMonth;
+
+    int32_t nVersion;
 
     /** Status: can change with block chain update */
     TransactionStatus status;

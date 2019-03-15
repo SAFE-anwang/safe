@@ -3142,7 +3142,7 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
 			}
 
             // do not use IX for inputs that have less then INSTANTSEND_CONFIRMATIONS_REQUIRED blockchain confirmations
-            if (fUseInstantSend && nDepth < INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmationsByHeight(nBlockHeight))
+            if (fUseInstantSend && nDepth < INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmationsByHeight(g_nChainHeight))
                 continue;
 
             // We should not consider coins which aren't at least in our mempool
@@ -6306,7 +6306,6 @@ int CMerkleTx::GetBlocksToMaturity() const
         return max(0, (COINBASE_MATURITY_SPOS+1) - depth);
     return max(0, (COINBASE_MATURITY+1) - depth);
 }
-
 
 bool CMerkleTx::AcceptToMemoryPool(bool fLimitFree, bool fRejectAbsurdFee)
 {

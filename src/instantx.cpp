@@ -950,7 +950,6 @@ bool CTxLockRequest::IsValid() const
     BOOST_FOREACH(const CTxIn& txin, vin) {
 
         CCoins coins;
-
         if(!GetUTXOCoins(txin.prevout, coins)) {
             LogPrint("instantsend", "CTxLockRequest::IsValid -- Failed to find UTXO %s\n", txin.prevout.ToStringShort());
             return false;
