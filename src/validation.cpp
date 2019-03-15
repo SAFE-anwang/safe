@@ -572,7 +572,7 @@ bool CheckUnlockedHeight(const int32_t& nTxVersion, const int64_t& nOffset)
     }
     else
     {
-         if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+        if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
             return false;
     }
 

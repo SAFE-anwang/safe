@@ -156,8 +156,11 @@ bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout)
     if(txout.nUnlockedHeight <= 0)
         return false;
 
-    int32_t nVersion;
+    int32_t nVersion = 0;
     int nTxheight = GetTxHeight(txHash, NULL, &nVersion);
+    if (nVersion <= 0)
+        return false;
+
     if (nVersion >= SAFE_TX_VERSION_3)
     {
         if(txout.nUnlockedHeight <= g_nChainHeight) // unlocked
@@ -197,7 +200,7 @@ bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout)
 
 bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout, const int32_t& nVersion)
 {
-    if(txout.nUnlockedHeight <= 0)
+    if(txout.nUnlockedHeight <= 0 || nVersion <= 0)
         return false;
 
     if (nVersion >= SAFE_TX_VERSION_3)
@@ -242,9 +245,9 @@ int GetLockedMonth(const uint256& txHash, const CTxOut& txout)
     if(txout.nUnlockedHeight <= 0)
         return 0;
 
-    int32_t nVersion;
+    int32_t nVersion = 0;
     int nHeight = GetTxHeight(txHash, NULL, &nVersion);
-    if(txout.nUnlockedHeight < nHeight)
+    if(txout.nUnlockedHeight < nHeight || nVersion <= 0)
         return 0;
 
     int m1 = 0;
@@ -281,7 +284,7 @@ int GetLockedMonth(const uint256& txHash, const CTxOut& txout)
 
 int GetLockedMonthByHeight(const int& nHeight, const CTxOut& txout, const int32_t& nVersion)
 {
-    if(txout.nUnlockedHeight <= 0)
+    if(txout.nUnlockedHeight <= 0 || nVersion <= 0)
         return 0;
 
     if(txout.nUnlockedHeight < nHeight)
