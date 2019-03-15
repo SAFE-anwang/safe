@@ -868,19 +868,20 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0x000d8b21044326f9b58110404510ce2b4ee30af5d97dd7de30d551c34dfdc9a2"));
         assert(genesis.hashMerkleRoot == uint256S("0xe0028eb9648db56b1ac77cf090b99048a8007e2bb64b68f092c03c7f56a662c7"));
 
-        vSeeds.push_back(CDNSSeedData("47.74.249.150", "47.74.249.150"));
-        vSeeds.push_back(CDNSSeedData("47.74.247.22", "47.74.247.22"));
-        vSeeds.push_back(CDNSSeedData("47.74.249.237", "47.74.249.237"));
-        vSeeds.push_back(CDNSSeedData("47.74.249.6", "47.74.249.6"));
+        vSeeds.push_back(CDNSSeedData("106.13.9.129", "106.13.9.129"));
+        vSeeds.push_back(CDNSSeedData("106.13.12.55", "106.13.12.55"));
+        vSeeds.push_back(CDNSSeedData("106.12.118.160", "106.12.118.160"));
+        vSeeds.push_back(CDNSSeedData("106.13.2.195", "106.13.2.195"));
+        vSeeds.push_back(CDNSSeedData("106.12.111.195", "106.12.111.195"));
+        vSeeds.push_back(CDNSSeedData("106.12.116.129", "106.12.116.129"));
 
-        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 0));
-        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 1));
-        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 2));
-        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 3));
-        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 4));
-        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 5));
-        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 6));
-        vcoutpointdata.push_back(COutPointData(uint256S("a42e252d2bc3f61fd21e4e1b818434a9a8a760d43f5d733ffc4599b319562a07"), 7));
+        vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 0));
+        vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 1));
+        vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 2));
+        vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 3));
+        vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 4));
+
+
 
         // Safe addresses start with 'X'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,76);
