@@ -4048,7 +4048,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
         if (!IsStartLockFeatureHeight(chainActive.Height()))
         {
             strFailReason = _("Instant send is not yet enabled");
-            return false;            
+            return false;
         }
     }
 
