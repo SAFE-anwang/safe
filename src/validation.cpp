@@ -615,7 +615,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
     {
         if(!blockHash.IsNull())
         {
-            if(IsProtocolV0(nTxHeight)) // tx.nVersion = 1 or 2 or 101
+            if(IsProtocolV0(nTxHeight)) // tx.nVersion = 1 or 2 or 101,XJTODO after version 2.5,this should be 103
             {
                 if(tx.nVersion > SAFE_TX_VERSION_1)
                     return state.DoS(50, false, REJECT_INVALID, "wallet_tx: bad tx version in protocol v0");

@@ -110,9 +110,6 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     {
         CScript sposPayee = GetScriptForDestination(mnInfoRet.pubKeyCollateralAddress.GetID());
         txNew.vout[0].scriptPubKey = sposPayee;
-        LogPrintf("SPOS_Message:create block find the outpoint(%s),masternode pubKeyCollateralAddress:%s,masternode:%s\n"
-                  ,activeMasternode.outpoint.ToString(),mnInfoRet.pubKeyCollateralAddress.GetID().ToString()
-                  ,mnInfoRet.addr.ToStringIP());
     }else
     {
         txNew.vout[0].scriptPubKey = scriptPubKeyIn;
