@@ -940,17 +940,8 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
             }
 
             int64_t nOffset = temptxout.nUnlockedHeight - nTxHeight;
-
-            if (nTxHeight >= g_nStartSPOSHeight)
-            {
-                if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH) // invalid
-                    continue;
-            }
-            else
-            {
-                if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
-                    continue;
-            }
+            if (!CheckUnlockedHeight(tx.nVersion, nOffset))
+                continue;
 
             lockamount += it->second;
         }

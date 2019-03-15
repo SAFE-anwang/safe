@@ -2368,16 +2368,9 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
                 continue;
 
             int64_t nOffset = txout.nUnlockedHeight - coins->nHeight;
-            if (coins->nHeight >= g_nStartSPOSHeight)
-            {
-                if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
-                    continue;
-            }
-            else
-            {
-                if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
-                    continue;
-            }
+
+            if (!CheckUnlockedHeight(tx.nVersion, nOffset))
+                continue;
 
             return state.DoS(100, false, REJECT_NONSTANDARD, "invalid-txin-locked");
         }
