@@ -872,16 +872,11 @@ public:
         vSeeds.push_back(CDNSSeedData("106.13.12.55", "106.13.12.55"));
         vSeeds.push_back(CDNSSeedData("106.12.118.160", "106.12.118.160"));
         vSeeds.push_back(CDNSSeedData("106.13.2.195", "106.13.2.195"));
-        vSeeds.push_back(CDNSSeedData("106.12.111.195", "106.12.111.195"));
-        vSeeds.push_back(CDNSSeedData("106.12.116.129", "106.12.116.129"));
 
-        vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 0));
-        vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 1));
-        vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 2));
-        vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 3));
-        vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 4));
-
-
+        vcoutpointdata.push_back(COutPointData(uint256S("854f03bbf1ecaef2c9e3cd1417bc095110938deebb5b36b522269c5086de6682"), 1));
+        vcoutpointdata.push_back(COutPointData(uint256S("854f03bbf1ecaef2c9e3cd1417bc095110938deebb5b36b522269c5086de6682"), 2));
+        vcoutpointdata.push_back(COutPointData(uint256S("854f03bbf1ecaef2c9e3cd1417bc095110938deebb5b36b522269c5086de6682"), 3));
+        vcoutpointdata.push_back(COutPointData(uint256S("854f03bbf1ecaef2c9e3cd1417bc095110938deebb5b36b522269c5086de6682"), 4));
 
         // Safe addresses start with 'X'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,76);
