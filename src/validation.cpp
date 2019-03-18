@@ -119,6 +119,10 @@ CAmount nMiningIncentives = 334559821;//SQTODO
 CAmount nMiningIncentives = 450000000;//SQTODO
 #elif SCN_CURRENT == SCN__test
 CAmount nMiningIncentives = 45000000000;//SQTODO
+#else
+#error unsupported <safe chain name>
+#endif//#if SCN_CURRENT == SCN__main
+
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
