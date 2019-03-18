@@ -43,6 +43,8 @@
 #include "masternode-sync.h"
 #include "messagesigner.h"
 #include "validation.h"
+#include "config/safe-chain.h"
+
 
 
 #ifdef ENABLE_WALLET
