@@ -9413,11 +9413,6 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     unsigned int nP3 = ((double)vec3Size / nTotalMasternode) * g_nMasternodeSPosCount;
 
     unsigned int nMnSize = vec1Size + vec2Size + vec3Size;
-    //XJTODO
-    LogPrintf("SPOS_Message:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
-              "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
-              nMnSize,g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3,
-              mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
     if (nMnSize < g_nMasternodeMinCount)
     {
         LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
@@ -9435,6 +9430,12 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     CalculateIncreaseMasternode(nRemainNum,nP1Increase,vec1Size,nP1);
     CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
     CalculateIncreaseMasternode(nRemainNum,nP3Increase,vec3Size,nP3);
+
+    //XJTODO
+    LogPrintf("SPOS_Message:calmnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
+              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,
+              nTotalMasternode,mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
+              nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
 
     unsigned int nP1Total = nP1+nP1Increase;
     for (unsigned int i = 0; i < nP1Total; i++)
