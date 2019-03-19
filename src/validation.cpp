@@ -9220,8 +9220,11 @@ void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vec
 {
     if(nRemainNum > 0)
     {
-        nIncrease = vecSize - nPercentCnt;
-        nIncrease = nIncrease >= nRemainNum ? nRemainNum : nRemainNum - nIncrease;
+        int canUseCnt = vecSize - nPercentCnt;
+        if(canUseCnt>=nRemainNum)
+            nIncrease = nRemainNum;
+        else
+            nIncrease = canUseCnt;
         nRemainNum = nRemainNum - nIncrease;
     }
 }
@@ -9426,7 +9429,6 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     unsigned int nSelectTotal = nP1 + nP2 + nP3;
     int nRemainNum = g_nMasternodeSPosCount - nSelectTotal;
     int nP1Increase = 0,nP2Increase = 0,nP3Increase = 0;
-
     CalculateIncreaseMasternode(nRemainNum,nP1Increase,vec1Size,nP1);
     CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
     CalculateIncreaseMasternode(nRemainNum,nP3Increase,vec3Size,nP3);
@@ -9438,14 +9440,20 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
               nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
 
     unsigned int nP1Total = nP1+nP1Increase;
+    if(nP1Total>vec1Size)
+        LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP1,nP1Increase,nP1Total);
     for (unsigned int i = 0; i < nP1Total; i++)
         g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
 
     unsigned int nP2Total = nP2+nP2Increase;
+    if(nP2Total>vec2Size)
+        LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP2,nP2Increase,nP2Total);
     for (unsigned int j = 0; j < nP2Total; j++)
         g_vecResultMasternodes.push_back(vecResultMasternodesL2[j]);
 
     unsigned int nP3Total = nP3 + nP3Increase;
+    if(nP3Total>vec3Size)
+        LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP3,nP3Increase,nP3Total);
     for (unsigned int k = 0; k < nP3Total; k++)
         g_vecResultMasternodes.push_back(vecResultMasternodesL3[k]);
 
