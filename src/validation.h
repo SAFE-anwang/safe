@@ -1564,7 +1564,7 @@ void SelectMasterNode(unsigned int nNewBlockHeight, uint32_t nTime, const bool b
 
 void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork);
 
-bool CompareBestChainActiveTime(CBlockIndex *pCurrentBlockIndex, CBlockIndex *pBestBlockIndex, const bool fComEquals = false);
+bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals = false);
 
 
 #endif // BITCOIN_VALIDATION_H

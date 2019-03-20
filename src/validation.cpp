@@ -9514,7 +9514,7 @@ int ConvertBlockNum()
      return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
 }
 
-bool CompareBestChainActiveTime(CBlockIndex *pCurrentBlockIndex, CBlockIndex *pBestBlockIndex, const bool fComEquals = false)
+bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals)
 {
     if (fComEquals)
     {
