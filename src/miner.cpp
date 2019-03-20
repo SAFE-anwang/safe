@@ -810,7 +810,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 // ***TODO*** that part changed in bitcoin, we are using a mix with old one here for now
 void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 {
-    LogPrintf("SafeSposMiner -- started\n");
+    LogPrintf("SPOS_Message:SafeSposMiner -- started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     RenameThread("safe-miner");
 
