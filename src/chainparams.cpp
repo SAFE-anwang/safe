@@ -510,12 +510,13 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0x000d8b21044326f9b58110404510ce2b4ee30af5d97dd7de30d551c34dfdc9a2"));
         assert(genesis.hashMerkleRoot == uint256S("0xe0028eb9648db56b1ac77cf090b99048a8007e2bb64b68f092c03c7f56a662c7"));
 
-        vSeeds.push_back(CDNSSeedData("106.12.132.195", "106.12.132.195"));
-        vSeeds.push_back(CDNSSeedData("182.61.45.230", "182.61.45.230"));
+        vSeeds.push_back(CDNSSeedData("182.61.39.212", "182.61.39.212"));
+        vSeeds.push_back(CDNSSeedData("182.61.13.68", "182.61.13.68"));
+        vSeeds.push_back(CDNSSeedData("182.61.22.240", "182.61.22.240"));
+        vSeeds.push_back(CDNSSeedData("182.61.39.172", "182.61.39.172"));
         vSeeds.push_back(CDNSSeedData("182.61.15.31", "182.61.15.31"));
         vSeeds.push_back(CDNSSeedData("182.61.37.132", "182.61.37.132"));
-        vSeeds.push_back(CDNSSeedData("106.12.110.113", "106.12.110.113"));
-        vSeeds.push_back(CDNSSeedData("106.13.12.55", "106.13.12.55"));
+
 
         vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 0));
         vcoutpointdata.push_back(COutPointData(uint256S("81882b6d24c9c33b84a43a783f122d06a161b2e11d8af8c33158572b6704791c"), 1));
@@ -646,15 +647,13 @@ public:
         vFixedSeeds.clear();
         vSeeds.clear();
 
-        vSeeds.push_back(CDNSSeedData("47.254.40.246", "47.254.40.246"));
-        vSeeds.push_back(CDNSSeedData("47.254.40.7", "47.254.40.7"));
-        vSeeds.push_back(CDNSSeedData("47.88.48.112", "47.88.48.112"));
-        vSeeds.push_back(CDNSSeedData("47.254.39.43", "47.254.39.43"));
-        vSeeds.push_back(CDNSSeedData("47.88.51.64", "47.88.51.64"));
-        vSeeds.push_back(CDNSSeedData("47.254.70.224", "47.254.70.224"));
-        vSeeds.push_back(CDNSSeedData("47.254.28.127", "47.254.28.127"));
-        vSeeds.push_back(CDNSSeedData("47.254.74.169", "47.254.74.169"));
-        vSeeds.push_back(CDNSSeedData("47.254.29.224", "47.254.29.224"));
+        vSeeds.push_back(CDNSSeedData("182.61.39.212", "182.61.39.212"));
+        vSeeds.push_back(CDNSSeedData("182.61.13.68", "182.61.13.68"));
+        vSeeds.push_back(CDNSSeedData("182.61.22.240", "182.61.22.240"));
+        vSeeds.push_back(CDNSSeedData("182.61.39.172", "182.61.39.172"));
+        vSeeds.push_back(CDNSSeedData("182.61.15.31", "182.61.15.31"));
+        vSeeds.push_back(CDNSSeedData("182.61.37.132", "182.61.37.132"));
+
 
         // Testnet Safe addresses start with 'y'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,140);
