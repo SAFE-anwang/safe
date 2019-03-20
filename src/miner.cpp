@@ -113,7 +113,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     }else
     {
         txNew.vout[0].scriptPubKey = scriptPubKeyIn;
-        LogPrintf("SPOS_Error:create block not find the outpoint(%s)\n",activeMasternode.outpoint.ToString());
+        LogPrintf("SPOS_Warning:create block not find the outpoint(%s),maybe need to start alias\n",activeMasternode.outpoint.ToString());
     }
 
     // Largest block you're willing to create:
@@ -917,22 +917,18 @@ void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainpar
 
 void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman)
 {
-    if (!activeMasternode.pubKeyMasternode.IsValid())
-    {
-        LogPrintf("SPOS_Warning:only the master node needs to open SPOS mining\n");
-        return;
-    }
-
-    if((g_nStartSPOSHeight-1)%g_nMasternodeSPosCount!=0)
-        LogPrintf("SPOS_Warning:invalid spos height or spos count config\n");
-
     if(fGenerate)
     {
-        LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_can_be_selected_time:%d\n"
-                  , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeCanBeSelectedTime);
-    }else
-    {
-        LogPrintf("SPOS_Message:start_spos_height:%d,masternode_spos_count:%d,masternode_can_be_selected_time:%d,no generate,need to set sposgen 1\n"
+        if (!activeMasternode.pubKeyMasternode.IsValid())
+        {
+            LogPrintf("SPOS_Warning:only the master node needs to open SPOS mining\n");
+            return;
+        }
+
+        if((g_nStartSPOSHeight-1)%g_nMasternodeSPosCount!=0)
+            LogPrintf("SPOS_Warning:invalid spos height or spos count config\n");
+
+        LogPrintf("SPOS_Message:GenerateBitcoinsBySPOS,start_spos_height:%d,masternode_spos_count:%d,masternode_can_be_selected_time:%d\n"
                   , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeCanBeSelectedTime);
     }
 
