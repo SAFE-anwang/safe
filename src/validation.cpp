@@ -3120,7 +3120,7 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
 
     if (IsStartSPosHeight(pindexNew->nHeight))
     {
-        if (!pindexBestInvalid || pindexNew->nHeight > pindexBestInvalid->nHeight)
+        if (!pindexBestInvalid || CompareBestChainActiveTime (pindexNew, pindexBestInvalid))
             pindexBestInvalid = pindexNew;
     }
     else
@@ -5172,7 +5172,7 @@ static CBlockIndex* FindMostWorkChain() {
                 // Candidate chain is not usable (either invalid or missing data)
                 if (IsStartSPosHeight(pindexNew->nHeight))
                 {
-                    if (fFailedChain && (pindexBestInvalid == NULL || (pindexNew->nHeight > pindexBestInvalid->nHeight && pindexNew->nActiveTime > pindexBestInvalid->nActiveTime)))
+                    if (fFailedChain && (pindexBestInvalid == NULL || (pindexNew->nHeight > pindexBestInvalid->nHeight && CompareBestChainActiveTime(pindexNew, pindexBestInvalid))))
                         pindexBestInvalid = pindexNew;
                 }
                 else
@@ -5272,7 +5272,7 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
                 PruneBlockIndexCandidates();
                 if (IsStartSPosHeight(chainActive.Tip()->nHeight))
                 {
-                    if (!pindexOldTip || chainActive.Tip()->nHeight > pindexOldTip->nHeight) {
+                    if (!pindexOldTip || CompareBestChainActiveTime (chainActive.Tip(), pindexOldTip)) {
                         // We're in a better position than we were. Return temporarily to release the lock.
                         fContinue = false;
                         break;
@@ -5497,7 +5497,7 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
     if (IsStartSPosHeight(pindexNew->nHeight))
     {
-        if (pindexBestHeader == NULL || pindexBestHeader->nHeight < pindexNew->nHeight)
+        if (pindexBestHeader == NULL || CompareBestChainActiveTime(pindexNew, pindexBestHeader))
             pindexBestHeader = pindexNew;
     }else if (pindexBestHeader == NULL || pindexBestHeader->nChainWork < pindexNew->nChainWork)
         pindexBestHeader = pindexNew;
@@ -6080,7 +6080,7 @@ static bool AcceptBlock(const CBlock& block, CValidationState& state, const CCha
     {
         if (IsStartSPosHeight(pindex->nHeight))
         {
-            if (pindex->nHeight > chainActive.Tip()->nHeight)
+            if (CompareBestChainActiveTime (pindex, chainActive.Tip()))
                 fHasMoreWork = true;
         }
         else
@@ -6433,7 +6433,7 @@ bool static LoadBlockIndexDB()
 
         if (IsStartSPosHeight(pindex->nHeight))
         {
-            if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nHeight > pindexBestInvalid->nHeight))
+            if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || CompareBestChainActiveTime(pindex, pindexBestInvalid)))
                 pindexBestInvalid = pindex;
         }
         else
@@ -6894,7 +6894,7 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
         assert((pindexFirstNotTransactionsValid != NULL) == (pindex->nChainTx == 0));
         assert(pindex->nHeight == nHeight); // nHeight must be consistent.
         if (IsStartSPosHeight(pindex->nHeight))
-            assert(pindex->pprev == NULL || pindex->nHeight >= pindex->pprev->nHeight);
+            assert(pindex->pprev == NULL || CompareBestChainActiveTime(pindex, pindex->pprev, true));
         else
             assert(pindex->pprev == NULL || pindex->nChainWork >= pindex->pprev->nChainWork); // For every block except the genesis block, the chainwork must be larger than the parent's.
         assert(nHeight < 2 || (pindex->pskip && (pindex->pskip->nHeight < nHeight))); // The pskip pointer must point back for all but the first 2 blocks.
@@ -9513,3 +9513,22 @@ int ConvertBlockNum()
      const Consensus::Params& consensusParams = Params().GetConsensus();
      return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
 }
+
+bool CompareBestChainActiveTime(CBlockIndex *pCurrentBlockIndex, CBlockIndex *pBestBlockIndex, const bool fComEquals = false)
+{
+    if (fComEquals)
+    {
+        if (pCurrentBlockIndex->nActiveTime >= pBestBlockIndex->nActiveTime)
+            return true;
+        else
+            return false;
+    }
+    else
+    {
+        if (pCurrentBlockIndex->nActiveTime > pBestBlockIndex->nActiveTime)
+            return true;
+        else
+            return false;
+    }
+}
+

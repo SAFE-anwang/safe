@@ -322,19 +322,22 @@ void ProcessBlockAvailability(NodeId nodeid) {
     if (!state->hashLastUnknownBlock.IsNull()) {
         BlockMap::iterator itOld = mapBlockIndex.find(state->hashLastUnknownBlock);
         if (itOld != mapBlockIndex.end()) {
-            if (IsStartSPosHeight(itOld->second->nHeight))
-            {
-                if (state->pindexBestKnownBlock == NULL || itOld->second->nHeight >= state->pindexBestKnownBlock->nHeight)
-                    state->pindexBestKnownBlock = itOld->second;
-            } 
+            if (state->pindexBestKnownBlock == NULL)
+                state->pindexBestKnownBlock = itOld->second;
             else
             {
-                if (itOld->second->nChainWork > 0)
+                if (IsStartSPosHeight(state->pindexBestKnownBlock->nHeight))
                 {
-                    if (state->pindexBestKnownBlock == NULL || itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
+                    if (itOld->second->nActiveTime > 0 && CompareBestChainActiveTime(itOld->second, state->pindexBestKnownBlock, true))
+                        state->pindexBestKnownBlock = itOld->second;   
+                }
+                else
+                {
+                    if (itOld->second->nChainWork > 0 && itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
                         state->pindexBestKnownBlock = itOld->second;
                 }
             }
+
             state->hashLastUnknownBlock.SetNull();
         }
     }
@@ -350,16 +353,18 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
     BlockMap::iterator it = mapBlockIndex.find(hash);
     if (it != mapBlockIndex.end()) {
         // An actually better block was announced.
-        if (IsStartSPosHeight(it->second->nHeight))
-        {
-            if (state->pindexBestKnownBlock == NULL || it->second->nHeight >= state->pindexBestKnownBlock->nHeight)
-                state->pindexBestKnownBlock = it->second;
-        }
+        if (state->pindexBestKnownBlock == NULL)
+            state->pindexBestKnownBlock = it->second;
         else
         {
-            if (it->second->nChainWork > 0)
+            if (IsStartSPosHeight(state->pindexBestKnownBlock->nHeight))
             {
-                if (state->pindexBestKnownBlock == NULL || it->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
+                if (it->second->nActiveTime > 0 && CompareBestChainActiveTime(it->second, state->pindexBestKnownBlock, true))
+                    state->pindexBestKnownBlock = it->second;
+            }
+            else
+            {
+                if (it->second->nChainWork > 0 && it->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
                     state->pindexBestKnownBlock = it->second;
             }
         }
@@ -420,18 +425,19 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
     // Make sure pindexBestKnownBlock is up to date, we'll need it.
     ProcessBlockAvailability(nodeid);
 
-    if (IsStartSPosHeight(chainActive.Tip()->nHeight))
-    {
-         if (state->pindexBestKnownBlock == NULL || state->pindexBestKnownBlock->nHeight < chainActive.Tip()->nHeight) {
-            // This peer has nothing interesting.
-            return;
-        }
-    }
+    if (state->pindexBestKnownBlock == NULL)
+        return;
     else
     {
-         if (state->pindexBestKnownBlock == NULL || state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork || state->pindexBestKnownBlock->nChainWork < UintToArith256(consensusParams.nMinimumChainWork)) {
-            // This peer has nothing interesting.
-            return;
+        if (IsStartSPosHeight(state->pindexBestKnownBlock->nHeight))
+        {
+            if (CompareBestChainActiveTime(chainActive.Tip(), state->pindexBestKnownBlock))
+                return;
+        }
+        else
+        {
+             if (state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork || state->pindexBestKnownBlock->nChainWork < UintToArith256(consensusParams.nMinimumChainWork))
+                return;
         }
     }
 
@@ -1950,7 +1956,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         bool bNewEffectiveBlock = false;
         if (IsStartSPosHeight(pindexLast->nHeight))
         {
-            if (chainActive.Tip()->nHeight <= pindexLast->nHeight)
+            if (CompareBestChainActiveTime(pindexLast, chainActive.Tip(), true))
                 bNewEffectiveBlock = true;
         }
         else
