@@ -9535,3 +9535,15 @@ bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBl
     }
 }
 
+int ConvertMasternodeConfirmationsByHeight(const int &nHeight, const Consensus::Params& consensusParams)
+{
+    if (IsStartSPosHeight(nHeight))
+        return consensusParams.nMasternodeMinimumConfirmations * (consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing);
+    else
+    {
+        if (IsStartSPosHeight(nHeight + consensusParams.nMasternodeMinimumConfirmations))
+            return consensusParams.nMasternodeMinimumConfirmations * (consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing);
+        else
+            return consensusParams.nMasternodeMinimumConfirmations;
+    }
+}

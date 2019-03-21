@@ -594,15 +594,15 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
             return false;
         }
 
-        if(chainActive.Height() - nHeight + 1 < (Params().GetConsensus().nMasternodeMinimumConfirmations * ConvertBlockParameterByHeight(chainActive.Height(), Params().GetConsensus()))) {
+        if(chainActive.Height() - nHeight + 1 < ConvertMasternodeConfirmationsByHeight(nHeight, Params().GetConsensus())) {
             LogPrintf("CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO must have at least %d confirmations, masternode=%s\n",
-                    Params().GetConsensus().nMasternodeMinimumConfirmations * ConvertBlockParameterByHeight(chainActive.Height(), Params().GetConsensus()), vin.prevout.ToStringShort());
+                      ConvertMasternodeConfirmationsByHeight(nHeight, Params().GetConsensus()), vin.prevout.ToStringShort());
             // maybe we miss few blocks, let this mnb to be checked again later
             mnodeman.mapSeenMasternodeBroadcast.erase(GetHash());
             return false;
         }
         // remember the hash of the block where masternode collateral had minimum required confirmations
-        nCollateralMinConfBlockHash = chainActive[nHeight + Params().GetConsensus().nMasternodeMinimumConfirmations * ConvertBlockParameterByHeight(chainActive.Height(), Params().GetConsensus()) - 1]->GetBlockHash();
+        nCollateralMinConfBlockHash = chainActive[nHeight + ConvertMasternodeConfirmationsByHeight(nHeight, Params().GetConsensus()) - 1]->GetBlockHash();
     }
 
     LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO verified\n");
@@ -625,10 +625,10 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
         BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
         if (mi != mapBlockIndex.end() && (*mi).second) {
             CBlockIndex* pMNIndex = (*mi).second; // block for 1000 SAFE tx -> 1 confirmation
-            CBlockIndex* pConfIndex = chainActive[pMNIndex->nHeight + Params().GetConsensus().nMasternodeMinimumConfirmations * ConvertBlockParameterByHeight(chainActive.Height(), Params().GetConsensus()) - 1]; // block where tx got nMasternodeMinimumConfirmations
+            CBlockIndex* pConfIndex = chainActive[pMNIndex->nHeight + ConvertMasternodeConfirmationsByHeight(pMNIndex->nHeight, Params().GetConsensus()) - 1]; // block where tx got nMasternodeMinimumConfirmations
             if(pConfIndex->GetBlockTime() > sigTime) {
                 LogPrintf("CMasternodeBroadcast::CheckOutpoint -- Bad sigTime %d (%d conf block is at %d) for Masternode %s %s\n",
-                          sigTime, Params().GetConsensus().nMasternodeMinimumConfirmations * ConvertBlockParameterByHeight(chainActive.Height(), Params().GetConsensus()), pConfIndex->GetBlockTime(), vin.prevout.ToStringShort(), addr.ToString());
+                          sigTime, ConvertMasternodeConfirmationsByHeight(pMNIndex->nHeight, Params().GetConsensus()), pConfIndex->GetBlockTime(), vin.prevout.ToStringShort(), addr.ToString());
                 return false;
             }
         }

@@ -290,7 +290,8 @@ void CActiveMasternode::ManageStateLocal(CConnman& connman)
 
     if(pwalletMain->GetMasternodeOutpointAndKeys(outpoint, pubKeyCollateral, keyCollateral)) {
         int nPrevoutAge = GetUTXOConfirmations(outpoint);
-        if(nPrevoutAge < (Params().GetConsensus().nMasternodeMinimumConfirmations * ConvertBlockParameterByHeight(chainActive.Height(), Params().GetConsensus()))){
+        if (nPrevoutAge == -1 || nPrevoutAge < ConvertMasternodeConfirmationsByHeight(GetUTXOHeight(outpoint), Params().GetConsensus()))
+        {
             nState = ACTIVE_MASTERNODE_INPUT_TOO_NEW;
             strNotCapableReason = strprintf(_("%s - %d confirmations"), GetStatus(), nPrevoutAge);
             LogPrintf("CActiveMasternode::ManageStateLocal -- %s: %s\n", GetStateString(), strNotCapableReason);
@@ -314,7 +315,7 @@ void CActiveMasternode::ManageStateLocal(CConnman& connman)
         {
             LOCK(cs_main);
             // remember the hash of the block where masternode collateral had minimum required confirmations
-            mnb.nCollateralMinConfBlockHash = chainActive[GetUTXOHeight(outpoint) + Params().GetConsensus().nMasternodeMinimumConfirmations * ConvertBlockParameterByHeight(chainActive.Height(), Params().GetConsensus()) - 1]->GetBlockHash();
+            mnb.nCollateralMinConfBlockHash = chainActive[GetUTXOHeight(outpoint) + ConvertMasternodeConfirmationsByHeight(GetUTXOHeight(outpoint), Params().GetConsensus()) - 1]->GetBlockHash();
         }
 
         fPingerEnabled = true;
