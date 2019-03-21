@@ -44,6 +44,7 @@
 
 extern boost::thread_group *g_threadGroup;
 void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView);
+void RefreshWalletDataStartUp(WalletModel* walletModel, WalletView *walletView);
 
 WalletView::WalletView(const PlatformStyle *platformStyle, QWidget *parent):
     QStackedWidget(parent),
@@ -734,6 +735,27 @@ void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView)
 	Q_EMIT walletView->refreshFinished(txModel);
 }
 
+void RefreshWalletDataStartUp(WalletModel *walletModel, WalletView *walletView)
+{
+    if(walletModel == NULL || walletView==NULL)
+    {
+        return;
+    }
+    RenameThread("RefreshWalletDataStartUp");
+    TransactionTableModel* assetModel = walletModel->getAssetsDistributeTableModel();
+    if(assetModel)
+    {
+        assetModel->refreshWallet();
+    }
+    TransactionTableModel* transactionModel = walletModel->getTransactionTableModel();
+    if(transactionModel)
+    {
+        transactionModel->refreshWallet();
+        MilliSleep(2000);
+    }
+    Q_EMIT walletView->refreshFinished(transactionModel);
+}
+
 void ThreadUpdateBalanceChanged(WalletModel *walletModel)
 {
 	static bool fOneThread = false;
@@ -759,10 +781,12 @@ void ThreadUpdateBalanceChanged(WalletModel *walletModel)
 
 void WalletView::ShowHistoryPage()
 {
-	if (!walletModel->getTransactionTableModel()->isRefreshWallet() && g_threadGroup != NULL)
+    if ((!walletModel->getTransactionTableModel()->isRefreshWallet()||!walletModel->getAssetsDistributeTableModel()->isRefreshWallet())
+            && g_threadGroup != NULL)
 	{
 		walletModel->getTransactionTableModel()->setRefreshWalletFlag(true);
-		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getTransactionTableModel(), this));
+        walletModel->getAssetsDistributeTableModel()->setRefreshWalletFlag(true);
+        g_threadGroup->create_thread(boost::bind(&RefreshWalletDataStartUp, walletModel, this));
 	}
 }
 
@@ -778,6 +802,7 @@ void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
 		overviewPage->updateAssetsInfo();
 		receiveCoinsPage->updateAssetsInfo();
 		sendCoinsPage->updateAssetsInfo();
+        assetsPage->updateAssetsInfo();
 		g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, walletModel));
 	}
 	else if (txModel == walletModel->getAssetsDistributeTableModel())
