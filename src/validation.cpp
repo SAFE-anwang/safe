@@ -3953,14 +3953,14 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         {
             CMasternodePayee_IndexValue value;
             if(!pblocktree->Read_MasternodePayee_Index(strPubKeyCollateralAddress,value))
-                return AbortNode(state, "Failed to read masternode payee index");
+                return AbortNode(state, "SPOS_Error:Failed to read masternode payee index when disconnect block");
             if(!pblocktree->Erase_MasternodePayee_Index(strPubKeyCollateralAddress))
-                return AbortNode(state, "Failed to erase masternode payee index");
+                return AbortNode(state, "SPOS_Error:Failed to erase masternode payee index when disconnect block");
             masternodePayment_IndexValue.nPayeeTimes = value.nPayeeTimes - 1;
             if(masternodePayment_IndexValue.nPayeeTimes>0)
             {
                 if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
-                    return AbortNode(state, "Failed to write masternode payee index");
+                    return AbortNode(state, "SPOS_Error:Failed to write masternode payee index when disconnect block");
             }
             {
                 std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
@@ -4751,13 +4751,13 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         {
             CMasternodePayee_IndexValue value;
             if(!pblocktree->Read_MasternodePayee_Index(strPubKeyCollateralAddress,value))
-                return AbortNode(state, "Failed to read masternode payee index");
+                return AbortNode(state, "SPOS_Error:Failed to read masternode payee index when connect block");
             if(!pblocktree->Erase_MasternodePayee_Index(strPubKeyCollateralAddress))
-                return AbortNode(state, "Failed to erase masternode payee index");
+                return AbortNode(state, "SPOS_Error:Failed to erase masternode payee index when connect block");
             masternodePayment_IndexValue.nPayeeTimes = value.nPayeeTimes + 1;
         }
         if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
-            return AbortNode(state, "Failed to write masternode payee index");
+            return AbortNode(state, "SPOS_Error:Failed to write masternode payee index when connect block");
         {
             std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
             gAllPayeeInfoMap[strPubKeyCollateralAddress] = masternodePayment_IndexValue;
@@ -5744,11 +5744,6 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
                                    ,nHeight,nIndex,block.GetBlockTime(),g_nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
     const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
 
-    uint32_t tempMnActiveTime = mnTemp.getActiveTime(block.nTime, nHeight);
-    if (block.nNonce <= g_nMasternodeCanBeSelectedTime || block.nNonce > tempMnActiveTime)
-        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():the block.nNonce is less than or equal to the master node can be selected time of the limit or block.nNonce is greater than the active time of the master node, height:%d, block.nNonce:%d, g_nMasternodeCanBeSelectedTime:%d, tempMnActiveTime:%d",
-                                   nHeight, block.nNonce, g_nMasternodeCanBeSelectedTime, tempMnActiveTime), REJECT_INVALID,"bad-nNonce", true);
-
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
     if (keyID != mnkeyID)
@@ -5758,6 +5753,14 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
                                     ,block.GetBlockTime(),g_nStartNewLoopTime)
                                     , REJECT_INVALID, "bad-blockaddress", true);
 
+    uint32_t tempMnActiveTime = mnTemp.getActiveTime(block.nTime, nHeight);
+    if (block.nNonce <= g_nMasternodeCanBeSelectedTime)
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():the block.nNonce(%d) is less than can be selected time(%d),height:%d\n",
+                                   block.nNonce, g_nMasternodeCanBeSelectedTime,nHeight), REJECT_INVALID,"bad-nNonce", true);
+
+    if (block.nNonce > tempMnActiveTime)
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():the block.nNonce(%d) is bigger than real active time(%d),height:%d\n",
+                                   block.nNonce,tempMnActiveTime,nHeight), REJECT_INVALID,"bad-nNonce", true);
 
     if(fCheckPOW)
         LogPrintf("SPOS_Message:check spos block,height:%d,strKeyID:%s\n",nHeight, keyID.ToString());

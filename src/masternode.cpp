@@ -904,7 +904,7 @@ bool CMasternode::isActive(uint32_t nTime,int nHeight) const
         return false;
     }
     uint32_t activeTime = nTime - sigTime;
-    return activeTime >= g_nMasternodeCanBeSelectedTime;
+    return activeTime > g_nMasternodeCanBeSelectedTime;
 }
 
 /**
