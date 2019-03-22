@@ -6412,7 +6412,7 @@ http://www.anwang.com/</translation>
     <name>safe-core</name>
     <message>
         <source>This feature is enabled when the block height is %d</source>
-        <translation>該功能在區塊高度爲 %1 時啓用</translation>
+        <translation>該功能在區塊高度爲 %d 時啓用</translation>
     </message>
     <message>
         <source>Reach the current change limit,please try again later.</source>
