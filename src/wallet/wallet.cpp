@@ -4047,7 +4047,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
     {
         if (!IsStartLockFeatureHeight(chainActive.Height()))
         {
-            strFailReason = _("Instant send is not yet enabled");
+            strFailReason = strprintf(_("This feature is enabled when the block height is %d"), g_nProtocolV3Height);
             return false;
         }
     }
@@ -4445,7 +4445,7 @@ bool CWallet::CreateAppTransaction(const CAppHeader* pHeader, const void* pBody,
     {
         if (!IsStartLockFeatureHeight(chainActive.Height()))
         {
-            strFailReason = _("Instant send is not yet enabled");
+            strFailReason = strprintf(_("This feature is enabled when the block height is %d"), g_nProtocolV3Height);
             return false;            
         }
     }
