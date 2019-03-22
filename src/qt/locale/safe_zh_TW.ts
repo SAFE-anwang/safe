@@ -6411,6 +6411,10 @@ http://www.anwang.com/</translation>
 <context>
     <name>safe-core</name>
     <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>該功能在區塊高度爲 %1 時啓用</translation>
+    </message>
+    <message>
         <source>Reach the current change limit,please try again later.</source>
         <translation>達到當前SAFE零錢使用上限,請稍後再試</translation>
     </message>
@@ -7757,10 +7761,6 @@ http://www.anwang.com/</translation>
     <message>
         <source>Transaction amounts must be positive</source>
         <translation>交易金額必須是正數</translation>
-    </message>
-    <message>
-        <source>This feature is enabled when the block height is %1</source>
-        <translation>該功能在區塊高度爲 %1 時啓用</translation>
     </message>
     <message>
         <source>Transaction created successfully.</source>
