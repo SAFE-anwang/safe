@@ -1279,7 +1279,7 @@ bool CBlockTreeDB::Erase_MasternodePayee_Index(const string &strPubKeyCollateral
 
 bool CBlockTreeDB::Read_MasternodePayee_Index(const string &strPubKeyCollateralAddress, CMasternodePayee_IndexValue &value)
 {
-    return Read(make_pair(DB_MASTERNODE_PAYEE_INDEX, strPubKeyCollateralAddress), value) && g_nChainHeight >= value.nHeight;
+    return Read(make_pair(DB_MASTERNODE_PAYEE_INDEX, strPubKeyCollateralAddress), value);
 }
 
 bool CBlockTreeDB::Read_MasternodePayee_Index(std::map<string, CMasternodePayee_IndexValue> &mapPayeeInfo)

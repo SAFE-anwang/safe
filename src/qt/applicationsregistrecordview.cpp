@@ -201,7 +201,7 @@ void ApplicationsRegistRecordView::setModel(WalletModel *model)
     if(model)
     {
         transactionProxyModel = new TransactionFilterProxy(this);
-        transactionProxyModel->setSourceModel(model->getAssetsRegistTableModel());
+        transactionProxyModel->setSourceModel(model->getApplicationRegistTableModel());
         transactionProxyModel->setDynamicSortFilter(true);
         transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
         transactionProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
@@ -427,7 +427,7 @@ void ApplicationsRegistRecordView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getAssetsRegistTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+    model->getApplicationRegistTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void ApplicationsRegistRecordView::copyAddress()

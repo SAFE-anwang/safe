@@ -189,7 +189,7 @@ public:
     TransactionTableModel *getLockedTransactionTableModel();
     TransactionTableModel *getCandyTableModel();
     TransactionTableModel *getAssetsDistributeTableModel();
-    TransactionTableModel *getAssetsRegistTableModel();
+    TransactionTableModel *getApplicationRegistTableModel();
     RecentRequestsTableModel *getRecentRequestsTableModel();
 
     CAmount getBalance(const CCoinControl *coinControl = NULL,const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;

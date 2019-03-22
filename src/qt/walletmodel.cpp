@@ -703,7 +703,7 @@ TransactionTableModel *WalletModel::getAssetsDistributeTableModel()
     return assetsDistributeTableModel;
 }
 
-TransactionTableModel *WalletModel::getAssetsRegistTableModel()
+TransactionTableModel *WalletModel::getApplicationRegistTableModel()
 {
     return applicationsRegistTableModel;
 }

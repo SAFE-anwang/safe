@@ -3086,7 +3086,7 @@ CAmount CWallet::GetLockedWatchOnlyBalance(const bool fAsset, const uint256* pAs
     {
         if(bLock)
         {
-            LOCK2(cs_main, cs_wallet);
+            LOCK2(cs_main, cs_wallet);//XJTODO
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
                 const CWalletTx* pcoin = &(*it).second;

@@ -484,6 +484,11 @@ void WalletView::gotoAssetsPage()
 
 void WalletView::gotoApplicationPage()
 {
+    if (!walletModel->getApplicationRegistTableModel()->isRefreshWallet() && g_threadGroup != NULL)
+    {
+        walletModel->getApplicationRegistTableModel()->setRefreshWalletFlag(true);
+        g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getApplicationRegistTableModel(), this));
+    }
     setCurrentWidget(applicationsPage);
 }
 
@@ -747,6 +752,7 @@ void RefreshWalletDataStartUp(WalletModel *walletModel, WalletView *walletView)
     {
         assetModel->refreshWallet();
     }
+    Q_EMIT walletView->refreshFinished(assetModel);
     TransactionTableModel* transactionModel = walletModel->getTransactionTableModel();
     if(transactionModel)
     {
