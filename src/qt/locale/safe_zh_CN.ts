@@ -6398,7 +6398,7 @@ http://www.anwang.com/</translation>
 <context>
     <name>safe-core</name>
     <message>
-        <source>This feature is enabled when the block height is %1</source>
+        <source>This feature is enabled when the block height is %d</source>
         <translation>该功能在区块高度为 %1 时启用</translation>
     </message>
     <message>
