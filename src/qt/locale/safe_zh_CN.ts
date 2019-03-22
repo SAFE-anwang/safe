@@ -7746,6 +7746,10 @@ http://www.anwang.com/</translation>
         <translation>交易额一定要真实有效</translation>
     </message>
     <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>该功能在区块高度为 %1 时启用</translation>
+    </message>
+    <message>
         <source>Transaction created successfully.</source>
         <translation>交易创建成功。</translation>
     </message>
