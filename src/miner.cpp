@@ -93,10 +93,18 @@ int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParam
 
 CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn)
 {
+    masternode_info_t mnInfoRet;
+    if(activeMasternode.outpoint.IsNull()||!mnodeman.GetMasternodeInfo(activeMasternode.outpoint,mnInfoRet))
+    {
+        LogPrintf("SPOS_Warning:create block not find the outpoint(%s),maybe need to start alias or check the masternode list\n",activeMasternode.outpoint.ToString());
+        return NULL;
+    }
+
     // Create new block
     std::unique_ptr<CBlockTemplate> pblocktemplate(new CBlockTemplate());
     if(!pblocktemplate.get())
         return NULL;
+
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
 
     // Create coinbase tx
@@ -105,16 +113,8 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     txNew.vin[0].prevout.SetNull();
     txNew.vout.resize(1);
 
-    masternode_info_t mnInfoRet;
-    if(!activeMasternode.outpoint.IsNull()&&mnodeman.GetMasternodeInfo(activeMasternode.outpoint,mnInfoRet))
-    {
-        CScript sposPayee = GetScriptForDestination(mnInfoRet.pubKeyCollateralAddress.GetID());
-        txNew.vout[0].scriptPubKey = sposPayee;
-    }else
-    {
-        txNew.vout[0].scriptPubKey = scriptPubKeyIn;
-        LogPrintf("SPOS_Warning:create block not find the outpoint(%s),maybe need to start alias\n",activeMasternode.outpoint.ToString());
-    }
+    CScript sposMinerPayee = GetScriptForDestination(mnInfoRet.pubKeyCollateralAddress.GetID());
+    txNew.vout[0].scriptPubKey = sposMinerPayee;
 
     // Largest block you're willing to create:
     unsigned int nBlockMaxSize = GetArg("-blockmaxsize", DEFAULT_BLOCK_MAX_SIZE);
