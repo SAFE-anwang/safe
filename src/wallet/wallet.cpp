@@ -4107,6 +4107,9 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
     txNew.nLockTime = chainActive.Height();
 
+    if (IsStartSPosHeight(chainActive.Height()))
+        txNew.nVersion = SAFE_TX_VERSION_3;
+
     // Secondly occasionally randomly pick a nLockTime even further back, so
     // that transactions that are delayed after signing for whatever reason,
     // e.g. high-latency mix networks and some CoinJoin implementations, have
@@ -4139,7 +4142,10 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 BOOST_FOREACH (const CRecipient& recipient, vecSend)
                 {
                     int64_t ntempUnlockedHeightIn = 0;
-                    ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * SPOS_BLOCKS_PER_MONTH;
+                    if (!IsStartSPosHeight(g_nChainHeight))
+                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * BLOCKS_PER_MONTH;
+                    else
+                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * SPOS_BLOCKS_PER_MONTH;
                     CTxOut txout(recipient.nAmount, recipient.scriptPubKey, recipient.nLockedMonth <= 0 ? 0 : ntempUnlockedHeightIn);
 
                     LogPrintf("CWallet::CreateTransaction -- g_nChainHeight:%d----g_nStartSPOSHeight:%d----ntempUnlockedHeightIn%d\n", g_nChainHeight, g_nStartSPOSHeight, ntempUnlockedHeightIn);
@@ -4488,6 +4494,8 @@ bool CWallet::CreateAppTransaction(const CAppHeader* pHeader, const void* pBody,
     // nLockTime that preclude a fix later.
 
     txNew.nLockTime = chainActive.Height();
+    if (IsStartSPosHeight(chainActive.Height()))
+        txNew.nVersion = SAFE_TX_VERSION_3;
 
     // Secondly occasionally randomly pick a nLockTime even further back, so
     // that transactions that are delayed after signing for whatever reason,
@@ -4896,6 +4904,9 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
 
     txNew.nLockTime = chainActive.Height();
 
+    if (IsStartSPosHeight(chainActive.Height()))
+        txNew.nVersion = SAFE_TX_VERSION_3;
+
     // Secondly occasionally randomly pick a nLockTime even further back, so
     // that transactions that are delayed after signing for whatever reason,
     // e.g. high-latency mix networks and some CoinJoin implementations, have
@@ -4929,7 +4940,10 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
                         continue;
 
                     int64_t ntempUnlockedHeightIn = 0;
-                    ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * SPOS_BLOCKS_PER_MONTH;
+                    if (!IsStartSPosHeight(g_nChainHeight))
+                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * BLOCKS_PER_MONTH;
+                    else
+                        ntempUnlockedHeightIn = g_nChainHeight + 1 + recipient.nLockedMonth * SPOS_BLOCKS_PER_MONTH;
 
                     CTxOut txout(recipient.nAmount, recipient.scriptPubKey, recipient.nLockedMonth <= 0 ? 0 : ntempUnlockedHeightIn);
                     if(recipient.fAsset)
