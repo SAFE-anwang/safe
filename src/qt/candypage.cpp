@@ -300,7 +300,7 @@ void CandyPage::getCandy(QPushButton *btn)
 
     if (nTxHeight >= g_nStartSPOSHeight)
     {
-        if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+        if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight - 3 * SPOS_BLOCKS_PER_DAY < nCurrentHeight)
         {
             QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
             updateCurrentPage();
@@ -959,7 +959,7 @@ void CandyPage::copyVec()
 
         if (info.nHeight >= g_nStartSPOSHeight)
         {
-            if(info.candyinfo.nExpired * SPOS_BLOCKS_PER_MONTH + info.nHeight < nCurrentHeight)
+            if(info.candyinfo.nExpired * SPOS_BLOCKS_PER_MONTH + info.nHeight  - 3 * SPOS_BLOCKS_PER_DAY < nCurrentHeight)
                 continue;
         }
         else

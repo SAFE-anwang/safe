@@ -1925,7 +1925,7 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                     if (nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
                         return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
 
-                    if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                    if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight - 3 * SPOS_BLOCKS_PER_DAY < nTxHeight)
                         return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");     
                 }
                 else
@@ -7657,7 +7657,7 @@ static bool GetAllCandyInfo()
 
         if (nTxHeight >= g_nStartSPOSHeight)
         {
-            if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+            if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight - 3 * SPOS_BLOCKS_PER_DAY < nCurrentHeight)
                 continue;
         }
         else
@@ -8257,7 +8257,7 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
 
             if (nCandyHeight >= g_nStartSPOSHeight)
             {
-                if (candyData.nExpired * SPOS_BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
+                if (candyData.nExpired * SPOS_BLOCKS_PER_MONTH + nCandyHeight  - 3 * SPOS_BLOCKS_PER_DAY< nCurrentHeight)
                     continue;
             }
             else
