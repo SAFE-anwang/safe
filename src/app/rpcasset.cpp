@@ -664,7 +664,7 @@ UniValue getcandy(const UniValue& params, bool fHelp)
             if(nTxHeight + SPOS_BLOCKS_PER_DAY > nCurrentHeight)
                 continue;
 
-            if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+            if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight - 3 * SPOS_BLOCKS_PER_DAY < nCurrentHeight)
                 continue;
         }
         else
