@@ -4107,8 +4107,8 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
     txNew.nLockTime = chainActive.Height();
 
-    if (IsStartSPosHeight(chainActive.Height()))
-        txNew.nVersion = SAFE_TX_VERSION_3;
+    if (!IsStartSPosHeight(chainActive.Height()))
+        txNew.nVersion = SAFE_TX_VERSION_2;
 
     // Secondly occasionally randomly pick a nLockTime even further back, so
     // that transactions that are delayed after signing for whatever reason,
@@ -4494,8 +4494,8 @@ bool CWallet::CreateAppTransaction(const CAppHeader* pHeader, const void* pBody,
     // nLockTime that preclude a fix later.
 
     txNew.nLockTime = chainActive.Height();
-    if (IsStartSPosHeight(chainActive.Height()))
-        txNew.nVersion = SAFE_TX_VERSION_3;
+    if (!IsStartSPosHeight(chainActive.Height()))
+        txNew.nVersion = SAFE_TX_VERSION_2;
 
     // Secondly occasionally randomly pick a nLockTime even further back, so
     // that transactions that are delayed after signing for whatever reason,
@@ -4904,8 +4904,8 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
 
     txNew.nLockTime = chainActive.Height();
 
-    if (IsStartSPosHeight(chainActive.Height()))
-        txNew.nVersion = SAFE_TX_VERSION_3;
+    if (!IsStartSPosHeight(chainActive.Height()))
+        txNew.nVersion = SAFE_TX_VERSION_2;
 
     // Secondly occasionally randomly pick a nLockTime even further back, so
     // that transactions that are delayed after signing for whatever reason,

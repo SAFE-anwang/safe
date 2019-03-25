@@ -345,7 +345,7 @@ private:
 
 public:
     // Default transaction version.
-    static const int32_t CURRENT_VERSION = SAFE_TX_VERSION_2;
+    static const int32_t CURRENT_VERSION = SAFE_TX_VERSION_3;
 
     // Changing the default transaction version requires a two step process: first
     // adapting relay policy by bumping MAX_STANDARD_VERSION, and then later date
