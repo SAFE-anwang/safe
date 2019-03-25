@@ -112,7 +112,7 @@ std::mutex g_mutexTmpAllCandyInfo;
 std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
-int64_t AllowableErrorTime = 2;
+int64_t AllowableErrorTime = 2;//XJTODO may set 120
 #if SCN_CURRENT == SCN__main
 CAmount nMiningIncentives = 334559821;//SQTODO
 #elif SCN_CURRENT == SCN__dev
@@ -9235,7 +9235,7 @@ void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vec
 void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes, uint32_t nTime)
 {
     //sort by score
-    int logMaxCnt = 20, logCnt = 0;
+    int logMaxCnt = 10, logCnt = 0;
     std::map<uint256, CMasternode> scoreMasternodes;
     for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
     {

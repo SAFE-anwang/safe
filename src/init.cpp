@@ -2103,7 +2103,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
         if(!pblocktree->Read_MasternodePayee_Index(gAllPayeeInfoMap))
         {
-            LogPrintf("SPOS_Error:init read masternode payee fail\n");
+            LogPrintf("SPOS_Warning:init read masternode payee fail\n");
         }
     }
 

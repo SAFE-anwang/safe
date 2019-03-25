@@ -27,6 +27,7 @@
 #include "applicationsregistrecordview.h"
 #include "applicationspage.h"
 #include "guiconstants.h"
+#include "masternode-sync.h"
 
 #include "ui_interface.h"
 
@@ -742,24 +743,32 @@ void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView)
 
 void RefreshWalletDataStartUp(WalletModel *walletModel, WalletView *walletView)
 {
-    if(walletModel == NULL || walletView==NULL)
+    while(true)
     {
-        return;
+        if(!masternodeSync.IsBlockchainSynced())
+        {
+            MilliSleep(100);
+            continue;
+        }
+        if(walletModel == NULL || walletView==NULL){
+            return;
+        }
+        RenameThread("RefreshWalletDataStartUp");
+        TransactionTableModel* assetModel = walletModel->getAssetsDistributeTableModel();
+        if(assetModel){
+            assetModel->refreshWallet();
+        }
+        Q_EMIT walletView->refreshFinished(assetModel);
+
+        TransactionTableModel* transactionModel = walletModel->getTransactionTableModel();
+        if(transactionModel)
+        {
+            transactionModel->refreshWallet();
+            MilliSleep(2000);
+        }
+        Q_EMIT walletView->refreshFinished(transactionModel);
+        break;
     }
-    RenameThread("RefreshWalletDataStartUp");
-    TransactionTableModel* assetModel = walletModel->getAssetsDistributeTableModel();
-    if(assetModel)
-    {
-        assetModel->refreshWallet();
-    }
-    Q_EMIT walletView->refreshFinished(assetModel);
-    TransactionTableModel* transactionModel = walletModel->getTransactionTableModel();
-    if(transactionModel)
-    {
-        transactionModel->refreshWallet();
-        MilliSleep(2000);
-    }
-    Q_EMIT walletView->refreshFinished(transactionModel);
 }
 
 void ThreadUpdateBalanceChanged(WalletModel *walletModel)
