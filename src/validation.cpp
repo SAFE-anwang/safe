@@ -8257,7 +8257,7 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
 
             if (nCandyHeight >= g_nStartSPOSHeight)
             {
-                if (candyData.nExpired * SPOS_BLOCKS_PER_MONTH + nCandyHeight  - 3 * SPOS_BLOCKS_PER_DAY< nCurrentHeight)
+                if (candyData.nExpired * SPOS_BLOCKS_PER_MONTH + nCandyHeight - 3 * SPOS_BLOCKS_PER_DAY< nCurrentHeight)
                     continue;
             }
             else
