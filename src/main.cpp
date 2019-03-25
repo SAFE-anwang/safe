@@ -213,7 +213,7 @@ bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout, const int32_
         if (nheight >= g_nStartSPOSHeight)
         {
             int64_t nTrueUnlockedHeight = txout.nUnlockedHeight * ConvertBlockNum();
-            if (nTrueUnlockedHeight < g_nChainHeight)
+            if (nTrueUnlockedHeight <= g_nChainHeight)
                 return false;
         }
         else

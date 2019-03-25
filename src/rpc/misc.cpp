@@ -928,7 +928,7 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
                 if (nTxHeight >= g_nStartSPOSHeight)
                 {
                     int64_t nTrueUnlockedHeight = temptxout.nUnlockedHeight * ConvertBlockNum();
-                    if (nTrueUnlockedHeight < g_nChainHeight)
+                    if (nTrueUnlockedHeight <= g_nChainHeight)
                         continue;
                 }
                 else
