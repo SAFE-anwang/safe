@@ -9232,20 +9232,14 @@ void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vec
     }
 }
 
-void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes, uint32_t nTime)
+void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes,
+                           uint32_t nTime,std::string strArrName)
 {
     //sort by score
-    int logMaxCnt = 10, logCnt = 0;
     std::map<uint256, CMasternode> scoreMasternodes;
     for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
     {
         const CMasternode& mn = (*mnpair).second;
-
-        logCnt++;
-        if (logCnt<=logMaxCnt)
-        {
-            LogPrintf("SPOS_Message:before sort:ip:%s, nActiveState:%d, nClientVersion:%d\n", mn.addr.ToStringIP(), mn.nActiveState, mn.nClientVersion);
-        }
 
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
@@ -9255,12 +9249,14 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         scoreMasternodes[score] = mn;
     }
 
-    logCnt = 0;
+    int logMaxCnt = 10, logCnt = 0;
+    LogPrintf("SPOS_Message:%s after sort\n",strArrName);
     for (auto& mnpair : scoreMasternodes)
     {
         logCnt++;
         if(logCnt<=logMaxCnt)
-            LogPrintf("SPOS_Message:after sort:ip:%s, score:%s, nClientVersion:%d\n", mnpair.second.addr.ToStringIP() ,mnpair.first.ToString(), mnpair.second.nClientVersion);
+            LogPrintf("SPOS_Message:%s[%d]:ip:%s,score:%s,nActiveState:%d,nClientVersion:%d\n",strArrName,logCnt,mnpair.second.addr.ToStringIP(),
+                      mnpair.first.ToString(),mnpair.second.nActiveState,mnpair.second.nClientVersion);
     }
 
     for (auto& mnpair : scoreMasternodes)
@@ -9406,9 +9402,9 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     }
 
     std::vector<CMasternode> vecResultMasternodesL1,vecResultMasternodesL2,vecResultMasternodesL3;
-    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nTime);
-    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nTime);
-    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nTime);
+    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nTime, "L1");
+    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nTime, "L2");
+    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nTime, "L3");
 
     //5
     unsigned int vec1Size = vecResultMasternodesL1.size();
