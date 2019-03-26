@@ -796,7 +796,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
         if(!masternodeSync.IsBlockchainSynced()) return;
 
-        if(mnb.nClientVersion < SPOS_MIN_CLIENT_VERSION) return;
+        //if(mnb.nClientVersion < SPOS_MIN_CLIENT_VERSION) return;
 
         LogPrint("masternode", "MNANNOUNCE -- Masternode announce, masternode=%s\n", mnb.vin.prevout.ToStringShort());
 
@@ -1675,7 +1675,8 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
         CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,nHeightRet);
         unsigned int depth = nHeight - nHeightRet;
         unsigned int activeTime = depth * Params().GetConsensus().nSPOSTargetSpacing;
-        if (err == CMasternode::COLLATERAL_OK && activeTime > g_nMasternodeCanBeSelectedTime && mnpair.second.nClientVersion == SPOS_MIN_CLIENT_VERSION) {
+        if (err == CMasternode::COLLATERAL_OK && activeTime > g_nMasternodeCanBeSelectedTime && mnpair.second.nProtocolVersion >= PROTOCOL_VERSION
+                /*&& mnpair.second.nClientVersion == SPOS_MIN_CLIENT_VERSION*/) {
             mapOutMasternodes[mnpair.first] = mnpair.second;
         }
     }
