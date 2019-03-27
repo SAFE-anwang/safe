@@ -5715,7 +5715,6 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     std::vector<unsigned char> vchConAlg;
     string strSigMessage = "";
     uint16_t nSPOSVersion = 1;
-    uint32_t nActiveTime = block.nNonce;
 
     if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, vchConAlg, nSPOSVersion, strSigMessage) || vchConAlg.size() != nConsensusAlgorithmLen || vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): analysis CTxOut vReserve fail, height:%d, vchConAlg size:%d",nHeight,vchConAlg.size()), REJECT_INVALID, "bad-vReserve", true);
@@ -5753,7 +5752,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
                                     ,block.GetBlockTime(),g_nStartNewLoopTime)
                                     , REJECT_INVALID, "bad-blockaddress", true);
 
-    uint32_t tempMnActiveTime = mnTemp.getActiveTime(block.nTime, nHeight);
+    uint32_t tempMnActiveTime = mnTemp.getActiveTime(nHeight);
     if (block.nNonce <= g_nMasternodeCanBeSelectedTime)
         return state.DoS(100,error("SPOS_Error CheckSPOSBlock():the block.nNonce(%d) is less than can be selected time(%d),height:%d\n",
                                    block.nNonce, g_nMasternodeCanBeSelectedTime,nHeight), REJECT_INVALID,"bad-nNonce", true);

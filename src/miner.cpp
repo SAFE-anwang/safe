@@ -711,7 +711,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         string masterIP = mn.addr.ToStringIP();
         string localIP = activeMasternode.service.ToStringIP();
         unsigned int nHeight = pindexPrev->nHeight+1;
-        pblock->nNonce = mn.getActiveTime(pblock->nTime,nHeight);
+        pblock->nNonce = mn.getActiveTime(nHeight);
 
         if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
         {

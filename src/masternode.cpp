@@ -883,28 +883,24 @@ void CMasternode::UpdateWatchdogVoteTime(uint64_t nVoteTime)
     nTimeLastWatchdogVote = (nVoteTime == 0) ? GetAdjustedTime() : nVoteTime;
 }
 
-uint32_t CMasternode::getActiveTime(uint32_t nTime,int nHeight) const
+uint32_t CMasternode::getActiveTime(int nHeight) const
 {
-    if(nTime<sigTime)
-    {
-        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
-        string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", sigTime);
-        LogPrintf("SPOS_Error:block times:%d(%s) less than sigTime:%d(%s),nHeight:%d\n",nTime,strBlockTime,sigTime,strSigTime,nHeight);
-    }
-    return nTime - sigTime;
-}
+    int nLockedTxHeight;
+    CMasternode::CollateralStatus err = CMasternode::CheckCollateral(vin.prevout,nLockedTxHeight);
 
-bool CMasternode::isActive(uint32_t nTime,int nHeight) const
-{
-    if(nTime<sigTime)
+    if(err != CMasternode::COLLATERAL_OK)
     {
-        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
-        string strSigTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", sigTime);
-        LogPrintf("SPOS_Error:block time:%d(%s) less than sigTime:%d(%s),nHeight:%d\n",nTime,strBlockTime,sigTime,strSigTime,nHeight);
-        return false;
+        LogPrintf("SPOS_Warning:masternode vout not found,nHeight:%d,locked tx height:%d,err:%d\n",nHeight,nLockedTxHeight,err);
+        return 0;
     }
-    uint32_t activeTime = nTime - sigTime;
-    return activeTime > g_nMasternodeCanBeSelectedTime;
+    if(nHeight < nLockedTxHeight)
+    {
+        LogPrintf("SPOS_Error:masternode locked tx height(%d) is bigger than curr height(%d)\n",nLockedTxHeight,nHeight);
+        return 0;
+    }
+    unsigned int depth = nHeight - nLockedTxHeight;
+    unsigned int activeTime = depth * Params().GetConsensus().nSPOSTargetSpacing;
+    return activeTime;
 }
 
 /**
