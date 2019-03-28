@@ -9318,11 +9318,13 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d.\n",nCurrBlockHeight);
     std::map<COutPoint, CMasternode> mapMasternodes;
     bool fFilterSpent = true;
+    std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
+    GetAllPayeeInfoMap(mapAllPayeeInfo);
     if (bSpork)
     {
         LogPrintf("SPOS_Message:Spork message select official master node\n");
         std::map<COutPoint, CMasternode> fullmapMasternodes;
-        mnodeman.GetFullMasternodeData(fullmapMasternodes,fFilterSpent,nCurrBlockHeight);
+        mnodeman.GetFullMasternodeData(fullmapMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight);
 
         const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
         std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
@@ -9338,7 +9340,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         }
     }
     else
-        mnodeman.GetFullMasternodeData(mapMasternodes,fFilterSpent,nCurrBlockHeight);
+        mnodeman.GetFullMasternodeData(mapMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight);
 
     if(!g_vecResultMasternodes.empty())
     {
@@ -9372,8 +9374,6 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     //4.1
     unsigned int nTotalMasternode = mapMasternodes.size();
     int64_t interval = nTotalMasternode * Params().GetConsensus().nSPOSTargetSpacing;
-    std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
-    GetAllPayeeInfoMap(mapAllPayeeInfo);
 
     std::map<COutPoint, CMasternode> mapMasternodesL1,mapMasternodesL2,mapMasternodesL3;
 
@@ -9385,7 +9385,8 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(strPubKeyCollateralAddress);
         if (tempit == mapAllPayeeInfo.end())
         {
-            mapMasternodesL3[it->first] = it->second;
+            LogPrintf("SPOS_Error:payee not found,GetFullMasternodeData have already checked the payee,ip:%s,strPubKeyCollateralAddress:%s\n",
+                      mn.addr.ToStringIP(),strPubKeyCollateralAddress);
         }else
         {
             uint32_t nIntervalTime = nTime - tempit->second.blockTime;

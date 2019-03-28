@@ -1660,10 +1660,12 @@ void CMasternodeMan::NotifyMasternodeUpdates(CConnman& connman)
     fMasternodesRemoved = false;
 }
 
-void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &mapOutMasternodes, bool fFilterSpent, int nHeight)
+void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &mapOutMasternodes,const std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo,
+                                           bool fFilterSpent, int nHeight)
 {
     LOCK2(cs_main, cs);
 
+    int logCnt = 0;
     for (auto& mnpair : mapMasternodes)
     {
         if(!fFilterSpent)
@@ -1674,10 +1676,21 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
         int nHeightRet;
         CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,nHeightRet);
         unsigned int depth = nHeight - nHeightRet;
-        unsigned int activeTime = depth * Params().GetConsensus().nSPOSTargetSpacing;
-        if (err == CMasternode::COLLATERAL_OK && activeTime > g_nMasternodeCanBeSelectedTime && mnpair.second.nProtocolVersion >= PROTOCOL_VERSION
+        unsigned int canBeSelectTime = depth * Params().GetConsensus().nSPOSTargetSpacing;
+        bool fFoundPayee = true;
+        std::string strPubKeyCollateralAddress = mnpair.second.pubKeyCollateralAddress.GetID().ToString();
+        if(mapAllPayeeInfo.find(strPubKeyCollateralAddress) == mapAllPayeeInfo.end())
+            fFoundPayee = false;
+        if (err == CMasternode::COLLATERAL_OK && canBeSelectTime > g_nMasternodeCanBeSelectedTime && mnpair.second.nProtocolVersion >= PROTOCOL_VERSION && fFoundPayee
                 /*&& mnpair.second.nClientVersion == SPOS_MIN_CLIENT_VERSION*/) {
             mapOutMasternodes[mnpair.first] = mnpair.second;
+        }else
+        {
+            if(logCnt++<20)
+            {
+                LogPrintf("SPOS_Message:not meeted masternode[%d]:%s,output:%s,err:%d,canBeSelectTime:%d,nProtocolVersion:%d,foundPayee:%d,height:%d\n",logCnt,
+                          mnpair.second.addr.ToStringIP(),mnpair.first.ToString(), err, canBeSelectTime,mnpair.second.nProtocolVersion,fFoundPayee?1:0,nHeight);
+            }
         }
     }
 }
