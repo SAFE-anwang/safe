@@ -4799,12 +4799,13 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     {
         LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
         LOCK(cs_spos);
-
+        LogPrintf("SPOS_Message:connect1 new block:%d\n",pindex->nHeight);
         if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
             SelectMasterNodeByPayee(pindex->nHeight,block.nTime, true, false);
         else
             SelectMasterNodeByPayee(pindex->nHeight,block.nTime, false, false);
     }
+    LogPrintf("SPOS_Message:connect2 new block:%d\n",pindex->nHeight);
     return true;
 }
 
