@@ -42,19 +42,18 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
             strLogMsg = strprintf("SPORK -- hash: %s id: %d value: %10d bestHeight: %d peer=%d", hash.ToString(), spork.nSporkID, spork.nValue, chainActive.Height(), pfrom->id);
         }
 
-        if(mapSporksActive.count(spork.nSporkID)) {
+        bool fCheckAndSelectMaster = false;
+        if (mapSporksActive.count(spork.nSporkID)) {
             if (spork.nSporkID == SPORK_6_SPOS_ENABLED)
             {
                 if (!spork.CheckSignature()) {
                     LogPrintf("CSporkManager::ProcessSpork -- invalid signature\n");
                     Misbehaving(pfrom->GetId(), 100);
-                    LogPrintf("CSporkManager::ProcessSpork 4\n");
                     return;
                 }
-                else
-                {
-                    SelectMasterNodeForSpork(spork.nSporkID, spork.nValue);
-                }
+                
+                SelectMasterNodeForSpork(spork.nSporkID, spork.nValue);
+                fCheckAndSelectMaster = true;
             }
         
             if (mapSporksActive[spork.nSporkID].nTimeSigned >= spork.nTimeSigned) {
@@ -67,17 +66,21 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
             LogPrintf("%s new\n", strLogMsg);
         }
 
-        if(!spork.CheckSignature()) {
-            LogPrintf("CSporkManager::ProcessSpork -- invalid signature\n");
-            Misbehaving(pfrom->GetId(), 100);
-            return;
+        if (!fCheckAndSelectMaster)
+        {
+            if(!spork.CheckSignature()) {
+                LogPrintf("CSporkManager::ProcessSpork -- invalid signature\n");
+                Misbehaving(pfrom->GetId(), 100);
+                return;
+            }
         }
 
         mapSporks[hash] = spork;
         mapSporksActive[spork.nSporkID] = spork;
         spork.Relay(connman);
 
-        SelectMasterNodeForSpork(spork.nSporkID, spork.nValue);
+        if (!fCheckAndSelectMaster)
+            SelectMasterNodeForSpork(spork.nSporkID, spork.nValue);
 
         //does a task if needed
         ExecuteSpork(spork.nSporkID, spork.nValue);
