@@ -21,6 +21,7 @@
 #include "versionbits.h"
 #include "spentindex.h"
 #include "app/app.h"
+#include "masternode.h"
 
 
 #include <algorithm>
@@ -47,6 +48,7 @@ class CScriptCheck;
 class CTxMemPool;
 class CValidationInterface;
 class CValidationState;
+class CMasternode;
 
 struct LockPoints;
 
@@ -1562,9 +1564,10 @@ bool ExistForbidTxin(const int nHeight, const std::vector<int>& prevheights);
 bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ngetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
 bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ndbgetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
 
-void SelectMasterNode(unsigned int nNewBlockHeight, uint32_t nTime, const bool bSpork = false, const bool bProcessSpork = false);
-
-void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork);
+void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
+                          ,int64_t nStartNewLoopTime);
+void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
+                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime);
 
 bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals = false);
 

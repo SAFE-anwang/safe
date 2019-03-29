@@ -126,7 +126,7 @@ struct masternode_info_t
     int64_t nTimeLastPaid = 0;
     int64_t nTimeLastPing = 0; //* not in CMN
     bool fInfoValid = false; //* not in CMN
-    int nClientVersion = 0;
+    int nClientVersion = 0;//XJTODO remove it
     int nTxHeight = -1;
 };
 
@@ -306,6 +306,7 @@ public:
         fUnitTest = from.fUnitTest;
         mapGovernanceObjectsVotedOn = from.mapGovernanceObjectsVotedOn;
         nClientVersion = from.nClientVersion;
+        nTxHeight = from.nTxHeight;
         return *this;
     }
 };

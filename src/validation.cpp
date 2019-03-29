@@ -129,6 +129,7 @@ extern unsigned int g_nMasternodeCanBeSelectedTime;
 extern CActiveMasternode activeMasternode;
 extern int64_t g_nLastSelectMasterNodeHeight;
 extern unsigned int g_nMasternodeMinCount;
+extern int g_nSelectGlobalDefaultValue;
 
 std::mutex g_mutexAllPayeeInfo;
 std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
@@ -4797,13 +4798,20 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if(IsStartSPosHeight(pindex->nHeight+1))
     {
-        LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
-        LOCK(cs_spos);
-        LogPrintf("SPOS_Message:connect1 new block:%d\n",pindex->nHeight);
+        std::vector<CMasternode> tmpVecResultMasternodes;
+        bool bClearVec=false;
+        int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
+        int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
         if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
-            SelectMasterNodeByPayee(pindex->nHeight,block.nTime, true, false);
-        else
-            SelectMasterNodeByPayee(pindex->nHeight,block.nTime, false, false);
+        {
+            SelectMasterNodeByPayee(pindex->nHeight,block.nTime, true, false,tmpVecResultMasternodes
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+        }else
+        {
+            SelectMasterNodeByPayee(pindex->nHeight,block.nTime, false, false,tmpVecResultMasternodes
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+        }
+        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
     }
     LogPrintf("SPOS_Message:connect2 new block:%d\n",pindex->nHeight);
     return true;
@@ -5729,20 +5737,27 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock():Signature verification does not pass, height:%d, keyID:%s, strSigMessage:%s, vchSig size:%d",
                                     nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-signature", true);
 
-    int32_t mnSize = g_vecResultMasternodes.size();
+    int32_t mnSize = 0;
+    int64_t nStartNewLoopTime = 0;
+    int32_t nIndex = 0;
+    CMasternode mnTemp;
+    {
+        LOCK(cs_spos);
+        mnSize = g_vecResultMasternodes.size();
+        nStartNewLoopTime = g_nStartNewLoopTime;
+        if (!masternodeSync.IsSynced()|| (mnSize == 0 && g_nSelectMasterNodeRet == 0))
+            return true;
 
-    if (!masternodeSync.IsSynced()|| (mnSize == 0 && g_nSelectMasterNodeRet == 0))
-        return true;
-
-    if(mnSize == 0)
-        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
-                                    ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-mnSize", true);
-    int32_t interval = (block.GetBlockTime() - g_nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1;
-    int32_t nIndex = interval % mnSize;
-    if(nIndex<0)
-        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():incorrect index value,height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
-                                   ,nHeight,nIndex,block.GetBlockTime(),g_nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
-    const CMasternode& mnTemp = g_vecResultMasternodes[nIndex];
+        if(mnSize == 0)
+            return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d"
+                                        ,nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-mnSize", true);
+        int32_t interval = (block.GetBlockTime() - nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+        nIndex = interval % mnSize;
+        if(nIndex<0)
+            return state.DoS(100,error("SPOS_Error CheckSPOSBlock():incorrect index value,height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
+                                       ,nHeight,nIndex,block.GetBlockTime(),nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
+        mnTemp = g_vecResultMasternodes[nIndex];
+    }
 
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
@@ -5750,7 +5765,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
                                     "ip:%s,blocktime:%lld,startlooptime:%lld\n"
                                     ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
-                                    ,block.GetBlockTime(),g_nStartNewLoopTime)
+                                    ,block.GetBlockTime(),nStartNewLoopTime)
                                     , REJECT_INVALID, "bad-blockaddress", true);
 
     uint32_t tempMnActiveTime = mnTemp.getCanbeSelectTime(nHeight);
@@ -9283,8 +9298,29 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
     }
 }
 
+void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
+                          ,int64_t nStartNewLoopTime)
+{
+    LOCK(cs_spos);
+    if(bClearVec||!tmpVecMasternodes.empty())
+    {
+        g_vecResultMasternodes.clear();
+        std::vector<CMasternode>().swap(g_vecResultMasternodes);
+        for(auto& mn:tmpVecMasternodes)
+            g_vecResultMasternodes.push_back(mn);
+    }
+    if(selectMasterNodeRet!=g_nSelectGlobalDefaultValue)
+        g_nSelectMasterNodeRet = selectMasterNodeRet;
+    if(nSposGeneratedIndex!=g_nSelectGlobalDefaultValue)
+        g_nSposGeneratedIndex = nSposGeneratedIndex;
+    if(nStartNewLoopTime!=g_nSelectGlobalDefaultValue)
+        g_nStartNewLoopTime = nStartNewLoopTime;
 
-void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork)
+}
+
+
+void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
+                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime)
 {
     if(!masternodeSync.IsSynced()&&g_vecResultMasternodes.empty())
         return;
@@ -9308,9 +9344,8 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
 
     if(!masternodeSync.IsSynced())
     {
-        g_vecResultMasternodes.clear();
-        std::vector<CMasternode>().swap(g_vecResultMasternodes);
-        g_nSelectMasterNodeRet = 0;//reset ret
+        bClearVec = true;
+        nSelectMasterNodeRet = 0;//reset ret
         LogPrintf("SPOS_Warning:masternode is syncing,reset g_nSelectMasterNodeRet,wait next loop to select masternode\n");
         return;
     }
@@ -9343,32 +9378,30 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     else
         mnodeman.GetFullMasternodeData(mapMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight);
 
-    if(!g_vecResultMasternodes.empty())
-    {
-        g_vecResultMasternodes.clear();
-        std::vector<CMasternode>().swap(g_vecResultMasternodes);
+    if(!g_vecResultMasternodes.empty()){
+        bClearVec = true;
     }
 
-    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", g_nStartNewLoopTime/1000);
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
     string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
 
     //1.3.3
-    g_nStartNewLoopTime = (int64_t)nTime*1000;
-    g_nSposGeneratedIndex = -2;
-    g_nSelectMasterNodeRet = 1;
+    nStartNewLoopTime = (int64_t)nTime*1000;
+    nSposGeneratedIndex = -2;
+    nSelectMasterNodeRet = 1;
 
-    if(g_nStartNewLoopTime < nTime*1000)
+    if(nStartNewLoopTime < nTime*1000)
     {
-        LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",g_nStartNewLoopTime/1000,strStartNewLoopTime
+        LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",nStartNewLoopTime/1000,strStartNewLoopTime
                   ,nTime,strBlockTime);
-        g_nSelectMasterNodeRet = -1;
+        nSelectMasterNodeRet = -1;
         return;
     }
 
     if(mapMasternodes.empty())
     {
         LogPrintf("SPOS_Error:mapMasternodes is empty\n");
-        g_nSelectMasterNodeRet = -1;
+        nSelectMasterNodeRet = -1;
         return;
     }
 
@@ -9422,7 +9455,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
                   "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
                   nMnSize,g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3,
                   mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
-        g_nSelectMasterNodeRet = -1;
+        nSelectMasterNodeRet = -1;
         return;
     }
 
@@ -9443,29 +9476,29 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     if(nP1Total>vec1Size)
         LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP1,nP1Increase,nP1Total);
     for (unsigned int i = 0; i < nP1Total; i++)
-        g_vecResultMasternodes.push_back(vecResultMasternodesL1[i]);
+        tmpVecResultMasternodes.push_back(vecResultMasternodesL1[i]);
 
     unsigned int nP2Total = nP2+nP2Increase;
     if(nP2Total>vec2Size)
         LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP2,nP2Increase,nP2Total);
     for (unsigned int j = 0; j < nP2Total; j++)
-        g_vecResultMasternodes.push_back(vecResultMasternodesL2[j]);
+        tmpVecResultMasternodes.push_back(vecResultMasternodesL2[j]);
 
     unsigned int nP3Total = nP3 + nP3Increase;
     if(nP3Total>vec3Size)
         LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP3,nP3Increase,nP3Total);
     for (unsigned int k = 0; k < nP3Total; k++)
-        g_vecResultMasternodes.push_back(vecResultMasternodesL3[k]);
+        tmpVecResultMasternodes.push_back(vecResultMasternodesL3[k]);
 
     if (!bProcessSpork)
         g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
 
     string localIpPortInfo = activeMasternode.service.ToString();
-    uint32_t size = g_vecResultMasternodes.size();
+    uint32_t size = tmpVecResultMasternodes.size();
 
     //no \n,connect two log str
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,"
-              "min online masternode count:%d,nRemainNum:%d",localIpPortInfo,nCurrBlockHeight,g_nStartNewLoopTime,strStartNewLoopTime,nTime,
+              "min online masternode count:%d,nRemainNum:%d",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime,strStartNewLoopTime,nTime,
               strBlockTime,size,g_nMasternodeMinCount,nRemainNum);
 
     LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
@@ -9479,7 +9512,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
             nPStr = "P1";
         else if(i< (nP1Total + nP2Total))
             nPStr = "P2";
-        const CMasternode& mn = g_vecResultMasternodes[i];
+        const CMasternode& mn = tmpVecResultMasternodes[i];
         LogPrintf("SPOS_Message:masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d,location:%s\n", i, mn.addr.ToStringIP(),
                   mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.nClientVersion,nPStr);
     }

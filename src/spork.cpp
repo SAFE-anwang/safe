@@ -17,6 +17,7 @@ class CSporkManager;
 CSporkManager sporkManager;
 
 std::map<uint256, CSporkMessage> mapSporks;
+extern int g_nSelectGlobalDefaultValue;
 
 void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv, CConnman& connman)
 {
@@ -274,7 +275,13 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
     
     if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED) && chainActive.Height() == nValue)
     {
-        SelectMasterNodeByPayee(chainActive.Height(), chainActive.Tip()->nTime, true, true);
+        std::vector<CMasternode> tmpVecResultMasternodes;
+        bool bClearVec=false;
+        int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
+        int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
+        SelectMasterNodeByPayee(chainActive.Height(), chainActive.Tip()->nTime, true, true,tmpVecResultMasternodes
+                                ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
     }
 }
 
