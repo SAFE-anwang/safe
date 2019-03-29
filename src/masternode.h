@@ -127,6 +127,7 @@ struct masternode_info_t
     int64_t nTimeLastPing = 0; //* not in CMN
     bool fInfoValid = false; //* not in CMN
     int nClientVersion = 0;
+    int nTxHeight = -1;
 };
 
 //
@@ -290,7 +291,7 @@ public:
 
     void UpdateWatchdogVoteTime(uint64_t nVoteTime = 0);
 
-    uint32_t getActiveTime(int nHeight)const;
+    uint32_t getCanbeSelectTime(int nHeight)const;
 
     CMasternode& operator=(CMasternode const& from)
     {

@@ -883,24 +883,23 @@ void CMasternode::UpdateWatchdogVoteTime(uint64_t nVoteTime)
     nTimeLastWatchdogVote = (nVoteTime == 0) ? GetAdjustedTime() : nVoteTime;
 }
 
-uint32_t CMasternode::getActiveTime(int nHeight) const
+uint32_t CMasternode::getCanbeSelectTime(int nHeight) const
 {
-    int nLockedTxHeight;
-    CMasternode::CollateralStatus err = CMasternode::CheckCollateral(vin.prevout,nLockedTxHeight);
-
-    if(err != CMasternode::COLLATERAL_OK)
+    if(nTxHeight < 0 )
     {
-        LogPrintf("SPOS_Warning:masternode vout not found,nHeight:%d,locked tx height:%d,err:%d\n",nHeight,nLockedTxHeight,err);
+        LogPrintf("SPOS_Warning:masternode(ip:%s,vin:%s) tx height not found,height:%d,locked tx height:%d\n"
+                  ,addr.ToStringIP(),vin.ToString(),nHeight,nTxHeight);
         return 0;
     }
-    if(nHeight < nLockedTxHeight)
+    if(nHeight < nTxHeight)
     {
-        LogPrintf("SPOS_Error:masternode locked tx height(%d) is bigger than curr height(%d)\n",nLockedTxHeight,nHeight);
+        LogPrintf("SPOS_Error:masternode(ip:%s,vin:%s) height error,curr height(%d) is less than locked tx height(%d)\n"
+                  ,addr.ToStringIP(),vin.ToString(),nHeight,nTxHeight);
         return 0;
     }
-    unsigned int depth = nHeight - nLockedTxHeight;
-    unsigned int activeTime = depth * Params().GetConsensus().nSPOSTargetSpacing;
-    return activeTime;
+    unsigned int depth = nHeight - nTxHeight;
+    unsigned int canbeSelectTime = depth * Params().GetConsensus().nSPOSTargetSpacing;
+    return canbeSelectTime;
 }
 
 /**
