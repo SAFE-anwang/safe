@@ -94,7 +94,7 @@ int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParam
 CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn)
 {
     masternode_info_t mnInfoRet;
-    if(activeMasternode.outpoint.IsNull()||!mnodeman.GetMasternodeInfo(activeMasternode.outpoint,mnInfoRet))
+    if(!mnodeman.GetMasternodeInfo(activeMasternode.outpoint,mnInfoRet))
     {
         LogPrintf("SPOS_Warning:create block not find the outpoint(%s),maybe need to start alias or check the masternode list\n",activeMasternode.outpoint.ToString());
         return NULL;
@@ -548,7 +548,7 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
             std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, coinbaseScript->reserveScript));
             if (!pblocktemplate.get())
             {
-                LogPrintf("SafeMiner -- Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
+                LogPrintf("SPOS_Warning:Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
                 return;
             }
             CBlock *pblock = &pblocktemplate->block;
@@ -801,7 +801,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 // ***TODO*** that part changed in bitcoin, we are using a mix with old one here for now
 void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 {
-    LogPrintf("SPOS_Message:SafeSposMiner -- started\n");
+    LogPrintf("SPOS_Message:SafeSposMiner is -- started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     RenameThread("safe-miner");
 
@@ -845,6 +845,12 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             {
                 // Create new block
                 unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
+                if(activeMasternode.outpoint.IsNull())
+                {
+                    LogPrintf("SPOS_Warning:self masternode outpoint is empty,maybe need to wait sync or reindex\n");
+                    continue;
+                }
+
                 std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, coinbaseScript->reserveScript));
                 if (!pblocktemplate.get())
                 {
@@ -879,14 +885,15 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
     }
     catch (const boost::thread_interrupted&)
     {
-        LogPrintf("SafeMiner -- terminated\n");
+        LogPrintf("SPOS_Warning:SafeMiner -- terminated\n");
         throw;
     }
     catch (const std::runtime_error &e)
     {
-        LogPrintf("SafeMiner -- runtime error: %s\n", e.what());
+        LogPrintf("SPOS_Warning:SafeMiner -- runtime error: %s\n", e.what());
         return;
     }
+    LogPrintf("SPOS_Warning:spos miner thread is exit\n");
 }
 
 void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman)
