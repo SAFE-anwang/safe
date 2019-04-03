@@ -649,6 +649,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
     // Check unlocked height and reserve
     CAmount nValueOut = 0;
     CAmount nAssetValueOut = 0;
+    bool fvoutHasAssset = false;
     for(unsigned int i = 0; i < tx.vout.size(); i++)
     {
         const CTxOut& txout = tx.vout[i];
@@ -663,6 +664,8 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
             nAssetValueOut += txout.nValue;
             if (!AssetsRange(nAssetValueOut))
                 return state.DoS(100, false, REJECT_INVALID, "asset_txout: total value is too large");
+
+            fvoutHasAssset = true;
         }
         else
         {
@@ -745,6 +748,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
         vInOutPoints.insert(txin.prevout);
     }
 
+    bool fvinHasAsset = false;
     if (tx.IsCoinBase())
     {
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
@@ -753,9 +757,22 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
     else
     {
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
+        {
             if (txin.prevout.IsNull())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
+
+            CTransaction txTmp;
+            uint256 hashBlock = uint256();
+            if (GetTransaction(txin.prevout.hash, txTmp, Params().GetConsensus(), hashBlock, true))
+            {
+                if (txTmp.vout[txin.prevout.n].IsAsset())
+                    fvinHasAsset = true;
+            }
+        }
     }
+
+    if (fvinHasAsset && !fvoutHasAssset)
+       return state.DoS(50, false, REJECT_INVALID, "tx: invalid txout reserve");
 
     return true;
 }
