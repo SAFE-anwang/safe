@@ -9291,8 +9291,8 @@ void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vec
     }
 }
 
-void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes,
-                           uint32_t nTime,std::string strArrName)
+void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes,uint32_t nTime,
+                           std::string strArrName,std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo)
 {
     //sort by score
     std::map<uint256, CMasternode> scoreMasternodes;
@@ -9308,14 +9308,28 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         scoreMasternodes[score] = mn;
     }
 
-    int logMaxCnt = 10, logCnt = 0;
-    LogPrintf("SPOS_Message:%s after sort\n",strArrName);
+    int logMaxCnt = g_nMasternodeSPosCount, logCnt = 0;
+    LogPrintf("SPOS_Message:%s(size:%d) after sort:\n",strArrName,scoreMasternodes.size());
     for (auto& mnpair : scoreMasternodes)
     {
         logCnt++;
         if(logCnt<=logMaxCnt)
-            LogPrintf("SPOS_Message:%s[%d]:ip:%s,score:%s,nActiveState:%d,nClientVersion:%d\n",strArrName,logCnt,mnpair.second.addr.ToStringIP(),
-                      mnpair.first.ToString(),mnpair.second.nActiveState,mnpair.second.nClientVersion);
+        {
+            std::string strPubKeyCollateralAddress = mnpair.second.pubKeyCollateralAddress.GetID().ToString();
+            std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(strPubKeyCollateralAddress);
+            if (tempit == mapAllPayeeInfo.end())
+            {
+                LogPrintf("SPOS_Error:SortMasternodeByScore,payee not found,ip:%s,strPubKeyCollateralAddress:%s\n",
+                          mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
+            }else
+            {
+                uint32_t nIntervalTime = nTime - tempit->second.blockTime;
+                LogPrintf("SPOS_Message:%s[%d]:ip:%s,collateralAddress:%s,nIntervalTime:%d,nTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
+                          "lastHeight:%d,nState:%d\n",strArrName,logCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
+                          nIntervalTime,nTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
+                          mnpair.second.nActiveState);
+            }
+        }
     }
 
     for (auto& mnpair : scoreMasternodes)
@@ -9468,8 +9482,6 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         }else
         {
             uint32_t nIntervalTime = nTime - tempit->second.blockTime;
-            LogPrintf("SPOS_Message:found payee,ip:%s,strPubKeyCollateralAddress:%s,nIntervalTime:%d,nPayeeTimes:%d,lastHeight:%d\n",
-                      mn.addr.ToStringIP(),strPubKeyCollateralAddress,nIntervalTime,tempit->second.nPayeeTimes,tempit->second.nHeight);
             if (nIntervalTime <= interval)
                 mapMasternodesL1[it->first] = it->second;
             else if (nIntervalTime > interval && nIntervalTime <=  2 *interval)
@@ -9480,9 +9492,9 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     }
 
     std::vector<CMasternode> vecResultMasternodesL1,vecResultMasternodesL2,vecResultMasternodesL3;
-    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nTime, "L1");
-    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nTime, "L2");
-    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nTime, "L3");
+    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nTime, "L1", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nTime, "L2", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nTime, "L3", mapAllPayeeInfo);
 
     //5
     unsigned int vec1Size = vecResultMasternodesL1.size();
@@ -9510,11 +9522,10 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
     CalculateIncreaseMasternode(nRemainNum,nP3Increase,vec3Size,nP3);
 
-    //XJTODO
-    LogPrintf("SPOS_Message:calmnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
-              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,
-              nTotalMasternode,mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
-              nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
+//    LogPrintf("SPOS_Message:calmnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
+//              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,
+//              nTotalMasternode,mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
+//              nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
 
     unsigned int nP1Total = nP1+nP1Increase;
     if(nP1Total>vec1Size)
@@ -9542,7 +9553,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
 
     //no \n,connect two log str
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,"
-              "min online masternode count:%d,nRemainNum:%d",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime,strStartNewLoopTime,nTime,
+              "min online masternode count:%d,nRemainNum:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime,strStartNewLoopTime,nTime,
               strBlockTime,size,g_nMasternodeMinCount,nRemainNum);
 
     LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"

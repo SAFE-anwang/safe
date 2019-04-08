@@ -1665,7 +1665,6 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
 {
     LOCK2(cs_main, cs);
 
-    int logMaxCnt = 20, logCnt = 0;
     for (auto& mnpair : mapMasternodes)
     {
         if(!fFilterSpent)
@@ -1680,17 +1679,19 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
         std::string strPubKeyCollateralAddress = mnpair.second.pubKeyCollateralAddress.GetID().ToString();
         if(mapAllPayeeInfo.find(strPubKeyCollateralAddress) == mapAllPayeeInfo.end())
             fFoundPayee = false;
+
+        bool fSelfMasternode = activeMasternode.pubKeyMasternode == mnpair.second.pubKeyMasternode;
         if (err == CMasternode::COLLATERAL_OK && canBeSelectTime > g_nMasternodeCanBeSelectedTime &&
                 mnpair.second.nProtocolVersion >= PROTOCOL_VERSION && fFoundPayee)
         {
             mapOutMasternodes[mnpair.first] = mnpair.second;
-        }else
-        {
-            if(logCnt++<logMaxCnt)
-            {
-                LogPrintf("SPOS_Message:not meeted masternode[%d]:%s,output:%s,err:%d,canBeSelectTime:%d,nProtocolVersion:%d,foundPayee:%d,height:%d\n",logCnt,
+            if(fSelfMasternode)
+                LogPrintf("SPOS_Message:meeted active masternode:%s,output:%s,err:%d,canBeSelectTime:%d,nProtocolVersion:%d,foundPayee:%d,height:%d\n",
                           mnpair.second.addr.ToStringIP(),mnpair.first.ToString(), err, canBeSelectTime,mnpair.second.nProtocolVersion,fFoundPayee?1:0,nHeight);
-            }
+        }else if(fSelfMasternode)
+        {
+            LogPrintf("SPOS_Message:not meeted active masternode:%s,output:%s,err:%d,canBeSelectTime:%d,nProtocolVersion:%d,foundPayee:%d,height:%d\n",
+                      mnpair.second.addr.ToStringIP(),mnpair.first.ToString(), err, canBeSelectTime,mnpair.second.nProtocolVersion,fFoundPayee?1:0,nHeight);
         }
     }
 }
