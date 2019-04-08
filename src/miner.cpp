@@ -823,7 +823,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             g_nStartNewLoopTime = GetTimeMillis()*1000;
         }
         unsigned int nWaitBlockHeight = 0;
-        int64_t nNextBlockTime = 0,nNextLogTime = 0;
+        int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0;
         while (true) {
             if (chainparams.MiningRequiresPeers()) {
                 // Busy-wait for the network to come online so we don't waste time mining
@@ -847,8 +847,18 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
                 if(activeMasternode.outpoint.IsNull())
                 {
-                    LogPrintf("SPOS_Warning:self masternode outpoint is empty,maybe need to wait sync or reindex\n");
+                    if(nLogOutput==0)
+                    {
+                        LogPrintf("SPOS_Warning:self masternode outpoint is empty,maybe need to wait sync or reindex\n");
+                        nLogOutput = 1;
+                    }
                     continue;
+                }
+
+                if(nLogOutput==1)
+                {
+                    nLogOutput = 0;
+                    LogPrintf("SPOS_Warning:self masternode empty outpoint is normal,start miner\n");
                 }
 
                 std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, coinbaseScript->reserveScript));
@@ -865,17 +875,27 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 //                          ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION),pindexPrev->nHeight);
 
                 std::vector<CMasternode> tmpVecResultMasternodes;
-                int nSposGeneratedIndex=0;
+                int nSposGeneratedIndex=0,masternodeSPosCount=0;
                 int64_t nStartNewLoopTime=0;
                 {
                     LOCK(cs_spos);
                     for(auto& mn:g_vecResultMasternodes)
+                    {
                         tmpVecResultMasternodes.push_back(mn);
+                        masternodeSPosCount++;
+                    }
                     nStartNewLoopTime = g_nStartNewLoopTime;
                     nSposGeneratedIndex = g_nSposGeneratedIndex;
                 }
-                ConsensusUseSPos(chainparams,connman,pindexPrev,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime
-                                 ,nSleepMS,nNextLogTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,nStartNewLoopTime);
+                if(masternodeSPosCount != 0)
+                {
+                    ConsensusUseSPos(chainparams,connman,pindexPrev,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime
+                                     ,nSleepMS,nNextLogTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,nStartNewLoopTime);
+                }else if(nLastMasternodeCount != 0)
+                {
+                    LogPrintf("SPOS_Error:vec_masternodes is empty\n");
+                }
+                nLastMasternodeCount = masternodeSPosCount;
             }
             if(nSleepMS>0)
                 MilliSleep(nSleepMS);

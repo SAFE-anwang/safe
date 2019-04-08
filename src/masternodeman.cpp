@@ -915,7 +915,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         for (auto& mnpair : mapMasternodes) {
             if (vin != CTxIn() && vin != mnpair.second.vin)
             {
-                LogPrintf("SPOS_Warning:DSGE vin not exist\n");
+                //LogPrintf("SPOS_Warning:DSGE vin not exist\n");
                 continue; // asked for specific vin but we are not there yet
             }
             if (mnpair.second.addr.IsRFC1918() || mnpair.second.addr.IsLocal())
