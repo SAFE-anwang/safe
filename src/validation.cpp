@@ -649,7 +649,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
     // Check unlocked height and reserve
     CAmount nValueOut = 0;
     CAmount nAssetValueOut = 0;
-    bool fvoutHasAssset = false;
     for(unsigned int i = 0; i < tx.vout.size(); i++)
     {
         const CTxOut& txout = tx.vout[i];
@@ -664,8 +663,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
             nAssetValueOut += txout.nValue;
             if (!AssetsRange(nAssetValueOut))
                 return state.DoS(100, false, REJECT_INVALID, "asset_txout: total value is too large");
-
-            fvoutHasAssset = true;
         }
         else
         {
@@ -748,7 +745,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
         vInOutPoints.insert(txin.prevout);
     }
 
-    bool fvinHasAsset = false;
     if (tx.IsCoinBase())
     {
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
@@ -757,22 +753,47 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
     else
     {
         BOOST_FOREACH(const CTxIn& txin, tx.vin)
-        {
             if (txin.prevout.IsNull())
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-prevout-null");
+    }
 
-            CTransaction txTmp;
-            uint256 hashBlock = uint256();
-            if (GetTransaction(txin.prevout.hash, txTmp, Params().GetConsensus(), hashBlock, true))
-            {
-                if (txTmp.vout[txin.prevout.n].IsAsset())
-                    fvinHasAsset = true;
-            }
+    return true;
+}
+
+bool CheckAssetTxInputAndOutput(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view)
+{
+    if (tx.IsCoinBase())
+        return true;
+
+    bool fvoutHasAssset = false;
+    for (unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+        if (txout.IsAsset())
+        {
+            fvoutHasAssset = true;
+            break;
+        }
+    }
+
+    bool fvinHasAsset = false;
+    for (unsigned int i = 0; i < tx.vin.size(); i++)
+    {
+        const CTxIn& txin = tx.vin[i];
+        const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+        if (!coins || !coins->IsAvailable(txin.prevout.n))
+            return state.Invalid(false, REJECT_DUPLICATE, "3-bad-txns-inputs-spent");
+
+        const CTxOut& txout = coins->vout[txin.prevout.n];
+        if (txout.IsAsset())
+        {
+            fvinHasAsset = true;
+            break;
         }
     }
 
     if (fvinHasAsset && !fvoutHasAssset)
-       return state.DoS(50, false, REJECT_INVALID, "tx: invalid txout reserve");
+       return state.DoS(50, false, REJECT_INVALID, "bad tx");
 
     return true;
 }
@@ -2391,6 +2412,9 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
 
         if(ExistForbidTxin( (uint32_t)g_nChainHeight + 1, prevheights))
             return state.DoS(50, error("%s: contain forbidden transaction(%s) txin", __func__, hash.GetHex()), REJECT_INVALID, "bad-txns-forbid");
+
+        if (!CheckAssetTxInputAndOutput(tx, state, view))
+            return false;
 
         map<CPutCandy_IndexKey, CAmount> mapAssetGetCandy;
         if(!CheckAppTransaction(tx, state, view, mapAssetGetCandy, true))
@@ -4270,6 +4294,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     {
         const CTransaction& tx = block.vtx[i];
         const uint256& txhash = tx.GetHash();
+
+        if (!CheckAssetTxInputAndOutput(tx, state, view))
+            return error("ConnectBlock(): CheckAssetTxInputAndOutput on %s failed with %s", txhash.ToString(), FormatStateMessage(state));
 
         if(!fJustCheck && !CheckAppTransaction(tx, state, view, mapAssetGetCandy, false))
             return error("ConnectBlock(): CheckAppTransaction on %s failed with %s", txhash.ToString(), FormatStateMessage(state));
