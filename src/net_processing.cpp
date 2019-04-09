@@ -2037,6 +2037,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             mapBlockSource.emplace(hash, pfrom->GetId());
         }
         bool fNewBlock = false;
+        //XJTODO remove it ?
+        LogPrintf("SPOS_Message:received block from:%s,chainActive height:%d,block:%s\n"
+                  ,pfrom->addr.ToStringIP(),chainActive.Height(),inv.hash.ToString());
         ProcessNewBlock(chainparams, &block, forceProcessing, NULL, &fNewBlock);
         if (fNewBlock)
             pfrom->nLastBlockTime = GetTime();

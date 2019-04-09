@@ -4857,7 +4857,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
     }
-    LogPrintf("SPOS_Message:connect2 new block:%d\n",pindex->nHeight);
+    LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
     return true;
 }
 

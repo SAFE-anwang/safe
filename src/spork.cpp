@@ -271,7 +271,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
     if (IsSporkActive(SPORK_6_SPOS_ENABLED))
         LogPrintf("SPOS_Message:SPORK_6_SPOS_ENABLED is open\n");
     else
-        LogPrintf("SPOS_Message:SPORK_6_SPOS_ENABLED is close\n");
+        LogPrintf("SPOS_Message:SPORK_6_SPOS_ENABLED is close\n");//SQTODO
     
     if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED) && chainActive.Height() == nValue)
     {
