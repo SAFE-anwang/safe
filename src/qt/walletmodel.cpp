@@ -45,6 +45,8 @@
 #include <QApplication>
 #include <QThread>
 #include <boost/foreach.hpp>
+#include <boost/thread.hpp>
+
 
 WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet), optionsModel(optionsModel), addressTableModel(0),
