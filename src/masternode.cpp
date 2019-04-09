@@ -65,10 +65,6 @@ bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb, CConnman& co
     nPoSeBanScore = 0;
     nPoSeBanHeight = 0;
     nTimeLastChecked = 0;
-    nClientVersion = mnb.nClientVersion;
-    if(nClientVersion>mnb.nClientVersion)
-        LogPrintf("SPOS_Warning:local client version(%d) less than remote client(%s) version(%d)\n"
-                  ,nClientVersion,mnb.addr.ToStringIP(),mnb.nClientVersion);
     int nDos = 0;
     if(mnb.lastPing == CMasternodePing() || (mnb.lastPing != CMasternodePing() && mnb.lastPing.CheckAndUpdate(this, true, nDos, connman))) {
         lastPing = mnb.lastPing;

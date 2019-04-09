@@ -9568,8 +9568,8 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         else if(i< (nP1Total + nP2Total))
             nPStr = "P2";
         const CMasternode& mn = tmpVecResultMasternodes[i];
-        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,nClientVersion:%d,location:%s\n", i, mn.addr.ToStringIP(),
-                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,mn.nClientVersion,nPStr);
+        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nPStr);
     }
 }
 

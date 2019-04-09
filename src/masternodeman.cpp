@@ -786,17 +786,14 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
     if (strCommand == NetMsgType::MNANNOUNCE) { //Masternode Broadcast
 
         CMasternodeBroadcast mnb;
-        mnb.nClientVersion = 0;
         vRecv >> mnb;
 
         string fromAddrStr = pfrom->addr.ToString();
         string mnbAddrStr = mnb.addr.ToString();
-        LogPrintf("SPOS_Message:processmsg:from:%s,mn:%s,version:%d\n",fromAddrStr,mnbAddrStr,mnb.nClientVersion);
+        LogPrintf("SPOS_Message:processmsg:from:%s,mn:%s\n",fromAddrStr,mnbAddrStr);
         pfrom->setAskFor.erase(mnb.GetHash());
 
         if(!masternodeSync.IsBlockchainSynced()) return;
-
-        //if(mnb.nClientVersion < SPOS_MIN_CLIENT_VERSION) return;
 
         LogPrint("masternode", "MNANNOUNCE -- Masternode announce, masternode=%s\n", mnb.vin.prevout.ToStringShort());
 
