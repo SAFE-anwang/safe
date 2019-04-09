@@ -510,7 +510,7 @@ void WalletView::gotoCandyPage()
     if(fUpdateCandyPage)
     {
         fUpdateCandyPage = false;
-        Q_EMIT candyPage->refreshAssetsInfo();
+        candyPage->updateAssetsInfo();
     }
     setCurrentWidget(candyPage);
 }
