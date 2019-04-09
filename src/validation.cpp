@@ -5751,6 +5751,13 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
 
 bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight,bool fCheckPOW)
 {
+    //TODOSQ
+    CTransaction testTransaction  = block.vtx[0];
+    const CTxOut &testout = testTransaction.vout[0];
+    string strAddress = "";
+    if (GetTxOutAddress(testout, &strAddress))
+        LogPrintf("SPOS_Message:AAAAABlockAddress:%s, height:%d\n", strAddress, nHeight);//TOSQ
+
     if (block.nBits != 0)
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): block.nBits  not equal to 0,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
 
