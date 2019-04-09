@@ -39,8 +39,12 @@ public:
     void setGetHistoryTabLayout(QVBoxLayout* layout);
     void setClientModel(ClientModel *model);
     void setModel(WalletModel *model);
-    void updateAssetsInfo();
     bool amountFromString(const std::string& valueStr,const QString& msgboxTitle,int decimal,CAmount& amount);
+    void setThreadUpdateData(bool update);
+    void setThreadNoticeSlot(bool notice);
+    bool getThreadUpdateData();
+    bool getThreadNoticeSlot();
+    void setAssetStringList(QStringList stringList);
 
 private:
     bool putCandy();
@@ -61,6 +65,7 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     void handlerGetCandyResult(const bool result, const QString errorStr, const int rowNum, const CAmount nFeeRequired);
+    void updateAssetsInfo();
 
 private Q_SLOTS:
     void on_okButton_clicked();
@@ -109,8 +114,12 @@ private:
     QMessageBox *msgbox;
 
     bool isUnlockByGlobal;
+    bool fThreadUpdateData;
+    bool fThreadNoticeSlot;
+    QStringList assetStringList;
 Q_SIGNALS:
     void runGetCandy();
+    void refreshAssetsInfo();
 };
 
 class GetCandyWorker: public QObject {

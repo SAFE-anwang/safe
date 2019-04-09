@@ -98,6 +98,7 @@ private:
     QLabel *assetsTransactionSum;
     QLabel *candyTransactionSum;
     const PlatformStyle *platformStyle;
+    bool fUpdateCandyPage = false;
 
 public Q_SLOTS:
     /** Switch to overview (home) page */

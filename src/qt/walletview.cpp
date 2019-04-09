@@ -417,7 +417,13 @@ void WalletView::updateAssetsInfo(int showType, bool bConfirmedNewAssets, const 
     {
         sendCoinsPage->updateAssetsInfo();
         assetsPage->updateAssetsInfo();
-        candyPage->updateAssetsInfo();
+        if(candyPage==currentWidget())
+            candyPage->setThreadNoticeSlot(true);
+        else
+        {
+            candyPage->setThreadUpdateData(true);
+            fUpdateCandyPage = true;
+        }
     }
 }
 
@@ -501,6 +507,11 @@ void WalletView::gotoCandyPage()
 		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getCandyTableModel(), this));
 	}
 
+    if(fUpdateCandyPage)
+    {
+        fUpdateCandyPage = false;
+        Q_EMIT candyPage->refreshAssetsInfo();
+    }
     setCurrentWidget(candyPage);
 }
 
@@ -788,7 +799,7 @@ void ThreadUpdateBalanceChanged(WalletModel *walletModel)
 	RenameThread("updateBalanceChangedThread");
 	while (true)
 	{
-		boost::this_thread::interruption_point();
+        boost::this_thread::interruption_point();
 		walletModel->pollBalanceChanged();
 		MilliSleep(MODEL_UPDATE_DELAY);
 	}
@@ -826,7 +837,7 @@ void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
 	}
 	else if (txModel == walletModel->getCandyTableModel())
 	{
-		candyPage->updateAssetsInfo();
+        candyPage->setThreadUpdateData(true);
 	}
 }
 

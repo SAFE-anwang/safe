@@ -469,6 +469,7 @@ void BitcoinApplication::requestShutdown()
     window->setClientModel(0);
     pollShutdownTimer->stop();
 
+    MilliSleep(1000);
     // Request shutdown from core thread
     // ui also has some thread to shutdown
     Q_EMIT requestedShutdown();

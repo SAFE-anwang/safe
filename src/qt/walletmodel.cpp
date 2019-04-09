@@ -165,6 +165,7 @@ void WalletModel::updateAllBalanceChanged(bool copyTmp)
 {
     if(fForceCheckBalanceChanged || chainActive.Height() != cachedNumBlocks || privateSendClient.nPrivateSendRounds != cachedPrivateSendRounds || cachedTxLocks != nCompleteTXLocks)
     {
+        boost::this_thread::interruption_point();
 		bool bUpdateConfirmations = false;
 
 		if (chainActive.Height() != cachedNumBlocks)
