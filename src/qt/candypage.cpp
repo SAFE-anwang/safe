@@ -142,7 +142,7 @@ CandyPage::CandyPage():
     ui->candyValueLabel->setVisible(true);
 
     ui->tableWidgetGetCandy->setSortingEnabled(false);
-    updateAssetsInfo();
+    //setThreadNoticeSlot(true);
     //test
     if(gInitByDefault)
     {

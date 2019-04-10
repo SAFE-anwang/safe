@@ -28,8 +28,88 @@
 #include <QTextDocument>
 #include <QCompleter>
 #include <boost/foreach.hpp>
+#include <boost/thread.hpp>
+
 using std::string;
 extern QString gStrSafe;
+extern boost::thread_group *g_threadGroup;
+
+CCriticalSection cs_receive;
+
+void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
+{
+    RenameThread("RefreshReceiveCoinsData");
+    while(true)
+    {
+        boost::this_thread::interruption_point();
+
+        bool fThreadUpdateData = receiveCoinsDialog->getThreadUpdateData();
+        bool fThreadNoticeSlot = receiveCoinsDialog->getThreadNoticeSlot();
+        if(!fThreadUpdateData&&!fThreadNoticeSlot)
+        {
+            MilliSleep(100);
+            continue;
+        }
+
+        if(fThreadUpdateData)
+            receiveCoinsDialog->setThreadUpdateData(false);
+        if(fThreadNoticeSlot)
+            receiveCoinsDialog->setThreadNoticeSlot(false);
+        std::vector<uint256>  assetIdVec;
+
+        LOCK(cs_receive);
+        {
+            if(receiveCoinsDialog->getAssetFound())
+            {
+                uint256 assetId;
+                for(QMap<QString,int>::iterator iter = receiveCoinsDialog->assetUpdateMap.begin();
+                    iter != receiveCoinsDialog->assetUpdateMap.end();++iter)
+                {
+                    boost::this_thread::interruption_point();
+                    QString assetName = iter.key();
+                    if(iter.value() == 1)
+                    {
+                        if(!GetAssetIdByAssetName(assetName.toStdString(),assetId))
+                            continue;
+                        assetIdVec.push_back(assetId);
+                    }
+                    receiveCoinsDialog->assetUpdateMap[assetName] = 0;
+                }
+            }else
+            {
+                if (!GetAssetListInfo(assetIdVec))
+                    return;
+            }
+        }
+
+
+        BOOST_FOREACH(const uint256& assetId,assetIdVec)
+        {
+            boost::this_thread::interruption_point();
+            if(assetId.IsNull()){
+                continue;
+            }
+            CAssetId_AssetInfo_IndexValue assetInfo;
+            if(!GetAssetInfoByAssetId(assetId, assetInfo)){
+                return;
+            }
+            QString assetName = QString::fromStdString(assetInfo.assetData.strAssetName);
+            if(!receiveCoinsDialog->assetDataMap.contains(assetName))
+                receiveCoinsDialog->assetDataMap[assetName] = assetInfo.assetData;
+        }
+
+        QStringList stringList;
+        stringList.append(gStrSafe);
+        //QMap<QString,QString>& assetNamesUnits = model->getAssetsNamesUnits();
+        stringList.append(receiveCoinsDialog->assetDataMap.keys());
+        receiveCoinsDialog->setAssetStringList(stringList);
+
+        if(fThreadNoticeSlot)
+            Q_EMIT receiveCoinsDialog->refreshAssetsInfo();
+    }
+
+
+}
 
 ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidget *parent) :
     QDialog(parent),
@@ -85,6 +165,11 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
 
     completer = new QCompleter;
     stringListModel = new QStringListModel;
+    fAssetsFound = false;
+    fThreadUpdateData = false;
+    fThreadNoticeSlot = false;
+    assetStringList.clear();
+
     completer->setCaseSensitivity(Qt::CaseInsensitive);
     completer->setCompletionMode(QCompleter::PopupCompletion);
     completer->setModel(stringListModel);
@@ -104,6 +189,9 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     regExpReqMessageEdit.setPattern("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9-+*/。，$%^&*,!?.()#_\u4e00-\u9fa5 ]{1,150}");
     ui->reqMessage->setValidator (new QRegExpValidator(regExpReqMessageEdit, this));
     initWidget();
+    connect(this,SIGNAL(refreshAssetsInfo()),this,SLOT(updateAssetsInfo()));
+    if(g_threadGroup)
+        g_threadGroup->create_thread(boost::bind(&RefreshReceiveCoinsData, this));
 }
 
 void ReceiveCoinsDialog::initWidget()
@@ -147,53 +235,22 @@ void ReceiveCoinsDialog::updateCurrentAsset(const QString &currText)
 
 void ReceiveCoinsDialog::updateAssetsFound(const QString &assetName)
 {
-    updateAssetsInfo(assetName);
+    LOCK(cs_receive);
+    fAssetsFound = true;
+    assetUpdateMap[assetName] = 0;
+    setThreadNoticeSlot(true);
 }
 
 void ReceiveCoinsDialog::updateAssetsInfo(const QString &assetName)
 {
-//    LOCK2(cs_main, pwalletMain->cs_wallet);
-    bool addOneAsset = !assetName.isEmpty();
-    std::vector<uint256>  assetIdVec;
-    if(addOneAsset)
-    {
-        uint256 assetId;
-        if(!GetAssetIdByAssetName(assetName.toStdString(),assetId))
-            return;
-        assetIdVec.push_back(assetId);
-    }else
-    {
-        if (!GetAssetListInfo(assetIdVec))
-            return;
-    }
-
-    BOOST_FOREACH(const uint256& assetId,assetIdVec)
-    {
-        boost::this_thread::interruption_point();
-        if(assetId.IsNull()){
-            continue;
-        }
-        CAssetId_AssetInfo_IndexValue assetInfo;
-        if(!GetAssetInfoByAssetId(assetId, assetInfo)){
-            return;
-        }
-        QString assetName = QString::fromStdString(assetInfo.assetData.strAssetName);
-        if(!assetDataMap.contains(assetName))
-            assetDataMap[assetName] = assetInfo.assetData;
-    }
-
     disconnect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
     QString currText = ui->assetsComboBox->currentText();
     ui->assetsComboBox->clear();
-    QStringList stringList;
-    stringList.append(gStrSafe);
-    //QMap<QString,QString>& assetNamesUnits = model->getAssetsNamesUnits();
-    stringList.append(assetDataMap.keys());
 
-    stringListModel->setStringList(stringList);
+    stringListModel->setStringList(assetStringList);
     completer->setModel(stringListModel);
     completer->popup()->setStyleSheet("font: 12px;");
-    ui->assetsComboBox->addItems(stringList);
+    ui->assetsComboBox->addItems(assetStringList);
     ui->assetsComboBox->setCompleter(completer);
 
     if(assetDataMap.contains(currText))

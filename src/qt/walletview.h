@@ -99,6 +99,7 @@ private:
     QLabel *candyTransactionSum;
     const PlatformStyle *platformStyle;
     bool fUpdateCandyPage = false;
+    bool fUpdateReceivedDlg = false;
 
 public Q_SLOTS:
     /** Switch to overview (home) page */

@@ -50,6 +50,15 @@ public:
 
     void setModel(WalletModel *model);
     void setClientModel(ClientModel* clientModel);
+    bool getAssetFound(){return fAssetsFound;}
+    void setThreadUpdateData(bool update){fThreadUpdateData = update;}
+    void setThreadNoticeSlot(bool notice){fThreadNoticeSlot = notice;}
+    bool getThreadUpdateData(){return fThreadUpdateData;}
+    bool getThreadNoticeSlot(){return fThreadNoticeSlot;}
+    void setAssetStringList(QStringList stringList){assetStringList = stringList;}
+
+Q_SIGNALS:
+    void refreshAssetsInfo();
 
 public Q_SLOTS:
     void clear();
@@ -64,6 +73,10 @@ public Q_SLOTS:
 protected:
     virtual void keyPressEvent(QKeyEvent *event);
 
+public:
+    QMap<QString,int> assetUpdateMap;
+    QMap<QString,CAssetData> assetDataMap;
+
 private:
     Ui::ReceiveCoinsDialog *ui;
     GUIUtil::TableViewLastColumnResizingFixer *columnResizingFixer;
@@ -71,12 +84,15 @@ private:
     WalletModel *model;
     QMenu *contextMenu;
     const PlatformStyle *platformStyle;
-    QMap<QString,CAssetData> assetDataMap;
     bool fAssets;
     int assetDecimal;
     QString strAssetUnit;
     QCompleter* completer;
     QStringListModel* stringListModel;
+    bool fAssetsFound;
+    bool fThreadUpdateData;
+    bool fThreadNoticeSlot;
+    QStringList assetStringList;
 
     QModelIndex selectedRow();
     void copyColumnToClipboard(int column);

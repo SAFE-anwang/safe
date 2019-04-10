@@ -410,7 +410,16 @@ void WalletView::updateAssetsInfo(int showType, bool bConfirmedNewAssets, const 
     overviewPage->updateAssetsInfo(strAssetName);
 
     if(bShowAll)
-        receiveCoinsPage->updateAssetsInfo();
+    {
+        if(receiveCoinsPage==currentWidget())
+            receiveCoinsPage->setThreadNoticeSlot(true);
+        else
+        {
+            receiveCoinsPage->setThreadUpdateData(true);
+            fUpdateReceivedDlg = true;
+        }
+        //receiveCoinsPage->updateAssetsInfo();
+    }
 
     //only issue asset,update the add asset combox and put candy combox
     if(bConfirmedNewAssets||bShowAll)
@@ -525,6 +534,11 @@ void WalletView::gotoMasternodePage()
 
 void WalletView::gotoReceiveCoinsPage()
 {
+    if(fUpdateReceivedDlg)
+    {
+        fUpdateReceivedDlg = false;
+        receiveCoinsPage->updateAssetsInfo();
+    }
     setCurrentWidget(receiveCoinsPage);
 }
 
@@ -825,10 +839,25 @@ void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
 
 	if (txModel == walletModel->getTransactionTableModel())
 	{
-		overviewPage->updateAssetsInfo();
-		receiveCoinsPage->updateAssetsInfo();
+        overviewPage->updateAssetsInfo();
+        if(receiveCoinsPage==currentWidget())
+            receiveCoinsPage->setThreadNoticeSlot(true);
+        else
+        {
+            receiveCoinsPage->setThreadUpdateData(true);
+            fUpdateReceivedDlg = true;
+        }
 		sendCoinsPage->updateAssetsInfo();
         assetsPage->updateAssetsInfo();
+
+        if(candyPage==currentWidget())
+            candyPage->setThreadNoticeSlot(true);
+        else
+        {
+            candyPage->setThreadUpdateData(true);
+            fUpdateCandyPage = true;
+        }
+
 		g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, walletModel));
 	}
 	else if (txModel == walletModel->getAssetsDistributeTableModel())
