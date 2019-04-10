@@ -897,7 +897,10 @@ void CWallet::MarkDirty()
     {
         LOCK(cs_wallet);
         BOOST_FOREACH(PAIRTYPE(const uint256, CWalletTx)& item, mapWallet)
+        {
+            boost::this_thread::interruption_point();
             item.second.MarkDirty();
+        }
     }
 
     fAnonymizableTallyCached = false;
@@ -1386,6 +1389,7 @@ int CWallet::GetRealOutpointPrivateSendRounds(const COutPoint& outpoint, int nRo
 
         bool fAllDenoms = true;
         BOOST_FOREACH(CTxOut out, wtx->vout) {
+            boost::this_thread::interruption_point();
             fAllDenoms = fAllDenoms && IsDenominatedAmount(out.nValue);
         }
 
@@ -1400,6 +1404,7 @@ int CWallet::GetRealOutpointPrivateSendRounds(const COutPoint& outpoint, int nRo
         bool fDenomFound = false;
         // only denoms here so let's look up
         BOOST_FOREACH(CTxIn txinNext, wtx->vin) {
+            boost::this_thread::interruption_point();
             if (IsMine(txinNext)) {
                 int n = GetRealOutpointPrivateSendRounds(txinNext.prevout, nRounds + 1);
                 // denom found, find the shortest chain or initially assign nShortest with the first found value
@@ -1652,6 +1657,7 @@ CAmount CWallet::GetCredit(const CTransaction& tx, const isminefilter& filter, c
 
     BOOST_FOREACH(const CTxOut& txout, tx.vout)
     {
+        boost::this_thread::interruption_point();
         if(pAddress && pAddress->IsValid())
         {
             CTxDestination dest;
@@ -2115,6 +2121,7 @@ CAmount CWalletTx::GetLockedCredit(const bool fAsset, const uint256* pAssetId, c
     int txHeight = GetTxHeight(hashTx,NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
+        boost::this_thread::interruption_point();
         if (pwallet->IsSpent(hashTx, i))
             continue;
 
@@ -2213,6 +2220,7 @@ CAmount CWalletTx::GetAvailableCredit(const bool fAsset, const uint256* pAssetId
     int txHeight = GetTxHeight(hashTx, NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
+        boost::this_thread::interruption_point();
         if (pwallet->IsSpent(hashTx, i))
             continue;
 
@@ -2318,6 +2326,7 @@ CAmount CWalletTx::GetLockedWatchOnlyCredit(const bool fAsset, const uint256* pA
     int txHeight = GetTxHeight(hashTx, NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
+        boost::this_thread::interruption_point();
         if (pwallet->IsSpent(hashTx, i))
             continue;
 
@@ -2416,6 +2425,7 @@ CAmount CWalletTx::GetAvailableWatchOnlyCredit(const bool fAsset, const uint256*
     int txHeight = GetTxHeight(hashTx, NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
+        boost::this_thread::interruption_point();
         if (pwallet->IsSpent(hashTx, i))
             continue;
 
@@ -2522,6 +2532,7 @@ CAmount CWalletTx::GetAnonymizedCredit(bool fUseCache) const
     int txHeight = GetTxHeight(hashTx, NULL, &nVersion);
     for (unsigned int i = 0; i < vout.size(); i++)
     {
+        boost::this_thread::interruption_point();
         const CTxOut &txout = vout[i];
         const COutPoint outpoint = COutPoint(hashTx, i);
 
@@ -2744,6 +2755,7 @@ CAmount CWallet::GetBalance(const bool fAsset, const uint256* pAssetId, const CB
             LOCK2(cs_main, cs_wallet);
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
 
                 if(pcoin->IsForbid())
@@ -2757,6 +2769,7 @@ CAmount CWallet::GetBalance(const bool fAsset, const uint256* pAssetId, const CB
             int count = 0;
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet_tmp.begin(); it != mapWallet_tmp.end(); ++it)
             {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
 
                 if(pcoin->IsForbid())
@@ -2809,12 +2822,14 @@ CAmount CWallet::GetAnonymizedBalance(bool bLock) const
     std::set<uint256> setWalletTxesCounted;
     for (auto& outpoint : setWalletUTXO) {
 
+        boost::this_thread::interruption_point();
         if (setWalletTxesCounted.find(outpoint.hash) != setWalletTxesCounted.end()) continue;
         setWalletTxesCounted.insert(outpoint.hash);
 
         if(bLock)
         {
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet.find(outpoint.hash); it != mapWallet.end() && it->first == outpoint.hash; ++it) {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
                 if(pcoin->IsForbid())
                     continue;
@@ -2825,6 +2840,7 @@ CAmount CWallet::GetAnonymizedBalance(bool bLock) const
         {
             int count = 0;
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet_tmp.find(outpoint.hash); it != mapWallet_tmp.end() && it->first == outpoint.hash; ++it) {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
                 if(pcoin->IsForbid())
                     continue;
@@ -2935,6 +2951,7 @@ CAmount CWallet::GetUnconfirmedBalance(const bool fAsset, const uint256* pAssetI
             LOCK2(cs_main, cs_wallet);
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
                 if(pcoin->IsForbid())
                     continue;
@@ -2946,6 +2963,7 @@ CAmount CWallet::GetUnconfirmedBalance(const bool fAsset, const uint256* pAssetI
             int count = 0;
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet_tmp.begin(); it != mapWallet_tmp.end(); ++it)
             {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
                 if(pcoin->IsForbid())
                     continue;
@@ -2969,6 +2987,7 @@ CAmount CWallet::GetImmatureBalance(const bool fAsset, const uint256* pAssetId, 
             LOCK2(cs_main, cs_wallet);
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
                 if(pcoin->IsForbid())
                     continue;
@@ -2979,6 +2998,7 @@ CAmount CWallet::GetImmatureBalance(const bool fAsset, const uint256* pAssetId, 
             int count = 0;
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet_tmp.begin(); it != mapWallet_tmp.end(); ++it)
             {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
                 if(pcoin->IsForbid())
                     continue;
@@ -3002,6 +3022,7 @@ CAmount CWallet::GetLockedBalance(const bool fAsset, const uint256* pAssetId, co
             LOCK2(cs_main, cs_wallet);
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
                 if(pcoin->IsForbid())
                     continue;
@@ -3011,6 +3032,7 @@ CAmount CWallet::GetLockedBalance(const bool fAsset, const uint256* pAssetId, co
         {
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet_tmp.begin(); it != mapWallet_tmp.end(); ++it)
             {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
                 if(pcoin->IsForbid())
                     continue;
@@ -3032,6 +3054,7 @@ CAmount CWallet::GetWatchOnlyBalance(const bool fAsset, const uint256* pAssetId,
         LOCK2(cs_main, cs_wallet);
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
+            boost::this_thread::interruption_point();
             const CWalletTx* pcoin = &(*it).second;
             if (pcoin->IsTrusted())
                 nTotal += pcoin->GetAvailableWatchOnlyCredit(fAsset, pAssetId, pAddress, !fAsset);
@@ -3050,6 +3073,7 @@ CAmount CWallet::GetUnconfirmedWatchOnlyBalance(const bool fAsset, const uint256
         int count = 0;
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
+            boost::this_thread::interruption_point();
             const CWalletTx* pcoin = &(*it).second;
             if (!pcoin->IsTrusted() && pcoin->GetDepthInMainChain() == 0 && pcoin->InMempool())
                 nTotal += pcoin->GetAvailableWatchOnlyCredit(fAsset, pAssetId, pAddress, !fAsset);
@@ -3070,6 +3094,7 @@ CAmount CWallet::GetImmatureWatchOnlyBalance(const bool fAsset, const uint256* p
         int count = 0;
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
+            boost::this_thread::interruption_point();
             const CWalletTx* pcoin = &(*it).second;
             nTotal += pcoin->GetImmatureWatchOnlyCredit(fAsset, pAssetId, pAddress, !fAsset);
             count++;
@@ -3086,9 +3111,10 @@ CAmount CWallet::GetLockedWatchOnlyBalance(const bool fAsset, const uint256* pAs
     {
         if(bLock)
         {
-            LOCK2(cs_main, cs_wallet);//XJTODO
+            LOCK2(cs_main, cs_wallet);
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
                 nTotal += pcoin->GetLockedWatchOnlyCredit(fAsset, pAssetId, pAddress);
             }
@@ -3097,6 +3123,7 @@ CAmount CWallet::GetLockedWatchOnlyBalance(const bool fAsset, const uint256* pAs
             int count = 0;
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet_tmp.begin(); it != mapWallet_tmp.end(); ++it)
             {
+                boost::this_thread::interruption_point();
                 const CWalletTx* pcoin = &(*it).second;
                 nTotal += pcoin->GetLockedWatchOnlyCredit(fAsset, pAssetId, pAddress);
                 count++;
@@ -3119,6 +3146,7 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
         LOCK2(cs_main, cs_wallet);
         for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
+            boost::this_thread::interruption_point();
             const uint256& wtxid = it->first;
             const CWalletTx* pcoin = &(*it).second;
 
@@ -3164,6 +3192,7 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
             }
 
             for (unsigned int i = 0; i < pcoin->vout.size(); i++) {
+                boost::this_thread::interruption_point();
                 if(!fContainLockedTxOut && IsLockedTxOutByHeight(nBlockHeight, pcoin->vout[i], pcoin->nVersion) && nCoinType != ONLY_1000)
                     continue;
 

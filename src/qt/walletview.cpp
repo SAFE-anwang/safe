@@ -747,7 +747,7 @@ void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView)
 	if (txModel == walletView->getWalletMode()->getTransactionTableModel())
 	{
 		MilliSleep(2000);
-	}
+    }
 
 	Q_EMIT walletView->refreshFinished(txModel);
 }

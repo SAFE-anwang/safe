@@ -7609,6 +7609,7 @@ bool GetIssueAssetInfo(std::map<uint256, CAssetData>& mapissueassetinfo)
     map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin();
     for (; it != pwalletMain->mapWallet.end(); it++)
     {
+        boost::this_thread::interruption_point();
         const CWalletTx* pcoin = &(*it).second;
         if (!CheckFinalTx(*pcoin))
             continue;
@@ -7617,6 +7618,7 @@ bool GetIssueAssetInfo(std::map<uint256, CAssetData>& mapissueassetinfo)
 
         for (unsigned int i = 0; i < pcoin->vout.size(); i++)
         {
+            boost::this_thread::interruption_point();
             if (!pcoin->vout[i].IsAsset())
                 continue;
 

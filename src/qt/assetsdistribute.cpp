@@ -120,6 +120,7 @@ void AssetsDistribute::updateAssetsInfo()
     {
         for(std::map<uint256, CAssetData>::iterator iter = issueAssetMap.begin();iter != issueAssetMap.end();++iter)
         {
+            boost::this_thread::interruption_point();
             CAssetData& assetData = (*iter).second;
             assetNameVec.push_back(assetData.strAssetName);
         }
@@ -129,7 +130,10 @@ void AssetsDistribute::updateAssetsInfo()
     ui->assetsNameComboBox->clear();
     QStringList stringList;
     for(unsigned int i=0;i<assetNameVec.size();i++)
+    {
+        boost::this_thread::interruption_point();
         stringList.append(QString::fromStdString(assetNameVec[i]));
+    }
 
     ui->assetsNameComboBox->addItems(stringList);
     stringListModel->setStringList(stringList);

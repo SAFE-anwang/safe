@@ -71,6 +71,7 @@ void TransactionTablePriv::refreshWallet()
         LOCK2(cs_main, wallet->cs_wallet);
         for(std::map<uint256, CWalletTx>::iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
         {
+            boost::this_thread::interruption_point();
             if(TransactionRecord::showTransaction(it->second))
 				cachedWallet.append(TransactionRecord::decomposeTransaction(wallet, it->second, showType, mapTempAssetList)); 
         }
@@ -79,6 +80,7 @@ void TransactionTablePriv::refreshWallet()
 		QMap<QString, AssetsDisplayInfo> &mapStoreAssetList = parent->getAssetsNamesUnits();
 		while (itAsset != mapTempAssetList.end())
 		{
+            boost::this_thread::interruption_point();
 			if (mapStoreAssetList.find(itAsset.key()) == mapStoreAssetList.end())
 			{
 				mapStoreAssetList.insert(itAsset.key(), itAsset.value());

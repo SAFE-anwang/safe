@@ -193,6 +193,7 @@ bool CTxMemPool::CalculateMemPoolAncestors(const CTxMemPoolEntry &entry, setEntr
         // GetMemPoolParents() is only valid for entries in the mempool, so we
         // iterate mapTx to find parents.
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
+            boost::this_thread::interruption_point();
             txiter piter = mapTx.find(tx.vin[i].prevout.hash);
             if (piter != mapTx.end()) {
                 parentHashes.insert(piter);
@@ -212,6 +213,7 @@ bool CTxMemPool::CalculateMemPoolAncestors(const CTxMemPoolEntry &entry, setEntr
     size_t totalSizeWithAncestors = entry.GetTxSize();
 
     while (!parentHashes.empty()) {
+        boost::this_thread::interruption_point();
         txiter stageit = *parentHashes.begin();
 
         setAncestors.insert(stageit);
@@ -231,6 +233,7 @@ bool CTxMemPool::CalculateMemPoolAncestors(const CTxMemPoolEntry &entry, setEntr
 
         const setEntries & setMemPoolParents = GetMemPoolParents(stageit);
         BOOST_FOREACH(const txiter &phash, setMemPoolParents) {
+            boost::this_thread::interruption_point();
             // If this is a new ancestor, add it.
             if (setAncestors.count(phash) == 0) {
                 parentHashes.insert(phash);

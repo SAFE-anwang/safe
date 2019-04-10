@@ -348,6 +348,7 @@ void OverviewPage::updateAssetsInfo(const QString &strAssetName)
     //update existed assets entry
     for(int i = 0; i < ui->entries->count(); ++i)
     {
+        boost::this_thread::interruption_point();
         OverViewEntry *entry = qobject_cast<OverViewEntry*>(ui->entries->itemAt(i)->widget());
         QString strEntryAssetName = entry->getAssetName();
         if(updateOneAsset&&strEntryAssetName!=strAssetName)
@@ -375,6 +376,7 @@ void OverviewPage::updateAssetsInfo(const QString &strAssetName)
     //insert new assets entry
     Q_FOREACH(const QString& assetName,assetsNames)
     {
+        boost::this_thread::interruption_point();
         if(entryList.contains(assetName))
             continue;
 

@@ -169,6 +169,7 @@ void ReceiveCoinsDialog::updateAssetsInfo(const QString &assetName)
 
     BOOST_FOREACH(const uint256& assetId,assetIdVec)
     {
+        boost::this_thread::interruption_point();
         if(assetId.IsNull()){
             continue;
         }
