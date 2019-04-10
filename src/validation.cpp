@@ -5756,7 +5756,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     const CTxOut &testout = testTransaction.vout[0];
     string strAddress = "";
     if (GetTxOutAddress(testout, &strAddress))
-        LogPrintf("SPOS_Message:AAAAABlockAddress:%s, height:%d\n", strAddress, nHeight);//TOSQ
+        LogPrintf("SPOS_Message:AAAAABlockAddress:%s, height:%d, blockHash:%s\n", strAddress, nHeight, block.GetHash().ToString());//TOSQ
 
     if (block.nBits != 0)
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): block.nBits  not equal to 0,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
