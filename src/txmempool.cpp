@@ -20,6 +20,8 @@
 #include "base58.h"
 #include "main.h"
 #include "app/app.h"
+#include <boost/thread.hpp>
+
 
 using namespace std;
 
