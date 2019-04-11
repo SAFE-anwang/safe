@@ -32,6 +32,8 @@
 #include <QTimer>
 #include <QScrollBar>
 #include <QToolButton>
+#include <boost/thread.hpp>
+
 
 #define ICON_OFFSET 16
 #define DECORATION_SIZE 54
