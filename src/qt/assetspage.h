@@ -30,6 +30,8 @@ public:
     void setWalletModel(WalletModel *model);
     void setDistributeRecordLayout(QVBoxLayout * layout);
     void updateAssetsInfo();
+    void setThreadUpdateData(bool update);
+    void setThreadNoticeSlot(bool notice);
     WalletModel* getWalletModel() const;
 private:
     Ui::AssetsPage *ui;

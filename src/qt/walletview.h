@@ -100,6 +100,7 @@ private:
     const PlatformStyle *platformStyle;
     bool fUpdateCandyPage = false;
     bool fUpdateReceivedDlg = false;
+    bool fUpdateAssetsPage = false;
 
 public Q_SLOTS:
     /** Switch to overview (home) page */

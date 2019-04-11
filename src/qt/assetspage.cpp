@@ -47,6 +47,16 @@ void AssetsPage::updateAssetsInfo()
     assetsDistribute->updateAssetsInfo();
 }
 
+void AssetsPage::setThreadUpdateData(bool update)
+{
+    assetsDistribute->setThreadUpdateData(update);
+}
+
+void AssetsPage::setThreadNoticeSlot(bool notice)
+{
+    assetsDistribute->setThreadNoticeSlot(notice);
+}
+
 
 
 

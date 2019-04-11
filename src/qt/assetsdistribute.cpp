@@ -24,12 +24,59 @@
 #include <string>
 #include <vector>
 #include <QCompleter>
+#include <boost/thread.hpp>
+
 using std::string;
 using std::vector;
 extern CAmount gFilterAmountMaxNum;
 extern bool gInitByDefault;
+extern boost::thread_group *g_threadGroup;
 
 double gMaxAsset = 200000000000000.0000;
+
+void RefreshAssetData(AssetsDistribute* assetsDistribute)
+{
+    RenameThread("RefreshCandyPageData");
+    while(true)
+    {
+        boost::this_thread::interruption_point();
+        bool fThreadUpdateData = assetsDistribute->getThreadUpdateData();
+        bool fThreadNoticeSlot = assetsDistribute->getThreadNoticeSlot();
+        if(!fThreadUpdateData&&!fThreadNoticeSlot)
+        {
+            MilliSleep(100);
+            continue;
+        }
+        if(fThreadUpdateData)
+            assetsDistribute->setThreadUpdateData(false);
+        if(fThreadNoticeSlot)
+            assetsDistribute->setThreadNoticeSlot(false);
+
+        std::map<uint256, CAssetData> issueAssetMap;
+        std::vector<std::string> assetNameVec;
+        if(GetIssueAssetInfo(issueAssetMap))
+        {
+            for(std::map<uint256, CAssetData>::iterator iter = issueAssetMap.begin();iter != issueAssetMap.end();++iter)
+            {
+                boost::this_thread::interruption_point();
+                CAssetData& assetData = (*iter).second;
+                assetNameVec.push_back(assetData.strAssetName);
+            }
+            std::sort(assetNameVec.begin(),assetNameVec.end());
+        }
+
+        QStringList stringList;
+        for(unsigned int i=0;i<assetNameVec.size();i++)
+        {
+            boost::this_thread::interruption_point();
+            stringList.append(QString::fromStdString(assetNameVec[i]));
+        }
+        assetsDistribute->setAssetStringList(stringList);
+
+        if(fThreadNoticeSlot)
+            Q_EMIT assetsDistribute->refreshAssetsInfo();
+    }
+}
 
 AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
     QWidget(assetsPage),
@@ -76,6 +123,10 @@ AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
     connect(ui->expireLineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(handlerExpireLineEditTextChange(const QString &)));
     clearDisplay();
     msgboxTitle = tr("Assets distribute");
+    fThreadUpdateData = false;
+    fThreadNoticeSlot = false;
+    assetStringList.clear();
+
     completer = new QCompleter;
     stringListModel = new QStringListModel;
     completer->setCaseSensitivity(Qt::CaseInsensitive);
@@ -105,6 +156,10 @@ AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
     ui->assetsCandyRatioSlider->setEnabled(ui->distributeCheckBox->isChecked());
     initWidget();
     setMouseTracking(true);
+
+    connect(this,SIGNAL(refreshAssetsInfo()),this,SLOT(updateAssetsInfo()));
+    if(g_threadGroup)
+        g_threadGroup->create_thread(boost::bind(&RefreshAssetData, this));
 }
 
 AssetsDistribute::~AssetsDistribute()
@@ -114,29 +169,8 @@ AssetsDistribute::~AssetsDistribute()
 
 void AssetsDistribute::updateAssetsInfo()
 {
-    std::map<uint256, CAssetData> issueAssetMap;
-    std::vector<std::string> assetNameVec;
-    if(GetIssueAssetInfo(issueAssetMap))
-    {
-        for(std::map<uint256, CAssetData>::iterator iter = issueAssetMap.begin();iter != issueAssetMap.end();++iter)
-        {
-            boost::this_thread::interruption_point();
-            CAssetData& assetData = (*iter).second;
-            assetNameVec.push_back(assetData.strAssetName);
-        }
-        std::sort(assetNameVec.begin(),assetNameVec.end());
-    }
-
-    ui->assetsNameComboBox->clear();
-    QStringList stringList;
-    for(unsigned int i=0;i<assetNameVec.size();i++)
-    {
-        boost::this_thread::interruption_point();
-        stringList.append(QString::fromStdString(assetNameVec[i]));
-    }
-
-    ui->assetsNameComboBox->addItems(stringList);
-    stringListModel->setStringList(stringList);
+    ui->assetsNameComboBox->addItems(assetStringList);
+    stringListModel->setStringList(assetStringList);
     completer->setModel(stringListModel);
     completer->popup()->setStyleSheet("font: 12px;");
     ui->assetsNameComboBox->setCompleter(completer);
@@ -310,7 +344,8 @@ void AssetsDistribute::initFirstDistribute()
 
 void AssetsDistribute::initAdditionalDistribute()
 {
-    updateAssetsInfo();
+    //updateAssetsInfo();
+    setThreadNoticeSlot(true);
     displayFirstDistribute(false);
     initWidget();
 }

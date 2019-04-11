@@ -425,7 +425,15 @@ void WalletView::updateAssetsInfo(int showType, bool bConfirmedNewAssets, const 
     if(bConfirmedNewAssets||bShowAll)
     {
         sendCoinsPage->updateAssetsInfo();
-        assetsPage->updateAssetsInfo();
+
+        if(assetsPage==currentWidget())
+            assetsPage->setThreadNoticeSlot(true);
+        else
+        {
+            assetsPage->setThreadUpdateData(true);
+            fUpdateAssetsPage = true;
+        }
+
         if(candyPage==currentWidget())
             candyPage->setThreadNoticeSlot(true);
         else
@@ -848,7 +856,14 @@ void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
             fUpdateReceivedDlg = true;
         }
 		sendCoinsPage->updateAssetsInfo();
-        assetsPage->updateAssetsInfo();
+
+        if(assetsPage==currentWidget())
+            assetsPage->setThreadNoticeSlot(true);
+        else
+        {
+            assetsPage->setThreadUpdateData(true);
+            fUpdateAssetsPage = true;
+        }
 
         if(candyPage==currentWidget())
             candyPage->setThreadNoticeSlot(true);
@@ -862,11 +877,23 @@ void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
 	}
 	else if (txModel == walletModel->getAssetsDistributeTableModel())
 	{
-		assetsPage->updateAssetsInfo();
+        if(assetsPage==currentWidget())
+            assetsPage->setThreadNoticeSlot(true);
+        else
+        {
+            assetsPage->setThreadUpdateData(true);
+            fUpdateAssetsPage = true;
+        }
 	}
 	else if (txModel == walletModel->getCandyTableModel())
 	{
-        candyPage->setThreadUpdateData(true);
+        if(candyPage==currentWidget())
+            candyPage->setThreadNoticeSlot(true);
+        else
+        {
+            candyPage->setThreadUpdateData(true);
+            fUpdateCandyPage = true;
+        }
 	}
 }
 

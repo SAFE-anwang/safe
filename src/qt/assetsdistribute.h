@@ -21,6 +21,15 @@ public:
     ~AssetsDistribute();
 
     void updateAssetsInfo();
+    void setThreadUpdateData(bool update){fThreadUpdateData = update;}
+    void setThreadNoticeSlot(bool notice){fThreadNoticeSlot = notice;}
+    bool getThreadUpdateData(){return fThreadUpdateData;}
+    bool getThreadNoticeSlot(){return fThreadNoticeSlot;}
+    void setAssetStringList(QStringList stringList){assetStringList = stringList;}
+
+Q_SIGNALS:
+    void refreshAssetsInfo();
+
 private:
     void clearDisplay();
     void initWidget();
@@ -59,6 +68,9 @@ private:
     QString msgboxTitle;
     QCompleter* completer;
     QStringListModel* stringListModel;
+    bool fThreadUpdateData;
+    bool fThreadNoticeSlot;
+    QStringList assetStringList;
 };
 
 #endif // ASSETSDISTRIBUTE_H

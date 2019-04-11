@@ -36,11 +36,6 @@ void RefreshCandyPageData(CandyPage* candyPage)
     while(true)
     {
         boost::this_thread::interruption_point();
-        if(!masternodeSync.IsBlockchainSynced())
-        {
-            MilliSleep(100);
-            continue;
-        }
         bool fThreadUpdateData = candyPage->getThreadUpdateData();
         bool fThreadNoticeSlot = candyPage->getThreadNoticeSlot();
         if(!fThreadUpdateData&&!fThreadNoticeSlot)
@@ -128,6 +123,7 @@ CandyPage::CandyPage():
     isUnlockByGlobal = false;
     fThreadUpdateData = false;
     fThreadNoticeSlot = false;
+    assetStringList.clear();
 
     completer = new QCompleter;
     stringListModel = new QStringListModel;

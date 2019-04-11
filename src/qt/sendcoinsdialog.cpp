@@ -708,7 +708,7 @@ void SendCoinsDialog::setBalance(const CAmount& balance, const CAmount& unconfir
     Q_UNUSED(watchImmatureBalance);
     Q_UNUSED(watchLockedBalance);
 
-    if(model && model->getOptionsModel())
+    if(model && model->getOptionsModel() && !ShutdownRequested())
     {
 	    uint64_t bal = 0;
         QSettings settings;
