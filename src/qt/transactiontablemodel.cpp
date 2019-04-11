@@ -28,6 +28,8 @@
 #include <QList>
 
 #include <boost/foreach.hpp>
+#include <boost/thread.hpp>
+
 
 extern int g_nStartSPOSHeight;
 
