@@ -18,6 +18,7 @@
 #include <QTimer>
 #include <QCompleter>
 #include <QStringListModel>
+#include <QStack>
 
 class OptionsModel;
 class PlatformStyle;
@@ -74,7 +75,7 @@ protected:
     virtual void keyPressEvent(QKeyEvent *event);
 
 public:
-    QMap<QString,int> assetUpdateMap;
+    QStack<QString> assetToUpdate;
     QMap<QString,CAssetData> assetDataMap;
 
 private:

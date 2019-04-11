@@ -10,6 +10,7 @@
 
 #include <QWidget>
 #include <memory>
+#include <QStack>
 
 class ClientModel;
 class TransactionFilterProxy;
@@ -26,6 +27,25 @@ namespace Ui {
 QT_BEGIN_NAMESPACE
 class QModelIndex;
 QT_END_NAMESPACE
+
+class AssetBalance
+{
+public:
+    AssetBalance()
+    {
+      amount = 0;
+      unconfirmAmount = 0;
+      lockedAmount = 0;
+      nDecimals = 0;
+      strUnit = "SAFE";
+    }
+public:
+    CAmount amount;
+    CAmount unconfirmAmount;
+    CAmount lockedAmount;
+    int nDecimals;
+    QString strUnit;
+};
 
 /** Overview ("home") page widget */
 class OverviewPage : public QWidget
@@ -45,6 +65,14 @@ public:
     QWidget *setupTabChain(QWidget *prev);
     OverViewEntry *insertEntry(const QString assetName,const CAmount& balance,const CAmount& unconfirmedBalance,const CAmount& lockedBalance,const QString& strAssetUnit,int nDecimals,const QString& logoURL="");
 
+    void setThreadUpdateData(bool update){fThreadUpdateData = update;}
+    void setThreadNoticeSlot(bool notice){fThreadNoticeSlot = notice;}
+    bool getThreadUpdateData(){return fThreadUpdateData;}
+    bool getThreadNoticeSlot(){return fThreadNoticeSlot;}
+    void setAssetStringList(QStringList stringList){assetNames = stringList;}
+    void addAssetToUpdate(QString assetName);
+    bool getCurrAssetInfoByName(const QString& strAssetName,CAmount& amount,CAmount& unconfirmAmount,CAmount& lockedAmount,int& nDecimals,QString& strUnit);
+
 public Q_SLOTS:
     void privateSendStatus();
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& lockedAmount, const CAmount& anonymizedBalance,
@@ -52,12 +80,17 @@ public Q_SLOTS:
     void add();
     void clear();
     void updateTabsAndLabels();
-    void updateAssetsInfo(const QString& strAssetName="");
+    void updateAssetsInfo();
 
 Q_SIGNALS:
     void transactionClicked(const QModelIndex &index);
     void outOfSyncWarningClicked();
     void testRefresh();
+    void refreshAssetsInfo();
+
+public:
+    QStack<QString> assetToUpdate;
+    QMap<QString,AssetBalance> assetBalanceMap;
 
 private:
     QTimer *timer;
@@ -80,12 +113,14 @@ private:
     TxViewDelegate *txdelegate;
     const PlatformStyle *platformStyle;
     std::unique_ptr<TransactionFilterProxy> filter;
+    bool fThreadUpdateData;
+    bool fThreadNoticeSlot;
+    QStringList assetNames;
 
     void SetupTransactionList(int nNumItems);
     void DisablePrivateSendCompletely();
     void initTableView();
     void updateToolBtnIcon(QToolButton* btn,const QString& theme,const QString& iconName);
-    bool getCurrAssetInfoByName(const QString& strAssetName,CAmount& amount,CAmount& unconfirmAmount,CAmount& lockedAmount,int& nDecimals,QString& strUnit);
 
 private Q_SLOTS:
     void togglePrivateSend();

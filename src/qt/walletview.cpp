@@ -407,7 +407,14 @@ void WalletView::updateAssetsInfo(int showType, bool bConfirmedNewAssets, const 
 
     bool bShowAll = showType==SHOW_ALL;
 
-    overviewPage->updateAssetsInfo(strAssetName);
+    overviewPage->addAssetToUpdate(strAssetName);
+    if(overviewPage==currentWidget())
+        overviewPage->setThreadNoticeSlot(true);
+    else
+    {
+        overviewPage->setThreadUpdateData(true);
+        fUpdateOverviewPage = true;
+    }
 
     if(bShowAll)
     {
@@ -473,6 +480,11 @@ void WalletView::processNewTransaction(const QModelIndex& parent, int start, int
 
 void WalletView::gotoOverviewPage()
 {
+    if(fUpdateOverviewPage)
+    {
+        fUpdateOverviewPage = false;
+        overviewPage->updateAssetsInfo();
+    }
     setCurrentWidget(overviewPage);
 }
 
@@ -774,12 +786,41 @@ void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView)
 	Q_EMIT walletView->refreshFinished(txModel);
 }
 
+void RefreshDataStartUp(WalletModel *walletModel, WalletView *walletView)
+{
+    TransactionTableModel* assetModel = walletModel->getAssetsDistributeTableModel();
+    if(assetModel){
+        assetModel->refreshWallet();
+    }
+    Q_EMIT walletView->refreshFinished(assetModel);
+
+    TransactionTableModel* transactionModel = walletModel->getTransactionTableModel();
+    if(transactionModel)
+    {
+        transactionModel->refreshWallet();
+        MilliSleep(1000);
+    }
+    Q_EMIT walletView->refreshFinished(transactionModel);
+}
+
 void RefreshWalletDataStartUp(WalletModel *walletModel, WalletView *walletView)
 {
+    bool updateOnce = true;
+    int height = 0,waitTimes = 0;
     while(true)
     {
         if(!masternodeSync.IsBlockchainSynced())
         {
+            waitTimes++;
+            if(updateOnce&&waitTimes>50)
+            {
+                if(walletModel == NULL || walletView==NULL){
+                    continue;
+                }
+                updateOnce = false;
+                RefreshDataStartUp(walletModel,walletView);
+                height = chainActive.Height();
+            }
             MilliSleep(100);
             continue;
         }
@@ -787,19 +828,8 @@ void RefreshWalletDataStartUp(WalletModel *walletModel, WalletView *walletView)
             return;
         }
         RenameThread("RefreshWalletDataStartUp");
-        TransactionTableModel* assetModel = walletModel->getAssetsDistributeTableModel();
-        if(assetModel){
-            assetModel->refreshWallet();
-        }
-        Q_EMIT walletView->refreshFinished(assetModel);
-
-        TransactionTableModel* transactionModel = walletModel->getTransactionTableModel();
-        if(transactionModel)
-        {
-            transactionModel->refreshWallet();
-            MilliSleep(2000);
-        }
-        Q_EMIT walletView->refreshFinished(transactionModel);
+        if(height != chainActive.Height())
+            RefreshDataStartUp(walletModel,walletView);
         break;
     }
 }
@@ -847,7 +877,14 @@ void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
 
 	if (txModel == walletModel->getTransactionTableModel())
 	{
-        overviewPage->updateAssetsInfo();
+        if(overviewPage==currentWidget())
+            overviewPage->setThreadNoticeSlot(true);
+        else
+        {
+            overviewPage->setThreadUpdateData(true);
+            fUpdateOverviewPage = true;
+        }
+
         if(receiveCoinsPage==currentWidget())
             receiveCoinsPage->setThreadNoticeSlot(true);
         else

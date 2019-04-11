@@ -689,31 +689,6 @@ void CandyPage::setModel(WalletModel *model)
     this->model = model;
 }
 
-void CandyPage::setThreadUpdateData(bool update)
-{
-    this->fThreadUpdateData = update;
-}
-
-void CandyPage::setThreadNoticeSlot(bool notice)
-{
-    this->fThreadNoticeSlot = notice;
-}
-
-bool CandyPage::getThreadUpdateData()
-{
-    return this->fThreadUpdateData;
-}
-
-bool CandyPage::getThreadNoticeSlot()
-{
-    return this->fThreadNoticeSlot;
-}
-
-void CandyPage::setAssetStringList(QStringList stringList)
-{
-    assetStringList = stringList;
-}
-
 void CandyPage::updateAssetsInfo()
 {
     disconnect(ui->assetsComboBox,SIGNAL(currentTextChanged(QString)),this,SLOT(updateCandyInfo(QString)));

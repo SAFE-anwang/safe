@@ -101,6 +101,7 @@ private:
     bool fUpdateCandyPage = false;
     bool fUpdateReceivedDlg = false;
     bool fUpdateAssetsPage = false;
+    bool fUpdateOverviewPage = false;
 
 public Q_SLOTS:
     /** Switch to overview (home) page */

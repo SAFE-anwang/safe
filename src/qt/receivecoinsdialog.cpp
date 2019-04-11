@@ -57,23 +57,18 @@ void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
             receiveCoinsDialog->setThreadNoticeSlot(false);
         std::vector<uint256>  assetIdVec;
 
-        LOCK(cs_receive);
         {
+            LOCK(cs_receive);
             if(receiveCoinsDialog->getAssetFound())
             {
                 uint256 assetId;
-                for(QMap<QString,int>::iterator iter = receiveCoinsDialog->assetUpdateMap.begin();
-                    iter != receiveCoinsDialog->assetUpdateMap.end();++iter)
+                while(!receiveCoinsDialog->assetToUpdate.isEmpty())
                 {
                     boost::this_thread::interruption_point();
-                    QString assetName = iter.key();
-                    if(iter.value() == 1)
-                    {
-                        if(!GetAssetIdByAssetName(assetName.toStdString(),assetId))
-                            continue;
-                        assetIdVec.push_back(assetId);
-                    }
-                    receiveCoinsDialog->assetUpdateMap[assetName] = 0;
+                    QString assetName = receiveCoinsDialog->assetToUpdate.pop();
+                    if(!GetAssetIdByAssetName(assetName.toStdString(),assetId))
+                        continue;
+                    assetIdVec.push_back(assetId);
                 }
             }else
             {
@@ -237,7 +232,7 @@ void ReceiveCoinsDialog::updateAssetsFound(const QString &assetName)
 {
     LOCK(cs_receive);
     fAssetsFound = true;
-    assetUpdateMap[assetName] = 0;
+    assetToUpdate.push_back(assetName);
     setThreadNoticeSlot(true);
 }
 

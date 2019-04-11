@@ -34,11 +34,73 @@
 #include <QToolButton>
 #include <boost/thread.hpp>
 
-
 #define ICON_OFFSET 16
 #define DECORATION_SIZE 54
 #define NUM_ITEMS 5
 #define NUM_ITEMS_ADV 7
+
+extern boost::thread_group *g_threadGroup;
+
+CCriticalSection cs_overview;
+
+void RefreshOverviewPageData(WalletModel* walletModel,OverviewPage* overviewPage)
+{
+    RenameThread("RefreshCandyPageData");
+    while(true)
+    {
+        boost::this_thread::interruption_point();
+        bool fThreadUpdateData = overviewPage->getThreadUpdateData();
+        bool fThreadNoticeSlot = overviewPage->getThreadNoticeSlot();
+        if(!fThreadUpdateData&&!fThreadNoticeSlot)
+        {
+            MilliSleep(100);
+            continue;
+        }
+
+        if(fThreadUpdateData)
+            overviewPage->setThreadUpdateData(false);
+        if(fThreadNoticeSlot)
+            overviewPage->setThreadNoticeSlot(false);
+        {
+            LOCK(cs_overview);
+            QStringList assetsNames;
+            //tranfer asset,get candy will recv new assets
+            walletModel->getAssetsNames(false,assetsNames);
+            overviewPage->setAssetStringList(assetsNames);
+            if(overviewPage->assetToUpdate.isEmpty())
+            {
+                //update all asset
+                for(int i=0;i<assetsNames.size();i++)
+                {
+                    boost::this_thread::interruption_point();
+                    QString strAssetName = assetsNames[i];
+                    AssetBalance& assetBalance = overviewPage->assetBalanceMap[strAssetName];
+                    if(!overviewPage->getCurrAssetInfoByName(strAssetName,assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,
+                                                                   assetBalance.nDecimals,assetBalance.strUnit))
+                        continue;
+                }
+            }
+
+
+            //update some asset
+            while(!overviewPage->assetToUpdate.isEmpty())
+            {
+                boost::this_thread::interruption_point();
+                QString strAssetName = overviewPage->assetToUpdate.pop();
+                AssetBalance assetBalance;
+                if(!overviewPage->getCurrAssetInfoByName(strAssetName,assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,
+                                           assetBalance.nDecimals,assetBalance.strUnit))
+                    continue;
+
+                overviewPage->assetBalanceMap[strAssetName] = assetBalance;
+            }
+
+            if(fThreadNoticeSlot)
+                Q_EMIT overviewPage->refreshAssetsInfo();
+
+        }//end of lock
+    }//end of while
+}
 
 class TxViewDelegate : public QAbstractItemDelegate
 {
@@ -335,58 +397,42 @@ bool OverviewPage::getCurrAssetInfoByName(const QString &strAssetName, CAmount &
     return false;
 }
 
-void OverviewPage::updateAssetsInfo(const QString &strAssetName)
+void OverviewPage::updateAssetsInfo()
 {
-    bool updateOneAsset = !strAssetName.isEmpty();
     QList<QString> entryList;
-    QStringList assetsNames;
-    //tranfer asset,get candy will recv new assets
-    walletModel->getAssetsNames(false,assetsNames);
-
-    CAmount amount = 0,unconfirmAmount=0,lockedAmount=0;
-    int nDecimals = 0;
-    QString strUnit = "SAFE";
-
     //update existed assets entry
     for(int i = 0; i < ui->entries->count(); ++i)
     {
         boost::this_thread::interruption_point();
         OverViewEntry *entry = qobject_cast<OverViewEntry*>(ui->entries->itemAt(i)->widget());
         QString strEntryAssetName = entry->getAssetName();
-        if(updateOneAsset&&strEntryAssetName!=strAssetName)
+        if(!assetBalanceMap.contains(strEntryAssetName))
             continue;
-        if(!assetsNames.contains(strEntryAssetName))
-            continue;
-        if(!getCurrAssetInfoByName(strEntryAssetName,amount,unconfirmAmount,lockedAmount,nDecimals,strUnit))
-            continue;
-        entry->setAssetsInfo(amount,unconfirmAmount,lockedAmount,nDecimals,strUnit);
+        AssetBalance& assetBalance = assetBalanceMap[strEntryAssetName];
+        entry->setAssetsInfo(assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,assetBalance.nDecimals,assetBalance.strUnit);
         entry->updateAssetsInfo();
         entryList.push_back(strEntryAssetName);
-        //only update one asset
-        if(updateOneAsset)
-            return;
-    }
-
-    //the asset is a new asset
-    if(updateOneAsset)
-    {
-        if(getCurrAssetInfoByName(strAssetName,amount,unconfirmAmount,lockedAmount,nDecimals,strUnit))
-            insertEntry(strAssetName,amount,unconfirmAmount,lockedAmount,strUnit,nDecimals);
-        return;
     }
 
     //insert new assets entry
-    Q_FOREACH(const QString& assetName,assetsNames)
+    QMap<QString,AssetBalance>::iterator iter = assetBalanceMap.begin();
+    for(;iter != assetBalanceMap.end();++iter)
     {
         boost::this_thread::interruption_point();
+        QString assetName = iter.key();
         if(entryList.contains(assetName))
             continue;
 
-        if(!getCurrAssetInfoByName(assetName,amount,unconfirmAmount,lockedAmount,nDecimals,strUnit))
-            continue;
+        const AssetBalance& assetBalance = iter.value();
+        insertEntry(assetName,assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,assetBalance.strUnit,assetBalance.nDecimals);
 
-        insertEntry(assetName,amount,unconfirmAmount,lockedAmount,strUnit,nDecimals);
     }
+}
+
+void OverviewPage::addAssetToUpdate(QString assetName)
+{
+    LOCK(cs_overview);
+    assetToUpdate.push_back(assetName);
 }
 
 OverViewEntry * OverviewPage::insertEntry(const QString assetName, const CAmount &balance, const CAmount &unconfirmedBalance, const CAmount &lockedBalance, const QString &strAssetUnit, int nDecimals, const QString &logoURL)
@@ -502,7 +548,11 @@ void OverviewPage::setWalletModel(WalletModel *model)
         connect(ui->togglePrivateSend, SIGNAL(clicked()), this, SLOT(togglePrivateSend()));
         updateWatchOnlyLabels(model->haveWatchOnly());
         connect(model, SIGNAL(notifyWatchonlyChanged(bool)), this, SLOT(updateWatchOnlyLabels(bool)));
+
+        connect(this,SIGNAL(refreshAssetsInfo()),this,SLOT(updateAssetsInfo()));
     }
+    if(model && g_threadGroup)
+        g_threadGroup->create_thread(boost::bind(&RefreshOverviewPageData,walletModel,this));
 }
 
 void OverviewPage::updateDisplayUnit()
