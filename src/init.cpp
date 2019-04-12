@@ -109,7 +109,7 @@ extern unsigned int g_nMasternodeMinCount;
 extern int g_nProtocolV3Height;
 extern std::mutex g_mutexAllPayeeInfo;
 extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
-extern int64_t AllowableErrorTime;
+extern unsigned int g_nAllowableErrorTime;
 
 
 
@@ -1548,7 +1548,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nMasternodeCanBeSelectedTime = GetArg("-masternode_can_be_selected_time", g_nMasternodeCanBeSelectedTime);
     g_nMasternodeMinCount = GetArg("-masternode_min_count", g_nMasternodeMinCount);
     g_nProtocolV3Height = GetArg("-spos_start_lock_height", g_nProtocolV3Height);
-    AllowableErrorTime = GetArg("-spos_allowable_error_time", AllowableErrorTime);
+    g_nAllowableErrorTime = GetArg("-spos_allowable_error_time", g_nAllowableErrorTime);
 #else
 #error unsupported <safe chain name>
 #endif

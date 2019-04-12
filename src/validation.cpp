@@ -112,7 +112,7 @@ std::mutex g_mutexTmpAllCandyInfo;
 std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
-int64_t AllowableErrorTime = 2;//XJTODO may set 120
+int64_t g_nAllowableErrorTime = 2;//XJTODO may set 120
 #if SCN_CURRENT == SCN__main
 CAmount nMiningIncentives = 310662692;//SQTODO
 #elif SCN_CURRENT == SCN__dev
@@ -5763,9 +5763,9 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
 
     int64_t nNowTime = GetTime();
     //Synchronization of old blocks will result in a large difference between block time and local time, and cannot be compared using absolute values.
-    if (block.GetBlockTime() - nNowTime > AllowableErrorTime)
+    if (block.GetBlockTime() - nNowTime > g_nAllowableErrorTime)
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock():Block time(block.nTime:%lld) minus local time(now:%lld) exceeds allowable time error range(allowableErrorTime:%d),height:%d",
-                                    block.GetBlockTime(), nNowTime,AllowableErrorTime,nHeight), REJECT_INVALID, "bad-nTime", true);
+                                    block.GetBlockTime(), nNowTime,g_nAllowableErrorTime,nHeight), REJECT_INVALID, "bad-nTime", true);
 
     CTransaction tempTransaction  = block.vtx[0];
     const CTxOut &out = tempTransaction.vout[0];

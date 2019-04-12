@@ -62,6 +62,7 @@ extern int64_t g_nStartNewLoopTime;
 extern std::vector<CMasternode> g_vecResultMasternodes;
 extern std::map<CNetAddr, LocalServiceInfo> mapLocalHost;
 extern CCriticalSection cs_spos;
+extern unsigned int g_nAllowableErrorTime;
 
 class ScoreCompare
 {
@@ -672,11 +673,12 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     //1.3
     pblock->nTime = GetTime();
     int64_t nCurrTime = GetTimeMillis();
-    if(nCurrTime < (int64_t)pindexPrev->nTime*1000)
+    if(nCurrTime + g_nAllowableErrorTime < (int64_t)pindexPrev->nTime*1000 )
     {
         string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
         string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
-        LogPrintf("SPOS_Warning:current time(%d,%s) less than new block time(%d,%s)\n",nCurrTime/1000,strCurrTime,pindexPrev->nTime,strBlockTime);
+        LogPrintf("SPOS_Warning:current time(%d,%s) add allowable err time %d less than new block time(%d,%s)\n",nCurrTime/1000,strCurrTime,g_nAllowableErrorTime,
+                  pindexPrev->nTime,strBlockTime);
         return;
     }
 
