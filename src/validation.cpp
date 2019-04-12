@@ -114,11 +114,11 @@ bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
 int64_t AllowableErrorTime = 2;//XJTODO may set 120
 #if SCN_CURRENT == SCN__main
-CAmount nMiningIncentives = 155331350;//SQTODO
+CAmount nMiningIncentives = 310662692;//SQTODO
 #elif SCN_CURRENT == SCN__dev
-CAmount nMiningIncentives = 360000000;//SQTODO
+CAmount nMiningIncentives = 450000000;//SQTODO
 #elif SCN_CURRENT == SCN__test
-CAmount nMiningIncentives = 36000000000;//SQTODO
+CAmount nMiningIncentives = 45000000000;//SQTODO
 #else
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
@@ -3015,9 +3015,6 @@ CAmount GetMasternodePayment(int nHeight, CAmount blockValue)
     if(nHeight > nMNPIBlock+(nMNPIPeriod* 6)) ret += blockValue / 40; // 261680 - 45.0% - 2015-05-01
     if(nHeight > nMNPIBlock+(nMNPIPeriod* 7)) ret += blockValue / 40; // 278960 - 47.5% - 2015-06-01
     if(nHeight > nMNPIBlock+(nMNPIPeriod* 9)) ret += blockValue / 40; // 313520 - 50.0% - 2015-08-03
-
-    if (IsStartSPosHeight(nHeight))
-        ret = ret / ConvertBlockNum();
 
     return ret;
 }
