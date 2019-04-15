@@ -662,7 +662,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     int64_t nIntervalMS = 500;
     if(masternodeSPosCount == 0)
     {
-        LogPrintf("SPOS_Error:vecMasternodes is empty\n");
+        LogPrintf("SPOS_Error:vecMasternodes is empty,please checkout masternodelist full or config\n");
         return;
     }
 
@@ -677,7 +677,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     {
         string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
         string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
-        LogPrintf("SPOS_Warning:current time(%d,%s) add allowable err time %d less than new block time(%d,%s)\n",nCurrTime/1000,strCurrTime,g_nAllowableErrorTime,
+        LogPrintf("SPOS_Warning:current time(%lld,%s) add allowable err time %d less than new block time(%lld,%s)\n",nCurrTime/1000,strCurrTime,g_nAllowableErrorTime,
                   pindexPrev->nTime,strBlockTime);
         return;
     }

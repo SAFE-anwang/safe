@@ -9419,7 +9419,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
 
     LogPrintf("SPOS_Info:--------------------------------------------------------\n");
     LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d.\n",nCurrBlockHeight);
-    std::map<COutPoint, CMasternode> mapMasternodes;
+    std::map<COutPoint, CMasternode> mapMeetedMasternodes;
     bool fFilterSpent = true;
     std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
     GetAllPayeeInfoMap(mapAllPayeeInfo);
@@ -9439,11 +9439,11 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
             tempcoutpoint.n = tempcoutpointdata.n;
              std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
             if (tempit != fullmapMasternodes.end())
-                mapMasternodes[tempcoutpoint] = tempit->second;
+                mapMeetedMasternodes[tempcoutpoint] = tempit->second;
         }
     }
     else
-        mnodeman.GetFullMasternodeData(mapMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight);
+        mnodeman.GetFullMasternodeData(mapMeetedMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight);
 
     if(!g_vecResultMasternodes.empty()){
         bClearVec = true;
@@ -9465,7 +9465,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         return;
     }
 
-    if(mapMasternodes.empty())
+    if(mapMeetedMasternodes.empty())
     {
         LogPrintf("SPOS_Error:mapMasternodes is empty\n");
         nSelectMasterNodeRet = -1;
@@ -9473,13 +9473,14 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     }
 
     //4.1
-    unsigned int nTotalMasternode = mapMasternodes.size();
-    int64_t interval = nTotalMasternode * Params().GetConsensus().nSPOSTargetSpacing;
+    unsigned int nTotalMasternode = mapMeetedMasternodes.size();
+    //int64_t interval = nTotalMasternode * Params().GetConsensus().nSPOSTargetSpacing;
+    unsigned int intervalHeight = nTotalMasternode / 2;
 
     std::map<COutPoint, CMasternode> mapMasternodesL1,mapMasternodesL2,mapMasternodesL3;
 
-    std::map<COutPoint, CMasternode>::iterator it = mapMasternodes.begin();
-    for (; it != mapMasternodes.end(); it++)
+    std::map<COutPoint, CMasternode>::iterator it = mapMeetedMasternodes.begin();
+    for (; it != mapMeetedMasternodes.end(); it++)
     {
         const CMasternode& mn = it->second;
         std::string strPubKeyCollateralAddress = mn.pubKeyCollateralAddress.GetID().ToString();
@@ -9490,10 +9491,10 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
                       mn.addr.ToStringIP(),strPubKeyCollateralAddress);
         }else
         {
-            uint32_t nIntervalTime = nTime - tempit->second.blockTime;
-            if (nIntervalTime <= interval)
+            uint32_t nIntervalHeight = nCurrBlockHeight - tempit->second.nHeight;
+            if (nIntervalHeight <= intervalHeight)
                 mapMasternodesL1[it->first] = it->second;
-            else if (nIntervalTime > interval && nIntervalTime <=  2 *interval)
+            else if (nIntervalHeight > intervalHeight && nIntervalHeight <=  2 *intervalHeight)
                 mapMasternodesL2[it->first] = it->second;
             else
                 mapMasternodesL3[it->first] = it->second;
@@ -9562,8 +9563,8 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
 
     //no \n,connect two log str
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),blockTime:%lld(%s),select %d masternode,"
-              "min online masternode count:%d,nRemainNum:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime,strStartNewLoopTime,nTime,
-              strBlockTime,size,g_nMasternodeMinCount,nRemainNum);
+              "min online masternode count:%d,nRemainNum:%d,intervalHeight:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime/1000,strStartNewLoopTime,nTime,
+              strBlockTime,size,g_nMasternodeMinCount,nRemainNum,intervalHeight);
 
     LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
               "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,
