@@ -90,7 +90,10 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     GetProxy(NET_IPV4, proxy);
 
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("version", CLIENT_VERSION));
+    //SQTO
+    //obj.push_back(Pair("version", CLIENT_VERSION));
+    obj.push_back(Pair("version", 2050001));
+
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
 #ifdef ENABLE_WALLET
     if (pwalletMain) {
