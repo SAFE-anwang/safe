@@ -4852,12 +4852,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             LogPrintf("SPOS_Warning:priv9Index is NULL,height:%d,connect new block:%d\n",heightIndex,pindex->nHeight);
             return true;
         }
-        int tipHeight = chainActive.Tip()->nHeight;
-        if(tipHeight != pindex->nHeight)
-        {
-            LogPrintf("SPOS_Warning:tipHeight(%d) is not equal currHeight(%d),connect new block:%d\n",tipHeight,pindex->nHeight,pindex->nHeight);
-            return true;
-        }
 
         if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
         {
