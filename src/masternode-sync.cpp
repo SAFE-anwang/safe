@@ -480,7 +480,7 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
         // because there is no way we can update tip not having best header
         int64_t currTime = GetTime();
         int64_t ret = currTime-g_nMasternodeResetTime;
-        if(ret>g_nMasternodeResetInterval)
+        //if(ret>g_nMasternodeResetInterval) //XJTODO
         {
             Reset();
             g_nMasternodeResetTime = currTime;

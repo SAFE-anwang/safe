@@ -279,7 +279,14 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
         bool bClearVec=false;
         int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
         int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
-        SelectMasterNodeByPayee(chainActive.Height(), chainActive.Tip()->nTime, true, true,tmpVecResultMasternodes
+        int heightIndex = chainActive.Height()-9;
+        CBlockIndex* priv9Index = chainActive[heightIndex];
+        if(priv9Index==NULL)
+        {
+            LogPrintf("SPOS_Warning:spork priv9Index is NULL,height:%d\n",heightIndex);
+            return;
+        }
+        SelectMasterNodeByPayee(chainActive.Height(), chainActive.Tip()->nTime,priv9Index->nTime, true, true,tmpVecResultMasternodes
                                 ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
     }

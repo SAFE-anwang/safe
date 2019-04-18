@@ -46,7 +46,6 @@
 #include "config/safe-chain.h"
 
 
-
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
 #endif
@@ -4846,13 +4845,27 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         bool bClearVec=false;
         int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
         int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
+        int heightIndex = pindex->nHeight-9;
+        CBlockIndex* priv9Index = chainActive[heightIndex];
+        if(priv9Index==NULL)
+        {
+            LogPrintf("SPOS_Warning:priv9Index is NULL,height:%d,connect new block:%d\n",heightIndex,pindex->nHeight);
+            return true;
+        }
+        int tipHeight = chainActive.Tip()->nHeight;
+        if(tipHeight != pindex->nHeight)
+        {
+            LogPrintf("SPOS_Warning:tipHeight(%d) is not equal currHeight(%d),connect new block:%d\n",tipHeight,pindex->nHeight,pindex->nHeight);
+            return true;
+        }
+
         if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
         {
-            SelectMasterNodeByPayee(pindex->nHeight,block.nTime, true, false,tmpVecResultMasternodes
+            SelectMasterNodeByPayee(pindex->nHeight,block.nTime,priv9Index->nTime, true, false,tmpVecResultMasternodes
                                     ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }else
         {
-            SelectMasterNodeByPayee(pindex->nHeight,block.nTime, false, false,tmpVecResultMasternodes
+            SelectMasterNodeByPayee(pindex->nHeight,block.nTime,priv9Index->nTime, false, false,tmpVecResultMasternodes
                                     ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
@@ -9300,7 +9313,7 @@ void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vec
     }
 }
 
-void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes,uint32_t nTime,
+void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes,uint32_t nScoreTime,
                            std::string strArrName,std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo)
 {
     //sort by score
@@ -9312,7 +9325,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << hash;
-        ss << nTime;
+        ss << nScoreTime;
         uint256 score = ss.GetHash();
         scoreMasternodes[score] = mn;
     }
@@ -9332,10 +9345,10 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
                           mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
             }else
             {
-                uint32_t nIntervalTime = nTime - tempit->second.blockTime;
+                uint32_t nIntervalTime = nScoreTime - tempit->second.blockTime;
                 LogPrintf("SPOS_Message:%s[%d]:ip:%s,collateralAddress:%s,nIntervalTime:%d,nTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
                           "lastHeight:%d,nState:%d\n",strArrName,logCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
-                          nIntervalTime,nTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
+                          nIntervalTime,nScoreTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
                           mnpair.second.nActiveState);
             }
         }
@@ -9348,7 +9361,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
     }
 
     //random the master node
-    uint64_t now_hi = uint64_t(nTime) << 32;
+    uint64_t now_hi = uint64_t(nScoreTime) << 32;
     for( uint32_t i = 0; i < vecResultMasternodes.size(); ++i )
     {
         /// High performance random generator
@@ -9386,7 +9399,7 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
 }
 
 
-void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
+void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime,uint32_t nScoreTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
                              ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime)
 {
     if(!masternodeSync.IsSynced()&&g_vecResultMasternodes.empty())
@@ -9422,6 +9435,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     std::map<COutPoint, CMasternode> mapMeetedMasternodes;
     bool fFilterSpent = true;
     std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
+    int nFullMasternodeSize = mnodeman.size();
     GetAllPayeeInfoMap(mapAllPayeeInfo);
     if (bSpork)
     {
@@ -9449,33 +9463,23 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
         bClearVec = true;
     }
 
-    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
-    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
-
     //1.3.3
     nStartNewLoopTime = (int64_t)nTime*1000;
     nSposGeneratedIndex = -2;
     nSelectMasterNodeRet = 1;
-
-    if(nStartNewLoopTime < nTime*1000)
-    {
-        LogPrintf("SPOS_Warning:current start new loop time(%lld,%s) less than block time(%lld,%s)\n",nStartNewLoopTime/1000,strStartNewLoopTime
-                  ,nTime,strBlockTime);
-        nSelectMasterNodeRet = -1;
-        return;
-    }
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
 
     if(mapMeetedMasternodes.empty())
     {
-        LogPrintf("SPOS_Error:mapMasternodes is empty\n");
+        LogPrintf("SPOS_Error:meeted mapMasternodes is empty,actual masternode map size:%d\n",mnodeman.GetFullMasternodeMap().size());
         nSelectMasterNodeRet = -1;
         return;
     }
 
     //4.1
-    unsigned int nTotalMasternode = mapMeetedMasternodes.size();
-    //int64_t interval = nTotalMasternode * Params().GetConsensus().nSPOSTargetSpacing;
-    unsigned int intervalHeight = nTotalMasternode / 2;
+    unsigned int nMeetedMasternodeSize = mapMeetedMasternodes.size();
+    unsigned int intervalHeight = nMeetedMasternodeSize / 2;
 
     std::map<COutPoint, CMasternode> mapMasternodesL1,mapMasternodesL2,mapMasternodesL3;
 
@@ -9502,24 +9506,24 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
     }
 
     std::vector<CMasternode> vecResultMasternodesL1,vecResultMasternodesL2,vecResultMasternodesL3;
-    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nTime, "L1", mapAllPayeeInfo);
-    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nTime, "L2", mapAllPayeeInfo);
-    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nTime, "L3", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nScoreTime, "L1", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nScoreTime, "L2", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nScoreTime, "L3", mapAllPayeeInfo);
 
     //5
     unsigned int vec1Size = vecResultMasternodesL1.size();
     unsigned int vec2Size = vecResultMasternodesL2.size();
     unsigned int vec3Size = vecResultMasternodesL3.size();
-    unsigned int nP1 = ((double)vec1Size / nTotalMasternode) * g_nMasternodeSPosCount;
-    unsigned int nP2 = ((double)vec2Size / nTotalMasternode) * g_nMasternodeSPosCount;
-    unsigned int nP3 = ((double)vec3Size / nTotalMasternode) * g_nMasternodeSPosCount;
+    unsigned int nP1 = ((double)vec1Size / nMeetedMasternodeSize) * g_nMasternodeSPosCount;
+    unsigned int nP2 = ((double)vec2Size / nMeetedMasternodeSize) * g_nMasternodeSPosCount;
+    unsigned int nP3 = ((double)vec3Size / nMeetedMasternodeSize) * g_nMasternodeSPosCount;
 
     unsigned int nMnSize = vec1Size + vec2Size + vec3Size;
     if (nMnSize < g_nMasternodeMinCount)
     {
-        LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,"
+        LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,"
                   "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
-                  nMnSize,g_nMasternodeMinCount,nTotalMasternode,mapAllPayeeInfo.size(),nP1,nP2,nP3,
+                  nMnSize,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),nP1,nP2,nP3,
                   mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
         nSelectMasterNodeRet = -1;
         return;
@@ -9566,10 +9570,10 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime, cons
               "min online masternode count:%d,nRemainNum:%d,intervalHeight:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime/1000,strStartNewLoopTime,nTime,
               strBlockTime,size,g_nMasternodeMinCount,nRemainNum,intervalHeight);
 
-    LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
+    LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
               "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,
-              nTotalMasternode,mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
-              nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
+              nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),
+              mapMasternodesL3.size(),nP1,nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
     for( uint32_t i = 0; i < size; ++i )
     {
         string nPStr = "P3";

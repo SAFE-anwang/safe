@@ -673,7 +673,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     //1.3
     pblock->nTime = GetTime();
     int64_t nCurrTime = GetTimeMillis();
-    if(nCurrTime + g_nAllowableErrorTime < (int64_t)pindexPrev->nTime*1000 )
+    if(nCurrTime/1000 + g_nAllowableErrorTime < (int64_t)pindexPrev->nTime)
     {
         string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
         string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
