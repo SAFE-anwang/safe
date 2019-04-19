@@ -482,6 +482,8 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
         int64_t ret = currTime-g_nMasternodeResetTime;
         //if(ret>g_nMasternodeResetInterval) //XJTODO
         {
+            static int cnt = 0;
+            LogPrintf("SPOS_Message:update block Reset:%d times,retTime:%d\n",cnt++,ret);
             Reset();
             g_nMasternodeResetTime = currTime;
         }

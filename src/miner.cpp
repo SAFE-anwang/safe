@@ -654,7 +654,8 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,CBlockIndex* pindexPrev
                              ,unsigned int nNewBlockHeight,CBlock *pblock,boost::shared_ptr<CReserveScript>& coinbaseScript
                              ,unsigned int nTransactionsUpdatedLast,int64_t& nNextTime,unsigned int& nSleepMS
-                             ,int64_t& nNextLogTime,unsigned int& nWaitBlockHeight,std::vector<CMasternode>& tmpVecResultMasternodes
+                             ,int64_t& nNextLogTime,int64_t& nNextLogAllowTime,unsigned int& nWaitBlockHeight,
+                             std::vector<CMasternode>& tmpVecResultMasternodes
                              ,int nSposGeneratedIndex,int64_t& nStartNewLoopTime)
 {
     int index = 0;
@@ -675,10 +676,14 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     int64_t nCurrTime = GetTimeMillis();
     if(nCurrTime/1000 + g_nAllowableErrorTime < (int64_t)pindexPrev->nTime)
     {
-        string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
-        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
-        LogPrintf("SPOS_Warning:current time(%lld,%s) add allowable err time %d less than new block time(%lld,%s)\n",nCurrTime/1000,strCurrTime,g_nAllowableErrorTime,
-                  pindexPrev->nTime,strBlockTime);
+        if(nCurrTime-nNextLogAllowTime>10*1000)
+        {
+            string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
+            string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
+            LogPrintf("SPOS_Warning:current time(%lld,%s) add allowable err time %d less than new block time(%lld,%s)\n",nCurrTime/1000,strCurrTime,g_nAllowableErrorTime,
+                      pindexPrev->nTime,strBlockTime);
+            nNextLogAllowTime = nCurrTime;
+        }
         return;
     }
 
@@ -825,7 +830,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             g_nStartNewLoopTime = GetTimeMillis()*1000;
         }
         unsigned int nWaitBlockHeight = 0;
-        int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0;
+        int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0,nNextLogAllowTime = 0;
         while (true) {
             if (chainparams.MiningRequiresPeers()) {
                 // Busy-wait for the network to come online so we don't waste time mining
@@ -891,8 +896,8 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 }
                 if(masternodeSPosCount != 0)
                 {
-                    ConsensusUseSPos(chainparams,connman,pindexPrev,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime
-                                     ,nSleepMS,nNextLogTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,nStartNewLoopTime);
+                    ConsensusUseSPos(chainparams,connman,pindexPrev,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime,nSleepMS
+                                     ,nNextLogTime,nNextLogAllowTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,nStartNewLoopTime);
                 }else if(nLastMasternodeCount != 0)
                 {
                     LogPrintf("SPOS_Error:vec_masternodes is empty\n");

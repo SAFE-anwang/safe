@@ -9339,7 +9339,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
                           mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
             }else
             {
-                uint32_t nIntervalTime = nScoreTime - tempit->second.blockTime;
+                int nIntervalTime = nScoreTime - tempit->second.blockTime;
                 LogPrintf("SPOS_Message:%s[%d]:ip:%s,collateralAddress:%s,nIntervalTime:%d,nTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
                           "lastHeight:%d,nState:%d\n",strArrName,logCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
                           nIntervalTime,nScoreTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,

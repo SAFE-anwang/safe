@@ -1672,8 +1672,6 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
         }
         for(auto& payeeInfo : mapAllPayeeInfo)
         {
-            LogPrintf("SPOS_Warning:XJTODO,payee(%s) not found in masternode map,nHeight:%d,blockTime:%lld,nPayeeTimes:%d\n",payeeInfo.first,
-                      payeeInfo.second.nHeight,payeeInfo.second.blockTime,payeeInfo.second.nPayeeTimes);
             if(mapAddressMasternodes.count(payeeInfo.first)<=0)
             {
                 LogPrintf("SPOS_Warning:payee(%s) not found in masternode map,nHeight:%d,blockTime:%lld,nPayeeTimes:%d\n",payeeInfo.first,
@@ -1681,13 +1679,10 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
                 continue;
             }
             std::pair<COutPoint,CMasternode>& mnpair = mapAddressMasternodes[payeeInfo.first];
-            LogPrintf("SPOS_Message:XJTODO,payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
-                      payeeInfo.second.nHeight,mnpair.second.addr.ToStringIP(),payeeInfo.second.blockTime,
-                      payeeInfo.second.nPayeeTimes,nHeight);
             if(nHeight-payeeInfo.second.nHeight>=10000)
             {
                 LogPrintf("SPOS_Message:payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
-                          payeeInfo.second.nHeight,mnpair.second.addr.ToStringIP(),payeeInfo.second.blockTime,
+                          mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
                           payeeInfo.second.nPayeeTimes,nHeight);
                 continue;
             }
