@@ -4839,31 +4839,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
-    if(IsStartSPosHeight(pindex->nHeight+1))
-    {
-        std::vector<CMasternode> tmpVecResultMasternodes;
-        bool bClearVec=false;
-        int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
-        int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
-        int heightIndex = pindex->nHeight-9;
-        CBlockIndex* priv9Index = chainActive[heightIndex];
-        if(priv9Index==NULL)
-        {
-            LogPrintf("SPOS_Warning:priv9Index is NULL,height:%d,connect new block:%d\n",heightIndex,pindex->nHeight);
-            return true;
-        }
-
-        if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
-        {
-            SelectMasterNodeByPayee(pindex->nHeight,block.nTime,priv9Index->nTime, true, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
-        }else
-        {
-            SelectMasterNodeByPayee(pindex->nHeight,block.nTime,priv9Index->nTime, false, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
-        }
-        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
-    }
     LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
     return true;
 }
@@ -5139,6 +5114,33 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
     mempool.removeForBlock(pblock->vtx, pindexNew->nHeight, txConflicted, !IsInitialBlockDownload());
     // Update chainActive & related variables.
     UpdateTip(pindexNew);
+
+    if(IsStartSPosHeight(pindexNew->nHeight+1))
+    {
+        std::vector<CMasternode> tmpVecResultMasternodes;
+        bool bClearVec=false;
+        int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
+        int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
+        int heightIndex = pindexNew->nHeight-9;
+        CBlockIndex* priv9Index = chainActive[heightIndex];
+        if(priv9Index==NULL)
+        {
+            LogPrintf("SPOS_Warning:priv9Index is NULL,height:%d,connect new block:%d\n",heightIndex,pindexNew->nHeight);
+            return true;
+        }
+
+        if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
+        {
+            SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,priv9Index->nTime, true, false,tmpVecResultMasternodes
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+        }else
+        {
+            SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,priv9Index->nTime, false, false,tmpVecResultMasternodes
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+        }
+        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+    }
+
     // Tell wallet about transactions that went from mempool
     // to conflicted:
     BOOST_FOREACH(const CTransaction &tx, txConflicted) {
@@ -5768,11 +5770,16 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     if (block.nBits != 0)
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): block.nBits  not equal to 0,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
 
-    int64_t nNowTime = GetTime();
+    int64_t nLockTime = GetTime();
     //Synchronization of old blocks will result in a large difference between block time and local time, and cannot be compared using absolute values.
-    if (block.GetBlockTime() - nNowTime > g_nAllowableErrorTime)
-        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():Block time(block.nTime:%lld) minus local time(now:%lld) exceeds allowable time error range(allowableErrorTime:%d),height:%d",
-                                    block.GetBlockTime(), nNowTime,g_nAllowableErrorTime,nHeight), REJECT_INVALID, "bad-nTime", true);
+    int64_t nBlockTime = block.GetBlockTime();
+    if (nBlockTime - nLockTime > g_nAllowableErrorTime)
+    {
+        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
+        string strLockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nLockTime);
+        return state.DoS(100, error("SPOS_Warning CheckSPOSBlock():Block time(block.nTime:%lld,%s) minus local time(now:%lld,%s) exceeds allowable time error range(allowableErrorTime:%d),height:%d",
+                                    nBlockTime,strBlockTime, nLockTime,strLockTime,g_nAllowableErrorTime,nHeight), REJECT_INVALID, "bad-nTime", true);
+    }
 
     CTransaction tempTransaction  = block.vtx[0];
     const CTxOut &out = tempTransaction.vout[0];
