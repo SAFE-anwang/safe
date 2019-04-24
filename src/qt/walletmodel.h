@@ -321,7 +321,7 @@ private:
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
-    void checkBalanceChanged(bool copyTmp=false);
+    void checkBalanceChanged(bool checkIncrease=false);
 
 Q_SIGNALS:
     // Signal that balance in wallet changed
@@ -361,7 +361,7 @@ public Q_SLOTS:
     void updateWatchOnlyFlag(bool fHaveWatchonly);
     /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
     void pollBalanceChanged();
-    void updateAllBalanceChanged(bool copyTmp=false);
+    void updateAllBalanceChanged(bool checkIncrease=false);
 };
 
 class EncryptWorker: public QObject {

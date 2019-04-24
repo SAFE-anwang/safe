@@ -163,7 +163,7 @@ void WalletModel::updateStatus()
         Q_EMIT encryptionStatusChanged(newEncryptionStatus);
 }
 
-void WalletModel::updateAllBalanceChanged(bool copyTmp)
+void WalletModel::updateAllBalanceChanged(bool checkIncrease)
 {
     if(fForceCheckBalanceChanged || chainActive.Height() != cachedNumBlocks || privateSendClient.nPrivateSendRounds != cachedPrivateSendRounds || cachedTxLocks != nCompleteTXLocks)
     {
@@ -181,7 +181,7 @@ void WalletModel::updateAllBalanceChanged(bool copyTmp)
         cachedNumBlocks = chainActive.Height();
         cachedPrivateSendRounds = privateSendClient.nPrivateSendRounds;
 
-        checkBalanceChanged(copyTmp);
+        checkBalanceChanged(checkIncrease);
 		
 		if (!masternodeSync.IsSynced() || !bUpdateConfirmations)
 		{
@@ -224,32 +224,50 @@ void WalletModel::pollBalanceChanged()
     if(!lockWallet)
         return;
 
-    updateAllBalanceChanged();
+    updateAllBalanceChanged(true);
 }
 
-void WalletModel::checkBalanceChanged(bool copyTmp)
+void WalletModel::checkBalanceChanged(bool checkIncrease)
 {
-    if(copyTmp)
+    if(!wallet->mapWallet_tmp.empty())
     {
-		{
-			wallet->mapWallet_tmp.clear();
-			std::map<uint256, CWalletTx>().swap(wallet->mapWallet_tmp);
-		}
+        wallet->mapWallet_tmp.clear();
+        std::map<uint256, CWalletTx>().swap(wallet->mapWallet_tmp);
+    }
 
-        LOCK2(cs_main, wallet->cs_wallet);        
+    {
+        LOCK2(cs_main, wallet->cs_wallet);
         for (std::map<uint256, CWalletTx>::const_iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
-            wallet->mapWallet_tmp[(*it).first] = (*it).second;
+        {
+            if(wallet->mapWallet_bk.count((*it).first)==0)
+            {
+                wallet->mapWallet_bk[(*it).first] = (*it).second;
+                wallet->mapWallet_tmp[(*it).first] = (*it).second;
+            }
+        }
+    }
+
+    if(checkIncrease)
+    {
+        //no update,return
+        if(wallet->mapWallet_tmp.empty())
+            return;
     }
     CAmount newLockedBalance = 0;
     CAmount newWatchLockedBalance = 0;
-    newLockedBalance = getLockedBalance(false,NULL,NULL,!copyTmp);
-    newWatchLockedBalance = getWatchLockedBalance(false,NULL,NULL,!copyTmp);
-    if(cachedLockedBalance !=newLockedBalance || cachedWatchLockedBalance != newWatchLockedBalance)
+    newLockedBalance = getLockedBalance(false,NULL,NULL,!checkIncrease);
+    newWatchLockedBalance = getWatchLockedBalance(false,NULL,NULL,!checkIncrease);
+    if(checkIncrease)
+    {
+        if(0 != newLockedBalance || 0 != newWatchLockedBalance)
+            wallet->MarkDirty();
+    }else if(cachedLockedBalance !=newLockedBalance || cachedWatchLockedBalance != newWatchLockedBalance)
+    {
         wallet->MarkDirty();
-
-    CAmount newBalance = getBalance(NULL,false,NULL,NULL,!copyTmp);
-    CAmount newUnconfirmedBalance = getUnconfirmedBalance(false,NULL,NULL,!copyTmp);
-    CAmount newImmatureBalance = getImmatureBalance(false,NULL,NULL,!copyTmp);
+    }
+    CAmount newBalance = getBalance(NULL,false,NULL,NULL,!checkIncrease);
+    CAmount newUnconfirmedBalance = getUnconfirmedBalance(false,NULL,NULL,!checkIncrease);
+    CAmount newImmatureBalance = getImmatureBalance(false,NULL,NULL,!checkIncrease);
 
     CAmount newAnonymizedBalance = getAnonymizedBalance();
     CAmount newWatchOnlyBalance = 0;
@@ -263,22 +281,44 @@ void WalletModel::checkBalanceChanged(bool copyTmp)
         newWatchImmatureBalance = getWatchImmatureBalance();
     }
 
-    if(cachedBalance != newBalance || cachedUnconfirmedBalance != newUnconfirmedBalance || cachedImmatureBalance != newImmatureBalance || cachedLockedBalance != newLockedBalance ||
-        cachedAnonymizedBalance != newAnonymizedBalance || cachedTxLocks != nCompleteTXLocks ||
-        cachedWatchOnlyBalance != newWatchOnlyBalance || cachedWatchUnconfBalance != newWatchUnconfBalance || cachedWatchImmatureBalance != newWatchImmatureBalance || cachedWatchLockedBalance != newWatchLockedBalance)
+    if(checkIncrease)
     {
-        cachedBalance = newBalance;
-        cachedUnconfirmedBalance = newUnconfirmedBalance;
-        cachedImmatureBalance = newImmatureBalance;
-        cachedLockedBalance = newLockedBalance;
-        cachedAnonymizedBalance = newAnonymizedBalance;
-        cachedTxLocks = nCompleteTXLocks;
-        cachedWatchOnlyBalance = newWatchOnlyBalance;
-        cachedWatchUnconfBalance = newWatchUnconfBalance;
-        cachedWatchImmatureBalance = newWatchImmatureBalance;
-        cachedWatchLockedBalance = newWatchLockedBalance;
-        Q_EMIT balanceChanged(newBalance, newUnconfirmedBalance, newImmatureBalance, newLockedBalance, newAnonymizedBalance,
-                            newWatchOnlyBalance, newWatchUnconfBalance, newWatchImmatureBalance, newWatchLockedBalance);
+        if(0 != newBalance || 0 != newUnconfirmedBalance || 0 != newImmatureBalance || 0 != newLockedBalance ||
+            0 != newAnonymizedBalance || 0 != nCompleteTXLocks ||
+            0 != newWatchOnlyBalance || 0 != newWatchUnconfBalance || 0 != newWatchImmatureBalance || 0 != newWatchLockedBalance)
+        {
+            cachedBalance += newBalance;
+            cachedUnconfirmedBalance += newUnconfirmedBalance;
+            cachedImmatureBalance += newImmatureBalance;
+            cachedLockedBalance += newLockedBalance;
+            cachedAnonymizedBalance += newAnonymizedBalance;
+            cachedTxLocks += nCompleteTXLocks;
+            cachedWatchOnlyBalance += newWatchOnlyBalance;
+            cachedWatchUnconfBalance += newWatchUnconfBalance;
+            cachedWatchImmatureBalance += newWatchImmatureBalance;
+            cachedWatchLockedBalance += newWatchLockedBalance;
+            Q_EMIT balanceChanged(cachedBalance, cachedUnconfirmedBalance, cachedImmatureBalance, cachedLockedBalance, cachedAnonymizedBalance,
+                                cachedWatchOnlyBalance, cachedWatchUnconfBalance, cachedWatchImmatureBalance, cachedWatchLockedBalance);
+        }
+    }else
+    {
+        if(cachedBalance != newBalance || cachedUnconfirmedBalance != newUnconfirmedBalance || cachedImmatureBalance != newImmatureBalance || cachedLockedBalance != newLockedBalance ||
+            cachedAnonymizedBalance != newAnonymizedBalance || cachedTxLocks != nCompleteTXLocks ||
+            cachedWatchOnlyBalance != newWatchOnlyBalance || cachedWatchUnconfBalance != newWatchUnconfBalance || cachedWatchImmatureBalance != newWatchImmatureBalance || cachedWatchLockedBalance != newWatchLockedBalance)
+        {
+            cachedBalance = newBalance;
+            cachedUnconfirmedBalance = newUnconfirmedBalance;
+            cachedImmatureBalance = newImmatureBalance;
+            cachedLockedBalance = newLockedBalance;
+            cachedAnonymizedBalance = newAnonymizedBalance;
+            cachedTxLocks = nCompleteTXLocks;
+            cachedWatchOnlyBalance = newWatchOnlyBalance;
+            cachedWatchUnconfBalance = newWatchUnconfBalance;
+            cachedWatchImmatureBalance = newWatchImmatureBalance;
+            cachedWatchLockedBalance = newWatchLockedBalance;
+            Q_EMIT balanceChanged(newBalance, newUnconfirmedBalance, newImmatureBalance, newLockedBalance, newAnonymizedBalance,
+                                newWatchOnlyBalance, newWatchUnconfBalance, newWatchImmatureBalance, newWatchLockedBalance);
+        }
     }
 }
 

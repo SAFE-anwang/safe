@@ -910,7 +910,7 @@ void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
             fUpdateCandyPage = true;
         }
 
-		g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, walletModel));
+        g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, walletModel));
 	}
 	else if (txModel == walletModel->getAssetsDistributeTableModel())
 	{
