@@ -43,8 +43,11 @@ int g_nSelectGlobalDefaultValue = -999;
 int g_nSelectMasterNodeRet = g_nSelectGlobalDefaultValue;//first time or reset:-999,select fail:-1,select succ:1
 int64_t g_nMasternodeResetTime = GetTime();
 int g_nMasternodeResetInterval = 150;
-int64_t g_nStartUpTime = 0;
 int g_nPushForwardHeight = 18;
+
+int64_t g_nFirstSelectMasterNodeTime = 0;
+int64_t g_nAllowMasterNodeSyncErrorTime = 0;
+
 
 CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)
 {

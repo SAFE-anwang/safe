@@ -110,6 +110,7 @@ extern int g_nProtocolV3Height;
 extern std::mutex g_mutexAllPayeeInfo;
 extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
 extern unsigned int g_nAllowableErrorTime;
+extern int64_t g_nAllowMasterNodeSyncErrorTime;
 
 
 
@@ -1539,6 +1540,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     LogPrintf("* Using %.1fMiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
 
+    g_nAllowMasterNodeSyncErrorTime = GetArg("-spos_allow_masternode_sync_error_time", g_nAllowMasterNodeSyncErrorTime);
 #if SCN_CURRENT == SCN__main
                         //do nothing
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test

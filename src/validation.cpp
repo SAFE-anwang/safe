@@ -5136,7 +5136,18 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                                     ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }else
         {
-            SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
+            int64_t nCurrentTime = GetTime();
+            if (g_nAllowMasterNodeSyncErrorTime != 0)
+            {
+                if (nCurrentTime - g_nFirstSelectMasterNodeTime > g_nAllowMasterNodeSyncErrorTime)
+                    SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+                else
+                    LogPrintf("SPOS_Warning:Does not satisfy the condition of selecting the master node,height:%d,connect new block:%d,nCurrentTime:%lld,g_nFirstSelectMasterNodeTime:%lld,g_nAllowMasterNodeSyncErrorTime:%lld\n",
+                              heightIndex,pindexNew->nHeight, nCurrentTime, g_nFirstSelectMasterNodeTime, g_nAllowMasterNodeSyncErrorTime);
+            }
+            else
+                SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
                                     ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
@@ -9422,12 +9433,19 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime,uint3
                 LogPrintf("SPOS_Warning:error g_nStartSPOSHeight config,please check config\n");
             return;
         }
+
+        if (masternodeSync.IsSynced() && g_nFirstSelectMasterNodeTime == 0)
+        {
+            g_nFirstSelectMasterNodeTime = GetTime();
+            return;
+        }
+
     }
 
     if(!masternodeSync.IsSynced())
     {
         bClearVec = true;
-        nSelectMasterNodeRet = 0;//reset ret
+        nSelectMasterNodeRet = g_nSelectGlobalDefaultValue;//reset ret
         LogPrintf("SPOS_Warning:masternode is syncing,reset g_nSelectMasterNodeRet,wait next loop to select masternode\n");
         return;
     }
