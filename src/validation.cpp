@@ -5811,7 +5811,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         LOCK(cs_spos);
         mnSize = g_vecResultMasternodes.size();
         nStartNewLoopTime = g_nStartNewLoopTime;
-        if (!masternodeSync.IsSynced()|| (mnSize == 0 && g_nSelectMasterNodeRet == 0))
+        if (!masternodeSync.IsSynced()|| (mnSize == 0 && g_nSelectMasterNodeRet == g_nSelectGlobalDefaultValue))
             return true;
 
         if(mnSize == 0)
