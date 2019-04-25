@@ -9434,7 +9434,7 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime,uint3
             return;
         }
 
-        if (masternodeSync.IsSynced() && g_nFirstSelectMasterNodeTime == 0)
+        if (masternodeSync.IsSynced() && g_nAllowMasterNodeSyncErrorTime != 0 && g_nFirstSelectMasterNodeTime == 0)
         {
             g_nFirstSelectMasterNodeTime = GetTime();
             return;
