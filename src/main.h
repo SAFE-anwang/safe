@@ -48,6 +48,10 @@ extern int g_nSelectMasterNodeRet;
 
 extern int g_nProtocolV3Height;
 
+extern int64_t g_nFirstSelectMasterNodeTime;
+extern int64_t g_nAllowMasterNodeSyncErrorTime;
+
+
 
 
 
