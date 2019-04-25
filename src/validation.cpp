@@ -129,6 +129,7 @@ extern CActiveMasternode activeMasternode;
 extern int64_t g_nLastSelectMasterNodeHeight;
 extern unsigned int g_nMasternodeMinCount;
 extern int g_nSelectGlobalDefaultValue;
+extern int g_nPushForwardHeight;
 
 std::mutex g_mutexAllPayeeInfo;
 std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
@@ -5121,21 +5122,21 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         bool bClearVec=false;
         int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
         int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
-        int heightIndex = pindexNew->nHeight-9;
-        CBlockIndex* priv9Index = chainActive[heightIndex];
-        if(priv9Index==NULL)
+        int heightIndex = pindexNew->nHeight-g_nPushForwardHeight;
+        CBlockIndex* forwardIndex = chainActive[heightIndex];
+        if(forwardIndex==NULL)
         {
-            LogPrintf("SPOS_Warning:priv9Index is NULL,height:%d,connect new block:%d\n",heightIndex,pindexNew->nHeight);
+            LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,connect new block:%d\n",heightIndex,pindexNew->nHeight);
             return true;
         }
 
         if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
         {
-            SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,priv9Index->nTime, true, false,tmpVecResultMasternodes
+            SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,forwardIndex->nTime, true, false,tmpVecResultMasternodes
                                     ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }else
         {
-            SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,priv9Index->nTime, false, false,tmpVecResultMasternodes
+            SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
                                     ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
@@ -9314,7 +9315,7 @@ void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vec
     }
 }
 
-void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes,uint32_t nScoreTime,
+void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes,uint32_t nForwardTime,
                            std::string strArrName,std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo)
 {
     //sort by score
@@ -9326,7 +9327,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << hash;
-        ss << nScoreTime;
+        ss << nForwardTime;
         uint256 score = ss.GetHash();
         scoreMasternodes[score] = mn;
     }
@@ -9346,10 +9347,10 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
                           mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
             }else
             {
-                int nIntervalTime = nScoreTime - tempit->second.blockTime;
+                int nIntervalTime = nForwardTime - tempit->second.blockTime;
                 LogPrintf("SPOS_Message:%s[%d]:ip:%s,collateralAddress:%s,nIntervalTime:%d,nTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
                           "lastHeight:%d,nState:%d\n",strArrName,logCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
-                          nIntervalTime,nScoreTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
+                          nIntervalTime,nForwardTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
                           mnpair.second.nActiveState);
             }
         }
@@ -9362,7 +9363,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
     }
 
     //random the master node
-    uint64_t now_hi = uint64_t(nScoreTime) << 32;
+    uint64_t now_hi = uint64_t(nForwardTime) << 32;
     for( uint32_t i = 0; i < vecResultMasternodes.size(); ++i )
     {
         /// High performance random generator
@@ -9400,7 +9401,7 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
 }
 
 
-void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime,uint32_t nScoreTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
+void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime,uint32_t nForwardTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
                              ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime)
 {
     if(!masternodeSync.IsSynced()&&g_vecResultMasternodes.empty())
@@ -9507,9 +9508,9 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime,uint3
     }
 
     std::vector<CMasternode> vecResultMasternodesL1,vecResultMasternodesL2,vecResultMasternodesL3;
-    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nScoreTime, "L1", mapAllPayeeInfo);
-    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nScoreTime, "L2", mapAllPayeeInfo);
-    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nScoreTime, "L3", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nForwardTime, "L1", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nForwardTime, "L2", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nForwardTime, "L3", mapAllPayeeInfo);
 
     //5
     unsigned int vec1Size = vecResultMasternodesL1.size();

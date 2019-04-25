@@ -18,6 +18,7 @@ CSporkManager sporkManager;
 
 std::map<uint256, CSporkMessage> mapSporks;
 extern int g_nSelectGlobalDefaultValue;
+extern int g_nPushForwardHeight;
 
 void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv, CConnman& connman)
 {
@@ -279,14 +280,14 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
         bool bClearVec=false;
         int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
         int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
-        int heightIndex = chainActive.Height()-9;
-        CBlockIndex* priv9Index = chainActive[heightIndex];
-        if(priv9Index==NULL)
+        int heightIndex = chainActive.Height()-g_nPushForwardHeight;
+        CBlockIndex* forwardIndex = chainActive[heightIndex];
+        if(forwardIndex==NULL)
         {
-            LogPrintf("SPOS_Warning:spork priv9Index is NULL,height:%d\n",heightIndex);
+            LogPrintf("SPOS_Warning:spork forwardIndex is NULL,height:%d\n",heightIndex);
             return;
         }
-        SelectMasterNodeByPayee(chainActive.Height(), chainActive.Tip()->nTime,priv9Index->nTime, true, true,tmpVecResultMasternodes
+        SelectMasterNodeByPayee(chainActive.Height(), chainActive.Tip()->nTime,forwardIndex->nTime, true, true,tmpVecResultMasternodes
                                 ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
     }

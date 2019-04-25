@@ -44,6 +44,7 @@ int64_t g_nMasternodeResetTime = GetTime();
 int g_nMasternodeResetInterval = 150;
 int64_t g_nStartUpTime = 0;
 int g_nSelectGlobalDefaultValue = -999;
+int g_nPushForwardHeight = 18;
 
 CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)
 {
