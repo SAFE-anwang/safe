@@ -407,7 +407,8 @@ void WalletView::updateAssetsInfo(int showType, bool bConfirmedNewAssets, const 
 
     bool bShowAll = showType==SHOW_ALL;
 
-    overviewPage->addAssetToUpdate(strAssetName);
+    if(!strAssetName.isEmpty())
+        overviewPage->addAssetToUpdate(strAssetName);
     if(overviewPage==currentWidget())
         overviewPage->setThreadNoticeSlot(true);
     else
@@ -480,10 +481,12 @@ void WalletView::processNewTransaction(const QModelIndex& parent, int start, int
 
 void WalletView::gotoOverviewPage()
 {
-    if(fUpdateOverviewPage)
+    if(fUpdateOverviewPage||overviewPage->getUpdateAssetsInfo())
     {
         fUpdateOverviewPage = false;
         overviewPage->updateAssetsInfo();
+        if(overviewPage->getUpdateAssetsInfo())
+            overviewPage->setUpdateAssetsInfo(false);
     }
     setCurrentWidget(overviewPage);
 }

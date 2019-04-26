@@ -67,8 +67,11 @@ public:
 
     void setThreadUpdateData(bool update){fThreadUpdateData = update;}
     void setThreadNoticeSlot(bool notice){fThreadNoticeSlot = notice;}
+    void setUpdateAssetsInfo(bool update){fUpdateAssetInfo = update;}
     bool getThreadUpdateData(){return fThreadUpdateData;}
     bool getThreadNoticeSlot(){return fThreadNoticeSlot;}
+    bool getUpdateAssetsInfo(){return fUpdateAssetInfo;}
+
     void setAssetStringList(QStringList stringList){assetNames = stringList;}
     void addAssetToUpdate(QString assetName);
     bool getCurrAssetInfoByName(const QString& strAssetName,CAmount& amount,CAmount& unconfirmAmount,CAmount& lockedAmount,int& nDecimals,QString& strUnit);
@@ -108,6 +111,7 @@ private:
     CAmount currentWatchLockedBalance;
     int nDisplayUnit;
     bool fShowAdvancedPSUI;
+    bool fUpdateAssetInfo;
     //GUIUtil::TableViewLastColumnResizingFixer *columnResizingFixer;
 
     TxViewDelegate *txdelegate;

@@ -169,6 +169,7 @@ AssetsDistribute::~AssetsDistribute()
 
 void AssetsDistribute::updateAssetsInfo()
 {
+    ui->assetsNameComboBox->clear();
     ui->assetsNameComboBox->addItems(assetStringList);
     stringListModel->setStringList(assetStringList);
     completer->setModel(stringListModel);

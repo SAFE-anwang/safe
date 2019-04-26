@@ -20,7 +20,6 @@ public:
     explicit AssetsDistribute(AssetsPage* assetsPage);
     ~AssetsDistribute();
 
-    void updateAssetsInfo();
     void setThreadUpdateData(bool update){fThreadUpdateData = update;}
     void setThreadNoticeSlot(bool notice){fThreadNoticeSlot = notice;}
     bool getThreadUpdateData(){return fThreadUpdateData;}
@@ -43,6 +42,9 @@ private:
     void updateCandyValue();
     bool amountFromString(const std::string& valueStr,int decimal,CAmount& amount,bool* invalidDecimal=NULL);
     void updateTotalAssetsEdit();
+
+public Q_SLOTS:
+    void updateAssetsInfo();
 
 private Q_SLOTS:
     void on_distributeComboBox_currentIndexChanged(int index);

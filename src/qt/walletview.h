@@ -70,6 +70,8 @@ public:
 
 	WalletModel *getWalletMode();
 
+    void setUpdateOverviewPage(bool update){fUpdateOverviewPage = update;}
+
 private:
     ClientModel *clientModel;
     WalletModel *walletModel;

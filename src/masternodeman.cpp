@@ -20,6 +20,7 @@
 CMasternodeMan mnodeman;
 extern int64_t g_nStartUpTime;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
+extern int g_nMasternodeOldHeight;
 
 const std::string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-7";
 
@@ -1678,18 +1679,27 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
                           payeeInfo.second.nHeight,payeeInfo.second.blockTime,payeeInfo.second.nPayeeTimes);
                 continue;
             }
+
             std::pair<COutPoint,CMasternode>& mnpair = mapAddressMasternodes[payeeInfo.first];
-            if(nHeight-payeeInfo.second.nHeight>=10000)
+            bool fSelfMasternode = activeMasternode.pubKeyMasternode == mnpair.second.pubKeyMasternode;
+            if(nHeight-payeeInfo.second.nHeight>=g_nMasternodeOldHeight)
             {
-                LogPrintf("SPOS_Message:payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
-                          mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
-                          payeeInfo.second.nPayeeTimes,nHeight);
+                if(fSelfMasternode)
+                {
+                    LogPrintf("SPOS_Message:not meeted active masternode,payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",
+                              payeeInfo.first,mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
+                              payeeInfo.second.nPayeeTimes,nHeight);
+                }else
+                {
+                    LogPrintf("SPOS_Message:payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
+                              mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
+                              payeeInfo.second.nPayeeTimes,nHeight);
+                }
                 continue;
             }
             mnpair.second.nTxHeight = -1;
             CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,mnpair.second.nTxHeight);
             unsigned int canBeSelectTime = mnpair.second.getCanbeSelectTime(nHeight);
-            bool fSelfMasternode = activeMasternode.pubKeyMasternode == mnpair.second.pubKeyMasternode;
             if (err == CMasternode::COLLATERAL_OK && canBeSelectTime > g_nMasternodeCanBeSelectedTime &&
                     mnpair.second.nProtocolVersion >= PROTOCOL_VERSION)
             {

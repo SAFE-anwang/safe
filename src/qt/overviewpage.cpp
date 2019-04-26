@@ -83,16 +83,22 @@ void RefreshOverviewPageData(WalletModel* walletModel,OverviewPage* overviewPage
 
 
             //update some asset
-            while(!overviewPage->assetToUpdate.isEmpty())
+            for(int i=0;i<overviewPage->assetToUpdate.size();i++)
             {
                 boost::this_thread::interruption_point();
-                QString strAssetName = overviewPage->assetToUpdate.pop();
+                QString strAssetName = overviewPage->assetToUpdate[i];
                 AssetBalance assetBalance;
                 if(!overviewPage->getCurrAssetInfoByName(strAssetName,assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,
                                            assetBalance.nDecimals,assetBalance.strUnit))
+                {
+                    overviewPage->setThreadUpdateData(fThreadUpdateData);
+                    overviewPage->setThreadNoticeSlot(fThreadNoticeSlot);
                     continue;
+                }
 
+                overviewPage->assetToUpdate.remove(i);
                 overviewPage->assetBalanceMap[strAssetName] = assetBalance;
+                overviewPage->setUpdateAssetsInfo(true);
             }
 
             if(fThreadNoticeSlot)
@@ -205,7 +211,10 @@ OverviewPage::OverviewPage(const PlatformStyle *platformStyle, QWidget *parent) 
     currentWatchLockedBalance(-1),
     txdelegate(new TxViewDelegate(platformStyle, this)),
     timer(nullptr),
-    platformStyle(platformStyle)
+    platformStyle(platformStyle),
+    fThreadUpdateData(false),
+    fThreadNoticeSlot(false),
+    fUpdateAssetInfo(false)
     //columnResizingFixer(0)
 {
     ui->setupUi(this);
@@ -425,7 +434,6 @@ void OverviewPage::updateAssetsInfo()
 
         const AssetBalance& assetBalance = iter.value();
         insertEntry(assetName,assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,assetBalance.strUnit,assetBalance.nDecimals);
-
     }
 }
 
