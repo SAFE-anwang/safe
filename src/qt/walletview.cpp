@@ -780,6 +780,15 @@ void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView)
 	}
 
 	RenameThread("RefreshWalletData");
+
+    if(txModel == walletView->getWalletMode()->getLockedTransactionTableModel())
+    {
+        while(!masternodeSync.IsBlockchainSynced())
+        {
+            MilliSleep(2000);
+        }
+    }
+
 	txModel->refreshWallet();
 	if (txModel == walletView->getWalletMode()->getTransactionTableModel())
 	{
