@@ -791,7 +791,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
         string fromAddrStr = pfrom->addr.ToString();
         string mnbAddrStr = mnb.addr.ToString();
-        LogPrintf("SPOS_Message:processmsg:from:%s,mn:%s,status:%d\n",fromAddrStr,mnbAddrStr,masternodeSync.GetAssetID());
+        LogPrintf("SPOS_Message:processmsg:from:%s,mn:%s,status:%d,mnodeman size:%d\n",fromAddrStr,mnbAddrStr,masternodeSync.GetAssetID(),mnodeman.size());
         pfrom->setAskFor.erase(mnb.GetHash());
 
         if(!masternodeSync.IsBlockchainSynced()) return;

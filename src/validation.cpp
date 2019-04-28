@@ -130,6 +130,7 @@ extern int64_t g_nLastSelectMasterNodeHeight;
 extern unsigned int g_nMasternodeMinCount;
 extern int g_nSelectGlobalDefaultValue;
 extern int g_nPushForwardHeight;
+extern int g_nLogMaxCnt;
 
 std::mutex g_mutexAllPayeeInfo;
 std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
@@ -9343,7 +9344,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         scoreMasternodes[score] = mn;
     }
 
-    int logMaxCnt = g_nMasternodeSPosCount, logCnt = 0;
+    int logMaxCnt = g_nLogMaxCnt, logCnt = 0;
     LogPrintf("SPOS_Message:%s(size:%d) after sort:\n",strArrName,scoreMasternodes.size());
     for (auto& mnpair : scoreMasternodes)
     {
@@ -9359,7 +9360,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
             }else
             {
                 int nIntervalTime = nForwardTime - tempit->second.blockTime;
-                LogPrintf("SPOS_Message:%s[%d]:ip:%s,collateralAddress:%s,nIntervalTime:%d,nTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
+                LogPrintf("SPOS_Info:%s[%d]:ip:%s,collateralAddress:%s,nIntervalTime:%d,nTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
                           "lastHeight:%d,nState:%d\n",strArrName,logCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
                           nIntervalTime,nForwardTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
                           mnpair.second.nActiveState);

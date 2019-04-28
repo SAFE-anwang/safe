@@ -45,6 +45,7 @@ int64_t g_nMasternodeResetTime = GetTime();
 int g_nMasternodeResetInterval = 150;
 int g_nPushForwardHeight = 18;
 int g_nMasternodeOldHeight = 10000;
+int g_nLogMaxCnt = 600;
 
 int64_t g_nFirstSelectMasterNodeTime = 0;
 int64_t g_nAllowMasterNodeSyncErrorTime = 0;

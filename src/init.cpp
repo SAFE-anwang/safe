@@ -111,6 +111,7 @@ extern std::mutex g_mutexAllPayeeInfo;
 extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
 extern unsigned int g_nAllowableErrorTime;
 extern int64_t g_nAllowMasterNodeSyncErrorTime;
+extern int g_nLogMaxCnt;
 
 
 
@@ -1551,6 +1552,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nMasternodeMinCount = GetArg("-masternode_min_count", g_nMasternodeMinCount);
     g_nProtocolV3Height = GetArg("-spos_start_lock_height", g_nProtocolV3Height);
     g_nAllowableErrorTime = GetArg("-spos_allowable_error_time", g_nAllowableErrorTime);
+    g_nLogMaxCnt = GetArg("-spos_log_max_cnt", g_nLogMaxCnt);
 #else
 #error unsupported <safe chain name>
 #endif
