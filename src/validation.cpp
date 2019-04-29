@@ -122,6 +122,8 @@ CAmount nMiningIncentives = 45000000000;//SQTODO
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
 
+unsigned int nAdjacentBlockInterval = 8;//SQTODO
+
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
@@ -6122,6 +6124,17 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
         assert(pindexPrev);
         if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, hash))
             return error("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
+
+        if (IsStartSPosHeight(pindexPrev->nHeight + 1))
+        {
+            if (block.GetBlockTime() - pindexPrev->nTime < nAdjacentBlockInterval)
+                return error("SPOS_Error AcceptBlockHeader():Adjacent block interval invalid, nHeight:%d, blocktime:%lld, pindexPrevblocktime:%lld, nAdjacentBlockInterval:%d\n",
+                             pindexPrev->nHeight + 1, block.GetBlockTime(), pindexPrev->nTime, nAdjacentBlockInterval);
+
+            // Check that the block satisfies synchronized checkpoint
+            if (!Checkpoints::CheckSync(pindexPrev->nHeight + 1))
+                return error("SPOS_Error AcceptBlockHeader(): rejected by synchronized checkpoint");
+        }
 
         if (!ContextualCheckBlockHeader(block, state, pindexPrev))
             return false;

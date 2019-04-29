@@ -19,10 +19,14 @@ struct CCheckpointData;
 namespace Checkpoints
 {
 
-//! Returns last CBlockIndex* in mapBlockIndex that is a checkpoint
-CBlockIndex* GetLastCheckpoint(const CCheckpointData& data);
+    //! Returns last CBlockIndex* in mapBlockIndex that is a checkpoint
+    CBlockIndex* GetLastCheckpoint(const CCheckpointData& data);
 
-double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex* pindex, bool fSigchecks = true);
+    double GuessVerificationProgress(const CCheckpointData& data, CBlockIndex* pindex, bool fSigchecks = true);
+
+    const CBlockIndex* AutoSelectSyncCheckpoint();
+    bool CheckSync(int nHeight);
+
 
 } //namespace Checkpoints
 
