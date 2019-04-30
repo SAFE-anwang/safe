@@ -1955,18 +1955,22 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         // much work as our tip, download as much as possible.
 
         bool bNewEffectiveBlock = false;
-        if (IsStartSPosHeight(pindexLast->nHeight))
-        {
-            if (CompareBestChainActiveTime(pindexLast, chainActive.Tip(), true))
-                bNewEffectiveBlock = true;
-        }
-        else
-        {
-            if (chainActive.Tip()->nChainWork <= pindexLast->nChainWork)
-                bNewEffectiveBlock = true;
-        }
 
-        if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && bNewEffectiveBlock) {
+        if (pindexLast)
+        {
+             if (IsStartSPosHeight(pindexLast->nHeight))
+            {
+                if (CompareBestChainActiveTime(pindexLast, chainActive.Tip(), true))
+                    bNewEffectiveBlock = true;
+            }
+            else
+            {
+                if (chainActive.Tip()->nChainWork <= pindexLast->nChainWork)
+                    bNewEffectiveBlock = true;
+            }
+        }
+       
+        if (fCanDirectFetch && pindexLast && pindexLast->IsValid(BLOCK_VALID_TREE) && bNewEffectiveBlock) {
             vector<CBlockIndex *> vToFetch;
             CBlockIndex *pindexWalk = pindexLast;
             // Calculate all the blocks we'd need to switch to pindexLast, up to a limit.

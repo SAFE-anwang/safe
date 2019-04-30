@@ -6130,12 +6130,12 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
         if (IsStartSPosHeight(pindexPrev->nHeight + 1 - g_nSPOSAfterEnableDynamicCheckHeight))
         {
             if (block.GetBlockTime() - pindexPrev->nTime < g_nAdjacentBlockInterval)
-                return error("SPOS_Error AcceptBlockHeader():Adjacent block interval invalid, nHeight:%d, blocktime:%lld, pindexPrevblocktime:%lld, g_nAdjacentBlockInterval:%d\n",
-                             pindexPrev->nHeight + 1, block.GetBlockTime(), pindexPrev->nTime, g_nAdjacentBlockInterval);
+                return state.DoS(100, error("SPOS_Error AcceptBlockHeader():Adjacent block interval invalid, nHeight:%d, blocktime:%lld, pindexPrevblocktime:%lld, g_nAdjacentBlockInterval:%d\n",
+                                 pindexPrev->nHeight + 1, block.GetBlockTime(), pindexPrev->nTime, g_nAdjacentBlockInterval), REJECT_INVALID ,"bad-prevblk");
 
             // Check that the block satisfies synchronized checkpoint
             if (!Checkpoints::CheckSync(pindexPrev->nHeight + 1))
-                return error("SPOS_Error AcceptBlockHeader(): rejected by synchronized checkpoint");
+                return state.DoS(10, error("%s: SPOS_Error AcceptBlockHeader(): checksync fail", __func__), REJECT_INVALID, "bad-prevblk");
         }
 
         if (!ContextualCheckBlockHeader(block, state, pindexPrev))
