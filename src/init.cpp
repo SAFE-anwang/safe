@@ -112,6 +112,9 @@ extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
 extern unsigned int g_nAllowableErrorTime;
 extern int64_t g_nAllowMasterNodeSyncErrorTime;
 extern int g_nLogMaxCnt;
+extern int g_nAdjacentBlockInterval;
+extern int g_nSPOSAfterEnableDynamicCheckHeight;
+
 
 
 
@@ -1553,6 +1556,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nProtocolV3Height = GetArg("-spos_start_lock_height", g_nProtocolV3Height);
     g_nAllowableErrorTime = GetArg("-spos_allowable_error_time", g_nAllowableErrorTime);
     g_nLogMaxCnt = GetArg("-spos_log_max_cnt", g_nLogMaxCnt);
+    g_nAdjacentBlockInterval = GetArg("-spos_adjacent_block_interval)", g_nAdjacentBlockInterval);
+    g_nSPOSAfterEnableDynamicCheckHeight = GetArg("-spos_after_enable_dynamic_check_height", g_nSPOSAfterEnableDynamicCheckHeight);
+    
 #else
 #error unsupported <safe chain name>
 #endif
