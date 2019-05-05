@@ -1142,6 +1142,14 @@ const CChainParams &Params() {
     return *pCurrentParams;
 }
 
+//SQTODO
+CChainParams &SQParams()
+{
+    assert(pCurrentParams);
+    return *pCurrentParams;
+}
+
+
 CChainParams& Params(const std::string& chain)
 {
     if (chain == CBaseChainParams::MAIN)

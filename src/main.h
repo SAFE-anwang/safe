@@ -11,12 +11,24 @@
 // generate blocks per year = 12 * BLOCKS_PER_MONTH
 #define BLOCKS_PER_YEAR     207360
 
+
+//SQTODO
+/*
 // SPOS generate blocks per day = 24 * 60 * 60 / 30
 #define SPOS_BLOCKS_PER_DAY      2880
 // SPOS generate blcoks per month = 30 * SPOS_BLOCKS_PER_DAY
 #define SPOS_BLOCKS_PER_MONTH    86400
 // SPOS generate blocks per year = 12 * SPOS_BLOCKS_PER_MONTH
 #define SPOS_BLOCKS_PER_YEAR     1036800
+*/
+
+//SQTODO
+uint64_t g_SPOS_BLOCKS_PER_DAY = 2880;
+uint64_t g_SPOS_BLOCKS_PER_MONTH = 86400;
+uint64_t g_SPOS_BLOCKS_PER_YEAR = 1036800;
+
+
+
 
 
 #define MIN_MN_LOCKED_MONTH     6

@@ -89,6 +89,10 @@ public:
     int FulfilledRequestExpireTime() const { return nFulfilledRequestExpireTime; }
     std::string SporkPubKey() const { return strSporkPubKey; }
     const std::vector<COutPointData>& COutPointDataS() const { return vcoutpointdata; }
+
+    //SQTODO
+    void SetDefaultSPOSTargetSpacing(int64_t nSPOSTargetSpacing) {consensus.nSPOSTargetSpacing = nSPOSTargetSpacing;}
+
 protected:
     CChainParams() {}
 
@@ -124,6 +128,10 @@ protected:
  * startup, except for unit tests.
  */
 const CChainParams &Params();
+
+//SQTDO
+CChainParams &SQParams();
+
 
 /**
  * @returns CChainParams for the given BIP70 chain name.
