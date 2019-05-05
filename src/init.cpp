@@ -989,9 +989,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 
     //SQTODO
     int64_t nSPOSTargetSpacing = GetArg("-spos_target_spacing)", Params().GetConsensus().nSPOSTargetSpacing);
-    Consensus::Params consensus;
-    consensus.nSPOSTargetSpacing = nSPOSTargetSpacing;
-    SQParams().SetConsensus(consensus);
+    SQParams().SetDefaultSPOSTargetSpacing(nSPOSTargetSpacing);
     SPOS_BLOCKS_PER_DAY = 24 * 60 * 60 / nSPOSTargetSpacing;
     SPOS_BLOCKS_PER_MONTH = 30 * SPOS_BLOCKS_PER_DAY;
     SPOS_BLOCKS_PER_YEAR = 12 * SPOS_BLOCKS_PER_MONTH;
