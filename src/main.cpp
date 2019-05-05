@@ -50,6 +50,12 @@ int g_nLogMaxCnt = 600;
 int64_t g_nFirstSelectMasterNodeTime = 0;
 int64_t g_nAllowMasterNodeSyncErrorTime = 0;
 
+//SQTODO
+uint64_t SPOS_BLOCKS_PER_DAY = 2880;
+uint64_t SPOS_BLOCKS_PER_MONTH = 86400;
+uint64_t SPOS_BLOCKS_PER_YEAR = 1036800;
+
+
 
 CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)
 {
