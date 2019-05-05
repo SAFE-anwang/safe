@@ -81,6 +81,7 @@ struct Params {
     int64_t nPowTargetTimespan;
     int64_t nSPOSTargetSpacing;
     int64_t DifficultyAdjustmentInterval() const { return nPowTargetTimespan / nPowTargetSpacing; }
+    void SetnSPOSTargetSpacing(const int64_t &nInPowTargetSpacing) {nSPOSTargetSpacing = nInPowTargetSpacing};
     uint256 nMinimumChainWork;
     uint256 defaultAssumeValid;
 };

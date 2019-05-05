@@ -91,7 +91,7 @@ public:
     const std::vector<COutPointData>& COutPointDataS() const { return vcoutpointdata; }
 
     //SQTODO
-    void SetDefaultSPOSTargetSpacing(int64_t nSPOSTargetSpacing) {consensus.nSPOSTargetSpacing = nSPOSTargetSpacing;}
+    void SetDefaultSPOSTargetSpacing(const int64_t &nSPOSTargetSpacing) {consensus.SetnSPOSTargetSpacing(nSPOSTargetSpacing);}
 
 protected:
     CChainParams() {}
