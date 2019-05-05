@@ -287,7 +287,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
             LogPrintf("SPOS_Warning:spork forwardIndex is NULL,height:%d\n",heightIndex);
             return;
         }
-        SelectMasterNodeByPayee(chainActive.Height(), chainActive.Tip()->nTime,forwardIndex->nTime, true, true,tmpVecResultMasternodes
+        SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,forwardIndex->nTime, true, true,tmpVecResultMasternodes
                                 ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
     }

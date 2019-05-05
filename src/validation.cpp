@@ -4676,18 +4676,26 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     const CTransaction& tx = block.vtx[0];
     if(tx.vout.size()>1&&pindex->nHeight>=g_nSaveMasternodePayeeHeight)
     {
-        CTxDestination dest;
         int paymentIndex = 1;
-        if (ExtractDestination(tx.vout[paymentIndex].scriptPubKey, dest))
+        CAmount nMasternodePayment = GetMasternodePayment(pindex->nHeight, tx.GetValueOut());
+        CAmount nActualValue = tx.vout[paymentIndex].nValue;
+        if(nMasternodePayment == nActualValue)
         {
-            CBitcoinAddress pubKeyCollateralAddress(dest);
-            CKeyID keyid;
-            if(pubKeyCollateralAddress.GetKeyID(keyid))
+            CTxDestination dest;
+            if (ExtractDestination(tx.vout[paymentIndex].scriptPubKey, dest))
             {
-                strPubKeyCollateralAddress = keyid.ToString();
-                masternodePayment_IndexValue.nHeight = pindex->nHeight;
-                masternodePayment_IndexValue.blockTime = pindex->nTime;
+                CBitcoinAddress pubKeyCollateralAddress(dest);
+                CKeyID keyid;
+                if(pubKeyCollateralAddress.GetKeyID(keyid))
+                {
+                    strPubKeyCollateralAddress = keyid.ToString();
+                    masternodePayment_IndexValue.nHeight = pindex->nHeight;
+                    masternodePayment_IndexValue.blockTime = pindex->nTime;
+                }
             }
+        }else
+        {
+            LogPrintf("SPOS_Warning:curr height(%d) no masternode payee,this block may be super block,tx:%s\n", pindex->nHeight, tx.ToString());
         }
     }
 
@@ -4795,6 +4803,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                       ,deltaValue.nGetCandyCount,value.nGetCandyCount);
         }
     }
+
+
 
     //add masternode payee
     if(strPubKeyCollateralAddress.size())
@@ -5149,7 +5159,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
 
         if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
         {
-            SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,forwardIndex->nTime, true, false,tmpVecResultMasternodes
+            SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, true, false,tmpVecResultMasternodes
                                     ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }else
         {
@@ -5157,14 +5167,14 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
             if (g_nAllowMasterNodeSyncErrorTime != 0)
             {
                 if (nCurrentTime - g_nFirstSelectMasterNodeTime > g_nAllowMasterNodeSyncErrorTime)
-                    SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
+                    SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
                                     ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
                 else
                     LogPrintf("SPOS_Warning:Does not satisfy the condition of selecting the master node,height:%d,connect new block:%d,nCurrentTime:%lld,g_nFirstSelectMasterNodeTime:%lld,g_nAllowMasterNodeSyncErrorTime:%lld\n",
                               heightIndex,pindexNew->nHeight, nCurrentTime, g_nFirstSelectMasterNodeTime, g_nAllowMasterNodeSyncErrorTime);
             }
             else
-                SelectMasterNodeByPayee(pindexNew->nHeight,pblock->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
+                SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
                                     ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
