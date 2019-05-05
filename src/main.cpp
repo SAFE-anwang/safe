@@ -49,6 +49,8 @@ int g_nLogMaxCnt = 600;
 
 int64_t g_nFirstSelectMasterNodeTime = 0;
 int64_t g_nAllowMasterNodeSyncErrorTime = 0;
+int g_nLocalStartSavePayeeHeight = 0;
+int g_nCanSelectMasternodeHeight = 10001;
 
 //SQTODO
 uint64_t SPOS_BLOCKS_PER_DAY = 2880;

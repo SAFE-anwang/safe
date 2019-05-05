@@ -135,6 +135,8 @@ extern unsigned int g_nMasternodeMinCount;
 extern int g_nSelectGlobalDefaultValue;
 extern int g_nPushForwardHeight;
 extern int g_nLogMaxCnt;
+extern int g_nLocalStartSavePayeeHeight;
+extern int g_nCanSelectMasternodeHeight;
 
 std::mutex g_mutexAllPayeeInfo;
 std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
@@ -4808,6 +4810,16 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
         if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
             return AbortNode(state, "SPOS_Error:Failed to write masternode payee index when connect block");
+        if(g_nLocalStartSavePayeeHeight==0)
+        {
+            if(!pblocktree->Write_LocalStartSavePayeeHeight_Index(masternodePayment_IndexValue.nHeight))
+                return AbortNode(state, "SPOS_Error:Failed to write local start save payee height");
+            else
+            {
+                g_nLocalStartSavePayeeHeight = masternodePayment_IndexValue.nHeight;
+            }
+        }
+
         {
             std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
             gAllPayeeInfoMap[strPubKeyCollateralAddress] = masternodePayment_IndexValue;
@@ -9428,7 +9440,7 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
 }
 
 
-void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime,uint32_t nForwardTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
+void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForwardTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
                              ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime)
 {
     if(!masternodeSync.IsSynced()&&g_vecResultMasternodes.empty())
@@ -9442,10 +9454,10 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime,uint3
             return;
         }
 
-        unsigned int ret = nCurrBlockHeight % g_nMasternodeSPosCount;
+        int ret = nCurrBlockHeight % g_nMasternodeSPosCount;
         if(ret != 0 )
         {
-            if((nCurrBlockHeight+1) == (unsigned int)g_nStartSPOSHeight)
+            if((nCurrBlockHeight+1) == g_nStartSPOSHeight)
                 LogPrintf("SPOS_Warning:error g_nStartSPOSHeight config,please check config\n");
             return;
         }
@@ -9463,6 +9475,13 @@ void SelectMasterNodeByPayee(unsigned int nCurrBlockHeight, uint32_t nTime,uint3
         bClearVec = true;
         nSelectMasterNodeRet = g_nSelectGlobalDefaultValue;//reset ret
         LogPrintf("SPOS_Warning:masternode is syncing,reset g_nSelectMasterNodeRet,wait next loop to select masternode\n");
+        return;
+    }
+
+    if(nCurrBlockHeight-g_nLocalStartSavePayeeHeight<g_nCanSelectMasternodeHeight)
+    {
+        LogPrintf("SPOS_Warning:local start save masternode height(%d) minus curr height(%d) less than masternode can be select height(%d)\n",
+                  g_nLocalStartSavePayeeHeight,nCurrBlockHeight,g_nCanSelectMasternodeHeight);
         return;
     }
 

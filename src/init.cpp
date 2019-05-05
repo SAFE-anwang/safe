@@ -114,8 +114,8 @@ extern int64_t g_nAllowMasterNodeSyncErrorTime;
 extern int g_nLogMaxCnt;
 extern int g_nAdjacentBlockInterval;
 extern int g_nSPOSAfterEnableDynamicCheckHeight;
-
-
+extern int g_nLocalStartSavePayeeHeight;
+extern int g_nCanSelectMasternodeHeight;
 
 
 std::unique_ptr<CConnman> g_connman;
@@ -1567,7 +1567,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nLogMaxCnt = GetArg("-spos_log_max_cnt", g_nLogMaxCnt);
     g_nAdjacentBlockInterval = GetArg("-spos_adjacent_block_interval)", g_nAdjacentBlockInterval);
     g_nSPOSAfterEnableDynamicCheckHeight = GetArg("-spos_after_enable_dynamic_check_height", g_nSPOSAfterEnableDynamicCheckHeight);
-    
+    g_nCanSelectMasternodeHeight = GetArg("-spos_can_select_masternode_height", g_nCanSelectMasternodeHeight);
 #else
 #error unsupported <safe chain name>
 #endif
@@ -2123,6 +2123,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         if(!pblocktree->Read_MasternodePayee_Index(gAllPayeeInfoMap))
         {
             LogPrintf("SPOS_Warning:init read masternode payee fail\n");
+        }
+        if(!pblocktree->Read_LocalStartSavePayeeHeight_Index(g_nLocalStartSavePayeeHeight))
+        {
+            LogPrintf("SPOS_Warning:init read local start save payee height fail\n");
+        }else
+        {
+            LogPrintf("SPOS_Message:read local start save payee height(%d) succ\n",g_nLocalStartSavePayeeHeight);
         }
     }
 

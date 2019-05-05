@@ -48,6 +48,7 @@ static const string DB_CANDYHEIGHT_TOTALAMOUNT_INDEX = "candyheight_totalamount"
 static const string DB_CANDYHEIGHT_INDEX = "candyheight";
 static const string DB_GETCANDYCOUNT_INDEX = "getcandycount";
 static const string DB_MASTERNODE_PAYEE_INDEX ="masternode_payee";
+static const string DB_LOCAL_START_SAVE_PAYEE_HEIGHT_INDEX ="localstartsavepayee_height";
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {
@@ -1301,7 +1302,7 @@ bool CBlockTreeDB::Read_MasternodePayee_Index(std::map<string, CMasternodePayee_
             }
             else
             {
-                return error("failed to get putcandy index value");
+                return error("failed to get masternode payee index value");
             }
         }
         else
@@ -1331,6 +1332,37 @@ bool CBlockTreeDB::Is_Exists_MasternodePayee_Key(const string &strPubKeyCollater
         else
         {
             break;
+        }
+    }
+
+    return ret;
+}
+
+bool CBlockTreeDB::Write_LocalStartSavePayeeHeight_Index(const int &nHeight)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Write(DB_LOCAL_START_SAVE_PAYEE_HEIGHT_INDEX, nHeight);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_LocalStartSavePayeeHeight_Index(int &nHeight)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(DB_LOCAL_START_SAVE_PAYEE_HEIGHT_INDEX);
+
+    bool ret = false;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CGetCandyCount_IndexKey> key;
+        if(pcursor->GetValue(nHeight))
+        {
+            ret = true;
+            break;
+        }
+        else
+        {
+            return error("failed to get local start save payee height index value");
         }
     }
 

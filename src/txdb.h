@@ -160,6 +160,9 @@ public:
     bool Read_MasternodePayee_Index(const std::string& strPubKeyCollateralAddress, CMasternodePayee_IndexValue& value);
     bool Read_MasternodePayee_Index(std::map<std::string,CMasternodePayee_IndexValue>& mapPayeeInfo);
     bool Is_Exists_MasternodePayee_Key(const std::string& strPubKeyCollateralAddress);
+
+    bool Write_LocalStartSavePayeeHeight_Index(const int& nHeight);
+    bool Read_LocalStartSavePayeeHeight_Index(int& nHeight);
 };
 
 #endif // BITCOIN_TXDB_H
