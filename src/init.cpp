@@ -988,12 +988,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 #endif
 
     //SQTODO
-    int64_t nSPOSTargetSpacing = GetArg("-spos_target_spacing)", Params().GetConsensus().nSPOSTargetSpacing);
+    int64_t nSPOSTargetSpacing = GetArg("-spos_target_spacing", Params().GetConsensus().nSPOSTargetSpacing);
     SQParams().SetDefaultSPOSTargetSpacing(nSPOSTargetSpacing);
     SPOS_BLOCKS_PER_DAY = 24 * 60 * 60 / nSPOSTargetSpacing;
     SPOS_BLOCKS_PER_MONTH = 30 * SPOS_BLOCKS_PER_DAY;
     SPOS_BLOCKS_PER_YEAR = 12 * SPOS_BLOCKS_PER_MONTH;
-    LogPrintf("nSPOSTargetSpacing:%lld--Params().consensus.nSPOSTargetSpacing:%lld--SPOS_BLOCKS_PER_DAY:%lld--SPOS_BLOCKS_PER_MONTH:%lld--SPOS_BLOCKS_PER_YEAR:%lld",
+    LogPrintf("nSPOSTargetSpacing:%lld--Params().consensus.nSPOSTargetSpacing:%lld--SPOS_BLOCKS_PER_DAY:%lld--SPOS_BLOCKS_PER_MONTH:%lld--SPOS_BLOCKS_PER_YEAR:%lld\n",
               nSPOSTargetSpacing, Params().GetConsensus().nSPOSTargetSpacing, SPOS_BLOCKS_PER_DAY, SPOS_BLOCKS_PER_MONTH, SPOS_BLOCKS_PER_YEAR);
 
     if (!SetupNetworking())
