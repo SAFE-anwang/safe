@@ -988,13 +988,15 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 #endif
 
     //SQTODO
-    int64_t nSPOSTargetSpacing = GetArg("-spos_target_spacing)", Params().consensus.nSPOSTargetSpacing);
-    SQParams().SetDefaultSPOSTargetSpacing(nSPOSTargetSpacing);
-    g_SPOS_BLOCKS_PER_DAY = 24 * 60 * 60 / nSPOSTargetSpacing;
-    g_SPOS_BLOCKS_PER_MONTH = 30 * g_SPOS_BLOCKS_PER_DAY;
-    g_SPOS_BLOCKS_PER_YEAR = 12 * g_SPOS_BLOCKS_PER_MONTH;
-    LogPrintf("nSPOSTargetSpacing:%lld--Params().consensus.nSPOSTargetSpacing:%lld--g_SPOS_BLOCKS_PER_DAY:%lld--g_SPOS_BLOCKS_PER_MONTH:%lld--g_SPOS_BLOCKS_PER_YEAR:%lld",
-              nSPOSTargetSpacing, Params().consensus.nSPOSTargetSpacing, g_SPOS_BLOCKS_PER_DAY, g_SPOS_BLOCKS_PER_MONTH, g_SPOS_BLOCKS_PER_YEAR);
+    int64_t nSPOSTargetSpacing = GetArg("-spos_target_spacing)", Params().GetConsensus().nSPOSTargetSpacing);
+    Consensus::Params consensus;
+    consensus.nSPOSTargetSpacing = nSPOSTargetSpacing;
+    SQParams().SetConsensus(consensus);
+    SPOS_BLOCKS_PER_DAY = 24 * 60 * 60 / nSPOSTargetSpacing;
+    SPOS_BLOCKS_PER_MONTH = 30 * SPOS_BLOCKS_PER_DAY;
+    SPOS_BLOCKS_PER_YEAR = 12 * SPOS_BLOCKS_PER_MONTH;
+    LogPrintf("nSPOSTargetSpacing:%lld--Params().consensus.nSPOSTargetSpacing:%lld--SPOS_BLOCKS_PER_DAY:%lld--SPOS_BLOCKS_PER_MONTH:%lld--SPOS_BLOCKS_PER_YEAR:%lld",
+              nSPOSTargetSpacing, Params().GetConsensus().nSPOSTargetSpacing, SPOS_BLOCKS_PER_DAY, SPOS_BLOCKS_PER_MONTH, SPOS_BLOCKS_PER_YEAR);
 
     if (!SetupNetworking())
         return InitError("Initializing networking failed");
