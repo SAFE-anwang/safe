@@ -116,6 +116,7 @@ extern int g_nAdjacentBlockInterval;
 extern int g_nSPOSAfterEnableDynamicCheckHeight;
 extern int g_nLocalStartSavePayeeHeight;
 extern int g_nCanSelectMasternodeHeight;
+extern int g_nMinerBlockTimeout;
 
 
 std::unique_ptr<CConnman> g_connman;
@@ -1568,6 +1569,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nAdjacentBlockInterval = GetArg("-spos_adjacent_block_interval)", g_nAdjacentBlockInterval);
     g_nSPOSAfterEnableDynamicCheckHeight = GetArg("-spos_after_enable_dynamic_check_height", g_nSPOSAfterEnableDynamicCheckHeight);
     g_nCanSelectMasternodeHeight = GetArg("-spos_can_select_masternode_height", g_nCanSelectMasternodeHeight);
+    g_nMinerBlockTimeout = GetArg("-spos_miner_block_timeout",g_nMinerBlockTimeout);
 #else
 #error unsupported <safe chain name>
 #endif
@@ -2133,7 +2135,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         }
     }
 
-    GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", !fHaveGUI), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
+    GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", true), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
 
     // ********************************************************* Step 13: finished
 

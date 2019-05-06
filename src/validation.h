@@ -1566,8 +1566,10 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
 
 void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
                           ,int64_t nStartNewLoopTime,int64_t nRealStartNewLoopTime);
+void UpdateRealStartNewLoopTime(int64_t nRealStartNewLoopTime);
+void UpdateTimeoutCount(int nTimeoutCount);
 void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForwardTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
-                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,int64_t& nRealStartNewLoopTime);
+                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,int64_t& nRealStartNewLoopTime,bool fTimeoutReselect=false);
 
 bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals = false);
 
