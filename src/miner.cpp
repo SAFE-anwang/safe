@@ -58,7 +58,7 @@ extern CMasternodeMan mnodeman;
 extern CActiveMasternode activeMasternode;
 extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
-extern int64_t g_nStartNewLoopTime;
+extern int64_t g_nStartNewLoopTimeMS;
 extern std::vector<CMasternode> g_vecResultMasternodes;
 extern std::map<CNetAddr, LocalServiceInfo> mapLocalHost;
 extern CCriticalSection cs_spos;
@@ -830,10 +830,11 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
         if (!coinbaseScript || coinbaseScript->reserveScript.empty())
             throw std::runtime_error("No coinbase script available (mining requires a wallet)");
 
-        g_nStartNewLoopTime = 0;
+        g_nStartNewLoopTimeMS = 0;
         {
             LOCK(cs_spos);
-            g_nStartNewLoopTime = GetTimeMillis()*1000;
+            g_nStartNewLoopTimeMS = GetTime()*1000;
+            g_nRealStartNewLoopTime = GetTime();
         }
         unsigned int nWaitBlockHeight = 0;
         int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0,nNextLogAllowTime = 0;
@@ -856,12 +857,17 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             unsigned int nNewBlockHeight = chainActive.Height() + 1;
             if(IsStartSPosHeight(nNewBlockHeight))
             {
-                uint32_t nPushForwardTimeout = g_nMinerBlockTimeout + g_nPushForwardHeight*Params().GetConsensus().nSPOSTargetSpacing;
+                int nPushForwardTimeout = g_nMinerBlockTimeout + g_nPushForwardHeight*Params().GetConsensus().nSPOSTargetSpacing;
                 uint32_t nCurrTime = GetTime();
-                if(nCurrTime - g_nStartNewLoopTime > nPushForwardTimeout && nCurrTime - g_nRealStartNewLoopTime > g_nMinerBlockTimeout)
+                int nPushForwardTimeoutRet = nCurrTime - g_nStartNewLoopTimeMS/1000;
+                int nMinerBlockTimeoutRet = nCurrTime - g_nRealStartNewLoopTime;
+                if((nPushForwardTimeoutRet > nPushForwardTimeout && nMinerBlockTimeoutRet > g_nMinerBlockTimeout))
                 {
-                    int nTimeoutCount = (nCurrTime - pindexPrev->GetBlockTime())/g_nMinerBlockTimeout;
+                    uint32_t nTimeInterval = nCurrTime - pindexPrev->GetBlockTime();
+                    int nTimeoutCount = nTimeInterval/g_nMinerBlockTimeout;
                     if(nTimeoutCount <= g_nTimeoutCount){
+                        LogPrintf("SPOS_Warning:timeout reselect masternode,but the timeInterval is %d,need to wait a few seconds,nTimeoutCount:%d,g_nTimeoutCount:%d\n",
+                                  nTimeInterval,nTimeoutCount,g_nTimeoutCount);
                         continue;
                     }
                     UpdateTimeoutCount(nTimeoutCount);
@@ -869,8 +875,11 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                     if(heightIndex<0){
                         heightIndex = 0;
                     }
-                    LogPrintf("SPOS_Warning:timeout(%d),reselect masternode,currTime:%d,startNewLoopTime:%lld,realStartNewLoopTime:%lld,g_nTimeoutCount:%d,heightIndex:%d\n"
-                              ,nPushForwardTimeout,nCurrTime,g_nStartNewLoopTime,g_nRealStartNewLoopTime,g_nTimeoutCount,heightIndex);
+                    LogPrintf("SPOS_Warning:timeout reselect masternode,nPushForwardTimeoutRet:%d bigger than nPushForwardTimeout:%d,"
+                              "nMinerBlockTimeoutRet:%d biggr than g_nMinerBlockTimeout:%d,currTime:%d,startNewLoopTime:%lld,"
+                              "realStartNewLoopTime:%lld,g_nTimeoutCount:%d,heightIndex:%d\n",nPushForwardTimeoutRet,
+                              nPushForwardTimeout,nMinerBlockTimeoutRet,g_nMinerBlockTimeout,nCurrTime,g_nStartNewLoopTimeMS/1000,
+                              g_nRealStartNewLoopTime,g_nTimeoutCount,heightIndex);
                     CBlockIndex* forwardIndex = chainActive[heightIndex];
                     std::vector<CMasternode> tmpVecResultMasternodes;
                     bool bClearVec=false;
@@ -878,7 +887,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                     int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue,nRealStartNewLoopTime=g_nSelectGlobalDefaultValue;
                     if(forwardIndex==NULL)
                     {
-                        LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,reselect loop fail\n",heightIndex);
+                        LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",heightIndex,chainActive.Height());
                         continue;
                     }
                     bool bSpork = g_nTimeoutCount >= 5;
@@ -893,7 +902,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 {
                     if(nLogOutput==0)
                     {
-                        LogPrintf("SPOS_Warning:self masternode outpoint is empty,maybe need to wait sync or reindex\n");
+                        LogPrintf("SPOS_Warning:self masternode outpoint is empty,if self is masternode maybe need to wait sync or reindex\n");
                         nLogOutput = 1;
                     }
                     continue;
@@ -928,7 +937,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                         tmpVecResultMasternodes.push_back(mn);
                         masternodeSPosCount++;
                     }
-                    nStartNewLoopTime = g_nStartNewLoopTime;
+                    nStartNewLoopTime = g_nStartNewLoopTimeMS;
                     nSposGeneratedIndex = g_nSposGeneratedIndex;
                 }
                 if(masternodeSPosCount != 0)
@@ -995,11 +1004,11 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
 {
     if(fGenerate)
     {
-        if (!activeMasternode.pubKeyMasternode.IsValid())
-        {
-            LogPrintf("SPOS_Warning:only the master node needs to open SPOS mining\n");
-            return;
-        }
+//        if (!activeMasternode.pubKeyMasternode.IsValid())
+//        {
+//            LogPrintf("SPOS_Warning:only the master node needs to open SPOS mining\n");
+//            return;
+//        }
 
         if((g_nStartSPOSHeight-1)%g_nMasternodeSPosCount!=0)
             LogPrintf("SPOS_Warning:invalid spos height or spos count config\n");

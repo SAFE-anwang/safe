@@ -34,7 +34,7 @@ int g_nSaveMasternodePayeeHeight = 30000;
 
 unsigned int g_nMasternodeSPosCount = 9;
 unsigned int g_nMasternodeCanBeSelectedTime = 86400*3;
-int64_t g_nStartNewLoopTime = 0;
+int64_t g_nStartNewLoopTimeMS = 0;
 int g_nSposGeneratedIndex = -2;
 unsigned int g_nMasternodeMinCount = 5;
 int64_t g_nLastSelectMasterNodeHeight = 0;

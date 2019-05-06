@@ -5810,7 +5810,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         LogPrintf("SPOS_Message:AAAAABlockAddress:%s, height:%d, blockHash:%s\n", strAddress, nHeight, block.GetHash().ToString());//TOSQ
 
     if (block.nBits != 0)
-        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): block.nBits  not equal to 0,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
+        return state.DoS(100, error("SPOS_Warning CheckSPOSBlock(): block.nBits  not equal to 0,this block may receive from pow chain,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
 
     int64_t nLockTime = GetTime();
     //Synchronization of old blocks will result in a large difference between block time and local time, and cannot be compared using absolute values.
@@ -5851,7 +5851,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     {
         LOCK(cs_spos);
         mnSize = g_vecResultMasternodes.size();
-        nStartNewLoopTime = g_nStartNewLoopTime;
+        nStartNewLoopTime = g_nStartNewLoopTimeMS;
         if (!masternodeSync.IsSynced()|| (mnSize == 0 && g_nSelectMasterNodeRet == g_nSelectGlobalDefaultValue))
             return true;
 
@@ -9448,7 +9448,7 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
     if(nSposGeneratedIndex!=g_nSelectGlobalDefaultValue)
         g_nSposGeneratedIndex = nSposGeneratedIndex;
     if(nStartNewLoopTime!=g_nSelectGlobalDefaultValue)
-        g_nStartNewLoopTime = nStartNewLoopTime;
+        g_nStartNewLoopTimeMS = nStartNewLoopTime;
     if(nRealStartNewLoopTime!=g_nSelectGlobalDefaultValue)
         g_nRealStartNewLoopTime = nRealStartNewLoopTime;
 }
