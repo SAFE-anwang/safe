@@ -6324,7 +6324,7 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
 {
     AssertLockHeld(cs_main);
     if(pindexPrev != chainActive.Tip())
-        LogPrintf("pindexPrev != chainActive.Tip(),%s\n",pindexPrev->ToString());
+        LogPrintf("SPOS_Error:pindexPrev != chainActive.Tip(),%s\n",pindexPrev->ToString());
     assert(pindexPrev && pindexPrev == chainActive.Tip());
     if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, block.GetHash()))
         return error("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());

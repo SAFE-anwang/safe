@@ -857,11 +857,10 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             unsigned int nNewBlockHeight = chainActive.Height() + 1;
             if(IsStartSPosHeight(nNewBlockHeight))
             {
-                int nPushForwardTimeout = g_nMinerBlockTimeout + g_nPushForwardHeight*Params().GetConsensus().nSPOSTargetSpacing;
+                int nPushForwardTimeout = g_nMinerBlockTimeout*(g_nTimeoutCount+1) + g_nPushForwardHeight*Params().GetConsensus().nSPOSTargetSpacing;
                 uint32_t nCurrTime = GetTime();
                 int nPushForwardTimeoutRet = nCurrTime - pindexPrev->GetBlockTime();
-                nPushForwardTimeout = nPushForwardTimeout*(g_nTimeoutCount+1);
-                if((nPushForwardTimeoutRet > nPushForwardTimeout))
+                if(nPushForwardTimeoutRet > nPushForwardTimeout)
                 {
                     int nTimeoutCount = nPushForwardTimeoutRet/g_nMinerBlockTimeout;
                     if(nTimeoutCount <= g_nTimeoutCount)
@@ -892,7 +891,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                         continue;
                     }
                     bool bSpork = g_nTimeoutCount >= g_nMaxTimeoutCount;
-                    SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,bSpork,false,tmpVecResultMasternodes,bClearVec
+                    SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,bSpork,true,tmpVecResultMasternodes,bClearVec
                                             ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true);
                     UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
                 }
