@@ -837,6 +837,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
         }
         unsigned int nWaitBlockHeight = 0;
         int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0,nNextLogAllowTime = 0;
+        int nTmpTimeoutCount = -1;
         while (true) {
             if (chainparams.MiningRequiresPeers()) {
                 // Busy-wait for the network to come online so we don't waste time mining
@@ -863,9 +864,14 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 if((nPushForwardTimeoutRet > nPushForwardTimeout))
                 {
                     int nTimeoutCount = nPushForwardTimeoutRet/g_nMinerBlockTimeout;
-                    if(nTimeoutCount <= g_nTimeoutCount){
-                        LogPrintf("SPOS_Warning:timeout reselect masternode,but the timeInterval is %d,need to wait a few seconds,nTimeoutCount:%d,g_nTimeoutCount:%d\n",
-                                  nPushForwardTimeoutRet,nTimeoutCount,g_nTimeoutCount);
+                    if(nTimeoutCount <= g_nTimeoutCount)
+                    {
+                        if(nTimeoutCount != nTmpTimeoutCount)
+                        {
+                            LogPrintf("SPOS_Warning:timeout reselect masternode,but the timeInterval is %d,need to wait a few seconds,nTimeoutCount:%d,g_nTimeoutCount:%d\n",
+                                      nPushForwardTimeoutRet,nTimeoutCount,g_nTimeoutCount);
+                        }
+                        nTmpTimeoutCount = nTimeoutCount;
                         continue;
                     }
                     UpdateGlobalTimeoutCount(nTimeoutCount);
