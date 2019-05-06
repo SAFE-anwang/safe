@@ -137,7 +137,6 @@ extern int g_nPushForwardHeight;
 extern int g_nLogMaxCnt;
 extern int g_nLocalStartSavePayeeHeight;
 extern int g_nCanSelectMasternodeHeight;
-extern int64_t g_nRealStartNewLoopTime;
 extern int g_nTimeoutCount;
 
 std::mutex g_mutexAllPayeeInfo;
@@ -4869,7 +4868,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
-    UpdateRealStartNewLoopTime(GetTime());
     LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
     return true;
 }
@@ -5151,7 +5149,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         std::vector<CMasternode> tmpVecResultMasternodes;
         bool bClearVec=false;
         int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
-        int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue,nRealStartNewLoopTime=g_nSelectGlobalDefaultValue;
+        int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
         int heightIndex = pindexNew->nHeight-g_nPushForwardHeight;
         CBlockIndex* forwardIndex = chainActive[heightIndex];
         if(forwardIndex==NULL)
@@ -5163,7 +5161,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
         {
             SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, true, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nRealStartNewLoopTime);
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }else
         {
             int64_t nCurrentTime = GetTime();
@@ -5171,16 +5169,16 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
             {
                 if (nCurrentTime - g_nFirstSelectMasterNodeTime > g_nAllowMasterNodeSyncErrorTime)
                     SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nRealStartNewLoopTime);
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
                 else
                     LogPrintf("SPOS_Warning:Does not satisfy the condition of selecting the master node,height:%d,connect new block:%d,nCurrentTime:%lld,g_nFirstSelectMasterNodeTime:%lld,g_nAllowMasterNodeSyncErrorTime:%lld\n",
                               heightIndex,pindexNew->nHeight, nCurrentTime, g_nFirstSelectMasterNodeTime, g_nAllowMasterNodeSyncErrorTime);
             }
             else
                 SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nRealStartNewLoopTime);
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }
-        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nRealStartNewLoopTime);
+        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
     }
 
     // Tell wallet about transactions that went from mempool
@@ -9433,7 +9431,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
 }
 
 void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
-                          ,int64_t nStartNewLoopTime,int64_t nRealStartNewLoopTime)
+                          ,int64_t nStartNewLoopTime)
 {
     LOCK(cs_spos);
     if(bClearVec||!tmpVecMasternodes.empty())
@@ -9449,24 +9447,16 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
         g_nSposGeneratedIndex = nSposGeneratedIndex;
     if(nStartNewLoopTime!=g_nSelectGlobalDefaultValue)
         g_nStartNewLoopTimeMS = nStartNewLoopTime;
-    if(nRealStartNewLoopTime!=g_nSelectGlobalDefaultValue)
-        g_nRealStartNewLoopTime = nRealStartNewLoopTime;
 }
 
-void UpdateRealStartNewLoopTime(int64_t nRealStartNewLoopTime)
-{
-    LOCK(cs_spos);
-    g_nRealStartNewLoopTime = nRealStartNewLoopTime;
-}
-
-void UpdateTimeoutCount(int nTimeoutCount)
+void UpdateGlobalTimeoutCount(int nTimeoutCount)
 {
     LOCK(cs_spos);
     g_nTimeoutCount = nTimeoutCount;
 }
 
 void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForwardTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
-                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,int64_t& nRealStartNewLoopTime,bool fTimeoutReselect)
+                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect)
 {
     if(!masternodeSync.IsSynced()&&g_vecResultMasternodes.empty())
         return;
@@ -9547,9 +9537,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
     nStartNewLoopTime = (int64_t)nTime*1000;
     nSposGeneratedIndex = -2;
     nSelectMasterNodeRet = 1;
-    nRealStartNewLoopTime = GetTime();
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
-    string strRealStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nRealStartNewLoopTime);
 
     if(mapMeetedMasternodes.empty())
     {
@@ -9647,13 +9635,13 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
     uint32_t size = tmpVecResultMasternodes.size();
 
     if(!fTimeoutReselect){
-        UpdateTimeoutCount(0);
+        UpdateGlobalTimeoutCount(0);
     }
 
     //no \n,connect two log str
-    LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),realStartNewLoopTime:%lld(%s),select %d masternode,"
-              "min online masternode count:%d,nRemainNum:%d,intervalHeight:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime/1000,
-              strStartNewLoopTime,nRealStartNewLoopTime,strRealStartNewLoopTime,size,g_nMasternodeMinCount,nRemainNum,intervalHeight);
+    LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),select %d masternode,min online masternode count:%d,"
+              "nRemainNum:%d,intervalHeight:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime/1000,strStartNewLoopTime,size,
+              g_nMasternodeMinCount,nRemainNum,intervalHeight);
 
     LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
               "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d\n",nMnSize,

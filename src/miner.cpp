@@ -67,8 +67,8 @@ extern int g_nTimeoutPushForwardHeight;
 extern int g_nMinerBlockTimeout;
 extern int g_nSelectGlobalDefaultValue;
 extern int g_nPushForwardHeight;
-extern int64_t g_nRealStartNewLoopTime;
 extern int g_nTimeoutCount;
+extern int g_nMaxTimeoutCount;
 
 class ScoreCompare
 {
@@ -834,7 +834,6 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
         {
             LOCK(cs_spos);
             g_nStartNewLoopTimeMS = GetTime()*1000;
-            g_nRealStartNewLoopTime = GetTime();
         }
         unsigned int nWaitBlockHeight = 0;
         int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0,nNextLogAllowTime = 0;
@@ -859,41 +858,37 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             {
                 int nPushForwardTimeout = g_nMinerBlockTimeout + g_nPushForwardHeight*Params().GetConsensus().nSPOSTargetSpacing;
                 uint32_t nCurrTime = GetTime();
-                int nPushForwardTimeoutRet = nCurrTime - g_nStartNewLoopTimeMS/1000;
-                int nMinerBlockTimeoutRet = nCurrTime - g_nRealStartNewLoopTime;
-                if((nPushForwardTimeoutRet > nPushForwardTimeout && nMinerBlockTimeoutRet > g_nMinerBlockTimeout))
+                int nPushForwardTimeoutRet = nCurrTime - pindexPrev->GetBlockTime();
+                nPushForwardTimeout = nPushForwardTimeout*(g_nTimeoutCount+1);
+                if((nPushForwardTimeoutRet > nPushForwardTimeout))
                 {
-                    uint32_t nTimeInterval = nCurrTime - pindexPrev->GetBlockTime();
-                    int nTimeoutCount = nTimeInterval/g_nMinerBlockTimeout;
+                    int nTimeoutCount = nPushForwardTimeoutRet/g_nMinerBlockTimeout;
                     if(nTimeoutCount <= g_nTimeoutCount){
                         LogPrintf("SPOS_Warning:timeout reselect masternode,but the timeInterval is %d,need to wait a few seconds,nTimeoutCount:%d,g_nTimeoutCount:%d\n",
-                                  nTimeInterval,nTimeoutCount,g_nTimeoutCount);
+                                  nPushForwardTimeoutRet,nTimeoutCount,g_nTimeoutCount);
                         continue;
                     }
-                    UpdateTimeoutCount(nTimeoutCount);
+                    UpdateGlobalTimeoutCount(nTimeoutCount);
                     int heightIndex = nNewBlockHeight-g_nTimeoutPushForwardHeight*g_nTimeoutCount;
                     if(heightIndex<0){
                         heightIndex = 0;
                     }
-                    LogPrintf("SPOS_Warning:timeout reselect masternode,nPushForwardTimeoutRet:%d bigger than nPushForwardTimeout:%d,"
-                              "nMinerBlockTimeoutRet:%d biggr than g_nMinerBlockTimeout:%d,currTime:%d,startNewLoopTime:%lld,"
-                              "realStartNewLoopTime:%lld,g_nTimeoutCount:%d,heightIndex:%d\n",nPushForwardTimeoutRet,
-                              nPushForwardTimeout,nMinerBlockTimeoutRet,g_nMinerBlockTimeout,nCurrTime,g_nStartNewLoopTimeMS/1000,
-                              g_nRealStartNewLoopTime,g_nTimeoutCount,heightIndex);
+                    LogPrintf("SPOS_Warning:timeout reselect masternode,nPushForwardTimeoutRet:%d bigger than nPushForwardTimeout:%d,currTime:%d,g_nTimeoutCount:%d,"
+                              "heightIndex:%d\n",nPushForwardTimeoutRet,nPushForwardTimeout,nCurrTime,g_nTimeoutCount,heightIndex);
                     CBlockIndex* forwardIndex = chainActive[heightIndex];
                     std::vector<CMasternode> tmpVecResultMasternodes;
                     bool bClearVec=false;
                     int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
-                    int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue,nRealStartNewLoopTime=g_nSelectGlobalDefaultValue;
+                    int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
                     if(forwardIndex==NULL)
                     {
                         LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",heightIndex,chainActive.Height());
                         continue;
                     }
-                    bool bSpork = g_nTimeoutCount >= 5;
+                    bool bSpork = g_nTimeoutCount >= g_nMaxTimeoutCount;
                     SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,bSpork,false,tmpVecResultMasternodes,bClearVec
-                                            ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nRealStartNewLoopTime,true);
-                    UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nRealStartNewLoopTime);
+                                            ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true);
+                    UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
                 }
 
                 // Create new block

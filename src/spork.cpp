@@ -279,7 +279,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
         std::vector<CMasternode> tmpVecResultMasternodes;
         bool bClearVec=false;
         int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
-        int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue,nRealStartNewLoopTime=g_nSelectGlobalDefaultValue;
+        int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
         int heightIndex = chainActive.Height()-g_nPushForwardHeight;
         CBlockIndex* forwardIndex = chainActive[heightIndex];
         if(forwardIndex==NULL)
@@ -288,8 +288,8 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
             return;
         }
         SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,forwardIndex->nTime, true, true,tmpVecResultMasternodes,bClearVec
-                                ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nRealStartNewLoopTime);
-        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nRealStartNewLoopTime);
+                                ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
     }
 }
 
