@@ -2135,7 +2135,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         }
     }
 
-    GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", true), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
+    GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", !fHaveGUI), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
 
     // ********************************************************* Step 13: finished
 
@@ -2156,6 +2156,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 #endif
 
     threadGroup.create_thread(boost::bind(&ThreadSendAlert, boost::ref(connman)));
+
+    threadGroup.create_thread(boost::bind(&ThreadSPOSAutoReselect,boost::cref(chainparams)));
 
     return !fRequestShutdown;
 }

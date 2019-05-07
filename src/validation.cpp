@@ -5163,7 +5163,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
         {
             SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, true, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,false);
         }else
         {
             int64_t nCurrentTime = GetTime();
@@ -5171,14 +5171,14 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
             {
                 if (nCurrentTime - g_nFirstSelectMasterNodeTime > g_nAllowMasterNodeSyncErrorTime)
                     SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,false);
                 else
                     LogPrintf("SPOS_Warning:Does not satisfy the condition of selecting the master node,height:%d,connect new block:%d,nCurrentTime:%lld,g_nFirstSelectMasterNodeTime:%lld,g_nAllowMasterNodeSyncErrorTime:%lld\n",
                               heightIndex,pindexNew->nHeight, nCurrentTime, g_nFirstSelectMasterNodeTime, g_nAllowMasterNodeSyncErrorTime);
             }
             else
                 SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,false);
         }
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
     }

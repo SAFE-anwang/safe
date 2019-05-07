@@ -34,6 +34,8 @@ struct CBlockTemplate
 void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman);
 
 void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman);
+
+void ThreadSPOSAutoReselect(const CChainParams& chainparams);
 /** Generate a new block, without valid proof-of-work */
 CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn);
 /** Modify the extranonce in a block */

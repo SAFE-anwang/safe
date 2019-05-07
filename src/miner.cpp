@@ -839,7 +839,6 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
         }
         unsigned int nWaitBlockHeight = 0;
         int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0,nNextLogAllowTime = 0;
-        int nTmpTimeoutCount = -1;
         while (true) {
             if (chainparams.MiningRequiresPeers()) {
                 // Busy-wait for the network to come online so we don't waste time mining
@@ -859,46 +858,6 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             unsigned int nNewBlockHeight = chainActive.Height() + 1;
             if(IsStartSPosHeight(nNewBlockHeight))
             {
-                int nTimeout = g_nMinerBlockTimeout*(g_nTimeoutCount+1);
-                uint32_t nCurrTime = GetTime();
-                int nTimeoutRet = nCurrTime - pindexPrev->GetBlockTime();
-                if(nTimeoutRet > nTimeout)
-                {
-                    int nTimeoutCount = nTimeoutRet/g_nMinerBlockTimeout;
-                    if(nTimeoutCount <= g_nTimeoutCount)
-                    {
-                        if(nTimeoutCount != nTmpTimeoutCount)
-                        {
-                            LogPrintf("SPOS_Warning:timeout reselect masternode,but the timeInterval is %d,need to wait a few seconds,nTimeoutCount:%d,g_nTimeoutCount:%d\n",
-                                      nTimeoutRet,nTimeoutCount,g_nTimeoutCount);
-                        }
-                        nTmpTimeoutCount = nTimeoutCount;
-                        continue;
-                    }
-                    UpdateGlobalTimeoutCount(nTimeoutCount);
-                    int heightIndex = nNewBlockHeight-g_nTimeoutPushForwardHeight*g_nTimeoutCount;
-                    if(heightIndex<0){
-                        heightIndex = 0;
-                    }
-                    LogPrintf("SPOS_Warning:timeout reselect masternode,nTimeoutRet:%d bigger than nTimeout:%d,currTime:%d,g_nTimeoutCount:%d,"
-                              "heightIndex:%d\n",nTimeoutRet,nTimeout,nCurrTime,g_nTimeoutCount,heightIndex);
-                    CBlockIndex* forwardIndex = chainActive[heightIndex];
-                    std::vector<CMasternode> tmpVecResultMasternodes;
-                    bool bClearVec=false;
-                    int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
-                    int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
-                    if(forwardIndex==NULL)
-                    {
-                        LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",heightIndex,chainActive.Height());
-                        continue;
-                    }
-                    int64_t nPushForwardTimeInterval=pindexPrev->nTime-forwardIndex->nTime;
-                    bool bSpork = g_nTimeoutCount >= g_nMaxTimeoutCount;
-                    SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,bSpork,true,tmpVecResultMasternodes,bClearVec
-                                            ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true);
-                    UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
-                }
-
                 // Create new block
                 unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
                 if(activeMasternode.outpoint.IsNull())
@@ -1008,11 +967,11 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
 {
     if(fGenerate)
     {
-//        if (!activeMasternode.pubKeyMasternode.IsValid())
-//        {
-//            LogPrintf("SPOS_Warning:only the master node needs to open SPOS mining\n");
-//            return;
-//        }
+        if (!activeMasternode.pubKeyMasternode.IsValid())
+        {
+            LogPrintf("SPOS_Warning:only the master node needs to open SPOS mining\n");
+            return;
+        }
 
         if((g_nStartSPOSHeight-1)%g_nMasternodeSPosCount!=0)
             LogPrintf("SPOS_Warning:invalid spos height or spos count config\n");
@@ -1040,4 +999,85 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
     sposMinerThreads = new boost::thread_group();
     for (int i = 0; i < nThreads; i++)
         sposMinerThreads->create_thread(boost::bind(&SposMiner, boost::cref(chainparams), boost::ref(connman)));
+}
+
+void ThreadSPOSAutoReselect(const CChainParams& chainparams)
+{
+    LogPrintf("SPOS_Message:SPOSAutoReselectThread is -- started\n");
+    SetThreadPriority(THREAD_PRIORITY_LOWEST);
+    RenameThread("spos-autoreselect");
+
+    try {
+        int nTmpTimeoutCount = -1;
+        while (true)
+        {
+            if (chainparams.MiningRequiresPeers())
+            {
+                // Busy-wait for the network to come online so we don't waste time mining
+                // on an obsolete chain. In regtest mode we expect to fly solo.
+                do {
+                    if (!IsInitialBlockDownload() && masternodeSync.IsSynced())
+                        break;
+                    MilliSleep(50);
+                } while (true);
+            }
+
+            CBlockIndex* pindexPrev = chainActive.Tip();
+            if(!pindexPrev)
+                break;
+            unsigned int nNewBlockHeight = chainActive.Height() + 1;
+            if(!IsStartSPosHeight(nNewBlockHeight))
+                continue;
+            int nTimeout = g_nMinerBlockTimeout*(g_nTimeoutCount+1);
+            uint32_t nCurrTime = GetTime();
+            int nTimeoutRet = nCurrTime - pindexPrev->GetBlockTime();
+            if(nTimeoutRet > nTimeout)
+            {
+                int nTimeoutCount = nTimeoutRet/g_nMinerBlockTimeout;
+                if(nTimeoutCount <= g_nTimeoutCount)
+                {
+                    if(nTimeoutCount != nTmpTimeoutCount)
+                    {
+                        LogPrintf("SPOS_Warning:timeout reselect masternode,but the timeInterval is %d,need to wait a few seconds,nTimeoutCount:%d,g_nTimeoutCount:%d\n",
+                                  nTimeoutRet,nTimeoutCount,g_nTimeoutCount);
+                    }
+                    nTmpTimeoutCount = nTimeoutCount;
+                    continue;
+                }
+                UpdateGlobalTimeoutCount(nTimeoutCount);
+                int heightIndex = nNewBlockHeight-g_nTimeoutPushForwardHeight*g_nTimeoutCount;
+                if(heightIndex<0){
+                    heightIndex = 0;
+                }
+                LogPrintf("SPOS_Warning:timeout reselect masternode,nTimeoutRet:%d bigger than nTimeout:%d,currTime:%d,g_nTimeoutCount:%d,"
+                          "heightIndex:%d\n",nTimeoutRet,nTimeout,nCurrTime,g_nTimeoutCount,heightIndex);
+                CBlockIndex* forwardIndex = chainActive[heightIndex];
+                std::vector<CMasternode> tmpVecResultMasternodes;
+                bool bClearVec=false;
+                int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
+                int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
+                if(forwardIndex==NULL)
+                {
+                    LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",heightIndex,chainActive.Height());
+                    continue;
+                }
+                int64_t nPushForwardTimeInterval=pindexPrev->nTime-forwardIndex->nTime;
+                bool bSpork = g_nTimeoutCount >= g_nMaxTimeoutCount;
+                SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,bSpork,true,tmpVecResultMasternodes,bClearVec
+                                        ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true);
+                UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
+            }
+        }
+    }
+    catch (const boost::thread_interrupted&)
+    {
+        LogPrintf("SPOS_Warning:SPOSAutoReselect -- terminated\n");
+        throw;
+    }
+    catch (const std::runtime_error &e)
+    {
+        LogPrintf("SPOS_Warning:SPOSAutoReselect -- runtime error: %s\n", e.what());
+        return;
+    }
+    LogPrintf("SPOS_Warning:spos auto reselect thread is exit\n");
 }
