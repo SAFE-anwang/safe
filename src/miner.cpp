@@ -1030,7 +1030,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
             unsigned int nNewBlockHeight = chainActive.Height();
             if(!IsStartSPosHeight(nNewBlockHeight))
                 continue;
-            int nTimeout = g_nMinerBlockTimeout*(g_nTimeoutCount+1);
+            int nTimeout = g_nMinerBlockTimeout;
             uint32_t nCurrTime = GetTime();
             int nTimeoutRet = nCurrTime - pindexPrev->GetBlockTime();
             if(nTimeoutRet > nTimeout)
