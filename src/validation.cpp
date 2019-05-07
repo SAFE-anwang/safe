@@ -138,6 +138,7 @@ extern int g_nLogMaxCnt;
 extern int g_nLocalStartSavePayeeHeight;
 extern int g_nCanSelectMasternodeHeight;
 extern int g_nTimeoutCount;
+extern int64_t g_nPushForwardTimeInterval;
 
 std::mutex g_mutexAllPayeeInfo;
 std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
@@ -5158,10 +5159,11 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
             return true;
         }
 
+        int64_t nPushForwardTimeInterval=pindexNew->nTime-forwardIndex->nTime;
         if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
         {
             SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, true, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
         }else
         {
             int64_t nCurrentTime = GetTime();
@@ -5178,7 +5180,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                 SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
                                     ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }
-        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
     }
 
     // Tell wallet about transactions that went from mempool
@@ -5843,20 +5845,21 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
                                     nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-signature", true);
 
     int32_t mnSize = 0;
-    int64_t nStartNewLoopTime = 0;
+    int64_t nStartNewLoopTime = 0,nPushForwardTimeInterval=0;
     int32_t nIndex = 0;
     CMasternode mnTemp;
     {
         LOCK(cs_spos);
         mnSize = g_vecResultMasternodes.size();
         nStartNewLoopTime = g_nStartNewLoopTimeMS;
+        nPushForwardTimeInterval = g_nPushForwardTimeInterval;
         if (!masternodeSync.IsSynced()|| (mnSize == 0 && g_nSelectMasterNodeRet == g_nSelectGlobalDefaultValue))
             return true;
 
         if(mnSize == 0)
             return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d,g_nSelectMasterNodeRet:%d"
                                         ,nHeight, keyID.ToString(), strSigMessage, vchSig.size(),g_nSelectMasterNodeRet), REJECT_INVALID, "bad-mnSize", true);
-        int32_t interval = (block.GetBlockTime() - nStartNewLoopTime / 1000) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+        int32_t interval = (block.GetBlockTime() - nStartNewLoopTime / 1000 - nPushForwardTimeInterval) / Params().GetConsensus().nSPOSTargetSpacing - 1;
         nIndex = interval % mnSize;
         if(nIndex<0)
             return state.DoS(100,error("SPOS_Error CheckSPOSBlock():incorrect index value,height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
@@ -9431,7 +9434,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
 }
 
 void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
-                          ,int64_t nStartNewLoopTime)
+                          ,int64_t nStartNewLoopTime,int64_t nPushForwardTimeInterval)
 {
     LOCK(cs_spos);
     if(bClearVec||!tmpVecMasternodes.empty())
@@ -9447,6 +9450,9 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
         g_nSposGeneratedIndex = nSposGeneratedIndex;
     if(nStartNewLoopTime!=g_nSelectGlobalDefaultValue)
         g_nStartNewLoopTimeMS = nStartNewLoopTime;
+    if(nPushForwardTimeInterval!=g_nSelectGlobalDefaultValue)
+        g_nPushForwardTimeInterval = nPushForwardTimeInterval;
+
 }
 
 void UpdateGlobalTimeoutCount(int nTimeoutCount)
