@@ -859,18 +859,18 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             unsigned int nNewBlockHeight = chainActive.Height() + 1;
             if(IsStartSPosHeight(nNewBlockHeight))
             {
-                int nPushForwardTimeout = g_nMinerBlockTimeout*(g_nTimeoutCount+1) + g_nPushForwardHeight*Params().GetConsensus().nSPOSTargetSpacing;
+                int nTimeout = g_nMinerBlockTimeout*(g_nTimeoutCount+1);
                 uint32_t nCurrTime = GetTime();
-                int nPushForwardTimeoutRet = nCurrTime - pindexPrev->GetBlockTime();
-                if(nPushForwardTimeoutRet > nPushForwardTimeout)
+                int nTimeoutRet = nCurrTime - pindexPrev->GetBlockTime();
+                if(nTimeoutRet > nTimeout)
                 {
-                    int nTimeoutCount = nPushForwardTimeoutRet/g_nMinerBlockTimeout;
+                    int nTimeoutCount = nTimeoutRet/g_nMinerBlockTimeout;
                     if(nTimeoutCount <= g_nTimeoutCount)
                     {
                         if(nTimeoutCount != nTmpTimeoutCount)
                         {
                             LogPrintf("SPOS_Warning:timeout reselect masternode,but the timeInterval is %d,need to wait a few seconds,nTimeoutCount:%d,g_nTimeoutCount:%d\n",
-                                      nPushForwardTimeoutRet,nTimeoutCount,g_nTimeoutCount);
+                                      nTimeoutRet,nTimeoutCount,g_nTimeoutCount);
                         }
                         nTmpTimeoutCount = nTimeoutCount;
                         continue;
@@ -880,8 +880,8 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                     if(heightIndex<0){
                         heightIndex = 0;
                     }
-                    LogPrintf("SPOS_Warning:timeout reselect masternode,nPushForwardTimeoutRet:%d bigger than nPushForwardTimeout:%d,currTime:%d,g_nTimeoutCount:%d,"
-                              "heightIndex:%d\n",nPushForwardTimeoutRet,nPushForwardTimeout,nCurrTime,g_nTimeoutCount,heightIndex);
+                    LogPrintf("SPOS_Warning:timeout reselect masternode,nTimeoutRet:%d bigger than nTimeout:%d,currTime:%d,g_nTimeoutCount:%d,"
+                              "heightIndex:%d\n",nTimeoutRet,nTimeout,nCurrTime,g_nTimeoutCount,heightIndex);
                     CBlockIndex* forwardIndex = chainActive[heightIndex];
                     std::vector<CMasternode> tmpVecResultMasternodes;
                     bool bClearVec=false;

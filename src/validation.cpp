@@ -9499,15 +9499,15 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
         return;
     }
 
-    if(nCurrBlockHeight-g_nLocalStartSavePayeeHeight<g_nCanSelectMasternodeHeight)
+    if(nCurrBlockHeight-g_nLocalStartSavePayeeHeight<g_nCanSelectMasternodeHeight && g_nLocalStartSavePayeeHeight != g_nSaveMasternodePayeeHeight)
     {
-        LogPrintf("SPOS_Warning:local start save masternode height(%d) minus curr height(%d) less than masternode can be select height(%d)\n",
-                  g_nLocalStartSavePayeeHeight,nCurrBlockHeight,g_nCanSelectMasternodeHeight);
+        LogPrintf("SPOS_Warning:local start save masternode height(%d) minus curr height(%d) less than masternode can be select height(%d),default save masternode payee height:%d\n",
+                  g_nLocalStartSavePayeeHeight,nCurrBlockHeight,g_nCanSelectMasternodeHeight,g_nSaveMasternodePayeeHeight);
         return;
     }
 
     LogPrintf("SPOS_Info:--------------------------------------------------------\n");
-    LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d,fTimeoutReselect:%d.\n",nCurrBlockHeight,fTimeoutReselect?1:0);
+    LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d,g_nTimeoutCount:%d.\n",nCurrBlockHeight,g_nTimeoutCount);
     std::map<COutPoint, CMasternode> mapMeetedMasternodes;
     bool fFilterSpent = true;
     std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
