@@ -9507,7 +9507,8 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
     }
 
     LogPrintf("SPOS_Info:--------------------------------------------------------\n");
-    LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d,g_nTimeoutCount:%d.\n",nCurrBlockHeight,g_nTimeoutCount);
+    LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d,fTimeoutReselect:%s,g_nTimeoutCount:%d.\n",nCurrBlockHeight,
+              fTimeoutReselect?"true":"false",g_nTimeoutCount);
     std::map<COutPoint, CMasternode> mapMeetedMasternodes;
     bool fFilterSpent = true;
     std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
