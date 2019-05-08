@@ -451,7 +451,8 @@ public:
         consensus.nBudgetPaymentsWindowBlocks = 30;
         consensus.nBudgetProposalEstablishingTime = 60*20;
         consensus.nSuperblockStartBlock = 500; // The block at which 12.1 goes live (end of final 12.0 budget cycle)
-        consensus.nSuperblockCycle = 100; // ~(60*24*30)/2.6, actual number of blocks per month is 200700 / 12 = 16725
+        //consensus.nSuperblockCycle = 100; // ~(60*24*30)/2.6, actual number of blocks per month is 200700 / 12 = 16725
+        consensus.nSuperblockCycle = 139; // ~(60*6)/2.6, actual number of blocks per month is 200700 / 12 = 16725
         consensus.nGovernanceMinQuorum = 3;
         consensus.nGovernanceFilterElements = 50;
         consensus.nMasternodeMinimumConfirmations = 15;
@@ -808,7 +809,8 @@ public:
         consensus.nBudgetPaymentsWindowBlocks = 30;
         consensus.nBudgetProposalEstablishingTime = 60*20;
         consensus.nSuperblockStartBlock = 500; // The block at which 12.1 goes live (end of final 12.0 budget cycle)
-        consensus.nSuperblockCycle = 100; // ~(60*24*30)/2.6, actual number of blocks per month is 200700 / 12 = 16725
+        //consensus.nSuperblockCycle = 100; // ~(60*24*30)/2.6, actual number of blocks per month is 200700 / 12 = 16725
+        consensus.nSuperblockCycle = 139; // ~(60*6)/2.6, actual number of blocks per month is 200700 / 12 = 16725
         consensus.nGovernanceMinQuorum = 3;
         consensus.nGovernanceFilterElements = 50;
         consensus.nMasternodeMinimumConfirmations = 15;
@@ -874,8 +876,8 @@ public:
 
         vcoutpointdata.push_back(COutPointData(uint256S("854f03bbf1ecaef2c9e3cd1417bc095110938deebb5b36b522269c5086de6682"), 1));
         vcoutpointdata.push_back(COutPointData(uint256S("854f03bbf1ecaef2c9e3cd1417bc095110938deebb5b36b522269c5086de6682"), 2));
-        vcoutpointdata.push_back(COutPointData(uint256S("854f03bbf1ecaef2c9e3cd1417bc095110938deebb5b36b522269c5086de6682"), 3));
-        vcoutpointdata.push_back(COutPointData(uint256S("854f03bbf1ecaef2c9e3cd1417bc095110938deebb5b36b522269c5086de6682"), 4));
+        //vcoutpointdata.push_back(COutPointData(uint256S("854f03bbf1ecaef2c9e3cd1417bc095110938deebb5b36b522269c5086de6682"), 3));
+        //vcoutpointdata.push_back(COutPointData(uint256S("854f03bbf1ecaef2c9e3cd1417bc095110938deebb5b36b522269c5086de6682"), 4));
 
         // Safe addresses start with 'X'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,76);

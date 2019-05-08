@@ -36,6 +36,8 @@
 
 #include <boost/thread.hpp>
 #include <boost/tuple/tuple.hpp>
+#include <boost/lexical_cast.hpp>
+
 #include <queue>
 
 using namespace std;
@@ -70,6 +72,10 @@ extern int g_nPushForwardHeight;
 extern int g_nTimeoutCount;
 extern int g_nMaxTimeoutCount;
 extern int64_t g_nPushForwardTimeInterval;
+extern unsigned int g_nMasternodeSPosCount;
+extern unsigned int g_nMasternodeMinCount;
+
+
 
 class ScoreCompare
 {
@@ -1064,10 +1070,85 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                     continue;
                 }
                 int64_t nPushForwardTimeInterval=pindexPrev->nTime-forwardIndex->nTime;
-                bool bSpork = g_nTimeoutCount >= g_nMaxTimeoutCount;
-                SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,bSpork,true,tmpVecResultMasternodes,bClearVec
-                                        ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true);
-                UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
+
+                if (g_nTimeoutCount >= g_nMaxTimeoutCount)
+                {
+                    SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,true,true,tmpVecResultMasternodes,bClearVec,
+                                            nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount, false, false);
+                    if (tmpVecResultMasternodes.size() < g_nMasternodeMinCount)
+                    {
+                        LogPrintf("SPOS_Error:ThreadSPOSAutoReselect() tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d\n",
+                                 tmpVecResultMasternodes.size(), g_nMasternodeMinCount);
+                        nSelectMasterNodeRet = -1;
+                    }
+                }
+                else
+                {
+                    if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
+                    {
+                        int64_t ntempSporkValue = sporkManager.GetSporkValue(SPORK_6_SPOS_ENABLED);
+                        std::string strSporkValue = boost::lexical_cast<std::string>(ntempSporkValue);
+                        std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
+                        std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
+                        int nHeight = boost::lexical_cast<int>(strHeight);
+                        int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
+                        LogPrintf("SPOS_Message: ThreadSPOSAutoReselect() strHeight:%s---strOfficialMasterNodeCount:%s---nHeight:%d--nOfficialMasterNodeCount:%d--nNewBlockHeight:%d\n",
+                                  strHeight, strOfficialMasterNodeCount, nHeight, nOfficialMasterNodeCount, nNewBlockHeight);
+                        
+                        if (nNewBlockHeight + 1 >= nHeight)
+                        {
+                            std::vector<CMasternode> tmpvecOfficialMasternodes;
+                            std::vector<CMasternode> tempvecGeneralMasternodes;
+                            int64_t nGeneralStartNewLoopTime = g_nSelectGlobalDefaultValue;
+
+                            if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
+                            {
+                                LogPrintf("SPOS_Warning: ThreadSPOSAutoReselect() nOfficialMasterNodeCount is error,nNewBlockHeight:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nNewBlockHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
+                                continue;
+                            }
+
+                            if (nOfficialMasterNodeCount > 0 && nOfficialMasterNodeCount <= g_nMasternodeSPosCount)
+                                SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,true,true,tmpvecOfficialMasternodes,bClearVec,
+                                            nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, nOfficialMasterNodeCount, false, false);
+
+                            uint32_t nOfficialsize = tmpvecOfficialMasternodes.size();
+                            for( uint32_t i = 0; i < nOfficialsize; ++i )
+                            {
+                                const CMasternode& mn = tmpvecOfficialMasternodes[i];
+                                LogPrintf("SPOS_Message:ThreadSPOSAutoReselect() Official masterNodeIP[%d]:%s(spos_select),keyid:%s, height:%d\n", i, mn.addr.ToStringIP(), mn.pubKeyMasternode.GetID().ToString(), nNewBlockHeight);
+                                tmpVecResultMasternodes.push_back(mn);
+                            }
+
+                            if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0)
+                                SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,false,true,tempvecGeneralMasternodes,bClearVec,
+                                                        nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount - nOfficialMasterNodeCount, false, true);
+
+                            uint32_t nGeneralsize = tempvecGeneralMasternodes.size();
+                            for( uint32_t j = 0; j < nGeneralsize; ++j )
+                            {
+                                const CMasternode& mn = tempvecGeneralMasternodes[j];
+                                LogPrintf("SPOS_Message: ThreadSPOSAutoReselect() General masterNodeIP[%d]:%s(spos_select),keyid:%s,height:%d\n", j, mn.addr.ToStringIP(), mn.pubKeyMasternode.GetID().ToString(), nNewBlockHeight);
+                                tmpVecResultMasternodes.push_back(mn);
+                            }
+
+                            if (tmpVecResultMasternodes.size() < g_nMasternodeMinCount)
+                            {
+                                LogPrintf("SPOS_Error:ThreadSPOSAutoReselect() mnSize less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d,height:%d\n",tmpVecResultMasternodes.size(), g_nMasternodeMinCount, nNewBlockHeight);
+                                nSelectMasterNodeRet = -1;
+                            }
+                        }
+                        else
+                        {
+                            SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,false,true,tmpVecResultMasternodes,bClearVec
+                                                    ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount, true, false);
+                        }
+                        
+                    }
+                    else
+                        SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime, false,true,tmpVecResultMasternodes,bClearVec,
+                                                nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount, true, false);
+               }
+               UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
             }
         }
     }

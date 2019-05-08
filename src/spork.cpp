@@ -19,6 +19,8 @@ CSporkManager sporkManager;
 std::map<uint256, CSporkMessage> mapSporks;
 extern int g_nSelectGlobalDefaultValue;
 extern int g_nPushForwardHeight;
+extern unsigned int g_nMasternodeSPosCount;
+extern unsigned int g_nMasternodeMinCount;
 
 void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv, CConnman& connman)
 {
@@ -266,31 +268,81 @@ bool CSporkManager::SetPrivKey(std::string strPrivKey)
     }
 }
 
-void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int nValue)
+void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
 {
-    LogPrintf("SPOS_Message:SelectMasterNodeForSpork -- nSporkID:%d---chainActive height:%d----nValue:%d\n", nSporkID, chainActive.Height(), nValue);
+    LogPrintf("SPOS_Message:SelectMasterNodeForSpork -- nSporkID:%d---chainActive height:%d----nValue:%lld\n", nSporkID, chainActive.Height(), nValue);
     if (IsSporkActive(SPORK_6_SPOS_ENABLED))
         LogPrintf("SPOS_Message:SPORK_6_SPOS_ENABLED is open\n");
     else
         LogPrintf("SPOS_Message:SPORK_6_SPOS_ENABLED is close\n");//SQTODO
-    
-    if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED) && chainActive.Height() == nValue)
+
+    if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED))
     {
-        std::vector<CMasternode> tmpVecResultMasternodes;
-        bool bClearVec=false;
-        int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
-        int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
-        int heightIndex = chainActive.Height()-g_nPushForwardHeight;
-        CBlockIndex* forwardIndex = chainActive[heightIndex];
-        if(forwardIndex==NULL)
+        std::string strSporkValue = boost::lexical_cast<std::string>(nValue);
+        std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
+        std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
+        int nHeight = boost::lexical_cast<int>(strHeight);
+        int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
+        LogPrintf("SPOS_Message: SelectMasterNodeForSpork() strHeight:%s---strOfficialMasterNodeCount:%s---nHeight:%d--nOfficialMasterNodeCount:%d--chainActive.Height:%d\n",
+                  strHeight, strOfficialMasterNodeCount, nHeight, nOfficialMasterNodeCount, chainActive.Height());
+    
+        if (chainActive.Height() == nHeight)
         {
-            LogPrintf("SPOS_Warning:spork forwardIndex is NULL,height:%d\n",heightIndex);
-            return;
+            std::vector<CMasternode> tmpvecOfficialMasternodes;
+            std::vector<CMasternode> tempvecGeneralMasternodes;
+            std::vector<CMasternode> vecMasternodes;
+            bool bClearVec=false;
+            int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
+            int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
+            int64_t nGeneralStartNewLoopTime = g_nSelectGlobalDefaultValue;
+            int heightIndex = chainActive.Height()-g_nPushForwardHeight;
+            CBlockIndex* forwardIndex = chainActive[heightIndex];
+            if(forwardIndex==NULL)
+            {
+                LogPrintf("SPOS_Warning:spork forwardIndex is NULL,height:%d\n",heightIndex);
+                return;
+            }
+
+			int64_t nPushForwardTimeInterval=chainActive.Tip()->nTime-forwardIndex->nTime;
+
+            if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
+            {
+                LogPrintf("SPOS_Warning: SelectMasterNodeForSpork() nOfficialMasterNodeCount is error,height:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
+                return;
+            }
+
+            if (nOfficialMasterNodeCount > 0 && nOfficialMasterNodeCount <= g_nMasternodeSPosCount)
+                SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,forwardIndex->nTime, true, true,tmpvecOfficialMasternodes, bClearVec
+                                        ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, false, false);
+
+            uint32_t nOfficialsize = tmpvecOfficialMasternodes.size();
+            for( uint32_t i = 0; i < nOfficialsize; ++i )
+            {
+                const CMasternode& mn = tmpvecOfficialMasternodes[i];
+                LogPrintf("SPOS_Message:SelectMasterNodeForSpork() Official masterNodeIP[%d]:%s(spos_select),keyid:%s, height:%d\n", i, mn.addr.ToStringIP(), mn.pubKeyMasternode.GetID().ToString(),nHeight);
+                vecMasternodes.push_back(mn);
+            }
+
+            if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0)
+                SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,forwardIndex->nTime, false, true,tempvecGeneralMasternodes,bClearVec
+                                    ,nSelectMasterNodeRet,nSposGeneratedIndex,nGeneralStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, false, true);
+
+            uint32_t nGeneralsize = tempvecGeneralMasternodes.size();
+            for( uint32_t j = 0; j < nGeneralsize; ++j )
+            {
+                const CMasternode& mn = tempvecGeneralMasternodes[j];
+                LogPrintf("SPOS_Message: SelectMasterNodeForSpork() General masterNodeIP[%d]:%s(spos_select),keyid:%s, height:%d\n", j, mn.addr.ToStringIP(), mn.pubKeyMasternode.GetID().ToString(), nHeight);
+                vecMasternodes.push_back(mn);
+            }
+
+            if (vecMasternodes.size() < g_nMasternodeMinCount)
+            {
+                LogPrintf("SPOS_Error:SelectMasterNodeForSpork() mnSize less than masternode min count,vecMasternodes size:%d,g_nMasternodeMinCount:%d\n",vecMasternodes.size(), g_nMasternodeMinCount);
+                nSelectMasterNodeRet = -1;
+            }
+                
+            UpdateMasternodeGlobalData(vecMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
         }
-        int64_t nPushForwardTimeInterval=chainActive.Tip()->nTime-forwardIndex->nTime;
-        SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,forwardIndex->nTime, true, true,tmpVecResultMasternodes,bClearVec
-                                ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,false);
-        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
     }
 }
 

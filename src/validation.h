@@ -1568,7 +1568,7 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
                                 ,int64_t nStartNewLoopTime,int64_t nPushForwardTimeInterval);
 void UpdateGlobalTimeoutCount(int nTimeoutCount);
 void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForwardTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
-                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect);
+                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect, const unsigned int& nMasternodeSPosCount, bool fCheckMasternodeMinCount = true, bool fRemoveOfficialMasternode = false);
 
 bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals = false);
 

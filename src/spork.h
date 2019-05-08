@@ -130,7 +130,7 @@ public:
 
     bool SetPrivKey(std::string strPrivKey);
 
-    void SelectMasterNodeForSpork(int nSporkID, int nValue);
+    void SelectMasterNodeForSpork(int nSporkID, int64_t nValue);
 };
 
 #endif
