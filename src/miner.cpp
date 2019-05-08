@@ -1033,7 +1033,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
             CBlockIndex* pindexPrev = chainActive.Tip();
             if(!pindexPrev)
                 break;
-            unsigned int nNewBlockHeight = chainActive.Height();
+            int nNewBlockHeight = chainActive.Height();
             if(!IsStartSPosHeight(nNewBlockHeight))
                 continue;
             int nTimeout = g_nMinerBlockTimeout;
@@ -1099,7 +1099,6 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                         {
                             std::vector<CMasternode> tmpvecOfficialMasternodes;
                             std::vector<CMasternode> tempvecGeneralMasternodes;
-                            int64_t nGeneralStartNewLoopTime = g_nSelectGlobalDefaultValue;
 
                             if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
                             {
