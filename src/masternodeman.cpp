@@ -1717,33 +1717,7 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
     {
         for (auto& mnpair : mapMasternodes)
         {
-            if(!fFilterSpent)
-            {
-                mapOutMasternodes[mnpair.first] = mnpair.second;
-                continue;
-            }
-            //XJTODO remove this code
-            mnpair.second.nTxHeight = -1;
-            CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,mnpair.second.nTxHeight);
-            unsigned int canBeSelectTime = mnpair.second.getCanbeSelectTime(nHeight);
-            bool fFoundPayee = true;
-            std::string strPubKeyCollateralAddress = mnpair.second.pubKeyCollateralAddress.GetID().ToString();
-            if(mapAllPayeeInfo.find(strPubKeyCollateralAddress) == mapAllPayeeInfo.end())
-                fFoundPayee = false;
-
-            bool fSelfMasternode = activeMasternode.pubKeyMasternode == mnpair.second.pubKeyMasternode;
-            if (err == CMasternode::COLLATERAL_OK && canBeSelectTime > g_nMasternodeCanBeSelectedTime &&
-                    mnpair.second.nProtocolVersion >= PROTOCOL_VERSION && fFoundPayee)
-            {
-                mapOutMasternodes[mnpair.first] = mnpair.second;
-                if(fSelfMasternode)
-                    LogPrintf("SPOS_Message:meeted active masternode:%s,output:%s,err:%d,canBeSelectTime:%d,nProtocolVersion:%d,foundPayee:%d,height:%d\n",
-                              mnpair.second.addr.ToStringIP(),mnpair.first.ToString(), err, canBeSelectTime,mnpair.second.nProtocolVersion,fFoundPayee?1:0,nHeight);
-            }else if(fSelfMasternode)
-            {
-                LogPrintf("SPOS_Message:not meeted active masternode:%s,output:%s,err:%d,canBeSelectTime:%d,nProtocolVersion:%d,foundPayee:%d,height:%d\n",
-                          mnpair.second.addr.ToStringIP(),mnpair.first.ToString(), err, canBeSelectTime,mnpair.second.nProtocolVersion,fFoundPayee?1:0,nHeight);
-            }
+            mapOutMasternodes[mnpair.first] = mnpair.second;
         }
     }
 }

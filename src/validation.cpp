@@ -111,7 +111,7 @@ std::mutex g_mutexTmpAllCandyInfo;
 std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
-int64_t g_nAllowableErrorTime = 2;//XJTODO may set 120
+int64_t g_nAllowableErrorTime = 60;//XJTODO may set 60
 #if SCN_CURRENT == SCN__main
 CAmount nMiningIncentives = 310662692;//SQTODO
 #elif SCN_CURRENT == SCN__dev
@@ -9457,10 +9457,9 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
                           mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
             }else
             {
-                int nIntervalTime = nForwardTime - tempit->second.blockTime;
-                LogPrintf("SPOS_Info:%s[%d]:ip:%s,collateralAddress:%s,nIntervalTime:%d,nTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
+                LogPrintf("SPOS_Info:%s[%d]:ip:%s,collateralAddress:%s,nForwardTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
                           "lastHeight:%d,nState:%d\n",strArrName,logCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
-                          nIntervalTime,nForwardTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
+                          nForwardTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
                           mnpair.second.nActiveState);
             }
         }
