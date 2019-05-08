@@ -5152,6 +5152,9 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
         int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
         int heightIndex = pindexNew->nHeight-g_nPushForwardHeight;
+        if(heightIndex<0){
+            heightIndex = 0;
+        }
         CBlockIndex* forwardIndex = chainActive[heightIndex];
         if(forwardIndex==NULL)
         {
