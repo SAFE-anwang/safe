@@ -1075,7 +1075,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                 {
                     SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,true,true,tmpVecResultMasternodes,bClearVec,
                                             nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount, false, false);
-                    if (tmpVecResultMasternodes.size() < g_nMasternodeMinCount)
+                    if (nSelectMasterNodeRet > 0 && tmpVecResultMasternodes.size() < g_nMasternodeMinCount)
                     {
                         LogPrintf("SPOS_Error:ThreadSPOSAutoReselect() tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d\n",
                                  tmpVecResultMasternodes.size(), g_nMasternodeMinCount);
@@ -1119,7 +1119,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                                 tmpVecResultMasternodes.push_back(mn);
                             }
 
-                            if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0)
+                            if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
                                 SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,false,true,tempvecGeneralMasternodes,bClearVec,
                                                         nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount - nOfficialMasterNodeCount, false, true);
 
@@ -1131,7 +1131,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                                 tmpVecResultMasternodes.push_back(mn);
                             }
 
-                            if (tmpVecResultMasternodes.size() < g_nMasternodeMinCount)
+                            if (nSelectMasterNodeRet > 0 && tmpVecResultMasternodes.size() < g_nMasternodeMinCount)
                             {
                                 LogPrintf("SPOS_Error:ThreadSPOSAutoReselect() mnSize less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d,height:%d\n",tmpVecResultMasternodes.size(), g_nMasternodeMinCount, nNewBlockHeight);
                                 nSelectMasterNodeRet = -1;

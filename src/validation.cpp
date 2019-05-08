@@ -5195,7 +5195,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                     tmpVecResultMasternodes.push_back(mn);
                 }
 
-                if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0)
+                if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
                     SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tempvecGeneralMasternodes
                                             ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, false, true);
 
@@ -5207,9 +5207,9 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                     tmpVecResultMasternodes.push_back(mn);
                 }
 
-                if (tmpVecResultMasternodes.size() < g_nMasternodeMinCount)
+                if (nSelectMasterNodeRet > 0 && tmpVecResultMasternodes.size() < g_nMasternodeMinCount)
                 {
-                    LogPrintf("SPOS_Error:ConnectTip() mnSize less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d,height:%d\n",tmpVecResultMasternodes.size(), g_nMasternodeMinCount, pindexNew->nHeight);
+                    LogPrintf("SPOS_Error:ConnectTip() tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d,height:%d\n",tmpVecResultMasternodes.size(), g_nMasternodeMinCount, pindexNew->nHeight);
                     nSelectMasterNodeRet = -1;
                 }
             }

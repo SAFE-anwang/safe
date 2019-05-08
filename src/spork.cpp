@@ -55,7 +55,13 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
                     Misbehaving(pfrom->GetId(), 100);
                     return;
                 }
-                
+
+                if (!CheckSPORK_6_SPOSValue(spork.nSporkID, spork.nValue))
+                {
+                    LogPrintf("SPOS_Warning: invalid spork value,spork.nSporkID:%d, spork.nValue:%lld\n", spork.nSporkID, spork.nValue);
+                    return;
+                }
+
                 SelectMasterNodeForSpork(spork.nSporkID, spork.nValue);
                 fCheckAndSelectMaster = true;
             }
@@ -77,6 +83,12 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
                 Misbehaving(pfrom->GetId(), 100);
                 return;
             }
+        }
+
+        if (!CheckSPORK_6_SPOSValue(spork.nSporkID, spork.nValue))
+        {
+            LogPrintf("SPOS_Warning: invalid spork value,spork.nSporkID:%d, spork.nValue:%lld\n", spork.nSporkID, spork.nValue);
+            return;
         }
 
         mapSporks[hash] = spork;
@@ -323,7 +335,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
                 vecMasternodes.push_back(mn);
             }
 
-            if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0)
+            if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
                 SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,forwardIndex->nTime, false, true,tempvecGeneralMasternodes,bClearVec
                                     ,nSelectMasterNodeRet,nSposGeneratedIndex,nGeneralStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, false, true);
 
@@ -335,7 +347,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
                 vecMasternodes.push_back(mn);
             }
 
-            if (vecMasternodes.size() < g_nMasternodeMinCount)
+            if (nSelectMasterNodeRet > 0 && vecMasternodes.size() < g_nMasternodeMinCount)
             {
                 LogPrintf("SPOS_Error:SelectMasterNodeForSpork() mnSize less than masternode min count,vecMasternodes size:%d,g_nMasternodeMinCount:%d\n",vecMasternodes.size(), g_nMasternodeMinCount);
                 nSelectMasterNodeRet = -1;
@@ -344,6 +356,30 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
             UpdateMasternodeGlobalData(vecMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
         }
     }
+}
+
+bool CSporkManager::CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& nValue)
+{
+    if (nSporkID == SPORK_6_SPOS_ENABLED)
+    {
+        if (nValue == SPORK_6_SPOS_ENABLEDE_DEFAULT)
+            return true;
+        else
+        {
+            std::string strSporkValue = boost::lexical_cast<std::string>(nValue);
+            std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
+            std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
+            int nHeight = boost::lexical_cast<int>(strHeight);
+            int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
+
+            const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
+
+            if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > vtempOutPointData.size())
+                return false;            
+        }
+    }
+
+    return true;
 }
 
 

@@ -259,6 +259,9 @@ UniValue spork(const UniValue& params, bool fHelp)
         // SPORK VALUE
         int64_t nValue = params[1].get_int64();
 
+        if (!sporkManager.CheckSPORK_6_SPOSValue(nSporkID, nValue))
+            return "SPOS_ERROR Invalid spork value";
+
         //broadcast new spork
         if(sporkManager.UpdateSpork(nSporkID, nValue, *g_connman)){
             sporkManager.ExecuteSpork(nSporkID, nValue);
