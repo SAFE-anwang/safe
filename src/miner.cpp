@@ -870,7 +870,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 {
                     if(nLogOutput==0)
                     {
-                        LogPrintf("SPOS_Warning:self masternode outpoint is empty,if self is masternode maybe need to wait sync or reindex\n");
+                        LogPrintf("SPOS_Warning:self masternode outpoint is empty,if self is masternode maybe need to wait sync or reindex or start alias\n");
                         nLogOutput = 1;
                     }
                     continue;
