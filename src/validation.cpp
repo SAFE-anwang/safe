@@ -9628,7 +9628,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
             unsigned int tmpSize = tmpVecResultMasternodes.size();
             if (tmpSize < g_nMasternodeMinCount)
             {
-                LogPrintf("SPOS_Error:ThreadSPOSAutoReselect() tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d\n",
+                LogPrintf("SPOS_Error: tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d\n",
                          tmpSize, g_nMasternodeMinCount);
                 nSelectMasterNodeRet = -1;
             }
