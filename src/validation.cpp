@@ -5163,6 +5163,8 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         }
 
         int64_t nPushForwardTimeInterval=pindexNew->nTime-forwardIndex->nTime;
+        bool fReselect = true;
+        SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
         if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
         {
             int64_t ntempSporkValue = sporkManager.GetSporkValue(SPORK_6_SPOS_ENABLED);
@@ -5176,8 +5178,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
             
             if (pindexNew->nHeight + 1 >= nHeight)
             {
-                std::vector<CMasternode> tmpvecOfficialMasternodes;
-                std::vector<CMasternode> tempvecGeneralMasternodes;
+                fReselect = false;
 
                 if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
                 {
@@ -5185,57 +5186,32 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                     return true;
                 }
 
-                if (nOfficialMasterNodeCount > 0 && nOfficialMasterNodeCount <= g_nMasternodeSPosCount)
-                    SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, true, false,tmpvecOfficialMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, false, false);
+                nSporkSelectLoop = SPORK_SELECT_LOOP_1;
+                SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, true, false,tmpVecResultMasternodes
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, nSporkSelectLoop, false);
 
-                uint32_t nOfficialsize = tmpvecOfficialMasternodes.size();
-                for( uint32_t i = 0; i < nOfficialsize; ++i )
-                {
-                    const CMasternode& mn = tmpvecOfficialMasternodes[i];
-                    LogPrintf("SPOS_Message:ConnectTip() Official masterNodeIP[%d]:%s(spos_select),keyid:%s, height:%d\n", i, mn.addr.ToStringIP(), mn.pubKeyMasternode.GetID().ToString(), pindexNew->nHeight);
-                    tmpVecResultMasternodes.push_back(mn);
-                }
-
+                nSporkSelectLoop = SPORK_SELECT_LOOP_2;
                 if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
-                    SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tempvecGeneralMasternodes
-                                            ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, false, true);
-
-                uint32_t nGeneralsize = tempvecGeneralMasternodes.size();
-                for( uint32_t j = 0; j < nGeneralsize; ++j )
-                {
-                    const CMasternode& mn = tempvecGeneralMasternodes[j];
-                    LogPrintf("SPOS_Message: ConnectTip() General masterNodeIP[%d]:%s(spos_select),keyid:%s,height:%d\n", j, mn.addr.ToStringIP(), mn.pubKeyMasternode.GetID().ToString(), pindexNew->nHeight);
-                    tmpVecResultMasternodes.push_back(mn);
-                }
-
-                if (nSelectMasterNodeRet > 0 && tmpVecResultMasternodes.size() < g_nMasternodeMinCount)
-                {
-                    LogPrintf("SPOS_Error:ConnectTip() tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d,height:%d\n",tmpVecResultMasternodes.size(), g_nMasternodeMinCount, pindexNew->nHeight);
-                    nSelectMasterNodeRet = -1;
-                }
-            }
-            else
-            {
-                SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes,
-                                        bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount, true, false);
+                    SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
+                                            ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
             }
         }
-        else
+
+        if (fReselect)
         {
             int64_t nCurrentTime = GetTime();
             if (g_nAllowMasterNodeSyncErrorTime != 0)
             {
-                if (nCurrentTime - g_nFirstSelectMasterNodeTime > g_nAllowMasterNodeSyncErrorTime)
-                    SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount, true, false);
-                else
+                if (nCurrentTime - g_nFirstSelectMasterNodeTime <= g_nAllowMasterNodeSyncErrorTime)
+                {
                     LogPrintf("SPOS_Warning:Does not satisfy the condition of selecting the master node,height:%d,connect new block:%d,nCurrentTime:%lld,g_nFirstSelectMasterNodeTime:%lld,g_nAllowMasterNodeSyncErrorTime:%lld\n",
                               heightIndex,pindexNew->nHeight, nCurrentTime, g_nFirstSelectMasterNodeTime, g_nAllowMasterNodeSyncErrorTime);
+                    return true;
+                }
             }
-            else
-                SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount, true, false);
+
+            SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
+                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount, nSporkSelectLoop, false);
         }
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
     }

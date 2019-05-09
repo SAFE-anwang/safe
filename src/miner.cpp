@@ -1087,8 +1087,6 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                     if (nNewBlockHeight + 1 >= nHeight)
                     {
                         fReselect = false;
-                        std::vector<CMasternode> tmpvecMasternodes;
-
                         if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
                         {
                             LogPrintf("SPOS_Warning: ThreadSPOSAutoReselect() nOfficialMasterNodeCount is error,nNewBlockHeight:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nNewBlockHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
@@ -1096,12 +1094,12 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                         }
 
                         nSporkSelectLoop = SPORK_SELECT_LOOP_1;
-                        SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,true,true,tmpvecMasternodes,bClearVec,
+                        SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,true,true,tmpVecResultMasternodes,bClearVec,
                                     nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, nOfficialMasterNodeCount, nSporkSelectLoop, false);
 
                         nSporkSelectLoop = SPORK_SELECT_LOOP_2;
                         if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
-                            SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,false,true,tmpvecMasternodes,bClearVec,
+                            SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,false,true,tmpVecResultMasternodes,bClearVec,
                                                     nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
                     }
                 }
