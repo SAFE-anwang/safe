@@ -1280,6 +1280,13 @@ enum CTxSrcType{
     FROM_NEW
 };
 
+enum SPORK_SELECT_LOOP
+{
+  NO_SPORK_SELECT_LOOP = 0,
+  SPORK_SELECT_LOOP_1 = 1,
+  SPORK_SELECT_LOOP_2 = 2
+};
+
 bool CheckUnlockedHeight(const int32_t& nTxVersion, const int64_t& nOffset);
 
 /** Context-independent validity checks */
@@ -1568,7 +1575,8 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
                                 ,int64_t nStartNewLoopTime,int64_t nPushForwardTimeInterval);
 void UpdateGlobalTimeoutCount(int nTimeoutCount);
 void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForwardTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
-                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect, const unsigned int& nMasternodeSPosCount, bool fCheckMasternodeMinCount = true, bool fRemoveOfficialMasternode = false);
+                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect,
+                             const unsigned int& nMasternodeSPosCount, SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode = false);
 
 bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals = false);
 

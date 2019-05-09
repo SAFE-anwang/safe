@@ -9519,7 +9519,7 @@ void UpdateGlobalTimeoutCount(int nTimeoutCount)
 
 void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForwardTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
                                    ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect,const unsigned int& nMasternodeSPosCount, 
-                                   bool fCheckMasternodeMinCount, bool fRemoveOfficialMasternode)
+                                   SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode)
 {
     if(!masternodeSync.IsSynced()&&g_vecResultMasternodes.empty())
         return;
@@ -9627,7 +9627,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
         return;
     }
 
-    if (bSpork)
+    if (nSporkSelectLoop==SPORK_SELECT_LOOP_1)
     {
         std::vector<CMasternode> vecResultAllOfficialMasternodes;
         SortMasternodeByScore(mapMeetedMasternodes, vecResultAllOfficialMasternodes, nForwardTime, "Official", mapAllPayeeInfo);
@@ -9645,6 +9645,14 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
         {
             if(!fTimeoutReselect){
                 UpdateGlobalTimeoutCount(0);
+            }
+            int tmpSize = tmpVecResultMasternodes.size();
+            if (tmpSize < g_nMasternodeMinCount)
+            {
+                LogPrintf("SPOS_Error:ThreadSPOSAutoReselect() tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d\n",
+                         tmpSize, g_nMasternodeMinCount);
+                nSelectMasterNodeRet = -1;
+                return;
             }
         }
 
@@ -9693,17 +9701,14 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
     unsigned int nP3 = ((double)vec3Size / nMeetedMasternodeSize) * nMasternodeSPosCount;
 
     unsigned int nMnSize = vec1Size + vec2Size + vec3Size;
-    if (fCheckMasternodeMinCount)
+    if (nMnSize < g_nMasternodeMinCount)
     {
-        if (nMnSize < g_nMasternodeMinCount)
-        {
-            LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,"
-                      "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
-                      nMnSize,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),nP1,nP2,nP3,
-                      mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
-            nSelectMasterNodeRet = -1;
-            return;
-        }
+        LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,"
+                  "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
+                  nMnSize,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),nP1,nP2,nP3,
+                  mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
+        nSelectMasterNodeRet = -1;
+        return;
     }
 
     unsigned int nSelectTotal = nP1 + nP2 + nP3;
@@ -9717,6 +9722,10 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
 //              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,
 //              nTotalMasternode,mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
 //              nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
+
+    int nSporkLoop1Size = 0;
+    if(nSporkSelectLoop==SPORK_SELECT_LOOP_2)
+        nSporkLoop1Size = tmpVecResultMasternodes.size();
 
     unsigned int nP1Total = nP1+nP1Increase;
     if(nP1Total>vec1Size)
@@ -9763,7 +9772,11 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
         else if(i< (nP1Total + nP2Total))
             nPStr = "P2";
         const CMasternode& mn = tmpVecResultMasternodes[i];
-        LogPrintf("SPOS_Message:masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s\n", i, mn.addr.ToStringIP(),
+        if(nSporkLoop1Size>0&&i<nSporkLoop1Size)
+            LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nPStr);
+        else
+            LogPrintf("SPOS_Message:General masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s\n", i, mn.addr.ToStringIP(),
                   mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nPStr);
     }
 }
