@@ -861,10 +861,18 @@ void ThreadUpdateBalanceChanged(WalletModel *walletModel)
 	}
 
 	RenameThread("updateBalanceChangedThread");
+    int count = 0;
 	while (true)
 	{
         boost::this_thread::interruption_point();
-		walletModel->pollBalanceChanged();
+        count++;
+        bool checkIncrease = true;
+        if(count>=150)
+        {
+            count = 0;
+            checkIncrease = false;
+        }
+        walletModel->pollBalanceChanged(checkIncrease);
 		MilliSleep(MODEL_UPDATE_DELAY);
 	}
 }

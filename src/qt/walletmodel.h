@@ -360,7 +360,7 @@ public Q_SLOTS:
     /* Watch-only added */
     void updateWatchOnlyFlag(bool fHaveWatchonly);
     /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
-    void pollBalanceChanged();
+    void pollBalanceChanged(bool checkIncrease);
     void updateAllBalanceChanged(bool checkIncrease=false);
 };
 

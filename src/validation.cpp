@@ -9616,8 +9616,8 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
 
             tmpVecResultMasternodes.push_back(vecResultAllOfficialMasternodes[j]);
             const CMasternode& mn = vecResultAllOfficialMasternodes[j];
-            LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld\n", j, mn.addr.ToStringIP(),
-                              mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime);
+            LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,currHeight:%d\n", j, mn.addr.ToStringIP(),
+                              mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nCurrBlockHeight);
         }
 
         if (nMasternodeSPosCount == g_nMasternodeSPosCount)
@@ -9713,13 +9713,13 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
 
     unsigned int nP2Total = nP2+nP2Increase;
     if(nP2Total>vec2Size)
-        LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP2,nP2Increase,nP2Total);
+        LogPrintf("SPOS_Error:nP2:%d,nP2Increase:%d,vec2Size:%d\n",nP2,nP2Increase,nP2Total);
     for (unsigned int j = 0; j < nP2Total; j++)
         tmpVecResultMasternodes.push_back(vecResultMasternodesL2[j]);
 
     unsigned int nP3Total = nP3 + nP3Increase;
     if(nP3Total>vec3Size)
-        LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP3,nP3Increase,nP3Total);
+        LogPrintf("SPOS_Error:nP2:%d,nP2Increase:%d,vec2Size:%d\n",nP3,nP3Increase,nP3Total);
     for (unsigned int k = 0; k < nP3Total; k++)
         tmpVecResultMasternodes.push_back(vecResultMasternodesL3[k]);
 
@@ -9751,8 +9751,8 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
             nPStr = "P2";
         const CMasternode& mn = tmpVecResultMasternodes[i];
         if(i>=nSporkLoop1Size)
-            LogPrintf("SPOS_Message:General masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s\n", i, mn.addr.ToStringIP(),
-                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nPStr);
+            LogPrintf("SPOS_Message:General masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s,currHeight:%d\n", i, mn.addr.ToStringIP(),
+                  mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nPStr,nCurrBlockHeight);
     }
 }
 

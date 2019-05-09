@@ -211,7 +211,7 @@ void WalletModel::updateAllBalanceChanged(bool checkIncrease)
     }
 }
 
-void WalletModel::pollBalanceChanged()
+void WalletModel::pollBalanceChanged(bool checkIncrease)
 {
     // Get required locks upfront. This avoids the GUI from getting stuck on
     // periodical polls if the core is holding the locks for a longer time -
@@ -224,7 +224,7 @@ void WalletModel::pollBalanceChanged()
     if(!lockWallet)
         return;
 
-    updateAllBalanceChanged(true);
+    updateAllBalanceChanged(checkIncrease);
 }
 
 void WalletModel::checkBalanceChanged(bool checkIncrease)
