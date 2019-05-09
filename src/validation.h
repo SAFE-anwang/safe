@@ -1284,7 +1284,8 @@ enum SPORK_SELECT_LOOP
 {
   NO_SPORK_SELECT_LOOP = 0,
   SPORK_SELECT_LOOP_1 = 1,
-  SPORK_SELECT_LOOP_2 = 2
+  SPORK_SELECT_LOOP_2 = 2,
+  SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT = 3
 };
 
 bool CheckUnlockedHeight(const int32_t& nTxVersion, const int64_t& nOffset);

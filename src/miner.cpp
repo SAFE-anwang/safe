@@ -1070,10 +1070,10 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                     continue;
                 }
                 int64_t nPushForwardTimeInterval=pindexPrev->nTime-forwardIndex->nTime;
-                bool fOverMaxTimeout = g_nTimeoutCount >= g_nMaxTimeoutCount;
+                bool fOverTimeoutLimit = g_nTimeoutCount >= g_nMaxTimeoutCount;
                 bool fReselect = true;
                 SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
-                if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED) && !fOverMaxTimeout)
+                if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED) && !fOverTimeoutLimit)
                 {
                     int64_t ntempSporkValue = sporkManager.GetSporkValue(SPORK_6_SPOS_ENABLED);
                     std::string strSporkValue = boost::lexical_cast<std::string>(ntempSporkValue);
@@ -1108,7 +1108,9 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
 
                 if(fReselect)
                 {
-                    SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,fOverMaxTimeout,true,tmpVecResultMasternodes,bClearVec,
+                    if(fOverTimeoutLimit)
+                        nSporkSelectLoop = SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT;
+                    SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,fOverTimeoutLimit,true,tmpVecResultMasternodes,bClearVec,
                                             nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount, nSporkSelectLoop, false);
                 }
                 UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);

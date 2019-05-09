@@ -9627,7 +9627,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
         return;
     }
 
-    if (nSporkSelectLoop==SPORK_SELECT_LOOP_1)
+    if (nSporkSelectLoop==SPORK_SELECT_LOOP_1||nSporkSelectLoop==SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT)
     {
         std::vector<CMasternode> vecResultAllOfficialMasternodes;
         SortMasternodeByScore(mapMeetedMasternodes, vecResultAllOfficialMasternodes, nForwardTime, "Official", mapAllPayeeInfo);
@@ -9652,7 +9652,6 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
                 LogPrintf("SPOS_Error:ThreadSPOSAutoReselect() tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d\n",
                          tmpSize, g_nMasternodeMinCount);
                 nSelectMasterNodeRet = -1;
-                return;
             }
         }
 
@@ -9701,11 +9700,15 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
     unsigned int nP3 = ((double)vec3Size / nMeetedMasternodeSize) * nMasternodeSPosCount;
 
     unsigned int nMnSize = vec1Size + vec2Size + vec3Size;
-    if (nMnSize < g_nMasternodeMinCount)
+    int nSporkLoop1Size = 0;
+    if(nSporkSelectLoop==SPORK_SELECT_LOOP_2)
+        nSporkLoop1Size = tmpVecResultMasternodes.size();
+
+    if (nMnSize + nSporkLoop1Size < g_nMasternodeMinCount)
     {
-        LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,"
+        LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,nSporkLoop1Size:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,"
                   "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
-                  nMnSize,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),nP1,nP2,nP3,
+                  nMnSize,nSporkLoop1Size,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),nP1,nP2,nP3,
                   mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
         nSelectMasterNodeRet = -1;
         return;
@@ -9722,10 +9725,6 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
 //              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,
 //              nTotalMasternode,mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
 //              nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
-
-    int nSporkLoop1Size = 0;
-    if(nSporkSelectLoop==SPORK_SELECT_LOOP_2)
-        nSporkLoop1Size = tmpVecResultMasternodes.size();
 
     unsigned int nP1Total = nP1+nP1Increase;
     if(nP1Total>vec1Size)
