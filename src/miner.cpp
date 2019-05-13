@@ -708,7 +708,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         return;
 
     index = nTimeIntervalCnt % masternodeSPosCount;
-    nNextTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCnt+1)*interval*1000;
+    nNextTime = nStartNewLoopTime + nPushForwardTime*1000 + (nTimeIntervalCnt+1)*interval*1000;
 
     if(index<0||index>=(int)masternodeSPosCount)
     {
