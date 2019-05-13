@@ -307,7 +307,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
             int64_t nGeneralStartNewLoopTime = g_nSelectGlobalDefaultValue;
             SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
             int nForwardHeight = 0,nScoreHeight = 0;
-            getForwardHeightAndScoreHeight(chainActive.Height(),nForwardHeight,nScoreHeight);
+            updateForwardHeightAndScoreHeight(chainActive.Height(),nForwardHeight,nScoreHeight);
             CBlockIndex* forwardIndex = chainActive[nForwardHeight];
             if(forwardIndex==NULL)
             {

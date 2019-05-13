@@ -139,6 +139,7 @@ extern int g_nLogMaxCnt;
 extern int g_nLocalStartSavePayeeHeight;
 extern int g_nCanSelectMasternodeHeight;
 extern int g_nTimeoutCount;
+extern int g_nPushForwardTime;
 
 std::mutex g_mutexAllPayeeInfo;
 std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
@@ -5152,7 +5153,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
         int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
         int nForwardHeight = 0,nScoreHeight = 0;
-        getForwardHeightAndScoreHeight(pindexNew->nHeight,nForwardHeight,nScoreHeight);
+        updateForwardHeightAndScoreHeight(pindexNew->nHeight,nForwardHeight,nScoreHeight);
         CBlockIndex* forwardIndex = chainActive[nForwardHeight];
         if(forwardIndex==NULL)
         {
@@ -5883,7 +5884,6 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     int32_t mnSize = 0;
     int64_t nStartNewLoopTime = 0;
     int32_t nIndex = 0;
-    int32_t nPushForwardTimeInterval = 0;
     CMasternode mnTemp;
     {
         LOCK(cs_spos);
@@ -5895,10 +5895,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         if(mnSize == 0)
             return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d,g_nSelectMasterNodeRet:%d"
                                         ,nHeight, keyID.ToString(), strSigMessage, vchSig.size(),g_nSelectMasterNodeRet), REJECT_INVALID, "bad-mnSize", true);
-        if(nHeight-g_nPushForwardHeight>g_nStartSPOSHeight){
-            nPushForwardTimeInterval = g_nPushForwardHeight*Params().GetConsensus().nSPOSTargetSpacing;
-        }
-        int32_t interval = (block.GetBlockTime() - nStartNewLoopTime / 1000 - nPushForwardTimeInterval) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+        int32_t interval = (block.GetBlockTime() - nStartNewLoopTime / 1000 - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
         nIndex = interval % mnSize;
         if(nIndex<0)
             return state.DoS(100,error("SPOS_Error CheckSPOSBlock():incorrect index value,height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
@@ -5928,9 +5925,9 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         int64_t nBlockTime = block.GetBlockTime();
         string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
         string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
-        LogPrintf("SPOS_Message:check spos block succ,height:%d,index:%d,ip:%s,blockTime:%lld(%s),nStartNewLoopTime:%lld(%s),mnSize:%d,nPushForwardTimeInterval:%d,"
+        LogPrintf("SPOS_Message:check spos block succ,height:%d,index:%d,ip:%s,blockTime:%lld(%s),nStartNewLoopTime:%lld(%s),mnSize:%d,nPushForwardTime:%d,"
                   "strKeyID:%s\n",nHeight,nIndex,mnTemp.addr.ToStringIP(),nBlockTime,strBlockTime,nStartNewLoopTime/1000,strStartNewLoopTime,mnSize,
-                  nPushForwardTimeInterval,keyID.ToString());
+                  g_nPushForwardTime,keyID.ToString());
     }
     return true;
 }
@@ -9752,15 +9749,19 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
         UpdateGlobalTimeoutCount(0);
     }
 
+    int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
+    int64_t nTimeInerval = GetTime() + interval*2 - g_nPushForwardTime - nTime;
+    int64_t nNextIndex = (nTimeInerval / interval) % size;
+
     //no \n,connect two log str
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),select %d masternode,min online masternode count:%d,"
               "nRemainNum:%d,intervalHeight:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime/1000,strStartNewLoopTime,size,
               g_nMasternodeMinCount,nRemainNum,intervalHeight);
 
     LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
-              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d,nSelectMasterNodeRet:%d\n"
+              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d,nNextIndex maybe:%d\n"
               ,nMnSize,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),mapMasternodesL1.size()
-              ,mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,nP1Increase,nP2,nP2Increase,nP3,nP3Increase,g_nTimeoutCount,nSelectMasterNodeRet);
+              ,mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,nP1Increase,nP2,nP2Increase,nP3,nP3Increase,g_nTimeoutCount,nNextIndex);
     for( uint32_t i = 0; i < size; ++i )
     {
         string nPStr = "P3";
@@ -9847,7 +9848,7 @@ int ConvertMasternodeConfirmationsByHeight(const int &nHeight, const Consensus::
     }
 }
 
-void getForwardHeightAndScoreHeight(int nCurrBlockHeight, int &nForwardHeight, int &nScoreHeight)
+void updateForwardHeightAndScoreHeight(int nCurrBlockHeight, int &nForwardHeight, int &nScoreHeight)
 {
     LOCK(cs_spos);
     if(nCurrBlockHeight-g_nPushForwardHeight>g_nStartSPOSHeight)
@@ -9857,6 +9858,9 @@ void getForwardHeightAndScoreHeight(int nCurrBlockHeight, int &nForwardHeight, i
             nForwardHeight = 0;
         }
         nScoreHeight = nForwardHeight;
+        if(g_nPushForwardTime!=0){
+            g_nPushForwardTime = g_nPushForwardHeight * Params().GetConsensus().nSPOSTargetSpacing;
+        }
     }else
     {
         nForwardHeight = nCurrBlockHeight;//first spos g_nPushForwardHeight block not push
@@ -9869,7 +9873,8 @@ void getForwardHeightAndScoreHeight(int nCurrBlockHeight, int &nForwardHeight, i
             nScoreHeight = 0;
         }
     }
-    LogPrintf("SPOS_Message:forwardHeight:%d,scoreHeight:%d,nCurrBlockHeight:%d,g_nTimeoutCount:%d\n",nForwardHeight,nScoreHeight,nCurrBlockHeight,g_nTimeoutCount);
+    LogPrintf("SPOS_Message:forwardHeight:%d,scoreHeight:%d,nCurrBlockHeight:%d,g_nTimeoutCount:%d,g_nPushForwardTime:%d\n"
+              ,nForwardHeight,nScoreHeight,nCurrBlockHeight,g_nTimeoutCount,g_nPushForwardTime);
 }
 
 

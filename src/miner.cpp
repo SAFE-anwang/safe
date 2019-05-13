@@ -73,6 +73,7 @@ extern int g_nTimeoutCount;
 extern int g_nMaxTimeoutCount;
 extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinCount;
+extern int g_nPushForwardTime;
 
 
 
@@ -700,17 +701,14 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     }
 
     int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
-    int nPushForwardTime = 0;
-    if(nNewBlockHeight-g_nPushForwardHeight>g_nStartSPOSHeight)
-        nPushForwardTime = g_nPushForwardHeight*interval;
-    int64_t nTimeInerval = pblock->nTime - nPushForwardTime + interval - nStartNewLoopTime/ 1000;
+    int64_t nTimeInerval = pblock->nTime - g_nPushForwardTime + interval - nStartNewLoopTime/ 1000;
     int64_t nTimeIntervalCnt = (nTimeInerval / interval - 2);
     //to avoid nTimeIntervalCnt=masternodeSPosCount,first time nTimeIntervalCnt:-1,index:-1
     if(nTimeIntervalCnt<0)
         return;
 
     index = nTimeIntervalCnt % masternodeSPosCount;
-    nNextTime = nStartNewLoopTime + nPushForwardTime*1000 + (nTimeIntervalCnt+1)*interval*1000;
+    nNextTime = nStartNewLoopTime + g_nPushForwardTime*1000 + (nTimeIntervalCnt+1)*interval*1000;
 
     if(index<0||index>=(int)masternodeSPosCount)
     {
@@ -1058,7 +1056,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                 }
                 UpdateGlobalTimeoutCount(nTimeoutCount);
                 int nForwardHeight = 0,nScoreHeight = 0;
-                getForwardHeightAndScoreHeight(nCurrBlockHeight,nForwardHeight,nScoreHeight);
+                updateForwardHeightAndScoreHeight(nCurrBlockHeight,nForwardHeight,nScoreHeight);
                 LogPrintf("SPOS_Warning:timeout reselect masternode,nTimeoutRet:%d bigger than nTimeout:%d,currTime:%d,g_nTimeoutCount:%d,"
                           "heightIndex:%d\n",nTimeoutRet,nTimeout,nCurrTime,g_nTimeoutCount,nForwardHeight);
                 CBlockIndex* forwardIndex = chainActive[nForwardHeight];

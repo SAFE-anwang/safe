@@ -1580,7 +1580,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
                              const unsigned int& nMasternodeSPosCount, SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode = false);
 
 bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals = false);
-void getForwardHeightAndScoreHeight(int nCurrBlockHeight,int& nForwardHeight,int& nScoreHeight);
+void updateForwardHeightAndScoreHeight(int nCurrBlockHeight,int& nForwardHeight,int& nScoreHeight);
 
 
 #endif // BITCOIN_VALIDATION_H
