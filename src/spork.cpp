@@ -317,8 +317,6 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
                 return;
             }
 
-			int64_t nPushForwardTimeInterval=chainActive.Tip()->nTime-forwardIndex->nTime;
-
             if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
             {
                 LogPrintf("SPOS_Warning: SelectMasterNodeForSpork() nOfficialMasterNodeCount is error,height:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
@@ -333,7 +331,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
                 SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,forwardIndex->nTime, false, true,vecMasternodes,bClearVec
                                     ,nSelectMasterNodeRet,nSposGeneratedIndex,nGeneralStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
                 
-            UpdateMasternodeGlobalData(vecMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
+            UpdateMasternodeGlobalData(vecMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
         }
     }
 }

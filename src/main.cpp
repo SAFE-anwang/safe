@@ -50,7 +50,6 @@ int g_nMasternodeOldHeight = 10000;
 int g_nLogMaxCnt = 600;
 int g_nTimeoutCount = 0;
 int g_nMaxTimeoutCount = 5;
-int64_t g_nPushForwardTimeInterval = 0;
 
 int64_t g_nFirstSelectMasterNodeTime = 0;
 int64_t g_nAllowMasterNodeSyncErrorTime = 0;

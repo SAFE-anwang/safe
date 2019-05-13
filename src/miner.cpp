@@ -71,7 +71,6 @@ extern int g_nSelectGlobalDefaultValue;
 extern int g_nPushForwardHeight;
 extern int g_nTimeoutCount;
 extern int g_nMaxTimeoutCount;
-extern int64_t g_nPushForwardTimeInterval;
 extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinCount;
 
@@ -669,7 +668,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
                              ,unsigned int nTransactionsUpdatedLast,int64_t& nNextTime,unsigned int& nSleepMS
                              ,int64_t& nNextLogTime,int64_t& nNextLogAllowTime,unsigned int& nWaitBlockHeight,
                              std::vector<CMasternode>& tmpVecResultMasternodes,int nSposGeneratedIndex
-                             ,int64_t& nStartNewLoopTime,int64_t nPushForwardTimeInterval)
+                             ,int64_t& nStartNewLoopTime)
 {
     int index = 0;
     unsigned int masternodeSPosCount = tmpVecResultMasternodes.size();
@@ -701,7 +700,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     }
 
     int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
-    int64_t nTimeInerval = pblock->nTime - nPushForwardTimeInterval + interval - nStartNewLoopTime/ 1000;
+    int64_t nTimeInerval = pblock->nTime - g_nPushForwardHeight*interval + interval - nStartNewLoopTime/ 1000;
     int64_t nTimeIntervalCnt = (nTimeInerval / interval - 2);
     //to avoid nTimeIntervalCnt=masternodeSPosCount,first time nTimeIntervalCnt:-1,index:-1
     if(nTimeIntervalCnt<0)
@@ -727,10 +726,10 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         if(nNewBlockHeight != nWaitBlockHeight && pblock->nTime != nNextLogTime)
         {
             LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.blockTime:%lld,g_nStartNewLoopTime:%lld,"
-                      "local collateral address:%s,masternode collateral address:%s,nTimeInerval:%d,nPushForwardTimeInterval:%lld\n",index
+                      "local collateral address:%s,masternode collateral address:%s,nTimeInerval:%d\n",index
                       ,masterIP,pindexPrev->nHeight,pblock->nTime,nStartNewLoopTime
                       ,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
-                      ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString(),nTimeInerval,nPushForwardTimeInterval);
+                      ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString(),nTimeInerval);
         }
         nNextLogTime = pblock->nTime;
         nWaitBlockHeight = nNewBlockHeight;
@@ -747,8 +746,9 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     }
 
     //it's turn to generate block
-    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,blockTime:%lld,g_nSposIndex:%d,nTimeInerval:%d,nPushForwardTimeInterval:%lld\n"
-              ,index,localIP,nNewBlockHeight,nActualTimeMillisInterval,mn.pubKeyMasternode.GetID().ToString(),nCurrTime,nStartNewLoopTime,pblock->nTime,nSposGeneratedIndex,nTimeInerval,nPushForwardTimeInterval);
+    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,"
+              "blockTime:%lld,g_nSposIndex:%d,nTimeInerval:%d\n",index,localIP,nNewBlockHeight,nActualTimeMillisInterval,
+              mn.pubKeyMasternode.GetID().ToString(),nCurrTime,nStartNewLoopTime,pblock->nTime,nSposGeneratedIndex,nTimeInerval);
 
     SetThreadPriority(THREAD_PRIORITY_NORMAL);
 
@@ -758,7 +758,9 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
     if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
     {
-        LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the master node can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n", pblock->nNonce, g_nMasternodeCanBeSelectedTime);
+        LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the master node "
+                  "can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n",
+                  pblock->nNonce, g_nMasternodeCanBeSelectedTime);
         return;
     }
 
@@ -897,7 +899,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 
                 std::vector<CMasternode> tmpVecResultMasternodes;
                 int nSposGeneratedIndex=0,masternodeSPosCount=0;
-                int64_t nStartNewLoopTime=0,nPushForwardTimeInterval=0;
+                int64_t nStartNewLoopTime=0;
                 {
                     LOCK(cs_spos);
                     for(auto& mn:g_vecResultMasternodes)
@@ -907,12 +909,11 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                     }
                     nStartNewLoopTime = g_nStartNewLoopTimeMS;
                     nSposGeneratedIndex = g_nSposGeneratedIndex;
-                    nPushForwardTimeInterval = g_nPushForwardTimeInterval;
                 }
                 if(masternodeSPosCount != 0)
                 {
                     ConsensusUseSPos(chainparams,connman,pindexPrev,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime,nSleepMS,nNextLogTime
-                                     ,nNextLogAllowTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
+                                     ,nNextLogAllowTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,nStartNewLoopTime);
                 }else if(nLastMasternodeCount != 0)
                 {
                     LogPrintf("SPOS_Error:vec_masternodes is empty\n");
@@ -1069,7 +1070,6 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                     LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",heightIndex,chainActive.Height());
                     continue;
                 }
-                int64_t nPushForwardTimeInterval=pindexPrev->nTime-forwardIndex->nTime;
                 bool fOverTimeoutLimit = g_nTimeoutCount >= g_nMaxTimeoutCount;
                 bool fReselect = true;
                 SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
@@ -1111,7 +1111,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                     SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,fOverTimeoutLimit,true,tmpVecResultMasternodes,bClearVec,
                                             nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount, nSporkSelectLoop, false);
                 }
-                UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,nPushForwardTimeInterval);
+                UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
             }
         }
     }
