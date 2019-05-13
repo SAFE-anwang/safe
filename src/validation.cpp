@@ -9624,8 +9624,8 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
         std::vector<CMasternode> vecResultAllOfficialMasternodes;
         SortMasternodeByScore(mapMeetedMasternodes, vecResultAllOfficialMasternodes, nScoreTime, "Official", mapAllPayeeInfo);
         
-        uint32_t nAllAllOfficialMasternodecount = vecResultAllOfficialMasternodes.size();
-        for (uint32_t i = 0; i < nAllAllOfficialMasternodecount; ++i)
+        uint32_t nAllOfficialMasternodecount = vecResultAllOfficialMasternodes.size();
+        for (uint32_t i = 0; i < nAllOfficialMasternodecount; ++i)
         {
             if (i == nMasternodeSPosCount)
                 break;
