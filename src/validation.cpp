@@ -6193,7 +6193,7 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
         if (IsStartSPosHeight(pindexPrev->nHeight + 1 - g_nSPOSAfterEnableDynamicCheckHeight))
         {
             if (block.GetBlockTime() - pindexPrev->nTime < g_nAdjacentBlockInterval)
-                return state.DoS(100, error("SPOS_Error AcceptBlockHeader():Adjacent block interval invalid, nHeight:%d, blocktime:%lld, pindexPrevblocktime:%lld, g_nAdjacentBlockInterval:%d\n",
+                return state.DoS(100, error("SPOS_Warning AcceptBlockHeader():Adjacent block interval invalid, nHeight:%d, blocktime:%lld, pindexPrevblocktime:%lld, g_nAdjacentBlockInterval:%d\n",
                                  pindexPrev->nHeight + 1, block.GetBlockTime(), pindexPrev->nTime, g_nAdjacentBlockInterval), REJECT_INVALID ,"bad-prevblk");
 
             // Check that the block satisfies synchronized checkpoint
@@ -9750,9 +9750,9 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
               g_nMasternodeMinCount,nRemainNum,intervalHeight);
 
     LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
-              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d\n",nMnSize,
-              g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),
-              mapMasternodesL3.size(),nP1,nP1Increase,nP2,nP2Increase,nP3,nP3Increase,g_nTimeoutCount);
+              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d,nSelectMasterNodeRet:%d\n"
+              ,nMnSize,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),mapMasternodesL1.size()
+              ,mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,nP1Increase,nP2,nP2Increase,nP3,nP3Increase,g_nTimeoutCount,nSelectMasterNodeRet);
     for( uint32_t i = 0; i < size; ++i )
     {
         string nPStr = "P3";
