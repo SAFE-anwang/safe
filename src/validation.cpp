@@ -5909,11 +5909,10 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
     if (keyID != mnkeyID)
-        return state.DoS(100, error("SPOS_Warning CheckSPOSBlock():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,remote keyID:%s,local mnkeyID:%s,local nIndex:%d,"
-                                    "ip:%s,blocktime:%lld,startlooptime:%lld\n"
-                                    ,nHeight,keyID.ToString(),mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP()
-                                    ,block.GetBlockTime(),nStartNewLoopTime)
-                                    , REJECT_INVALID, "bad-blockaddress", true);
+        return state.DoS(100, error("SPOS_Warning CheckSPOSBlock():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
+                                    "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s,blocktime:%lld,startlooptime:%lld\n",nHeight,keyID.ToString()
+                                    ,mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP(),block.GetBlockTime(),nStartNewLoopTime), REJECT_INVALID
+                                    ,"bad-blockaddress", true);
 
     uint32_t tempMnActiveTime = mnTemp.getCanbeSelectTime(nHeight);
     if (block.nNonce <= g_nMasternodeCanBeSelectedTime)
