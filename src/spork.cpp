@@ -306,14 +306,18 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
             int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
             int64_t nGeneralStartNewLoopTime = g_nSelectGlobalDefaultValue;
             SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
-            int heightIndex = chainActive.Height()-g_nPushForwardHeight;
-            if(heightIndex<0){
-                heightIndex = 0;
-            }
-            CBlockIndex* forwardIndex = chainActive[heightIndex];
+            int nForwardHeight = 0,nScoreHeight = 0;
+            getForwardHeightAndScoreHeight(chainActive.Height(),nForwardHeight,nScoreHeight);
+            CBlockIndex* forwardIndex = chainActive[nForwardHeight];
             if(forwardIndex==NULL)
             {
-                LogPrintf("SPOS_Warning:spork forwardIndex is NULL,height:%d\n",heightIndex);
+                LogPrintf("SPOS_Warning:spork forwardIndex is NULL,height:%d\n",nForwardHeight);
+                return;
+            }
+            CBlockIndex* scoreIndex = chainActive[nScoreHeight];
+            if(scoreIndex==NULL)
+            {
+                LogPrintf("SPOS_Warning:spork scoreIndex is NULL,height:%d\n",nScoreHeight);
                 return;
             }
 
@@ -323,12 +327,12 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
                 return;
             }
             nSporkSelectLoop = SPORK_SELECT_LOOP_1;
-            SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,forwardIndex->nTime, true, true,vecMasternodes, bClearVec
+            SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,scoreIndex->nTime, true, true,vecMasternodes, bClearVec
                                         ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, nSporkSelectLoop, false);
 
             nSporkSelectLoop = SPORK_SELECT_LOOP_2;
             if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
-                SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,forwardIndex->nTime, false, true,vecMasternodes,bClearVec
+                SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,scoreIndex->nTime, false, true,vecMasternodes,bClearVec
                                     ,nSelectMasterNodeRet,nSposGeneratedIndex,nGeneralStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
                 
             UpdateMasternodeGlobalData(vecMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);

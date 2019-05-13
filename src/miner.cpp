@@ -1035,8 +1035,8 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
             CBlockIndex* pindexPrev = chainActive.Tip();
             if(!pindexPrev)
                 break;
-            int nNewBlockHeight = chainActive.Height();
-            if(!IsStartSPosHeight(nNewBlockHeight))
+            int nCurrBlockHeight = chainActive.Height();
+            if(!IsStartSPosHeight(nCurrBlockHeight))
                 continue;
             int nTimeout = g_nMinerBlockTimeout;
             uint32_t nCurrTime = GetTime();
@@ -1055,18 +1055,11 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                     continue;
                 }
                 UpdateGlobalTimeoutCount(nTimeoutCount);
-                int nForwardHeight = nNewBlockHeight-g_nPushForwardHeight;
-                if(nForwardHeight<0){
-                    nForwardHeight = 0;
-                }
-                int nTimeoutHeight = nNewBlockHeight-g_nTimeoutPushForwardHeight*g_nTimeoutCount;
-                if(nTimeoutHeight<0){
-                    nTimeoutHeight = 0;
-                }
+                int nForwardHeight = 0,nScoreHeight = 0;
+                getForwardHeightAndScoreHeight(nCurrBlockHeight,nForwardHeight,nScoreHeight);
                 LogPrintf("SPOS_Warning:timeout reselect masternode,nTimeoutRet:%d bigger than nTimeout:%d,currTime:%d,g_nTimeoutCount:%d,"
                           "heightIndex:%d\n",nTimeoutRet,nTimeout,nCurrTime,g_nTimeoutCount,nForwardHeight);
                 CBlockIndex* forwardIndex = chainActive[nForwardHeight];
-                CBlockIndex* timeoutForwardIndex = chainActive[nTimeoutHeight];
                 std::vector<CMasternode> tmpVecResultMasternodes;
                 bool bClearVec=false;
                 int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
@@ -1076,9 +1069,10 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                     LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",nForwardHeight,chainActive.Height());
                     continue;
                 }
-                if(timeoutForwardIndex==NULL)
+                CBlockIndex* scoreIndex = chainActive[nScoreHeight];
+                if(scoreIndex==NULL)
                 {
-                    LogPrintf("SPOS_Warning:timeoutIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",nTimeoutHeight,chainActive.Height());
+                    LogPrintf("SPOS_Warning:scoreIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",nScoreHeight,chainActive.Height());
                     continue;
                 }
                 bool fOverTimeoutLimit = g_nTimeoutCount >= g_nMaxTimeoutCount;
@@ -1093,24 +1087,24 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                     int nHeight = boost::lexical_cast<int>(strHeight);
                     int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
                     LogPrintf("SPOS_Message: ThreadSPOSAutoReselect() strHeight:%s---strOfficialMasterNodeCount:%s---nHeight:%d--nOfficialMasterNodeCount:%d--nNewBlockHeight:%d\n",
-                              strHeight, strOfficialMasterNodeCount, nHeight, nOfficialMasterNodeCount, nNewBlockHeight);
+                              strHeight, strOfficialMasterNodeCount, nHeight, nOfficialMasterNodeCount, nCurrBlockHeight);
 
-                    if (nNewBlockHeight + 1 >= nHeight)
+                    if (nCurrBlockHeight + 1 >= nHeight)
                     {
                         fReselect = false;
                         if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
                         {
-                            LogPrintf("SPOS_Warning: ThreadSPOSAutoReselect() nOfficialMasterNodeCount is error,nNewBlockHeight:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nNewBlockHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
+                            LogPrintf("SPOS_Warning: ThreadSPOSAutoReselect() nOfficialMasterNodeCount is error,nNewBlockHeight:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nCurrBlockHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
                             continue;
                         }
 
                         nSporkSelectLoop = SPORK_SELECT_LOOP_1;
-                        SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,timeoutForwardIndex->nTime,true,true,tmpVecResultMasternodes,bClearVec,
+                        SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,true,true,tmpVecResultMasternodes,bClearVec,
                                     nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, nOfficialMasterNodeCount, nSporkSelectLoop, false);
 
                         nSporkSelectLoop = SPORK_SELECT_LOOP_2;
                         if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
-                            SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,timeoutForwardIndex->nTime,false,true,tmpVecResultMasternodes,bClearVec,
+                            SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,false,true,tmpVecResultMasternodes,bClearVec,
                                                     nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
                     }
                 }
@@ -1119,7 +1113,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                 {
                     if(fOverTimeoutLimit)
                         nSporkSelectLoop = SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT;
-                    SelectMasterNodeByPayee(nNewBlockHeight,forwardIndex->nTime,forwardIndex->nTime,fOverTimeoutLimit,true,tmpVecResultMasternodes,bClearVec,
+                    SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,forwardIndex->nTime,fOverTimeoutLimit,true,tmpVecResultMasternodes,bClearVec,
                                             nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount, nSporkSelectLoop, false);
                 }
                 UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);

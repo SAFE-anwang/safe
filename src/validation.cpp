@@ -134,6 +134,7 @@ extern int64_t g_nLastSelectMasterNodeHeight;
 extern unsigned int g_nMasternodeMinCount;
 extern int g_nSelectGlobalDefaultValue;
 extern int g_nPushForwardHeight;
+extern int g_nTimeoutPushForwardHeight;
 extern int g_nLogMaxCnt;
 extern int g_nLocalStartSavePayeeHeight;
 extern int g_nCanSelectMasternodeHeight;
@@ -5150,14 +5151,18 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         bool bClearVec=false;
         int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
         int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
-        int heightIndex = pindexNew->nHeight-g_nPushForwardHeight;
-        if(heightIndex<0){
-            heightIndex = 0;
-        }
-        CBlockIndex* forwardIndex = chainActive[heightIndex];
+        int nForwardHeight = 0,nScoreHeight = 0;
+        getForwardHeightAndScoreHeight(pindexNew->nHeight,nForwardHeight,nScoreHeight);
+        CBlockIndex* forwardIndex = chainActive[nForwardHeight];
         if(forwardIndex==NULL)
         {
-            LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,connect new block:%d\n",heightIndex,pindexNew->nHeight);
+            LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,connect new block:%d\n",nForwardHeight,pindexNew->nHeight);
+            return true;
+        }
+        CBlockIndex* scoreIndex = chainActive[nScoreHeight];
+        if(scoreIndex==NULL)
+        {
+            LogPrintf("SPOS_Warning:scoreIndex is NULL,height:%d,connect new block:%d\n",nForwardHeight,pindexNew->nHeight);
             return true;
         }
 
@@ -5185,13 +5190,13 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                 }
 
                 nSporkSelectLoop = SPORK_SELECT_LOOP_1;
-                SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, true, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, nSporkSelectLoop, false);
+                SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, true, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
+                                        nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, nSporkSelectLoop, false);
 
                 nSporkSelectLoop = SPORK_SELECT_LOOP_2;
                 if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
-                    SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
-                                            ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
+                    SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, false, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
+                                            nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
             }
         }
 
@@ -5203,13 +5208,13 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                 if (nCurrentTime - g_nFirstSelectMasterNodeTime <= g_nAllowMasterNodeSyncErrorTime)
                 {
                     LogPrintf("SPOS_Warning:Does not satisfy the condition of selecting the master node,height:%d,connect new block:%d,nCurrentTime:%lld,g_nFirstSelectMasterNodeTime:%lld,g_nAllowMasterNodeSyncErrorTime:%lld\n",
-                              heightIndex,pindexNew->nHeight, nCurrentTime, g_nFirstSelectMasterNodeTime, g_nAllowMasterNodeSyncErrorTime);
+                              nForwardHeight,pindexNew->nHeight, nCurrentTime, g_nFirstSelectMasterNodeTime, g_nAllowMasterNodeSyncErrorTime);
                     return true;
                 }
             }
 
-            SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,forwardIndex->nTime, false, false,tmpVecResultMasternodes
-                                    ,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount, nSporkSelectLoop, false);
+            SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, false, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
+                                    nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount, nSporkSelectLoop, false);
         }
         UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
     }
@@ -5878,6 +5883,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     int32_t mnSize = 0;
     int64_t nStartNewLoopTime = 0;
     int32_t nIndex = 0;
+    int32_t nPushForwardTimeInterval = 0;
     CMasternode mnTemp;
     {
         LOCK(cs_spos);
@@ -5889,7 +5895,9 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         if(mnSize == 0)
             return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d,g_nSelectMasterNodeRet:%d"
                                         ,nHeight, keyID.ToString(), strSigMessage, vchSig.size(),g_nSelectMasterNodeRet), REJECT_INVALID, "bad-mnSize", true);
-        int nPushForwardTimeInterval = g_nPushForwardHeight*Params().GetConsensus().nSPOSTargetSpacing;
+        if(nHeight-g_nPushForwardHeight>g_nStartSPOSHeight){
+            nPushForwardTimeInterval = g_nPushForwardHeight*Params().GetConsensus().nSPOSTargetSpacing;
+        }
         int32_t interval = (block.GetBlockTime() - nStartNewLoopTime / 1000 - nPushForwardTimeInterval) / Params().GetConsensus().nSPOSTargetSpacing - 1;
         nIndex = interval % mnSize;
         if(nIndex<0)
@@ -5921,8 +5929,9 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         int64_t nBlockTime = block.GetBlockTime();
         string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
         string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
-        LogPrintf("SPOS_Message:check spos block succ,height:%d,index:%d,ip:%s,blockTime:%lld(%s),nStartNewLoopTime:%lld(%s),mnSize:%d,strKeyID:%s\n",
-                  nHeight,nIndex,mnTemp.addr.ToStringIP(),nBlockTime,strBlockTime,nStartNewLoopTime/1000,strStartNewLoopTime,mnSize,keyID.ToString());
+        LogPrintf("SPOS_Message:check spos block succ,height:%d,index:%d,ip:%s,blockTime:%lld(%s),nStartNewLoopTime:%lld(%s),mnSize:%d,nPushForwardTimeInterval:%d,"
+                  "strKeyID:%s\n",nHeight,nIndex,mnTemp.addr.ToStringIP(),nBlockTime,strBlockTime,nStartNewLoopTime/1000,strStartNewLoopTime,mnSize,
+                  nPushForwardTimeInterval,keyID.ToString());
     }
     return true;
 }
@@ -9405,7 +9414,7 @@ void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vec
     }
 }
 
-void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes,uint32_t nForwardTime,
+void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes,uint32_t nScoreTime,
                            std::string strArrName,std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo)
 {
     //sort by score
@@ -9417,7 +9426,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         uint256 hash = mn.pubKeyCollateralAddress.GetHash();
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << hash;
-        ss << nForwardTime;
+        ss << nScoreTime;
         uint256 score = ss.GetHash();
         scoreMasternodes[score] = mn;
     }
@@ -9439,7 +9448,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
             {
                 LogPrintf("SPOS_Info:%s[%d]:ip:%s,collateralAddress:%s,nForwardTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
                           "lastHeight:%d,nState:%d\n",strArrName,logCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
-                          nForwardTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
+                          nScoreTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
                           mnpair.second.nActiveState);
             }
         }
@@ -9452,7 +9461,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
     }
 
     //random the master node
-    uint64_t now_hi = uint64_t(nForwardTime) << 32;
+    uint64_t now_hi = uint64_t(nScoreTime) << 32;
     for( uint32_t i = 0; i < vecResultMasternodes.size(); ++i )
     {
         /// High performance random generator
@@ -9494,7 +9503,7 @@ void UpdateGlobalTimeoutCount(int nTimeoutCount)
     g_nTimeoutCount = nTimeoutCount;
 }
 
-void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForwardTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
+void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScoreTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
                                    ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect,const unsigned int& nMasternodeSPosCount, 
                                    SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode)
 {
@@ -9607,7 +9616,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
     if (nSporkSelectLoop==SPORK_SELECT_LOOP_1||nSporkSelectLoop==SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT)
     {
         std::vector<CMasternode> vecResultAllOfficialMasternodes;
-        SortMasternodeByScore(mapMeetedMasternodes, vecResultAllOfficialMasternodes, nForwardTime, "Official", mapAllPayeeInfo);
+        SortMasternodeByScore(mapMeetedMasternodes, vecResultAllOfficialMasternodes, nScoreTime, "Official", mapAllPayeeInfo);
         
         uint32_t nAllAllOfficialMasternodecount = vecResultAllOfficialMasternodes.size();
         for (uint32_t i = 0; i < nAllAllOfficialMasternodecount; ++i)
@@ -9677,9 +9686,9 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nForw
     }
 
     std::vector<CMasternode> vecResultMasternodesL1,vecResultMasternodesL2,vecResultMasternodesL3;
-    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nForwardTime, "L1", mapAllPayeeInfo);
-    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nForwardTime, "L2", mapAllPayeeInfo);
-    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nForwardTime, "L3", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nScoreTime, "L1", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nScoreTime, "L2", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nScoreTime, "L3", mapAllPayeeInfo);
 
     //5
     unsigned int vec1Size = vecResultMasternodesL1.size();
@@ -9838,3 +9847,32 @@ int ConvertMasternodeConfirmationsByHeight(const int &nHeight, const Consensus::
             return consensusParams.nMasternodeMinimumConfirmations;
     }
 }
+
+void getForwardHeightAndScoreHeight(int nCurrBlockHeight, int &nForwardHeight, int &nScoreHeight)
+{
+    LOCK(cs_spos);
+    if(nCurrBlockHeight-g_nPushForwardHeight>g_nStartSPOSHeight)
+    {
+        nForwardHeight = nCurrBlockHeight-g_nPushForwardHeight;
+        if(nForwardHeight<0){
+            nForwardHeight = 0;
+        }
+        nScoreHeight = nForwardHeight;
+    }else
+    {
+        nForwardHeight = nCurrBlockHeight;//first spos g_nPushForwardHeight block not push
+        nScoreHeight = nCurrBlockHeight;
+    }
+    if(g_nTimeoutCount>0)
+    {
+        nScoreHeight = nCurrBlockHeight-g_nTimeoutPushForwardHeight*g_nTimeoutCount;
+        if(nScoreHeight<0){
+            nScoreHeight = 0;
+        }
+    }
+    LogPrintf("SPOS_Message:forwardHeight:%d,scoreHeight:%d,nCurrBlockHeight:%d,g_nTimeoutCount:%d\n",nForwardHeight,nScoreHeight,nCurrBlockHeight,g_nTimeoutCount);
+}
+
+
+
+
