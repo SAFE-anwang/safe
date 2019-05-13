@@ -748,8 +748,8 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 
     //it's turn to generate block
     LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,"
-              "blockTime:%lld,g_nSposIndex:%d,nTimeInerval:%d\n",index,localIP,nNewBlockHeight,nActualTimeMillisInterval,
-              mn.pubKeyMasternode.GetID().ToString(),nCurrTime,nStartNewLoopTime,pblock->nTime,nSposGeneratedIndex,nTimeInerval);
+              "blockTime:%lld,g_nSposIndex:%d,nTimeInerval:%d,g_nPushForwardTime:%d\n",index,localIP,nNewBlockHeight,nActualTimeMillisInterval,
+              mn.pubKeyMasternode.GetID().ToString(),nCurrTime,nStartNewLoopTime,pblock->nTime,nSposGeneratedIndex,nTimeInerval,g_nPushForwardTime);
 
     SetThreadPriority(THREAD_PRIORITY_NORMAL);
 

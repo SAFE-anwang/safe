@@ -9499,6 +9499,14 @@ void UpdateGlobalTimeoutCount(int nTimeoutCount)
     g_nTimeoutCount = nTimeoutCount;
 }
 
+void UpdateGlobalPushforwardTime(int nCurrBlockHeight)
+{
+    LOCK(cs_spos);
+    if(g_nPushForwardTime==0&&nCurrBlockHeight-g_nPushForwardHeight>g_nStartSPOSHeight){
+        g_nPushForwardTime = g_nPushForwardHeight * Params().GetConsensus().nSPOSTargetSpacing;
+    }
+}
+
 void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScoreTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
                                    ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect,const unsigned int& nMasternodeSPosCount, 
                                    SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode)
@@ -9601,6 +9609,8 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
     nSposGeneratedIndex = -2;
     nSelectMasterNodeRet = 1;
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
+
+    UpdateGlobalPushforwardTime(nCurrBlockHeight);
 
     if(mapMeetedMasternodes.empty())
     {
@@ -9749,19 +9759,15 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
         UpdateGlobalTimeoutCount(0);
     }
 
-    int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
-    int64_t nTimeInerval = GetTime() + interval*2 - g_nPushForwardTime - nTime;
-    int64_t nNextIndex = (nTimeInerval / interval) % size;
-
     //no \n,connect two log str
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),select %d masternode,min online masternode count:%d,"
               "nRemainNum:%d,intervalHeight:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime/1000,strStartNewLoopTime,size,
               g_nMasternodeMinCount,nRemainNum,intervalHeight);
 
     LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
-              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d,nNextIndex maybe:%d\n"
+              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d,g_nPushForwardTime:%d\n"
               ,nMnSize,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),mapMasternodesL1.size()
-              ,mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,nP1Increase,nP2,nP2Increase,nP3,nP3Increase,g_nTimeoutCount,nNextIndex);
+              ,mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,nP1Increase,nP2,nP2Increase,nP3,nP3Increase,g_nTimeoutCount,g_nPushForwardTime);
     for( uint32_t i = 0; i < size; ++i )
     {
         string nPStr = "P3";
@@ -9858,9 +9864,6 @@ void updateForwardHeightAndScoreHeight(int nCurrBlockHeight, int &nForwardHeight
             nForwardHeight = 0;
         }
         nScoreHeight = nForwardHeight;
-        if(g_nPushForwardTime!=0){
-            g_nPushForwardTime = g_nPushForwardHeight * Params().GetConsensus().nSPOSTargetSpacing;
-        }
     }else
     {
         nForwardHeight = nCurrBlockHeight;//first spos g_nPushForwardHeight block not push
