@@ -20,7 +20,7 @@
 CMasternodeMan mnodeman;
 extern int64_t g_nStartUpTime;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
-extern int g_nMasternodeOldHeight;
+extern int g_nCanSelectMasternodeHeight;
 
 const std::string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-7";
 
@@ -1682,7 +1682,7 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
 
             std::pair<COutPoint,CMasternode>& mnpair = mapAddressMasternodes[payeeInfo.first];
             bool fSelfMasternode = activeMasternode.pubKeyMasternode == mnpair.second.pubKeyMasternode;
-            if(nHeight-payeeInfo.second.nHeight>=g_nMasternodeOldHeight)
+            if(nHeight-payeeInfo.second.nHeight>=g_nCanSelectMasternodeHeight)
             {
                 if(fSelfMasternode)
                 {

@@ -4807,7 +4807,15 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
     }
 
-
+    if(g_nLocalStartSavePayeeHeight==0&&pindex->nHeight>=g_nSaveMasternodePayeeHeight)
+    {
+        if(!pblocktree->Write_LocalStartSavePayeeHeight_Index(masternodePayment_IndexValue.nHeight))
+            return AbortNode(state, "SPOS_Error:Failed to write local start save payee height");
+        else
+        {
+            g_nLocalStartSavePayeeHeight = masternodePayment_IndexValue.nHeight;
+        }
+    }
 
     //add masternode payee
     if(strPubKeyCollateralAddress.size())
@@ -4823,15 +4831,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
         if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
             return AbortNode(state, "SPOS_Error:Failed to write masternode payee index when connect block");
-        if(g_nLocalStartSavePayeeHeight==0)
-        {
-            if(!pblocktree->Write_LocalStartSavePayeeHeight_Index(masternodePayment_IndexValue.nHeight))
-                return AbortNode(state, "SPOS_Error:Failed to write local start save payee height");
-            else
-            {
-                g_nLocalStartSavePayeeHeight = masternodePayment_IndexValue.nHeight;
-            }
-        }
 
         {
             std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);

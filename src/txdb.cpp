@@ -1355,8 +1355,10 @@ bool CBlockTreeDB::Read_LocalStartSavePayeeHeight_Index(int &nHeight)
     {
         boost::this_thread::interruption_point();
         std::pair<std::string, CGetCandyCount_IndexKey> key;
-        if(pcursor->GetValue(nHeight))
+        int height = 0;
+        if(pcursor->GetValue(height))
         {
+            nHeight = height;
             ret = true;
             break;
         }
