@@ -1009,7 +1009,7 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
         sposMinerThreads->create_thread(boost::bind(&SposMiner, boost::cref(chainparams), boost::ref(connman)));
 }
 
-void ThreadSPOSAutoReselect(const CChainParams& chainparams)
+void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
 {
     LogPrintf("SPOS_Message:SPOSAutoReselectThread is -- started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
@@ -1026,7 +1026,8 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams)
                 // on an obsolete chain. In regtest mode we expect to fly solo.
                 do {
                     boost::this_thread::interruption_point();
-                    if (!IsInitialBlockDownload() && masternodeSync.IsSynced())
+                    bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
+                    if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
                         break;
                     MilliSleep(50);
                 } while (true);

@@ -2157,7 +2157,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 
     threadGroup.create_thread(boost::bind(&ThreadSendAlert, boost::ref(connman)));
 
-    threadGroup.create_thread(boost::bind(&ThreadSPOSAutoReselect,boost::cref(chainparams)));
+    threadGroup.create_thread(boost::bind(&ThreadSPOSAutoReselect,boost::cref(chainparams), boost::ref(connman)));
 
     return !fRequestShutdown;
 }

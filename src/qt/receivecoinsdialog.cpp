@@ -72,8 +72,7 @@ void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
                 }
             }else
             {
-                if (!GetAssetListInfo(assetIdVec))
-                    return;
+                GetAssetListInfo(assetIdVec);
             }
         }
 
@@ -86,7 +85,7 @@ void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
             }
             CAssetId_AssetInfo_IndexValue assetInfo;
             if(!GetAssetInfoByAssetId(assetId, assetInfo)){
-                return;
+                continue;
             }
             QString assetName = QString::fromStdString(assetInfo.assetData.strAssetName);
             if(!receiveCoinsDialog->assetDataMap.contains(assetName))
