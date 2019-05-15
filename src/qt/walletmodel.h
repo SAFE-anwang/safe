@@ -316,6 +316,7 @@ private:
     int cachedNumBlocks;
     int cachedTxLocks;
     int cachedPrivateSendRounds;
+    int nCheckIncrease;
 
 	WalletView *pWalletView;
 

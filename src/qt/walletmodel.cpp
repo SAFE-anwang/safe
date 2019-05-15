@@ -68,7 +68,8 @@ WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, Op
     cachedEncryptionStatus(Unencrypted),
     cachedNumBlocks(0),
     cachedTxLocks(0),
-    cachedPrivateSendRounds(0)
+    cachedPrivateSendRounds(0),
+    nCheckIncrease(0)
 {
     fHaveWatchOnly = wallet->HaveWatchOnly();
     fForceCheckBalanceChanged = false;
@@ -165,7 +166,9 @@ void WalletModel::updateStatus()
 
 void WalletModel::updateAllBalanceChanged(bool checkIncrease)
 {
-    if(fForceCheckBalanceChanged || chainActive.Height() != cachedNumBlocks || privateSendClient.nPrivateSendRounds != cachedPrivateSendRounds || cachedTxLocks != nCompleteTXLocks)
+    bool fCachedNumBlocks = chainActive.Height() != cachedNumBlocks;
+    bool fPrivateSendRounds = privateSendClient.nPrivateSendRounds != cachedPrivateSendRounds;
+    if(fForceCheckBalanceChanged || fCachedNumBlocks || fPrivateSendRounds || cachedTxLocks != nCompleteTXLocks)
     {
         boost::this_thread::interruption_point();
 		bool bUpdateConfirmations = false;
@@ -174,7 +177,16 @@ void WalletModel::updateAllBalanceChanged(bool checkIncrease)
 		{
 			bUpdateConfirmations = true;
 		}
-		
+
+        if(nCheckIncrease%5==0||fForceCheckBalanceChanged)
+        {
+            checkIncrease = false;
+            nCheckIncrease = 1;
+        }else
+        {
+            nCheckIncrease++;
+        }
+
         fForceCheckBalanceChanged = false;
 
         // Balance and number of transactions might have changed
@@ -634,7 +646,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
         }
         Q_EMIT coinsSent(wallet, rcp, transaction_array);
     }
-    checkBalanceChanged(); // update balance immediately, otherwise there could be a short noticeable delay until pollBalanceChanged hits
+    //checkBalanceChanged(); // update balance immediately, otherwise there could be a short noticeable delay until pollBalanceChanged hits
 
     return SendCoinsReturn(OK);
 }
@@ -711,7 +723,7 @@ WalletModel::SendCoinsReturn WalletModel::sendAssets(WalletModelTransaction &tra
         Q_EMIT coinsSent(wallet, rcp, transaction_array);
     }
 
-    checkBalanceChanged(); // update balance immediately, otherwise there could be a short noticeable delay until pollBalanceChanged hits
+    //checkBalanceChanged(); // update balance immediately, otherwise there could be a short noticeable delay until pollBalanceChanged hits
 
     return SendCoinsReturn(OK);
 }
