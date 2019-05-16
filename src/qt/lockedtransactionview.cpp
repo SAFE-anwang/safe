@@ -403,7 +403,7 @@ void LockedTransactionView::changedAmount(const QString &amount)
     }
     else
     {
-        if(amount.trimmed().isEmpty()){
+        if(amount.trimmed().isEmpty()||amount.at(0)=='0'){
             lockedTransactionProxyModel->setMinAmount(0,assetAmountStr);
         }else{
             lockedTransactionProxyModel->setMinAmount(MAX_MONEY,assetAmountStr);

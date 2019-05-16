@@ -917,7 +917,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                                      ,nNextLogAllowTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,nStartNewLoopTime);
                 }else if(nLastMasternodeCount != 0)
                 {
-                    LogPrintf("SPOS_Error:vec_masternodes is empty\n");
+                    LogPrintf("SPOS_Error:vec_masternodes is empty,nLastMasternodeCount:%d\n",nLastMasternodeCount);
                 }
                 nLastMasternodeCount = masternodeSPosCount;
             }
@@ -1035,7 +1035,10 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
 
             CBlockIndex* pindexPrev = chainActive.Tip();
             if(!pindexPrev)
+            {
+                LogPrintf("SPOS_Warning:ThreadSPOSAutoReselect pindexPrev is NULL\n");
                 break;
+            }
             int nCurrBlockHeight = chainActive.Height();
             if(!IsStartSPosHeight(nCurrBlockHeight))
                 continue;
