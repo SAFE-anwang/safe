@@ -9736,19 +9736,19 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
     unsigned int nP1Total = nP1+nP1Increase;
     if(nP1Total>vec1Size)
         LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP1,nP1Increase,nP1Total);
-    for (unsigned int i = 0; i < nP1Total; i++)
+    for (unsigned int i = 0; i < nP1Total && i < vec1Size; i++)
         tmpVecResultMasternodes.push_back(vecResultMasternodesL1[i]);
 
     unsigned int nP2Total = nP2+nP2Increase;
     if(nP2Total>vec2Size)
         LogPrintf("SPOS_Error:nP2:%d,nP2Increase:%d,vec2Size:%d\n",nP2,nP2Increase,nP2Total);
-    for (unsigned int j = 0; j < nP2Total; j++)
+    for (unsigned int j = 0; j < nP2Total && j < vec2Size; j++)
         tmpVecResultMasternodes.push_back(vecResultMasternodesL2[j]);
 
     unsigned int nP3Total = nP3 + nP3Increase;
     if(nP3Total>vec3Size)
         LogPrintf("SPOS_Error:nP2:%d,nP2Increase:%d,vec2Size:%d\n",nP3,nP3Increase,nP3Total);
-    for (unsigned int k = 0; k < nP3Total; k++)
+    for (unsigned int k = 0; k < nP3Total && k < vec3Size; k++)
         tmpVecResultMasternodes.push_back(vecResultMasternodesL3[k]);
 
     if (!bProcessSpork)
