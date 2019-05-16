@@ -398,7 +398,7 @@ void TransactionView::changedAmount(const QString &amount)
     }
     else
     {
-        if(amount.trimmed().isEmpty()){
+        if(amount.trimmed().isEmpty()||amount.at(0)=='0'){
             transactionProxyModel->setMinAmount(0,assetAmountStr);
         }else{
             transactionProxyModel->setMinAmount(MAX_MONEY,assetAmountStr);

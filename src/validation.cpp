@@ -140,6 +140,9 @@ extern int g_nLocalStartSavePayeeHeight;
 extern int g_nCanSelectMasternodeHeight;
 extern int g_nTimeoutCount;
 extern int g_nPushForwardTime;
+extern int g_nSelectMasterNodeSucc;
+extern int g_nSelectMasterNodeReset;
+extern int g_nSelectMasterNodeFail;
 
 std::mutex g_mutexAllPayeeInfo;
 std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
@@ -5888,7 +5891,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         LOCK(cs_spos);
         mnSize = g_vecResultMasternodes.size();
         nStartNewLoopTime = g_nStartNewLoopTimeMS;
-        if (!masternodeSync.IsSynced()|| (mnSize == 0 && g_nSelectMasterNodeRet == g_nSelectGlobalDefaultValue))
+        if (!masternodeSync.IsSynced()|| (mnSize == 0 && g_nSelectMasterNodeRet == g_nSelectMasterNodeReset))
             return true;
 
         if(mnSize == 0)
@@ -9540,7 +9543,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
     if(!masternodeSync.IsSynced())
     {
         bClearVec = true;
-        nSelectMasterNodeRet = g_nSelectGlobalDefaultValue;//reset ret
+        nSelectMasterNodeRet = g_nSelectMasterNodeReset;//reset ret
         LogPrintf("SPOS_Warning:masternode is syncing,reset g_nSelectMasterNodeRet,wait next loop to select masternode\n");
         return;
     }
@@ -9606,7 +9609,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
     //1.3.3
     nStartNewLoopTime = (int64_t)nTime*1000;
     nSposGeneratedIndex = -2;
-    nSelectMasterNodeRet = 1;
+    nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
 
     UpdateGlobalPushforwardTime(nCurrBlockHeight);
@@ -9614,7 +9617,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
     if(mapMeetedMasternodes.empty())
     {
         LogPrintf("SPOS_Error:meeted mapMasternodes is empty,actual masternode map size:%d\n",mnodeman.GetFullMasternodeMap().size());
-        nSelectMasterNodeRet = -1;
+        nSelectMasterNodeRet = g_nSelectMasterNodeFail;
         return;
     }
 
@@ -9655,7 +9658,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
             {
                 LogPrintf("SPOS_Error: tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d\n",
                          tmpSize, g_nMasternodeMinCount);
-                nSelectMasterNodeRet = -1;
+                nSelectMasterNodeRet = g_nSelectMasterNodeFail;
             }
         }
 
@@ -9714,7 +9717,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
                   "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
                   nMnSize,nSporkLoop1Size,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),nP1,nP2,nP3,
                   mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
-        nSelectMasterNodeRet = -1;
+        nSelectMasterNodeRet = g_nSelectMasterNodeFail;
         return;
     }
 
