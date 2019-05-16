@@ -79,6 +79,12 @@ QVariant ApplicationsRegistRecordModel::data(const QModelIndex &index, int role)
             return (rec->involvesWatchAddress ? 1 : 0);
         case ApplicationsRegistRecordModel::ApplicationsRegistColumnDate:
             return rec->time;
+        case ApplicationsRegistRecordModel::ApplicationsRegistColumnApplicationName:
+            return QString::fromStdString(rec->appData.strAppName);
+        case ApplicationsRegistRecordModel::ApplicationsRegistColumnApplicationId:
+            return QString::fromStdString(rec->appData.GetHash().GetHex());
+        case ApplicationsRegistRecordModel::ApplicationsRegistColumnManagerAddress:
+            return formatTxToAddress(rec, false);
         }
         break;
     }
