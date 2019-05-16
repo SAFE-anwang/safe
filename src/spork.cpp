@@ -356,7 +356,7 @@ bool CSporkManager::CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& n
 
         if (masternodeSync.IsSynced() && nValue < chainActive.Height())
         {
-            strErrMessage = "value less than the current height"
+            strErrMessage = "value less than the current height";
             return false;
         }
     
