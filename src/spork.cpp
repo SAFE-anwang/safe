@@ -353,12 +353,6 @@ bool CSporkManager::CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& n
             strErrMessage = "masternode is syncing";
             return false;
         }
-
-        if (masternodeSync.IsSynced() && nValue < chainActive.Height())
-        {
-            strErrMessage = "value less than the current height";
-            return false;
-        }
     
         if (nValue == SPORK_6_SPOS_ENABLEDE_DEFAULT)
             return true;
@@ -368,6 +362,12 @@ bool CSporkManager::CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& n
             std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
             std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
             int nHeight = boost::lexical_cast<int>(strHeight);
+            if (masternodeSync.IsSynced() && nHeight < chainActive.Height())
+            {
+                strErrMessage = "value less than the current height";
+                return false;
+            }
+            
             int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
 
             const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
