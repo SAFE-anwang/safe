@@ -863,7 +863,10 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             unsigned int nSleepMS = 0;
             CBlockIndex* pindexPrev = chainActive.Tip();
             if(!pindexPrev)
+            {
+                LogPrintf("SPOS_Warning:SposMiner pindexPrev is NULL,size:%d\n",chainActive.Height());
                 break;
+            }
             unsigned int nNewBlockHeight = chainActive.Height() + 1;
             if(IsStartSPosHeight(nNewBlockHeight))
             {
@@ -1036,8 +1039,8 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             CBlockIndex* pindexPrev = chainActive.Tip();
             if(!pindexPrev)
             {
-                LogPrintf("SPOS_Warning:ThreadSPOSAutoReselect pindexPrev is NULL\n");
-                break;
+                LogPrintf("SPOS_Warning:ThreadSPOSAutoReselect pindexPrev is NULL,size:%d\n",chainActive.Height());
+                continue;
             }
             int nCurrBlockHeight = chainActive.Height();
             if(!IsStartSPosHeight(nCurrBlockHeight))
