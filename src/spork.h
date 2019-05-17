@@ -132,7 +132,7 @@ public:
 
     void SelectMasterNodeForSpork(int nSporkID, int64_t nValue);
 
-    bool CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& nValue);
+    bool CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& nValue, std::string &strErrMessage);
 };
 
 #endif

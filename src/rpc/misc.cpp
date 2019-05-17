@@ -92,7 +92,7 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     UniValue obj(UniValue::VOBJ);
     //SQTO
     //obj.push_back(Pair("version", CLIENT_VERSION));
-    obj.push_back(Pair("version", 2050010));
+    obj.push_back(Pair("version", 2050013));
 
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
 #ifdef ENABLE_WALLET
@@ -259,8 +259,9 @@ UniValue spork(const UniValue& params, bool fHelp)
         // SPORK VALUE
         int64_t nValue = params[1].get_int64();
 
-        if (!sporkManager.CheckSPORK_6_SPOSValue(nSporkID, nValue))
-            return "SPOS_ERROR Invalid spork value";
+        std::string strErrMessage = "";
+        if (!sporkManager.CheckSPORK_6_SPOSValue(nSporkID, nValue, strErrMessage))
+            return strErrMessage;
 
         //broadcast new spork
         if(sporkManager.UpdateSpork(nSporkID, nValue, *g_connman)){

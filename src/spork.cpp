@@ -9,6 +9,7 @@
 #include "net_processing.h"
 #include "spork.h"
 
+
 #include <boost/lexical_cast.hpp>
 
 class CSporkMessage;
@@ -56,9 +57,10 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
                     return;
                 }
 
-                if (!CheckSPORK_6_SPOSValue(spork.nSporkID, spork.nValue))
+                std::string strErrMessage = "";
+                if (!CheckSPORK_6_SPOSValue(spork.nSporkID, spork.nValue, strErrMessage))
                 {
-                    LogPrintf("SPOS_Warning: invalid spork value,spork.nSporkID:%d, spork.nValue:%lld\n", spork.nSporkID, spork.nValue);
+                    LogPrintf("SPOS_Warning: strErrMessage:%s, spork.nSporkID:%d, spork.nValue:%lld\n", strErrMessage, spork.nSporkID, spork.nValue);
                     return;
                 }
 
@@ -85,9 +87,10 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
             }
         }
 
-        if (!CheckSPORK_6_SPOSValue(spork.nSporkID, spork.nValue))
+        std::string strErrMessage = "";
+        if (!CheckSPORK_6_SPOSValue(spork.nSporkID, spork.nValue, strErrMessage))
         {
-            LogPrintf("SPOS_Warning: invalid spork value,spork.nSporkID:%d, spork.nValue:%lld\n", spork.nSporkID, spork.nValue);
+            LogPrintf("SPOS_Warning: strErrMessage:%s, spork.nSporkID:%d, spork.nValue:%lld\n", strErrMessage, spork.nSporkID, spork.nValue);
             return;
         }
 
@@ -340,7 +343,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
     }
 }
 
-bool CSporkManager::CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& nValue)
+bool CSporkManager::CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& nValue, std::string &strErrMessage)
 {
     if (nSporkID == SPORK_6_SPOS_ENABLED)
     {
@@ -357,13 +360,15 @@ bool CSporkManager::CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& n
             const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
 
             if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > vtempOutPointData.size())
-                return false;            
+            {
+                strErrMessage = "value less than or equal to 0 or greater than the total number of official master nodes";
+                return false;
+            }            
         }
     }
 
     return true;
 }
-
 
 bool CSporkMessage::Sign(std::string strSignKey)
 {
