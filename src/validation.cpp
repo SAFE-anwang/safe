@@ -143,6 +143,7 @@ extern int g_nPushForwardTime;
 extern int g_nSelectMasterNodeSucc;
 extern int g_nSelectMasterNodeReset;
 extern int g_nSelectMasterNodeFail;
+extern bool g_fReceiveBlock;
 
 std::mutex g_mutexAllPayeeInfo;
 std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
@@ -5398,7 +5399,13 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
 
         // Connect new blocks.
         BOOST_REVERSE_FOREACH(CBlockIndex *pindexConnect, vpindexToConnect) {
-            if (!ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : NULL)) {
+            UpdateGlobalReceiveBlock(true);
+            int64_t startTime = GetTimeMillis();
+            bool fConnectTip = ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : NULL);
+            int64_t endTime = GetTimeMillis();
+            LogPrintf("SPOS_Message:connect tip use:%lld ms",endTime-startTime);
+            UpdateGlobalReceiveBlock(false);
+            if (!fConnectTip) {
                 if (state.IsInvalid()) {
                     // The block violates a consensus rule.
                     if (!state.CorruptionPossible())
@@ -9499,6 +9506,12 @@ void UpdateGlobalTimeoutCount(int nTimeoutCount)
 {
     LOCK(cs_spos);
     g_nTimeoutCount = nTimeoutCount;
+}
+
+void UpdateGlobalReceiveBlock(bool fReceiveBlock)
+{
+    LOCK(cs_spos);
+    g_fReceiveBlock = fReceiveBlock;
 }
 
 void UpdateGlobalPushforwardTime(int nCurrBlockHeight)

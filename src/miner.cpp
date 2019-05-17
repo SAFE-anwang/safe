@@ -74,6 +74,7 @@ extern int g_nMaxTimeoutCount;
 extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinCount;
 extern int g_nPushForwardTime;
+extern bool g_fReceiveBlock;
 
 
 
@@ -765,6 +766,12 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         return;
     }
 
+    if(pindexPrev != chainActive.Tip())
+    {
+        LogPrintf("SPOS_Error:self generate block %d is received,not generate.pindexPrev:%d\n",chainActive.Height(),pindexPrev->nHeight);
+        return;
+    }
+
     CValidationState state;
     if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
         throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
@@ -1030,7 +1037,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                 do {
                     boost::this_thread::interruption_point();
                     bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
-                    if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
+                    if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced() && !g_fReceiveBlock)
                         break;
                     MilliSleep(50);
                 } while (true);

@@ -53,6 +53,7 @@ int g_nLogMaxCnt = 600;
 int g_nTimeoutCount = 0;
 int g_nMaxTimeoutCount = 5;
 int g_nPushForwardTime = 0;
+bool g_fReceiveBlock = false;
 
 int64_t g_nFirstSelectMasterNodeTime = 0;
 int64_t g_nAllowMasterNodeSyncErrorTime = 0;
