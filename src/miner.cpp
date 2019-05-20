@@ -1065,7 +1065,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             int nTimeout = g_nMinerBlockTimeout;
             uint32_t nCurrTime = GetTime();
             int nTimeoutRet = nCurrTime - pindexPrev->GetBlockTime();
-            if(nTimeoutRet <= nTimeout && g_nTimeoutCount!=0)
+            if(nTimeoutRet <= nTimeout)
             {
                 UpdateGlobalTimeoutCount(0);
                 continue;
