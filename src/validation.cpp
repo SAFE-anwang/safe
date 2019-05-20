@@ -9663,9 +9663,9 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
 
         if (nMasternodeSPosCount == g_nMasternodeSPosCount)
         {
-            if(!fTimeoutReselect){
-                UpdateGlobalTimeoutCount(0);
-            }
+//            if(!fTimeoutReselect){
+//                UpdateGlobalTimeoutCount(0);
+//            }
             unsigned int tmpSize = tmpVecResultMasternodes.size();
             if (tmpSize < g_nMasternodeMinCount)
             {
@@ -9770,9 +9770,9 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
     string localIpPortInfo = activeMasternode.service.ToString();
     uint32_t size = tmpVecResultMasternodes.size();
 
-    if(!fTimeoutReselect){
-        UpdateGlobalTimeoutCount(0);
-    }
+//    if(!fTimeoutReselect){
+//        UpdateGlobalTimeoutCount(0);
+//    }
 
     //no \n,connect two log str
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),select %d masternode,min online masternode count:%d,"
