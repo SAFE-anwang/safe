@@ -4818,6 +4818,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         else
         {
             g_nLocalStartSavePayeeHeight = masternodePayment_IndexValue.nHeight;
+            LogPrintf("SPOS_Message:write local start save payee height:%d\n",masternodePayment_IndexValue.nHeight);
         }
     }
 
@@ -5403,7 +5404,7 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
             int64_t startTime = GetTimeMillis();
             bool fConnectTip = ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : NULL);
             int64_t endTime = GetTimeMillis();
-            LogPrintf("SPOS_Message:connect tip use:%lld ms",endTime-startTime);
+            LogPrintf("SPOS_Message:connect tip use:%lld ms\n",endTime-startTime);
             UpdateGlobalReceiveBlock(false);
             if (!fConnectTip) {
                 if (state.IsInvalid()) {

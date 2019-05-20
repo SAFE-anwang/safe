@@ -932,7 +932,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
             CMasternodePing mnp = mnpair.second.lastPing;
             uint256 hashMNB = mnb.GetHash();
             uint256 hashMNP = mnp.GetHash();
-            LogPrintf("SPOS_Message:DSGE:push announce,%s\n",mnb.addr.ToString());
+            //LogPrintf("SPOS_Message:DSGE:push announce,%s\n",mnb.addr.ToString());
             pfrom->PushInventory(CInv(MSG_MASTERNODE_ANNOUNCE, hashMNB));
             pfrom->PushInventory(CInv(MSG_MASTERNODE_PING, hashMNP));
             nInvCount++;
@@ -950,7 +950,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         if(vin == CTxIn()) {
             connman.PushMessage(pfrom, NetMsgType::SYNCSTATUSCOUNT, MASTERNODE_SYNC_LIST, nInvCount);
             LogPrintf("DSEG -- Sent %d Masternode invs to peer %d\n", nInvCount, pfrom->id);
-            LogPrintf("SPOS_Message:DSGE -- Sent %d Masternode invs to peer %d\n", nInvCount, pfrom->id);
+            LogPrintf("SPOS_Message:DSGE -- Sent %d Masternode invs to peer %d(%s)\n", nInvCount, pfrom->id,pfrom->addr.ToStringIP());
             return;
         }
         // smth weird happen - someone asked us for vin we have no idea about?

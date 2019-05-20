@@ -367,7 +367,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             CValidationState state;
             if(pindexPrev != chainActive.Tip())
             {
-                LogPrintf("SPOS_Warning:create new block %d is received,not generate.pindexPrev:%d\n",chainActive.Height(),pindexPrev->nHeight);
+                LogPrintf("SPOS_Message:create new block %d is received,not generate.pindexPrev:%d\n",chainActive.Height(),pindexPrev->nHeight);
             }else if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
                 throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
             }
