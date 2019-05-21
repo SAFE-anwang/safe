@@ -9581,7 +9581,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
     {
         LogPrintf("SPOS_Message:Spork message select official master node\n");
         std::map<COutPoint, CMasternode> fullmapMasternodes;
-        mnodeman.GetFullMasternodeData(fullmapMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight);
+        mnodeman.GetFullMasternodeData(fullmapMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight, true);
 
         const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
         std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
@@ -9598,7 +9598,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
     }
     else
     {
-        mnodeman.GetFullMasternodeData(mapMeetedMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight);
+        mnodeman.GetFullMasternodeData(mapMeetedMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight, false);
         if (fRemoveOfficialMasternode)
         {
             const std::vector<COutPointData> &vectempOutPointData = Params().COutPointDataS();

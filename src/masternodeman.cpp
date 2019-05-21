@@ -1659,7 +1659,7 @@ void CMasternodeMan::NotifyMasternodeUpdates(CConnman& connman)
 }
 
 void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &mapOutMasternodes,const std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo,
-                                           bool fFilterSpent, int nHeight)
+                                           bool fFilterSpent, const int& nHeight, bool fOfficialMasterNode)
 {
     LOCK2(cs_main, cs);
 
@@ -1673,7 +1673,7 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
         }
         for(auto& payeeInfo : mapAllPayeeInfo)
         {
-            if(mapAddressMasternodes.count(payeeInfo.first)<=0)
+            if(!fOfficialMasterNode && mapAddressMasternodes.count(payeeInfo.first)<=0)
             {
                 LogPrintf("SPOS_Warning:payee(%s) not found in masternode map,nHeight:%d,blockTime:%lld,nPayeeTimes:%d\n",payeeInfo.first,
                           payeeInfo.second.nHeight,payeeInfo.second.blockTime,payeeInfo.second.nPayeeTimes);
@@ -1682,7 +1682,7 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
 
             std::pair<COutPoint,CMasternode>& mnpair = mapAddressMasternodes[payeeInfo.first];
             bool fSelfMasternode = activeMasternode.pubKeyMasternode == mnpair.second.pubKeyMasternode;
-            if(nHeight-payeeInfo.second.nHeight>=g_nCanSelectMasternodeHeight)
+            if(!fOfficialMasterNode && nHeight-payeeInfo.second.nHeight>=g_nCanSelectMasternodeHeight)
             {
                 if(fSelfMasternode)
                 {
@@ -1700,7 +1700,7 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
             mnpair.second.nTxHeight = -1;
             CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,mnpair.second.nTxHeight);
             unsigned int canBeSelectTime = mnpair.second.getCanbeSelectTime(nHeight);
-            if (err == CMasternode::COLLATERAL_OK && canBeSelectTime > g_nMasternodeCanBeSelectedTime &&
+            if (err == CMasternode::COLLATERAL_OK && (fOfficialMasterNode || canBeSelectTime > g_nMasternodeCanBeSelectedTime) &&
                     mnpair.second.nProtocolVersion >= PROTOCOL_VERSION)
             {
                 mapOutMasternodes[mnpair.first] = mnpair.second;
