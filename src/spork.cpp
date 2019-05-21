@@ -285,12 +285,6 @@ bool CSporkManager::SetPrivKey(std::string strPrivKey)
 
 void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
 {
-    LogPrintf("SPOS_Message:SelectMasterNodeForSpork -- nSporkID:%d---chainActive height:%d----nValue:%lld\n", nSporkID, chainActive.Height(), nValue);
-    if (IsSporkActive(SPORK_6_SPOS_ENABLED))
-        LogPrintf("SPOS_Message:SPORK_6_SPOS_ENABLED is open\n");
-    else
-        LogPrintf("SPOS_Message:SPORK_6_SPOS_ENABLED is close\n");//SQTODO
-
     if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED))
     {
         std::string strSporkValue = boost::lexical_cast<std::string>(nValue);
