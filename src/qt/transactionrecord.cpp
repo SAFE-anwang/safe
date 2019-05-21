@@ -216,6 +216,7 @@ bool TransactionRecord::getReserveData(const CWallet *wallet,const CWalletTx &wt
                     sub.type = TransactionRecord::GETCandy;
                     sub.bGetCandy = true;
                     sub.bSAFETransaction = false;
+                    sub.nTxHeight = GetTxHeight(wtx.GetHash());
                     return true;
                 }
             }

@@ -212,14 +212,15 @@ TransactionRecord* TransactionTablePriv::index(int idx)
             if(lockWallet && rec->statusUpdateNeeded())
             {
                 std::map<uint256, CWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
-
+                QString strAssetName = "";
+                static QString strLastAssetName = "";
+                static int nLastHeight = 0;
                 if(mi != wallet->mapWallet.end())
                 {
                     const CWalletTx &wtx = mi->second;
                     if(rec->updateStatus(wtx))
                     {
                         bool newConfirmedAssets = false;
-                        QString strAssetName = "";
                         if(!rec->assetsData.strAssetName.empty())
                         {
                             QMap<QString,AssetsDisplayInfo>& assetsNamesInfo = parent->getAssetsNamesUnits();
@@ -235,10 +236,14 @@ TransactionRecord* TransactionTablePriv::index(int idx)
                             }
                         }
                         //transform assets,get candy,put candy,issue asset need to update overview and they history view
-                        if(rec->bAssets||rec->bGetCandy||rec->bPutCandy || rec->bIssueAsset || (rec->bSAFETransaction&&rec->address==g_strCancelledSafeAddress))
+                        if(rec->bAssets|| rec->bGetCandy ||rec->bPutCandy || rec->bIssueAsset || (rec->bSAFETransaction&&rec->address==g_strCancelledSafeAddress))
                         {
-                            if(!parent->getUpdatingWallet())
+                            if(!parent->getUpdatingWallet() && (strAssetName!=strLastAssetName || rec->nTxHeight!=nLastHeight))
+                            {
                                 parent->emitUpdateAsset(false,newConfirmedAssets,strAssetName);
+                                strLastAssetName = strAssetName;
+                                nLastHeight = rec->nTxHeight;
+                            }
                         }
                     }
                 }
