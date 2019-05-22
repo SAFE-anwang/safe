@@ -27,7 +27,7 @@
  * Todo: update this when changing our copyright comments in the source
  */
 #define COPYRIGHT_YEAR 2017
-#define SAFE_COPYRIGHT_YEAR 2018
+#define SAFE_COPYRIGHT_YEAR 2019
 
 #endif //HAVE_CONFIG_H
 
