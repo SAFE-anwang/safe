@@ -36,7 +36,7 @@ unsigned int g_nMasternodeSPosCount = 9;
 unsigned int g_nMasternodeCanBeSelectedTime = 86400*3;
 int64_t g_nStartNewLoopTimeMS = 0;
 int g_nSposGeneratedIndex = -2;
-unsigned int g_nMasternodeMinCount = 5;
+unsigned int g_nMasternodeMinCount = 3;
 int64_t g_nLastSelectMasterNodeHeight = 0;
 std::vector<CMasternode> g_vecResultMasternodes;
 int g_nSelectGlobalDefaultValue = -999;
@@ -51,7 +51,7 @@ int g_nTimeoutPushForwardHeight = 30;
 int g_nMinerBlockTimeout = 600;
 int g_nLogMaxCnt = 600;
 int g_nTimeoutCount = 0;
-int g_nMaxTimeoutCount = 5;
+int g_nMaxTimeoutCount = 3;
 int g_nPushForwardTime = 0;
 bool g_fReceiveBlock = false;
 
