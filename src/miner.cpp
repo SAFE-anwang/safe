@@ -671,22 +671,26 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,CBlockIndex* pindexPrev
                              ,unsigned int nNewBlockHeight,CBlock *pblock,boost::shared_ptr<CReserveScript>& coinbaseScript
                              ,unsigned int nTransactionsUpdatedLast,int64_t& nNextTime,unsigned int& nSleepMS
-                             ,int64_t& nNextLogTime,int64_t& nNextLogAllowTime,unsigned int& nWaitBlockHeight,
-                             std::vector<CMasternode>& tmpVecResultMasternodes,int nSposGeneratedIndex
-                             ,int64_t& nStartNewLoopTime)
+                             ,int64_t& nNextLogTime,int64_t& nNextLogAllowTime,unsigned int& nWaitBlockHeight
+                             ,std::vector<CMasternode>& tmpVecResultMasternodes,int nSposGeneratedIndex
+                             ,int64_t& nStartNewLoopTime,unsigned int& nEmptySposCntHeight,unsigned int& nAbnormalSposCntHeight)
 {
     int index = 0;
     unsigned int masternodeSPosCount = tmpVecResultMasternodes.size();
     int64_t nIntervalMS = 500;
-    if(masternodeSPosCount == 0)
+    if(masternodeSPosCount == 0 && nEmptySposCntHeight!=nNewBlockHeight)
     {
         LogPrintf("SPOS_Error:vecMasternodes is empty,please checkout masternodelist full or config\n");
+        nEmptySposCntHeight = nNewBlockHeight;
         return;
     }
 
     //if masternodeSPosCount less than g_nMasternodeSPosCount,still continue,just % actual masternodeSPosCount
-    if(masternodeSPosCount != g_nMasternodeSPosCount)
+    if(masternodeSPosCount != g_nMasternodeSPosCount && nAbnormalSposCntHeight != nNewBlockHeight)
+    {
         LogPrintf("SPOS_Warning:system g_nMasternodeSPosCount:%d,curr vecMasternodes size:%d\n",g_nMasternodeSPosCount,masternodeSPosCount);
+        nAbnormalSposCntHeight = nNewBlockHeight;
+    }
 
     //1.3
     pblock->nTime = GetTime();
@@ -856,7 +860,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             LOCK(cs_spos);
             g_nStartNewLoopTimeMS = GetTime()*1000;
         }
-        unsigned int nWaitBlockHeight = 0;
+        unsigned int nWaitBlockHeight = 0,nEmptySposCntHeight = 0,nAbnormalSposCntHeight = 0;
         int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0,nNextLogAllowTime = 0;
         while (true) {
             if (chainparams.MiningRequiresPeers()) {
@@ -932,8 +936,9 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 }
                 if(masternodeSPosCount != 0)
                 {
-                    ConsensusUseSPos(chainparams,connman,pindexPrev,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime,nSleepMS,nNextLogTime
-                                     ,nNextLogAllowTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,nStartNewLoopTime);
+                    ConsensusUseSPos(chainparams,connman,pindexPrev,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime,
+                                     nSleepMS,nNextLogTime,nNextLogAllowTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,
+                                     nStartNewLoopTime,nEmptySposCntHeight,nAbnormalSposCntHeight);
                 }else if(nLastMasternodeCount != 0)
                 {
                     LogPrintf("SPOS_Error:vec_masternodes is empty,nLastMasternodeCount:%d\n",nLastMasternodeCount);
