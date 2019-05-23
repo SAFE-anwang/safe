@@ -2934,7 +2934,7 @@ double ConvertBitsToDouble(unsigned int nBits)
 
 CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
 {
-    CAmount nSubsidy = nMiningIncentives / ConvertBlockNum();
+    CAmount nSubsidy = nMiningIncentives;
     int nSubsidyHalvingInterval = consensusParams.nSubsidyHalvingInterval * ConvertBlockHeight(consensusParams);
 
     // yearly decline of production by ~7.1% per year, projected ~18M coins max by year 2050+.
@@ -2942,6 +2942,7 @@ CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusP
         nSubsidy -= nSubsidy/14;
     }
 
+    nSubsidy = nSubsidy / ConvertBlockNum();
     // Hard fork to reduce the block reward by 10 extra percent (allowing budget/superblocks)
     CAmount nSuperblockPart = (nPrevHeight > consensusParams.nBudgetPaymentsStartBlock) ? nSubsidy/10 : 0;
 
