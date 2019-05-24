@@ -6214,7 +6214,7 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
 
             // Check that the block satisfies synchronized checkpoint
             if (!Checkpoints::CheckSync(pindexPrev->nHeight + 1))
-                return state.DoS(10, error("%s: SPOS_Error AcceptBlockHeader(): checksync fail, block height:%d, BestHeader height:%d, chain active height:%d", __func__, pindexPrev->nHeight + 1, pindexBestHeader->nHeight, chainActive.Height()), REJECT_INVALID, "bad-prevblk");
+                return state.DoS(10, error("%s: SPOS_Error AcceptBlockHeader(): checksync fail, block height:%d, chain active height:%d", __func__, pindexPrev->nHeight + 1, chainActive.Height()), REJECT_INVALID, "bad-prevblk");
         }
 
         if (!ContextualCheckBlockHeader(block, state, pindexPrev))

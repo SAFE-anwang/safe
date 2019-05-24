@@ -80,9 +80,9 @@ namespace Checkpoints {
     // Automatically select a suitable sync-checkpoint 
     const CBlockIndex* AutoSelectSyncCheckpoint()
     {
-        const CBlockIndex *pindex = pindexBestHeader;
+        const CBlockIndex *pindex = chainActive.Tip();
         // Search backward for a block within max span and maturity window
-        while (pindex->pprev && pindex->nHeight + nCheckpointSpan > pindexBestHeader->nHeight)
+        while (pindex->pprev && pindex->nHeight + nCheckpointSpan > chainActive.Height())
             pindex = pindex->pprev;
         return pindex;
     }
@@ -94,7 +94,7 @@ namespace Checkpoints {
 
         if (nHeight <= pindexSync->nHeight)
         {
-            LogPrintf("SPOS_ERROR:nHeight:%d, pindexSync->nHeight:%d, BestHeader height:%d, chain active height:%d\n", nHeight, pindexSync->nHeight, pindexBestHeader->nHeight, chainActive.Height());
+            LogPrintf("SPOS_ERROR:nHeight:%d, pindexSync->nHeight:%d, chain active height:%d\n", nHeight, pindexSync->nHeight, chainActive.Height());
             return false;
         }
         return true;
