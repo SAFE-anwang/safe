@@ -93,7 +93,10 @@ namespace Checkpoints {
         const CBlockIndex* pindexSync = AutoSelectSyncCheckpoint();
 
         if (nHeight <= pindexSync->nHeight)
+        {
+            LogPrintf("SPOS_ERROR:nHeight:%d, pindexSync->nHeight:%d, BestHeader height:%d, chain active height:%d\n", nHeight, pindexSync->nHeight, pindexBestHeader->nHeight, chainActive.Height());
             return false;
+        }
         return true;
     }
 

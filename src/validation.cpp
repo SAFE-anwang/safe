@@ -122,7 +122,7 @@ CAmount nMiningIncentives = 45000000000;//SQTODO
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
 
-int g_nAdjacentBlockInterval = 25;//SQTODO
+int g_nAdjacentBlockInterval = 27;//SQTODO
 int g_nSPOSAfterEnableDynamicCheckHeight = 210;//SQTODO
 
 
@@ -6214,7 +6214,7 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
 
             // Check that the block satisfies synchronized checkpoint
             if (!Checkpoints::CheckSync(pindexPrev->nHeight + 1))
-                return state.DoS(10, error("%s: SPOS_Error AcceptBlockHeader(): checksync fail", __func__), REJECT_INVALID, "bad-prevblk");
+                return state.DoS(10, error("%s: SPOS_Error AcceptBlockHeader(): checksync fail, block height:%d, BestHeader height:%d, chain active height:%d", __func__, pindexPrev->nHeight + 1, pindexBestHeader->nHeight, chainActive.Height()), REJECT_INVALID, "bad-prevblk");
         }
 
         if (!ContextualCheckBlockHeader(block, state, pindexPrev))
