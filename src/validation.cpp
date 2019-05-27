@@ -126,6 +126,7 @@ int g_nAdjacentBlockInterval = 27;
 int g_nSPOSAfterEnableDynamicCheckHeight = 210;
 
 
+
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
@@ -2958,10 +2959,15 @@ double ConvertBitsToDouble(unsigned int nBits)
 CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
 {
     CAmount nSubsidy = nMiningIncentives;
+    int nNextDecrementHeight = 1261441;
+
+    int nOffset = nNextDecrementHeight - g_nStartSPOSHeight;
+    int nStartDecrementHeight = g_nStartSPOSHeight + nOffset * ConvertBlockHeight(consensusParams);
     int nSubsidyHalvingInterval = consensusParams.nSubsidyHalvingInterval * ConvertBlockHeight(consensusParams);
 
     // yearly decline of production by ~7.1% per year, projected ~18M coins max by year 2050+.
-    for (int i = nSubsidyHalvingInterval; i <= nPrevHeight; i += nSubsidyHalvingInterval) {
+    for (int i = nStartDecrementHeight; i <= nPrevHeight; i += nSubsidyHalvingInterval)
+    {
         nSubsidy -= nSubsidy/14;
     }
 
