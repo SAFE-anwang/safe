@@ -48,16 +48,10 @@ extern int g_nSposGeneratedIndex;
 extern std::vector<CMasternode> g_vecResultMasternodes;
 extern int g_nSelectMasterNodeRet;
 
-extern int g_nProtocolV3Height;
-
 extern int64_t g_nFirstSelectMasterNodeTime;
 extern int64_t g_nAllowMasterNodeSyncErrorTime;
 
 
-
-
-
-inline bool IsStartLockFeatureHeight(const int& nHeight) {return nHeight >= g_nProtocolV3Height;}
 
 inline bool IsCriticalHeight(int nHeight) { return nHeight == g_nCriticalHeight; }
 

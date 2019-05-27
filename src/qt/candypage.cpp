@@ -833,12 +833,6 @@ bool CandyPage::putCandy()
         return false;
     }
 
-    if (!IsStartLockFeatureHeight(g_nChainHeight))
-    {
-        QMessageBox::warning(this, strPutCandy, tr("This feature is enabled when the block height is %1").arg(g_nProtocolV3Height),tr("Ok"));
-        return false;
-    }
-
     std::string strAssetName = ui->assetsComboBox->currentText().trimmed().toStdString();
     uint256 assetId;
     if(ui->assetsComboBox->currentText().toStdString().empty())
