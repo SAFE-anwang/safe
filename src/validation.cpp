@@ -1151,7 +1151,7 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
 
             if (fWithMempool)
             {
-                if (masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
+                if (masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight))
                     return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
             }
             else
