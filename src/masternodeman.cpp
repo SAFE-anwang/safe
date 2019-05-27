@@ -21,6 +21,7 @@ CMasternodeMan mnodeman;
 extern int64_t g_nStartUpTime;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
 extern int g_nCanSelectMasternodeHeight;
+extern int g_nLogMaxCnt;
 
 const std::string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-7";
 
@@ -791,7 +792,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
         string fromAddrStr = pfrom->addr.ToString();
         string mnbAddrStr = mnb.addr.ToString();
-        LogPrintf("SPOS_Message:processmsg:from:%s,mn:%s,status:%d,mnodeman size:%d\n",fromAddrStr,mnbAddrStr,masternodeSync.GetAssetID(),mnodeman.size());
+        LogPrint("sposinfo","SPOS_Message:processmsg:from:%s,mn:%s,status:%d,mnodeman size:%d\n",fromAddrStr,mnbAddrStr,masternodeSync.GetAssetID(),mnodeman.size());
         pfrom->setAskFor.erase(mnb.GetHash());
 
         if(!masternodeSync.IsBlockchainSynced()) return;
@@ -1671,12 +1672,22 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
             std::string strPubKeyCollateralAddress = mnpair.second.pubKeyCollateralAddress.GetID().ToString();
             mapAddressMasternodes[strPubKeyCollateralAddress] = make_pair(mnpair.first,mnpair.second);
         }
+        int nLogOldCnt = 0,nLogPayNotFoundCnt = 0;
         for(auto& payeeInfo : mapAllPayeeInfo)
         {
             if(!fOfficialMasterNode && mapAddressMasternodes.count(payeeInfo.first)<=0)
             {
-                LogPrintf("SPOS_Warning:payee(%s) not found in masternode map,nHeight:%d,blockTime:%lld,nPayeeTimes:%d\n",payeeInfo.first,
-                          payeeInfo.second.nHeight,payeeInfo.second.blockTime,payeeInfo.second.nPayeeTimes);
+                nLogPayNotFoundCnt++;
+                if(nLogPayNotFoundCnt<=g_nLogMaxCnt)
+                {
+                    LogPrintf("SPOS_Warning:payee(%s) not found in masternode map,nHeight:%d,blockTime:%lld,nPayeeTimes:%d\n",payeeInfo.first,
+                              payeeInfo.second.nHeight,payeeInfo.second.blockTime,payeeInfo.second.nPayeeTimes);
+                }else
+                {
+                    LogPrint("sposinfo","SPOS_Warning:extra payee(%s) not found in masternode map,nHeight:%d,blockTime:%lld,nPayeeTimes:%d\n",payeeInfo.first,
+                              payeeInfo.second.nHeight,payeeInfo.second.blockTime,payeeInfo.second.nPayeeTimes);
+                }
+
                 continue;
             }
 
@@ -1691,9 +1702,18 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
                               payeeInfo.second.nPayeeTimes,nHeight);
                 }else
                 {
-                    LogPrintf("SPOS_Message:payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
-                              mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
-                              payeeInfo.second.nPayeeTimes,nHeight);
+                    nLogOldCnt++;
+                    if(nLogOldCnt<=g_nLogMaxCnt)
+                    {
+                        LogPrintf("SPOS_Message:payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
+                                  mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
+                                  payeeInfo.second.nPayeeTimes,nHeight);
+                    }else
+                    {
+                        LogPrint("sposinfo","SPOS_Message:extra payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
+                                  mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
+                                  payeeInfo.second.nPayeeTimes,nHeight);
+                    }
                 }
                 continue;
             }
@@ -1713,6 +1733,7 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
                        mnpair.second.addr.ToStringIP(),mnpair.first.ToString(), err, canBeSelectTime,mnpair.second.nProtocolVersion,nHeight);
             }
         }
+        LogPrintf("SPOS_Message:after GetFullMasternodeData,old masternode count:%d,pay not found count:%d\n",nLogOldCnt,nLogPayNotFoundCnt);
     }else
     {
         for (auto& mnpair : mapMasternodes)

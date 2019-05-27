@@ -5402,10 +5402,7 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
         // Connect new blocks.
         BOOST_REVERSE_FOREACH(CBlockIndex *pindexConnect, vpindexToConnect) {
             UpdateGlobalReceiveBlock(true);
-            int64_t startTime = GetTimeMillis();
             bool fConnectTip = ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : NULL);
-            int64_t endTime = GetTimeMillis();
-            LogPrintf("SPOS_Message:connect tip use:%lld ms\n",endTime-startTime);
             UpdateGlobalReceiveBlock(false);
             if (!fConnectTip) {
                 if (state.IsInvalid()) {
@@ -9438,7 +9435,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         scoreMasternodes[score] = mn;
     }
 
-    int logMaxCnt = g_nLogMaxCnt, logErrorCnt = 0, logNormalCnt = 0;
+    int logErrorCnt = 0, logNormalCnt = 0;
     LogPrintf("SPOS_Message:%s(size:%d) after sort:\n",strArrName,scoreMasternodes.size());
     for (auto& mnpair : scoreMasternodes)
     {
@@ -9448,7 +9445,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         logNormalCnt++;
         if (tempit == mapAllPayeeInfo.end())
         {
-            if(logErrorCnt<=logMaxCnt)
+            if(logErrorCnt<=g_nLogMaxCnt)
             {
                 LogPrintf("SPOS_Error:SortMasternodeByScore,payee not found,ip:%s,strPubKeyCollateralAddress:%s\n",
                       mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
@@ -9459,7 +9456,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
             }
         }else
         {
-            if(logNormalCnt<=logMaxCnt)
+            if(logNormalCnt<=g_nLogMaxCnt)
             {
                 LogPrintf("SPOS_Info:%s[%d]:ip:%s,collateralAddress:%s,nScoreTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
                           "lastHeight:%d,nState:%d\n",strArrName,logErrorCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
