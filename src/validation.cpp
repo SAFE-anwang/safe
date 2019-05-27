@@ -9438,25 +9438,39 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         scoreMasternodes[score] = mn;
     }
 
-    int logMaxCnt = g_nLogMaxCnt, logCnt = 0;
+    int logMaxCnt = g_nLogMaxCnt, logErrorCnt = 0, logNormalCnt = 0;
     LogPrintf("SPOS_Message:%s(size:%d) after sort:\n",strArrName,scoreMasternodes.size());
     for (auto& mnpair : scoreMasternodes)
     {
-        logCnt++;
-        if(logCnt<=logMaxCnt)
+        std::string strPubKeyCollateralAddress = mnpair.second.pubKeyCollateralAddress.GetID().ToString();
+        std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(strPubKeyCollateralAddress);
+        logErrorCnt++;
+        logNormalCnt++;
+        if (tempit == mapAllPayeeInfo.end())
         {
-            std::string strPubKeyCollateralAddress = mnpair.second.pubKeyCollateralAddress.GetID().ToString();
-            std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(strPubKeyCollateralAddress);
-            if (tempit == mapAllPayeeInfo.end())
+            if(logErrorCnt<=logMaxCnt)
             {
                 LogPrintf("SPOS_Error:SortMasternodeByScore,payee not found,ip:%s,strPubKeyCollateralAddress:%s\n",
-                          mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
+                      mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
             }else
             {
+                LogPrint("sposinfo","SPOS_Error:extra SortMasternodeByScore,payee not found,ip:%s,strPubKeyCollateralAddress:%s\n",
+                      mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
+            }
+        }else
+        {
+            if(logNormalCnt<=logMaxCnt)
+            {
                 LogPrintf("SPOS_Info:%s[%d]:ip:%s,collateralAddress:%s,nScoreTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
-                          "lastHeight:%d,nState:%d\n",strArrName,logCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
+                          "lastHeight:%d,nState:%d\n",strArrName,logErrorCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
                           nScoreTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
                           mnpair.second.nActiveState);
+            }else
+            {
+                LogPrint("sposinfo","SPOS_Info:extra %s[%d]:ip:%s,collateralAddress:%s,nScoreTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
+                                    "lastHeight:%d,nState:%d\n",strArrName,logErrorCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
+                                    nScoreTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
+                                    mnpair.second.nActiveState);
             }
         }
     }
