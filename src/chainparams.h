@@ -90,9 +90,6 @@ public:
     std::string SporkPubKey() const { return strSporkPubKey; }
     const std::vector<COutPointData>& COutPointDataS() const { return vcoutpointdata; }
 
-    //SQTODO
-    void SetDefaultSPOSTargetSpacing(const int64_t &nInSPOSTargetSpacing) {consensus.nSPOSTargetSpacing = nInSPOSTargetSpacing;}
-
 protected:
     CChainParams() {}
 

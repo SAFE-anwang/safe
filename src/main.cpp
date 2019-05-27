@@ -60,10 +60,6 @@ int64_t g_nAllowMasterNodeSyncErrorTime = 0;
 int g_nLocalStartSavePayeeHeight = 0;
 int g_nCanSelectMasternodeHeight = 10000;
 
-//SQTODO
-uint64_t SPOS_BLOCKS_PER_DAY = 2880;
-uint64_t SPOS_BLOCKS_PER_MONTH = 86400;
-uint64_t SPOS_BLOCKS_PER_YEAR = 1036800;
 
 
 

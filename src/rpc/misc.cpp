@@ -90,7 +90,7 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     GetProxy(NET_IPV4, proxy);
 
     UniValue obj(UniValue::VOBJ);
-    //SQTO
+    //SQTODO
     //obj.push_back(Pair("version", CLIENT_VERSION));
     obj.push_back(Pair("version", 2050019));
 

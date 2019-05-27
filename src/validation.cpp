@@ -122,8 +122,8 @@ CAmount nMiningIncentives = 45000000000;//SQTODO
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
 
-int g_nAdjacentBlockInterval = 27;//SQTODO
-int g_nSPOSAfterEnableDynamicCheckHeight = 210;//SQTODO
+int g_nAdjacentBlockInterval = 27;
+int g_nSPOSAfterEnableDynamicCheckHeight = 210;
 
 
 unsigned int nKeyIdSize = 20;

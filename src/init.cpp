@@ -112,8 +112,6 @@ extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
 extern unsigned int g_nAllowableErrorTime;
 extern int64_t g_nAllowMasterNodeSyncErrorTime;
 extern int g_nLogMaxCnt;
-extern int g_nAdjacentBlockInterval;
-extern int g_nSPOSAfterEnableDynamicCheckHeight;
 extern int g_nLocalStartSavePayeeHeight;
 extern int g_nCanSelectMasternodeHeight;
 extern int g_nMinerBlockTimeout;
@@ -988,15 +986,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     if (setProcDEPPol != NULL) setProcDEPPol(PROCESS_DEP_ENABLE);
 #endif
 
-    //SQTODO
-    int64_t nSPOSTargetSpacing = GetArg("-spos_target_spacing", Params().GetConsensus().nSPOSTargetSpacing);
-    SQParams().SetDefaultSPOSTargetSpacing(nSPOSTargetSpacing);
-    SPOS_BLOCKS_PER_DAY = 24 * 60 * 60 / nSPOSTargetSpacing;
-    SPOS_BLOCKS_PER_MONTH = 30 * SPOS_BLOCKS_PER_DAY;
-    SPOS_BLOCKS_PER_YEAR = 12 * SPOS_BLOCKS_PER_MONTH;
-    LogPrintf("nSPOSTargetSpacing:%lld--Params().consensus.nSPOSTargetSpacing:%lld--SPOS_BLOCKS_PER_DAY:%lld--SPOS_BLOCKS_PER_MONTH:%lld--SPOS_BLOCKS_PER_YEAR:%lld\n",
-              nSPOSTargetSpacing, Params().GetConsensus().nSPOSTargetSpacing, SPOS_BLOCKS_PER_DAY, SPOS_BLOCKS_PER_MONTH, SPOS_BLOCKS_PER_YEAR);
-
     if (!SetupNetworking())
         return InitError("Initializing networking failed");
 
@@ -1566,8 +1555,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nProtocolV3Height = GetArg("-spos_start_lock_height", g_nProtocolV3Height);
     g_nAllowableErrorTime = GetArg("-spos_allowable_error_time", g_nAllowableErrorTime);
     g_nLogMaxCnt = GetArg("-spos_log_max_cnt", g_nLogMaxCnt);
-    g_nAdjacentBlockInterval = GetArg("-spos_adjacent_block_interval", g_nAdjacentBlockInterval);
-    g_nSPOSAfterEnableDynamicCheckHeight = GetArg("-spos_after_enable_dynamic_check_height", g_nSPOSAfterEnableDynamicCheckHeight);
     g_nCanSelectMasternodeHeight = GetArg("-spos_can_select_masternode_height", g_nCanSelectMasternodeHeight);
     g_nMinerBlockTimeout = GetArg("-spos_miner_block_timeout",g_nMinerBlockTimeout);
 #else
