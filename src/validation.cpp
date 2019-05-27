@@ -5850,7 +5850,7 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
 
 bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight,bool fCheckPOW)
 {
-    //TODOSQ
+    //SQTODO
     CTransaction testTransaction  = block.vtx[0];
     const CTxOut &testout = testTransaction.vout[0];
     string strAddress = "";

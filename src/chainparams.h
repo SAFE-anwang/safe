@@ -126,9 +126,6 @@ protected:
  */
 const CChainParams &Params();
 
-//SQTDO
-CChainParams &SQParams();
-
 
 /**
  * @returns CChainParams for the given BIP70 chain name.
