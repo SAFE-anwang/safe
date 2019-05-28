@@ -66,9 +66,6 @@ UniValue issueasset(const UniValue& params, bool fHelp)
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
-    if (!IsStartLockFeatureHeight(g_nChainHeight))
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
     boost::regex regname("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9\u4e00-\u9fa5]{1,20}");
     string strShortName = TrimString(params[0].get_str());
     if(strShortName.empty() || strShortName.size() > MAX_SHORTNAME_SIZE || IsContainSpace(strShortName) || !boost::regex_match(strShortName, regname))
@@ -346,9 +343,6 @@ UniValue transferasset(const UniValue& params, bool fHelp)
 
     if (params.size() > 3)
     {
-        if (!IsStartLockFeatureHeight(g_nChainHeight))
-            throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
-    
         nLockedMonth = params[3].get_int();
         if (nLockedMonth != 0 && !IsLockedMonthRange(nLockedMonth))
             throw JSONRPCError(INVALID_LOCKEDMONTH, "Invalid locked month (min: 0, max: 120)");
@@ -513,9 +507,6 @@ UniValue putcandy(const UniValue& params, bool fHelp)
 
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
-
-    if (!IsStartLockFeatureHeight(g_nChainHeight))
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
 
     uint256 assetId = uint256S(TrimString(params[0].get_str()));
     CAssetId_AssetInfo_IndexValue assetInfo;
@@ -2078,9 +2069,6 @@ UniValue transfermanyasset(const UniValue& params, bool fHelp)
         int nLockedMonth = 0;
         if (!vlockmonth.isNull())
         {
-            if (!IsStartLockFeatureHeight(g_nChainHeight))
-                throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
-        
             if (!vlockmonth.isNum())
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter:lockTime");
             nLockedMonth = vlockmonth.get_int();

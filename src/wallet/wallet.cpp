@@ -4072,15 +4072,6 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
         return false;
     }
 
-    if (fUseInstantSend)
-    {
-        if (!IsStartLockFeatureHeight(chainActive.Height()))
-        {
-            strFailReason = strprintf(_("This feature is enabled when the block height is %d"), g_nProtocolV3Height);
-            return false;
-        }
-    }
-
     CAmount nFeePay = fUseInstantSend ? CTxLockRequest().GetMinFee() : 0;
 
     CAmount nValue = 0;
@@ -4468,15 +4459,6 @@ bool CWallet::CreateAppTransaction(const CAppHeader* pHeader, const void* pBody,
     {
         strFailReason = _("Synchronizing block data");
         return false;
-    }
-
-    if (fUseInstantSend)
-    {
-        if (!IsStartLockFeatureHeight(chainActive.Height()))
-        {
-            strFailReason = strprintf(_("This feature is enabled when the block height is %d"), g_nProtocolV3Height);
-            return false;            
-        }
     }
 
     CAmount nFeePay = fUseInstantSend ? CTxLockRequest().GetMinFee() : 0;

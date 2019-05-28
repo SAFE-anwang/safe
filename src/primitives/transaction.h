@@ -33,7 +33,6 @@
 
 extern int g_nProtocolV1Height;
 extern int g_nProtocolV2Height;
-extern int g_nProtocolV3Height;
 
 bool IsProtocolV0(const int& nHeight);
 

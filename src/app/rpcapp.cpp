@@ -55,9 +55,6 @@ UniValue registerapp(const UniValue& params, bool fHelp)
     if(!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
-    if (!IsStartLockFeatureHeight(g_nChainHeight))
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV3Height));
-
     boost::regex regappname("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9\u4e00-\u9fa5 ]{1,50}");
     string strAppName = TrimString(params[0].get_str());
     if(strAppName.empty() || strAppName.size() > MAX_APPNAME_SIZE || !boost::regex_match(strAppName, regappname))

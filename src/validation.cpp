@@ -126,6 +126,7 @@ int g_nAdjacentBlockInterval = 27;
 int g_nSPOSAfterEnableDynamicCheckHeight = 210;
 
 
+
 unsigned int nKeyIdSize = 20;
 unsigned int nConsensusAlgorithmLen = 4;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
@@ -1146,8 +1147,19 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             }
             if(nCount == 0)
                 return state.DoS(50, false, REJECT_INVALID, "register_app: need cancel safe");
-            if(!IsCancelledRange(nCancelledAmount) || (fWithMempool && masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
-                return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
+            if(!IsCancelledRange(nCancelledAmount))
+                 return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
+
+            if (fWithMempool)
+            {
+                if (masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight))
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
+            }
+            else
+            {
+                if (nCancelledAmount < GetCancelledAmount(nTxHeight))
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
+            }
 
             // check vin
             for(unsigned int m = 0; m < tx.vin.size(); m++)
@@ -1522,8 +1534,20 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             }
             if(nCancelledCount == 0)
                 return state.DoS(50, false, REJECT_INVALID, "issue_asset: need cancel safe");
-            if(!IsCancelledRange(nCancelledAmount) || (fWithMempool && masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
+            if(!IsCancelledRange(nCancelledAmount))
                 return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid safe cancelld amount");
+
+            if (fWithMempool)
+            {
+                if (masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight))
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid safe cancelld amount");
+            }
+            else
+            {
+                if (nCancelledAmount < GetCancelledAmount(nTxHeight))
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid safe cancelld amount"); 
+            }
+
             if(assetData.bPayCandy && nCandyCount == 0)
                 return state.DoS(10, false, REJECT_INVALID, "issue_asset: tx need put candy txout when paycandy is opened");
 
@@ -2935,10 +2959,15 @@ double ConvertBitsToDouble(unsigned int nBits)
 CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
 {
     CAmount nSubsidy = nMiningIncentives;
+    int nNextDecrementHeight = 1261441;
+
+    int nOffset = nNextDecrementHeight - g_nStartSPOSHeight;
+    int nStartDecrementHeight = g_nStartSPOSHeight + nOffset * ConvertBlockHeight(consensusParams);
     int nSubsidyHalvingInterval = consensusParams.nSubsidyHalvingInterval * ConvertBlockHeight(consensusParams);
 
     // yearly decline of production by ~7.1% per year, projected ~18M coins max by year 2050+.
-    for (int i = nSubsidyHalvingInterval; i <= nPrevHeight; i += nSubsidyHalvingInterval) {
+    for (int i = nStartDecrementHeight; i <= nPrevHeight; i += nSubsidyHalvingInterval)
+    {
         nSubsidy -= nSubsidy/14;
     }
 

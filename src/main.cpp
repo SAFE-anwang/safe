@@ -28,9 +28,9 @@ std::string g_strCancelledSafeAddress = "XagqqFetxiDb9wbartKDrXgnqLah9fKoTx"; //
 std::string g_strCancelledAssetAddress = "XagqqFetxiDb9wbartKDrXgnqLahHSe2VE"; // asset's black hold address (hash160: 0x0000...02)
 std::string g_strPutCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLahUovwfs"; // candy's black hold address (hash160: 0x0000...03)
 
-//XJTODO
-int g_nStartSPOSHeight = 32205;
-int g_nSaveMasternodePayeeHeight = 30000;
+
+int g_nStartSPOSHeight = 1093074;
+int g_nSaveMasternodePayeeHeight = 1089042;
 
 unsigned int g_nMasternodeSPosCount = 9;
 unsigned int g_nMasternodeCanBeSelectedTime = 86400*3;
@@ -431,17 +431,15 @@ CAmount GetPowCancelledAmount(const int& nHeight)
 
 CAmount GetSPOSCancelledAmount(const int& nHeight)
 {
-    int nOffset = nHeight - g_nProtocolV3Height;
-    if (nOffset < 0)
-        return 0;
+    int nPowToSPOSHeight = g_nStartSPOSHeight - g_nProtocolV2Height;
+    int nPowToSPOSDays = nPowToSPOSHeight / BLOCKS_PER_DAY;
 
-    int nPowFromSPOSHeight = g_nProtocolV3Height - g_nProtocolV2Height;
-    int nPowFromSPOSMonth = nPowFromSPOSHeight / BLOCKS_PER_MONTH;
+    int nSPOSHeightToCurrenHeight = nHeight - g_nStartSPOSHeight;
+    int nSPOSToCurrentDays = nSPOSHeightToCurrenHeight / SPOS_BLOCKS_PER_DAY;
 
-    int nMonth = 0;
-    nMonth = nOffset / SPOS_BLOCKS_PER_MONTH;
-
-    int nTotalMonth = nPowFromSPOSMonth + nMonth;
+    int nTotalDays = nPowToSPOSDays + nSPOSToCurrentDays;
+    int nTotalMonth = 0;
+    nTotalMonth = nTotalDays / 30;
 
     if (nTotalMonth == 0)
         return 500 * COIN;
