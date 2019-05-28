@@ -299,6 +299,20 @@ void SendCoinsDialog::on_sendButton_clicked()
         }
     }
 
+    if(ui->radioCustomFee->isChecked())
+    {
+        if(!ui->customFee->validate())
+        {
+            valid = false;
+            ui->customFee->setValid(false);
+        }
+        if (ui->customFee->value(0) <= 0)
+        {
+            ui->customFee->setValid(false);
+            valid = false;
+        }
+    }
+
     if(!valid || recipients.isEmpty())
     {
         return;
