@@ -238,7 +238,7 @@ TransactionRecord* TransactionTablePriv::index(int idx)
                         //transform assets,get candy,put candy,issue asset need to update overview and they history view
                         if(rec->bAssets|| rec->bGetCandy ||rec->bPutCandy || rec->bIssueAsset || (rec->bSAFETransaction&&rec->address==g_strCancelledSafeAddress))
                         {
-                            if(!parent->getUpdatingWallet() && (strAssetName!=strLastAssetName || rec->nTxHeight!=nLastHeight))
+                            if((!parent->getUpdatingWallet() || newConfirmedAssets) && (strAssetName!=strLastAssetName || rec->nTxHeight!=nLastHeight))
                             {
                                 parent->emitUpdateAsset(false,newConfirmedAssets,strAssetName);
                                 strLastAssetName = strAssetName;
