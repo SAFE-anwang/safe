@@ -92,7 +92,7 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     UniValue obj(UniValue::VOBJ);
     //SQTODO
     //obj.push_back(Pair("version", CLIENT_VERSION));
-    obj.push_back(Pair("version", 2050021));
+    obj.push_back(Pair("version", 2050023));
 
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
 #ifdef ENABLE_WALLET
