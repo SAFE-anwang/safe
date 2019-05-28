@@ -107,7 +107,7 @@ QVariant LockedTransactionTableModel::data(const QModelIndex &index, int role) c
                 return qint64(rec->nLockedAmount);
             return qint64(rec->commonData.nAmount);
         case LockedColumnLockedMonth:
-            return formatLockedMonth(rec);
+            return formatLockedMonth(rec).toInt();
         case LockedColumnUnlockedHeight:
             return qint64(rec->getRealUnlockHeight());
         case LockedColumnLockedStatus:
