@@ -122,7 +122,7 @@ CAmount nMiningIncentives = 45000000000;//SQTODO
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
 
-int g_nAdjacentBlockInterval = 27;
+int g_nAdjacentBlockInterval = 28;
 int g_nSPOSAfterEnableDynamicCheckHeight = 210;
 
 
@@ -5943,7 +5943,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
     if (keyID != mnkeyID)
-        return state.DoS(10, error("SPOS_Warning CheckSPOSBlock():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
+        return state.DoS(100, error("SPOS_Warning CheckSPOSBlock():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
                                     "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s,blocktime:%lld,startlooptime:%lld\n",nHeight,keyID.ToString()
                                     ,mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP(),block.GetBlockTime(),nStartNewLoopTime), REJECT_INVALID
                                     ,"bad-blockaddress", true);
@@ -6232,7 +6232,7 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
         if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, hash))
             return error("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
 
-        if (IsStartSPosHeight(pindexPrev->nHeight + 1 - g_nSPOSAfterEnableDynamicCheckHeight))
+        if (pindexPrev->nHeight + 1 > g_nStartSPOSHeight)
         {
             if (block.GetBlockTime() - pindexPrev->nTime < g_nAdjacentBlockInterval)
                 return state.DoS(100, error("SPOS_Warning AcceptBlockHeader():Adjacent block interval invalid, nHeight:%d, blocktime:%lld, pindexPrevblocktime:%lld, g_nAdjacentBlockInterval:%d\n",
