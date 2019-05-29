@@ -125,8 +125,8 @@ CAmount nMiningIncentives = 45000000000;//SQTODO
 int g_nAdjacentBlockInterval = 28;
 
 #if SCN_CURRENT == SCN__main
-int nPOWBeforeSPOSLastSuperblock = 1063424;
-int nPOWAfterSPOSfirstSuperblock = 1080040;
+int nPOWBeforeSPOSLastSuperblock = 1080040;
+int nPOWAfterSPOSfirstSuperblock = 1096656;
 #elif SCN_CURRENT == SCN__dev
 int nPOWBeforeSPOSLastSuperblock = 104055;
 int nPOWAfterSPOSfirstSuperblock = 104194;
