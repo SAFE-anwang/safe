@@ -5889,12 +5889,11 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
 
 bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight,bool fCheckPOW)
 {
-    //SQTODO
     CTransaction testTransaction  = block.vtx[0];
     const CTxOut &testout = testTransaction.vout[0];
     string strAddress = "";
     if (GetTxOutAddress(testout, &strAddress))
-        LogPrintf("SPOS_Message:AAAAABlockAddress:%s, height:%d, blockHash:%s\n", strAddress, nHeight, block.GetHash().ToString());//TOSQ
+        LogPrint("sposinfo","SPOS_Message:AAAAABlockAddress:%s, height:%d, blockHash:%s\n", strAddress, nHeight, block.GetHash().ToString());
 
     if (block.nBits != 0)
         return state.DoS(100, error("SPOS_Warning CheckSPOSBlock(): block.nBits  not equal to 0,this block may receive from pow chain,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
@@ -9965,7 +9964,7 @@ int ConvertSuperblockCycle(const int& nHeight)
         nTempSuperBlockCycle = consensusParams.nSuperblockCycle * ConvertBlockHeight(consensusParams);
     }
     else
-    {
+    {
         if (nHeight < g_nStartSPOSHeight)
             nTempSuperBlockCycle = consensusParams.nSuperblockCycle;
         else
