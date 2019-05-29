@@ -525,9 +525,9 @@ CSuperblock(uint256& nHash)
 bool CSuperblock::IsValidBlockHeight(int nBlockHeight)
 {
     // SUPERBLOCKS CAN HAPPEN ONLY after hardfork and only ONCE PER CYCLE
-    int nSuperblockCycle = Params().GetConsensus().nSuperblockCycle * ConvertBlockParameterByHeight(nBlockHeight, Params().GetConsensus());
+    int nTempSuperblockCycle = ConvertSuperblockCycle(nBlockHeight);
     return nBlockHeight >= Params().GetConsensus().nSuperblockStartBlock &&
-            ((nBlockHeight % nSuperblockCycle) == 0);
+            ((nBlockHeight % nTempSuperblockCycle) == 0);
 }
 
 CAmount CSuperblock::GetPaymentsLimit(int nBlockHeight)
@@ -543,15 +543,17 @@ CAmount CSuperblock::GetPaymentsLimit(int nBlockHeight)
     // some part of all blocks issued during the cycle goes to superblock, see GetBlockSubsidy
     CAmount nSuperblockPartOfSubsidy = 0;
     CAmount nPaymentsLimit = 0;
+
+    int ntempSuperblockCycle = ConvertSuperblockCycle(nBlockHeight);
     if (IsStartSPosHeight(nBlockHeight))
     {
         nSuperblockPartOfSubsidy = GetSPOSBlockSubsidy(nBlockHeight - 1, consensusParams, true);
-        nPaymentsLimit = nSuperblockPartOfSubsidy * consensusParams.nSuperblockCycle * ConvertBlockHeight(consensusParams);
+        nPaymentsLimit = nSuperblockPartOfSubsidy * ntempSuperblockCycle;
     }
     else
     {
         nSuperblockPartOfSubsidy = GetBlockSubsidy(nBits, nBlockHeight - 1, consensusParams, true);
-        nPaymentsLimit = nSuperblockPartOfSubsidy * consensusParams.nSuperblockCycle;
+        nPaymentsLimit = nSuperblockPartOfSubsidy * ntempSuperblockCycle;
     }
 
     LogPrint("gobject", "CSuperblock::GetPaymentsLimit -- Valid superblock height %d, payments max %lld\n", nBlockHeight, nPaymentsLimit);

@@ -536,10 +536,11 @@ void CGovernanceManager::UpdateCachesAndClean()
             }
 
             int64_t nSuperblockCycleSeconds = 0;
+            int nTempSuperblockCycle = ConvertSuperblockCycle(chainActive.Height());
             if (chainActive.Height() >= g_nStartSPOSHeight)
-                nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * ConvertBlockHeight(Params().GetConsensus()) * Params().GetConsensus().nSPOSTargetSpacing;
+                nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nSPOSTargetSpacing;
             else
-                nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
+                nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
             int64_t nTimeExpired = pObj->GetCreationTime() + 2 * nSuperblockCycleSeconds + GOVERNANCE_DELETION_DELAY;
 
             if(pObj->GetObjectType() == GOVERNANCE_OBJECT_WATCHDOG) {
@@ -881,10 +882,11 @@ bool CGovernanceManager::MasternodeRateCheck(const CGovernanceObject& govobj, bo
     int64_t nNow = GetAdjustedTime();
 
     int64_t nSuperblockCycleSeconds = 0;
+    int nTempSuperblockCycle = ConvertSuperblockCycle(chainActive.Height());
     if (chainActive.Height() >= g_nStartSPOSHeight)
-        nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * ConvertBlockHeight(Params().GetConsensus()) * Params().GetConsensus().nSPOSTargetSpacing;
+        nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nSPOSTargetSpacing;
     else
-        nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
+        nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
 
     std::string strHash = govobj.GetHash().ToString();
 
@@ -1083,10 +1085,11 @@ void CGovernanceManager::CheckPostponedObjects(CConnman& connman)
     // Perform additional relays for triggers/watchdogs
     int64_t nNow = GetAdjustedTime();
     int64_t nSuperblockCycleSeconds = 0;
+    int nTempSuperblockCycle = ConvertSuperblockCycle(chainActive.Height());
     if (chainActive.Height() >= g_nStartSPOSHeight)
-        nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * ConvertBlockHeight(Params().GetConsensus()) * Params().GetConsensus().nSPOSTargetSpacing;
+        nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nSPOSTargetSpacing;
     else
-        nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
+        nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
 
     for(hash_s_it it = setAdditionalRelayObjects.begin(); it != setAdditionalRelayObjects.end();) {
 

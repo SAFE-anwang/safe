@@ -123,7 +123,20 @@ CAmount nMiningIncentives = 45000000000;//SQTODO
 #endif//#if SCN_CURRENT == SCN__main
 
 int g_nAdjacentBlockInterval = 28;
-int g_nSPOSAfterEnableDynamicCheckHeight = 210;
+
+#if SCN_CURRENT == SCN__main
+int nPOWBeforeSPOSLastSuperblock = 1063424;
+int nPOWAfterSPOSfirstSuperblock = 1080040;
+#elif SCN_CURRENT == SCN__dev
+int nPOWBeforeSPOSLastSuperblock = 104055;
+int nPOWAfterSPOSfirstSuperblock = 104194;
+#elif SCN_CURRENT == SCN__test
+int nPOWBeforeSPOSLastSuperblock = 400;
+int nPOWAfterSPOSfirstSuperblock = 539;
+#else
+#error unsupported <safe chain name>
+#endif//#if SCN_CURRENT == SCN__main
+
 
 
 
@@ -9937,6 +9950,27 @@ void updateForwardHeightAndScoreHeight(int nCurrBlockHeight, int &nForwardHeight
               ,nForwardHeight,nScoreHeight,nCurrBlockHeight,g_nTimeoutCount,g_nPushForwardTime);
 }
 
+int ConvertSuperblockCycle(const int& nHeight)
+{
+    const Consensus::Params& consensusParams = Params().GetConsensus();
+    int nTempSuperBlockCycle = 0;
+    int nOffset = 0;
+    int nTmpOffset = nPOWAfterSPOSfirstSuperblock - g_nStartSPOSHeight;
+    if (nTmpOffset >= 0)
+        nOffset = nTmpOffset;
+    int nReallyHeight = g_nStartSPOSHeight + nOffset * ConvertBlockHeight(consensusParams);
 
+    if (nHeight > nReallyHeight)
+    {
+        nTempSuperBlockCycle = consensusParams.nSuperblockCycle * ConvertBlockHeight(consensusParams);
+    }
+    else
+    {
+        if (nHeight < g_nStartSPOSHeight)
+            nTempSuperBlockCycle = consensusParams.nSuperblockCycle;
+        else
+            nTempSuperBlockCycle = g_nStartSPOSHeight - nPOWBeforeSPOSLastSuperblock + nOffset * ConvertBlockHeight(consensusParams);
+    }
 
-
+    return nTempSuperBlockCycle;
+}

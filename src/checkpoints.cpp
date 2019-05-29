@@ -18,7 +18,7 @@
 #include <boost/foreach.hpp>
 
 
-static const int nCheckpointSpan = 200;
+static const int nCheckpointSpan = 100;
 
 
 namespace Checkpoints {

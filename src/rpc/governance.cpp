@@ -931,7 +931,7 @@ UniValue getgovernanceinfo(const UniValue& params, bool fHelp)
 
     // Get chain parameters
     int nSuperblockStartBlock = Params().GetConsensus().nSuperblockStartBlock;
-    int nSuperblockCycle = Params().GetConsensus().nSuperblockCycle * ConvertBlockParameterByHeight(nBlockHeight, Params().GetConsensus());
+    int nSuperblockCycle = ConvertSuperblockCycle(nBlockHeight);
 
     // Get first superblock
     int nFirstSuperblockOffset = (nSuperblockCycle - nSuperblockStartBlock % nSuperblockCycle) % nSuperblockCycle;

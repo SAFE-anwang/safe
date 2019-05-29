@@ -275,13 +275,15 @@ CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
 
 int ConvertBlockHeight(const Consensus::Params& consensusParams);
 
-int ConvertBlockParameterByHeight(const int &nHeight, const Consensus::Params& consensusParams);
+int ConvertBlockParameterByHeight(const int& nHeight, const Consensus::Params& consensusParams);
 
-int ConvertBlockConfirmationsByHeight(const int&nHeight);
+int ConvertBlockConfirmationsByHeight(const int& nHeight);
 
 int ConvertBlockNum();
 
-int ConvertMasternodeConfirmationsByHeight(const int &nHeight, const Consensus::Params& consensusParams);
+int ConvertMasternodeConfirmationsByHeight(const int& nHeight, const Consensus::Params& consensusParams);
+
+int ConvertSuperblockCycle(const int& nHeight);
 
 
 /**
