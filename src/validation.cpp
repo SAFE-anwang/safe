@@ -128,11 +128,11 @@ int g_nAdjacentBlockInterval = 28;
 int nPOWBeforeSPOSLastSuperblock = 1080040;
 int nPOWAfterSPOSfirstSuperblock = 1096656;
 #elif SCN_CURRENT == SCN__dev
-int nPOWBeforeSPOSLastSuperblock = 104055;
-int nPOWAfterSPOSfirstSuperblock = 104194;
+int nPOWBeforeSPOSLastSuperblock = 103972;
+int nPOWAfterSPOSfirstSuperblock = 104111;
 #elif SCN_CURRENT == SCN__test
-int nPOWBeforeSPOSLastSuperblock = 400;
-int nPOWAfterSPOSfirstSuperblock = 539;
+int nPOWBeforeSPOSLastSuperblock = 417;
+int nPOWAfterSPOSfirstSuperblock = 556;
 #else
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
