@@ -544,7 +544,8 @@ CAmount CSuperblock::GetPaymentsLimit(int nBlockHeight)
     CAmount nSuperblockPartOfSubsidy = 0;
     CAmount nPaymentsLimit = 0;
 
-    int ntempSuperblockCycle = ConvertSuperblockCycle(nBlockHeight);
+
+    int ntempSuperblockCycle = consensusParams.nSuperblockCycle * ConvertBlockParameterByHeight(nBlockHeight, consensusParams);
     if (IsStartSPosHeight(nBlockHeight))
     {
         nSuperblockPartOfSubsidy = GetSPOSBlockSubsidy(nBlockHeight - 1, consensusParams, true);
