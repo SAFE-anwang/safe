@@ -5,8 +5,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#if defined(HAVE_CONFIG_H)
 #include "config/safe-chain.h"
-#include "validation.h"
+#endif
 
 #include "alert.h"
 #include "arith_uint256.h"
@@ -43,7 +44,6 @@
 #include "masternode-sync.h"
 #include "messagesigner.h"
 #include "validation.h"
-#include "config/safe-chain.h"
 
 
 #ifdef ENABLE_WALLET

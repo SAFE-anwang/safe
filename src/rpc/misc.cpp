@@ -5,6 +5,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#if defined(HAVE_CONFIG_H)
+#include "config/safe-chain.h"
+#endif
+
 #include "base58.h"
 #include "clientversion.h"
 #include "init.h"
@@ -90,9 +94,14 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     GetProxy(NET_IPV4, proxy);
 
     UniValue obj(UniValue::VOBJ);
-    //SQTODO
-    //obj.push_back(Pair("version", CLIENT_VERSION));
+
+#if SCN_CURRENT == SCN__main
+    obj.push_back(Pair("version", CLIENT_VERSION));
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
     obj.push_back(Pair("version", 2050025));
+#else
+#error unsupported <safe chain name>
+#endif
 
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
 #ifdef ENABLE_WALLET
