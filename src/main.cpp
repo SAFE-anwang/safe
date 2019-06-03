@@ -29,8 +29,8 @@ std::string g_strCancelledAssetAddress = "XagqqFetxiDb9wbartKDrXgnqLahHSe2VE"; /
 std::string g_strPutCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLahUovwfs"; // candy's black hold address (hash160: 0x0000...03)
 
 
-int g_nStartSPOSHeight = 1093074;
-int g_nSaveMasternodePayeeHeight = 1089042;
+int g_nStartSPOSHeight = 1092826;
+int g_nSaveMasternodePayeeHeight = 1088804;
 
 unsigned int g_nMasternodeSPosCount = 9;
 unsigned int g_nMasternodeCanBeSelectedTime = 86400*3;
