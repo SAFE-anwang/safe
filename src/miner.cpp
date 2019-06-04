@@ -841,7 +841,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 {
     LogPrintf("SPOS_Message:SafeSposMiner is -- started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
-    RenameThread("safe-miner");
+    RenameThread("safe-spos-miner");
 
     unsigned int nExtraNonce = 0;
 
