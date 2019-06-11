@@ -41,9 +41,7 @@ public:
     void setModel(WalletModel *model);
     bool amountFromString(const std::string& valueStr,const QString& msgboxTitle,int decimal,CAmount& amount);
     void setThreadUpdateData(bool update){fThreadUpdateData = update;}
-    void setThreadNoticeSlot(bool notice){fThreadNoticeSlot = notice;}
     bool getThreadUpdateData(){return fThreadUpdateData;}
-    bool getThreadNoticeSlot(){return fThreadNoticeSlot;}
     void setAssetStringList(QStringList stringList){assetStringList = stringList;}
 
 private:
@@ -115,7 +113,6 @@ private:
 
     bool isUnlockByGlobal;
     bool fThreadUpdateData;
-    bool fThreadNoticeSlot;
     QStringList assetStringList;
 Q_SIGNALS:
     void runGetCandy();

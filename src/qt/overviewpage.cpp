@@ -50,8 +50,7 @@ void RefreshOverviewPageData(WalletModel* walletModel,OverviewPage* overviewPage
     {
         boost::this_thread::interruption_point();
         bool fThreadUpdateData = overviewPage->getThreadUpdateData();
-        bool fThreadNoticeSlot = overviewPage->getThreadNoticeSlot();
-        if(!fThreadUpdateData&&!fThreadNoticeSlot)
+        if(!fThreadUpdateData)
         {
             MilliSleep(100);
             continue;
@@ -59,8 +58,6 @@ void RefreshOverviewPageData(WalletModel* walletModel,OverviewPage* overviewPage
 
         if(fThreadUpdateData)
             overviewPage->setThreadUpdateData(false);
-        if(fThreadNoticeSlot)
-            overviewPage->setThreadNoticeSlot(false);
         {
             LOCK(cs_overview);
             QStringList assetsNames;
@@ -92,7 +89,6 @@ void RefreshOverviewPageData(WalletModel* walletModel,OverviewPage* overviewPage
                                            assetBalance.nDecimals,assetBalance.strUnit))
                 {
                     overviewPage->setThreadUpdateData(fThreadUpdateData);
-                    overviewPage->setThreadNoticeSlot(fThreadNoticeSlot);
                     continue;
                 }
 
@@ -101,9 +97,7 @@ void RefreshOverviewPageData(WalletModel* walletModel,OverviewPage* overviewPage
                 overviewPage->setUpdateAssetsInfo(true);
             }
 
-            if(fThreadNoticeSlot)
-                Q_EMIT overviewPage->refreshAssetsInfo();
-
+            Q_EMIT overviewPage->refreshAssetsInfo();
         }//end of lock
     }//end of while
 }
@@ -213,7 +207,6 @@ OverviewPage::OverviewPage(const PlatformStyle *platformStyle, QWidget *parent) 
     timer(nullptr),
     platformStyle(platformStyle),
     fThreadUpdateData(false),
-    fThreadNoticeSlot(false),
     fUpdateAssetInfo(false)
     //columnResizingFixer(0)
 {

@@ -53,9 +53,7 @@ public:
     void setClientModel(ClientModel* clientModel);
     bool getAssetFound(){return fAssetsFound;}
     void setThreadUpdateData(bool update){fThreadUpdateData = update;}
-    void setThreadNoticeSlot(bool notice){fThreadNoticeSlot = notice;}
     bool getThreadUpdateData(){return fThreadUpdateData;}
-    bool getThreadNoticeSlot(){return fThreadNoticeSlot;}
     void setAssetStringList(QStringList stringList){assetStringList = stringList;}
 
 Q_SIGNALS:
@@ -92,7 +90,6 @@ private:
     QStringListModel* stringListModel;
     bool fAssetsFound;
     bool fThreadUpdateData;
-    bool fThreadNoticeSlot;
     QStringList assetStringList;
 
     QModelIndex selectedRow();

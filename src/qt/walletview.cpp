@@ -44,8 +44,6 @@
 #include <boost/thread.hpp>
 
 extern boost::thread_group *g_threadGroup;
-void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView);
-void RefreshWalletDataStartUp(WalletModel* walletModel, WalletView *walletView);
 
 WalletView::WalletView(const PlatformStyle *platformStyle, QWidget *parent):
     QStackedWidget(parent),
@@ -283,7 +281,7 @@ WalletView::WalletView(const PlatformStyle *platformStyle, QWidget *parent):
 
 	qRegisterMetaType<TransactionTableModel * >("TransactionTableModel *");
 
-	connect(this, SIGNAL(refreshFinished(TransactionTableModel*)), this, SLOT(refreshFinished_slot(TransactionTableModel*)));
+    connect(this, SIGNAL(refreshFinish()), this, SLOT(refreshFinish_slot()));
 
 }
 
@@ -409,23 +407,13 @@ void WalletView::updateAssetsInfo(int showType, bool bConfirmedNewAssets, const 
 
     if(!strAssetName.isEmpty())
         overviewPage->addAssetToUpdate(strAssetName);
-    if(overviewPage==currentWidget())
-        overviewPage->setThreadNoticeSlot(true);
-    else
-    {
-        overviewPage->setThreadUpdateData(true);
-        fUpdateOverviewPage = true;
-    }
+    overviewPage->setThreadUpdateData(true);
+    fUpdateOverviewPage = true;
 
     if(bShowAll)
     {
-        if(receiveCoinsPage==currentWidget())
-            receiveCoinsPage->setThreadNoticeSlot(true);
-        else
-        {
-            receiveCoinsPage->setThreadUpdateData(true);
-            fUpdateReceivedDlg = true;
-        }
+        receiveCoinsPage->setThreadUpdateData(true);
+        fUpdateReceivedDlg = true;
         //receiveCoinsPage->updateAssetsInfo();
     }
 
@@ -434,21 +422,11 @@ void WalletView::updateAssetsInfo(int showType, bool bConfirmedNewAssets, const 
     {
         sendCoinsPage->updateAssetsInfo();
 
-        if(assetsPage==currentWidget())
-            assetsPage->setThreadNoticeSlot(true);
-        else
-        {
-            assetsPage->setThreadUpdateData(true);
-            fUpdateAssetsPage = true;
-        }
+        assetsPage->setThreadUpdateData(true);
+        fUpdateAssetsPage = true;
 
-        if(candyPage==currentWidget())
-            candyPage->setThreadNoticeSlot(true);
-        else
-        {
-            candyPage->setThreadUpdateData(true);
-            fUpdateCandyPage = true;
-        }
+        candyPage->setThreadUpdateData(true);
+        fUpdateCandyPage = true;
     }
 }
 
@@ -493,54 +471,26 @@ void WalletView::gotoOverviewPage()
 
 void WalletView::gotoHistoryPage()
 {
-	if (!walletModel->getTransactionTableModel()->isRefreshWallet() && g_threadGroup != NULL)
-	{
-        LogPrintf("guidebug:start goto history page\n");
-		walletModel->getTransactionTableModel()->setRefreshWalletFlag(true);
-		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getTransactionTableModel(), this));
-        LogPrintf("guidebug:end goto history page\n");
-	}
     setCurrentWidget(transactionsPage);
 }
 
 void WalletView::gotoLockedHistoryPage()
 {
-	if (!walletModel->getLockedTransactionTableModel()->isRefreshWallet() && g_threadGroup != NULL)
-	{
-		walletModel->getLockedTransactionTableModel()->setRefreshWalletFlag(true);
-		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getLockedTransactionTableModel(), this));
-	}
     setCurrentWidget(lockedTransactionsPage);
 }
 
 void WalletView::gotoAssetsPage()
 {
-	if (!walletModel->getAssetsDistributeTableModel()->isRefreshWallet() && g_threadGroup != NULL)
-	{
-		walletModel->getAssetsDistributeTableModel()->setRefreshWalletFlag(true);
-		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getAssetsDistributeTableModel(), this));
-	}
     setCurrentWidget(assetsPage);
 }
 
 void WalletView::gotoApplicationPage()
 {
-    if (!walletModel->getApplicationRegistTableModel()->isRefreshWallet() && g_threadGroup != NULL)
-    {
-        walletModel->getApplicationRegistTableModel()->setRefreshWalletFlag(true);
-        g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getApplicationRegistTableModel(), this));
-    }
     setCurrentWidget(applicationsPage);
 }
 
 void WalletView::gotoCandyPage()
 {
-	if (!walletModel->getCandyTableModel()->isRefreshWallet() && g_threadGroup != NULL)
-	{
-		walletModel->getCandyTableModel()->setRefreshWalletFlag(true);
-		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getCandyTableModel(), this));
-	}
-
     if(fUpdateCandyPage)
     {
         fUpdateCandyPage = false;
@@ -774,91 +724,39 @@ int WalletView::getPageType()
 	return pageType;
 }
 
-void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView)
-{
-	if (NULL == txModel)
-	{
-        LogPrintf("guidebug_error:RefreshWalletData,txModel is null\n");
-        return;
-	}
-
-	RenameThread("RefreshWalletData");
-
-    LogPrintf("guidebug_message:start RefreshWalletData\n");
-    WalletModel *walletModel = walletView->getWalletMode();
-    if(walletModel == NULL)
-    {
-        LogPrintf("guidebug_error:RefreshWalletData,walletModel is null\n");
-        return ;
-    }
-
-    if(txModel == walletModel->getLockedTransactionTableModel())
-    {
-        while(!masternodeSync.IsBlockchainSynced())
-        {
-            MilliSleep(2000);
-        }
-    }
-
-    //XJTODO
-    if(txModel != walletModel->getLockedTransactionTableModel())
-        txModel->refreshWallet();
-
-    if (txModel == walletModel->getTransactionTableModel())
-	{
-		MilliSleep(2000);
-    }
-
-	Q_EMIT walletView->refreshFinished(txModel);
-    LogPrintf("guidebug_message:end RefreshWalletData\n");
-}
-
 void RefreshDataStartUp(WalletModel *walletModel, WalletView *walletView)
 {
     TransactionTableModel* assetModel = walletModel->getAssetsDistributeTableModel();
-    if(assetModel){
+    if(assetModel)
         assetModel->refreshWallet();
-    }
-    Q_EMIT walletView->refreshFinished(assetModel);
+    else
+        LogPrintf("guidebug_warning:assetModel is NULL");
 
     TransactionTableModel* transactionModel = walletModel->getTransactionTableModel();
     if(transactionModel)
-    {
         transactionModel->refreshWallet();
-        MilliSleep(1000);
-    }
-    Q_EMIT walletView->refreshFinished(transactionModel);
-}
+    else
+        LogPrintf("guidebug_warning:transactionModel is NULL");
 
-void RefreshWalletDataStartUp(WalletModel *walletModel, WalletView *walletView)
-{
-    bool updateOnce = true;
-    int height = 0,waitTimes = 0;
-    while(true)
-    {
-        if(!masternodeSync.IsBlockchainSynced())
-        {
-            waitTimes++;
-            if(updateOnce&&waitTimes>50)
-            {
-                if(walletModel == NULL || walletView==NULL){
-                    continue;
-                }
-                updateOnce = false;
-                RefreshDataStartUp(walletModel,walletView);
-                height = chainActive.Height();
-            }
-            MilliSleep(100);
-            continue;
-        }
-        if(walletModel == NULL || walletView==NULL){
-            return;
-        }
-        RenameThread("RefreshWalletDataStartUp");
-        if(height != chainActive.Height()&&updateOnce)
-            RefreshDataStartUp(walletModel,walletView);
-        break;
-    }
+    TransactionTableModel* applicationModel = walletModel->getApplicationRegistTableModel();
+    if(applicationModel)
+        applicationModel->refreshWallet();
+    else
+        LogPrintf("guidebug_warning:applicationModel is NULL");
+
+    TransactionTableModel* candyModel = walletModel->getCandyTableModel();
+    if(candyModel)
+        candyModel->refreshWallet();
+    else
+        LogPrintf("guidebug_warning:candyModel is NULL");
+
+    Q_EMIT walletView->refreshFinish();
+
+    TransactionTableModel* lockedTransactionModel = walletModel->getLockedTransactionTableModel();
+    if(lockedTransactionModel)
+        lockedTransactionModel->refreshWallet();
+    else
+        LogPrintf("guidebug_warning:lockedTransactionModel is NULL");
 }
 
 void ThreadUpdateBalanceChanged(WalletModel *walletModel)
@@ -887,87 +785,66 @@ void ThreadUpdateBalanceChanged(WalletModel *walletModel)
 
 void WalletView::ShowHistoryPage()
 {
-    if ((!walletModel->getTransactionTableModel()->isRefreshWallet()||!walletModel->getAssetsDistributeTableModel()->isRefreshWallet())
-            && g_threadGroup != NULL)
+    if (g_threadGroup != NULL)
 	{
 		walletModel->getTransactionTableModel()->setRefreshWalletFlag(true);
         walletModel->getAssetsDistributeTableModel()->setRefreshWalletFlag(true);
-        g_threadGroup->create_thread(boost::bind(&RefreshWalletDataStartUp, walletModel, this));
+        g_threadGroup->create_thread(boost::bind(&RefreshDataStartUp, walletModel, this));
 	}
 }
 
-void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
+void WalletView::refreshFinish_slot()
 {
     LogPrintf("guidebug_message:start refreshFinished_slot\n");
-	if (txModel != NULL)
-	{
-        LogPrintf("guidebug_message:refreshFinished_slot refresh page start,showType:%d\n",txModel->getShowType());
-        txModel->refreshPage();
-        LogPrintf("guidebug_message:refreshFinished_slot refresh page finish,showType:%d\n",txModel->getShowType());
-    }
+    TransactionTableModel* assetModel = walletModel->getAssetsDistributeTableModel();
+    if(assetModel)
+        assetModel->refreshPage();
+    else
+        LogPrintf("guidebug_message:refreshFinish_slot assetModel is null\n");
 
-	if (txModel == walletModel->getTransactionTableModel())
-	{
-        LogPrintf("guidebug_message:start create ThreadUpdateBalanceChanged\n");
-        if(overviewPage==currentWidget())
-            overviewPage->setThreadNoticeSlot(true);
-        else
-        {
-            overviewPage->setThreadUpdateData(true);
-            fUpdateOverviewPage = true;
-        }
+    TransactionTableModel* transactionModel = walletModel->getTransactionTableModel();
+    if(transactionModel)
+        transactionModel->refreshPage();
+    else
+        LogPrintf("guidebug_message:refreshFinish_slot transactionModel is null\n");
 
-        if(receiveCoinsPage==currentWidget())
-            receiveCoinsPage->setThreadNoticeSlot(true);
-        else
-        {
-            receiveCoinsPage->setThreadUpdateData(true);
-            fUpdateReceivedDlg = true;
-        }
-		sendCoinsPage->updateAssetsInfo();
+    TransactionTableModel* lockedTransactionModel = walletModel->getLockedTransactionTableModel();
+    if(lockedTransactionModel)
+        lockedTransactionModel->refreshPage();
+    else
+        LogPrintf("guidebug_message:refreshFinish_slot lockedTransactionModel is null\n");
 
-        if(assetsPage==currentWidget())
-            assetsPage->setThreadNoticeSlot(true);
-        else
-        {
-            assetsPage->setThreadUpdateData(true);
-            fUpdateAssetsPage = true;
-        }
+    TransactionTableModel* applicationModel = walletModel->getApplicationRegistTableModel();
+    if(applicationModel)
+        applicationModel->refreshPage();
+    else
+        LogPrintf("guidebug_message:refreshFinish_slot applicationModel is null\n");
 
-        if(candyPage==currentWidget())
-            candyPage->setThreadNoticeSlot(true);
-        else
-        {
-            candyPage->setThreadUpdateData(true);
-            fUpdateCandyPage = true;
-        }
+    TransactionTableModel* candyModel = walletModel->getCandyTableModel();
+    if(candyModel)
+        candyModel->refreshPage();
+    else
+        LogPrintf("guidebug_message:refreshFinish_slot candyModel is null\n");
 
-        if(g_threadGroup)
-            g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, walletModel));
-        else
-            LogPrintf("guidebug_error:try to create ThreadUpdateBalanceChanged,but g_threadGroup is NULL\n");
-	}
-	else if (txModel == walletModel->getAssetsDistributeTableModel())
-	{
-        if(assetsPage==currentWidget())
-            assetsPage->setThreadNoticeSlot(true);
-        else
-        {
-            assetsPage->setThreadUpdateData(true);
-            fUpdateAssetsPage = true;
-        }
-	}
-	else if (txModel == walletModel->getCandyTableModel())
-	{
-        if(candyPage==currentWidget())
-            candyPage->setThreadNoticeSlot(true);
-        else
-        {
-            candyPage->setThreadUpdateData(true);
-            fUpdateCandyPage = true;
-        }
-	}
-    LogPrintf("guidebug_message:end refreshFinished_slot\n");
+    overviewPage->setThreadUpdateData(true);
+    fUpdateOverviewPage = true;
+
+    receiveCoinsPage->setThreadUpdateData(true);
+    fUpdateReceivedDlg = true;
+    sendCoinsPage->updateAssetsInfo();
+
+    assetsPage->setThreadUpdateData(true);
+    fUpdateAssetsPage = true;
+
+    candyPage->setThreadUpdateData(true);
+    fUpdateCandyPage = true;
+
+    if(g_threadGroup)
+        g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, walletModel));
+    else
+        LogPrintf("guidebug_error:try to create ThreadUpdateBalanceChanged,but g_threadGroup is NULL\n");
+
+    LogPrintf("guidebug_message:end refreshFinish_slot\n");
 }
 
 WalletModel *WalletView::getWalletMode()

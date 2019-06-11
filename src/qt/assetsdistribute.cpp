@@ -41,16 +41,13 @@ void RefreshAssetData(AssetsDistribute* assetsDistribute)
     {
         boost::this_thread::interruption_point();
         bool fThreadUpdateData = assetsDistribute->getThreadUpdateData();
-        bool fThreadNoticeSlot = assetsDistribute->getThreadNoticeSlot();
-        if(!fThreadUpdateData&&!fThreadNoticeSlot)
+        if(!fThreadUpdateData)
         {
             MilliSleep(100);
             continue;
         }
         if(fThreadUpdateData)
             assetsDistribute->setThreadUpdateData(false);
-        if(fThreadNoticeSlot)
-            assetsDistribute->setThreadNoticeSlot(false);
 
         std::map<uint256, CAssetData> issueAssetMap;
         std::vector<std::string> assetNameVec;
@@ -73,8 +70,7 @@ void RefreshAssetData(AssetsDistribute* assetsDistribute)
         }
         assetsDistribute->setAssetStringList(stringList);
 
-        if(fThreadNoticeSlot)
-            Q_EMIT assetsDistribute->refreshAssetsInfo();
+        Q_EMIT assetsDistribute->refreshAssetsInfo();
     }
 }
 
@@ -124,7 +120,6 @@ AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
     clearDisplay();
     msgboxTitle = tr("Assets distribute");
     fThreadUpdateData = false;
-    fThreadNoticeSlot = false;
     assetStringList.clear();
 
     completer = new QCompleter;
@@ -346,7 +341,7 @@ void AssetsDistribute::initFirstDistribute()
 void AssetsDistribute::initAdditionalDistribute()
 {
     //updateAssetsInfo();
-    setThreadNoticeSlot(true);
+    setThreadUpdateData(true);
     displayFirstDistribute(false);
     initWidget();
 }
