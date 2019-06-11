@@ -253,7 +253,7 @@ void WalletModel::checkBalanceChanged(bool checkIncrease)
         {
             if(wallet->mapWallet_bk.count((*it).first)==0)
             {
-                wallet->mapWallet_bk[(*it).first] = (*it).second;
+                wallet->mapWallet_bk[(*it).first] = 1;
                 wallet->mapWallet_tmp[(*it).first] = (*it).second;
             }
         }

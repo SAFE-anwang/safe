@@ -153,6 +153,7 @@ public:
 	bool isRefreshWallet();
 	void setRefreshWalletFlag(bool flag);
 	void refreshPage();
+    int getShowType(){return showType;}
 
 private:
     CWallet* wallet;

@@ -495,8 +495,10 @@ void WalletView::gotoHistoryPage()
 {
 	if (!walletModel->getTransactionTableModel()->isRefreshWallet() && g_threadGroup != NULL)
 	{
+        LogPrintf("guidebug:start goto history page\n");
 		walletModel->getTransactionTableModel()->setRefreshWalletFlag(true);
 		g_threadGroup->create_thread(boost::bind(&RefreshWalletData, walletModel->getTransactionTableModel(), this));
+        LogPrintf("guidebug:end goto history page\n");
 	}
     setCurrentWidget(transactionsPage);
 }
@@ -776,12 +778,21 @@ void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView)
 {
 	if (NULL == txModel)
 	{
-		return ;
+        LogPrintf("guidebug_error:RefreshWalletData,txModel is null\n");
+        return;
 	}
 
 	RenameThread("RefreshWalletData");
 
-    if(txModel == walletView->getWalletMode()->getLockedTransactionTableModel())
+    LogPrintf("guidebug_message:start RefreshWalletData\n");
+    WalletModel *walletModel = walletView->getWalletMode();
+    if(walletModel == NULL)
+    {
+        LogPrintf("guidebug_error:RefreshWalletData,walletModel is null\n");
+        return ;
+    }
+
+    if(txModel == walletModel->getLockedTransactionTableModel())
     {
         while(!masternodeSync.IsBlockchainSynced())
         {
@@ -789,13 +800,17 @@ void RefreshWalletData(TransactionTableModel* txModel, WalletView *walletView)
         }
     }
 
-	txModel->refreshWallet();
-	if (txModel == walletView->getWalletMode()->getTransactionTableModel())
+    //XJTODO
+    if(txModel != walletModel->getLockedTransactionTableModel())
+        txModel->refreshWallet();
+
+    if (txModel == walletModel->getTransactionTableModel())
 	{
 		MilliSleep(2000);
     }
 
 	Q_EMIT walletView->refreshFinished(txModel);
+    LogPrintf("guidebug_message:end RefreshWalletData\n");
 }
 
 void RefreshDataStartUp(WalletModel *walletModel, WalletView *walletView)
@@ -840,7 +855,7 @@ void RefreshWalletDataStartUp(WalletModel *walletModel, WalletView *walletView)
             return;
         }
         RenameThread("RefreshWalletDataStartUp");
-        if(height != chainActive.Height())
+        if(height != chainActive.Height()&&updateOnce)
             RefreshDataStartUp(walletModel,walletView);
         break;
     }
@@ -861,6 +876,7 @@ void ThreadUpdateBalanceChanged(WalletModel *walletModel)
 	}
 
     RenameThread("updateBalanceChangedThread");
+    LogPrintf("guidebug_message:ThreadUpdateBalanceChanged is start\n");
 	while (true)
 	{
         boost::this_thread::interruption_point();
@@ -882,13 +898,17 @@ void WalletView::ShowHistoryPage()
 
 void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
 {
+    LogPrintf("guidebug_message:start refreshFinished_slot\n");
 	if (txModel != NULL)
 	{
-		txModel->refreshPage();
-	}
+        LogPrintf("guidebug_message:refreshFinished_slot refresh page start,showType:%d\n",txModel->getShowType());
+        txModel->refreshPage();
+        LogPrintf("guidebug_message:refreshFinished_slot refresh page finish,showType:%d\n",txModel->getShowType());
+    }
 
 	if (txModel == walletModel->getTransactionTableModel())
 	{
+        LogPrintf("guidebug_message:start create ThreadUpdateBalanceChanged\n");
         if(overviewPage==currentWidget())
             overviewPage->setThreadNoticeSlot(true);
         else
@@ -922,7 +942,10 @@ void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
             fUpdateCandyPage = true;
         }
 
-        g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, walletModel));
+        if(g_threadGroup)
+            g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, walletModel));
+        else
+            LogPrintf("guidebug_error:try to create ThreadUpdateBalanceChanged,but g_threadGroup is NULL\n");
 	}
 	else if (txModel == walletModel->getAssetsDistributeTableModel())
 	{
@@ -944,6 +967,7 @@ void WalletView::refreshFinished_slot(TransactionTableModel* txModel)
             fUpdateCandyPage = true;
         }
 	}
+    LogPrintf("guidebug_message:end refreshFinished_slot\n");
 }
 
 WalletModel *WalletView::getWalletMode()

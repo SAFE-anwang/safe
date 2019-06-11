@@ -754,7 +754,7 @@ public:
     }
 
     std::map<uint256, CWalletTx> mapWallet;
-    std::map<uint256, CWalletTx> mapWallet_bk;
+    std::map<uint256, int> mapWallet_bk;
     std::map<uint256, CWalletTx> mapWallet_tmp;
     std::list<CAccountingEntry> laccentries;
 
