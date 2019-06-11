@@ -75,6 +75,8 @@ extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinCount;
 extern int g_nPushForwardTime;
 extern bool g_fReceiveBlock;
+uint32_t nSposSleeptime = 50;
+
 
 
 
@@ -108,13 +110,6 @@ int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParam
 
 CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn)
 {
-    masternode_info_t mnInfoRet;
-    if(!mnodeman.GetMasternodeInfo(activeMasternode.outpoint,mnInfoRet))
-    {
-        LogPrintf("SPOS_Warning:create block not find the outpoint(%s),maybe need to start alias or check the masternode list\n",activeMasternode.outpoint.ToString());
-        return NULL;
-    }
-
     // Create new block
     std::unique_ptr<CBlockTemplate> pblocktemplate(new CBlockTemplate());
     if(!pblocktemplate.get())
@@ -127,9 +122,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     txNew.vin.resize(1);
     txNew.vin[0].prevout.SetNull();
     txNew.vout.resize(1);
-
-    CScript sposMinerPayee = GetScriptForDestination(mnInfoRet.pubKeyCollateralAddress.GetID());
-    txNew.vout[0].scriptPubKey = sposMinerPayee;
+    txNew.vout[0].scriptPubKey = scriptPubKeyIn;
 
     // Largest block you're willing to create:
     unsigned int nBlockMaxSize = GetArg("-blockmaxsize", DEFAULT_BLOCK_MAX_SIZE);
@@ -321,13 +314,23 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
                     }
                 }
             }
-
         }
 
         // NOTE: unlike in bitcoin, we need to pass PREVIOUS block height here
         CAmount blockReward = 0;
         if (nHeight >= g_nStartSPOSHeight)
+        {
+            masternode_info_t mnInfoRet;
+            if(!mnodeman.GetMasternodeInfo(activeMasternode.outpoint,mnInfoRet))
+            {
+                LogPrintf("SPOS_Warning:create block not find the outpoint(%s),maybe need to start alias or check the masternode list\n",activeMasternode.outpoint.ToString());
+                return NULL;
+            }
+
+            CScript sposMinerPayee = GetScriptForDestination(mnInfoRet.pubKeyCollateralAddress.GetID());
+            txNew.vout[0].scriptPubKey = sposMinerPayee;
             blockReward = nFees + GetSPOSBlockSubsidy(pindexPrev->nHeight, Params().GetConsensus());
+        }
         else
             blockReward = nFees + GetBlockSubsidy(pindexPrev->nBits, pindexPrev->nHeight, Params().GetConsensus());
 
@@ -1012,7 +1015,6 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
                   , g_nStartSPOSHeight,g_nMasternodeSPosCount,g_nMasternodeCanBeSelectedTime);
     }
 
-
     static boost::thread_group* sposMinerThreads = NULL;
 
     if (nThreads < 0)
@@ -1062,17 +1064,23 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             if(!pindexPrev)
             {
                 LogPrintf("SPOS_Warning:ThreadSPOSAutoReselect pindexPrev is NULL,size:%d\n",chainActive.Height());
+                MilliSleep(nSposSleeptime);
                 continue;
             }
             int nCurrBlockHeight = chainActive.Height();
             if(!IsStartSPosHeight(nCurrBlockHeight))
+            {
+                MilliSleep(nSposSleeptime);
                 continue;
+            }
+
             int nTimeout = g_nMinerBlockTimeout;
             uint32_t nCurrTime = GetTime();
             int nTimeoutRet = nCurrTime - pindexPrev->GetBlockTime();
             if(nTimeoutRet <= nTimeout)
             {
                 UpdateGlobalTimeoutCount(0);
+                MilliSleep(nSposSleeptime);
                 continue;
             }
             int nTimeoutCount = nTimeoutRet/g_nMinerBlockTimeout;
@@ -1084,6 +1092,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                               nTimeoutRet,nTimeoutCount,g_nTimeoutCount);
                 }
                 nTmpTimeoutCount = nTimeoutCount;
+                MilliSleep(nSposSleeptime);
                 continue;
             }
             nLastTimeoutHeight = nCurrBlockHeight;
@@ -1096,12 +1105,14 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             if(scoreIndex==NULL)
             {
                 LogPrintf("SPOS_Warning:scoreIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",nScoreHeight,chainActive.Height());
+                MilliSleep(nSposSleeptime);
                 continue;
             }
             CBlockIndex* forwardIndex = chainActive[nForwardHeight];
             if(forwardIndex==NULL)
             {
                 LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",nForwardHeight,chainActive.Height());
+                MilliSleep(nSposSleeptime);
                 continue;
             }
             std::vector<CMasternode> tmpVecResultMasternodes;
@@ -1128,6 +1139,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                     if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
                     {
                         LogPrintf("SPOS_Warning: ThreadSPOSAutoReselect() nOfficialMasterNodeCount is error,nNewBlockHeight:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nCurrBlockHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
+                        MilliSleep(nSposSleeptime);
                         continue;
                     }
 
@@ -1150,6 +1162,8 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                                         nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount, nSporkSelectLoop, false);
             }
             UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+
+            MilliSleep(nSposSleeptime);
         }
     }
     catch (const boost::thread_interrupted&)

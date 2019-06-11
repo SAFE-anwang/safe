@@ -2120,7 +2120,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         }
     }
 
+#if SCN_CURRENT == SCN__main
+    GenerateBitcoinsBySPOS(fMasterNode, GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
     GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", !fHaveGUI), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
+#else
+#error unsupported <safe chain name>
+#endif
 
     // ********************************************************* Step 13: finished
 
