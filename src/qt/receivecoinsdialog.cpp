@@ -42,11 +42,9 @@ void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
     while(true)
     {
         boost::this_thread::interruption_point();
-
+        MilliSleep(1000);
         bool fThreadUpdateData = receiveCoinsDialog->getThreadUpdateData();
-        if(!fThreadUpdateData)
-        {
-            MilliSleep(100);
+        if(!fThreadUpdateData){
             continue;
         }
 
@@ -198,7 +196,6 @@ ReceiveCoinsDialog::~ReceiveCoinsDialog()
 
 void ReceiveCoinsDialog::updateCurrentAsset(const QString &currText)
 {
-    LOCK2(cs_main, pwalletMain->cs_wallet);
     if(currText==gStrSafe)
     {
         fAssets = false;

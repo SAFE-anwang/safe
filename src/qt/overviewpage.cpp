@@ -49,56 +49,70 @@ void RefreshOverviewPageData(WalletModel* walletModel,OverviewPage* overviewPage
     while(true)
     {
         boost::this_thread::interruption_point();
+        MilliSleep(1000);
         bool fThreadUpdateData = overviewPage->getThreadUpdateData();
-        if(!fThreadUpdateData)
-        {
-            MilliSleep(100);
+        if(!fThreadUpdateData){
             continue;
         }
 
         if(fThreadUpdateData)
             overviewPage->setThreadUpdateData(false);
+
+        QStack<QString> tmpAssetToUpdate,tmpRemoveAssetToUpdate;
+
         {
             LOCK(cs_overview);
-            QStringList assetsNames;
-            //tranfer asset,get candy will recv new assets
-            walletModel->getAssetsNames(false,assetsNames);
-            overviewPage->setAssetStringList(assetsNames);
-            if(overviewPage->assetToUpdate.isEmpty())
-            {
-                //update all asset
-                for(int i=0;i<assetsNames.size();i++)
-                {
-                    boost::this_thread::interruption_point();
-                    QString strAssetName = assetsNames[i];
-                    AssetBalance& assetBalance = overviewPage->assetBalanceMap[strAssetName];
-                    if(!overviewPage->getCurrAssetInfoByName(strAssetName,assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,
-                                                                   assetBalance.nDecimals,assetBalance.strUnit))
-                        continue;
-                }
-            }
+            tmpAssetToUpdate = overviewPage->assetToUpdate;
+        }
 
-
-            //update some asset
-            for(int i=0;i<overviewPage->assetToUpdate.size();i++)
+        QStringList assetsNames;
+        //tranfer asset,get candy will recv new assets
+        walletModel->getAssetsNames(false,assetsNames);
+        overviewPage->setAssetStringList(assetsNames);
+        if(tmpAssetToUpdate.isEmpty())
+        {
+            //update all asset
+            for(int i=0;i<assetsNames.size();i++)
             {
                 boost::this_thread::interruption_point();
-                QString strAssetName = overviewPage->assetToUpdate[i];
-                AssetBalance assetBalance;
+                QString strAssetName = assetsNames[i];
+                AssetBalance& assetBalance = overviewPage->assetBalanceMap[strAssetName];
                 if(!overviewPage->getCurrAssetInfoByName(strAssetName,assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,
-                                           assetBalance.nDecimals,assetBalance.strUnit))
-                {
-                    overviewPage->setThreadUpdateData(fThreadUpdateData);
+                                                               assetBalance.nDecimals,assetBalance.strUnit))
                     continue;
-                }
+            }
+        }
 
-                overviewPage->assetToUpdate.remove(i);
-                overviewPage->assetBalanceMap[strAssetName] = assetBalance;
-                overviewPage->setUpdateAssetsInfo(true);
+
+        //update some asset
+        for(int i=0;i<tmpAssetToUpdate.size();i++)
+        {
+            boost::this_thread::interruption_point();
+            QString strAssetName = tmpAssetToUpdate[i];
+            AssetBalance assetBalance;
+            if(!overviewPage->getCurrAssetInfoByName(strAssetName,assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,
+                                       assetBalance.nDecimals,assetBalance.strUnit))
+            {
+                overviewPage->setThreadUpdateData(fThreadUpdateData);
+                continue;
             }
 
-            Q_EMIT overviewPage->refreshAssetsInfo();
-        }//end of lock
+            tmpRemoveAssetToUpdate.push_back(strAssetName);
+            overviewPage->assetBalanceMap[strAssetName] = assetBalance;
+            overviewPage->setUpdateAssetsInfo(true);
+        }
+
+        {
+            LOCK(cs_overview);
+            for(int i=0;i<tmpRemoveAssetToUpdate.size();i++)
+            {
+                QString strAssetName = tmpRemoveAssetToUpdate[i];
+                overviewPage->assetToUpdate.removeOne(strAssetName);
+            }
+        }
+
+        Q_EMIT overviewPage->refreshAssetsInfo();
+
     }//end of while
 }
 

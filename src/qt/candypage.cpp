@@ -36,10 +36,9 @@ void RefreshCandyPageData(CandyPage* candyPage)
     while(true)
     {
         boost::this_thread::interruption_point();
+        MilliSleep(1000);
         bool fThreadUpdateData = candyPage->getThreadUpdateData();
-        if(!fThreadUpdateData)
-        {
-            MilliSleep(100);
+        if(!fThreadUpdateData){
             continue;
         }
         if(fThreadUpdateData)

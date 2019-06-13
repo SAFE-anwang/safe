@@ -750,13 +750,13 @@ void RefreshDataStartUp(WalletModel *walletModel, WalletView *walletView)
     else
         LogPrintf("guidebug_warning:candyModel is NULL");
 
-    Q_EMIT walletView->refreshFinish();
-
     TransactionTableModel* lockedTransactionModel = walletModel->getLockedTransactionTableModel();
     if(lockedTransactionModel)
         lockedTransactionModel->refreshWallet();
     else
         LogPrintf("guidebug_warning:lockedTransactionModel is NULL");
+
+    Q_EMIT walletView->refreshFinish();
 }
 
 void ThreadUpdateBalanceChanged(WalletModel *walletModel)
@@ -773,6 +773,7 @@ void ThreadUpdateBalanceChanged(WalletModel *walletModel)
 		return;
 	}
 
+    MilliSleep(5*1000);
     RenameThread("updateBalanceChangedThread");
     LogPrintf("guidebug_message:ThreadUpdateBalanceChanged is start\n");
 	while (true)
@@ -785,10 +786,7 @@ void ThreadUpdateBalanceChanged(WalletModel *walletModel)
 
 void WalletView::ShowHistoryPage()
 {
-    if (g_threadGroup != NULL)
-	{
-		walletModel->getTransactionTableModel()->setRefreshWalletFlag(true);
-        walletModel->getAssetsDistributeTableModel()->setRefreshWalletFlag(true);
+    if (g_threadGroup != NULL){
         g_threadGroup->create_thread(boost::bind(&RefreshDataStartUp, walletModel, this));
 	}
 }

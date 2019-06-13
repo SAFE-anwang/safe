@@ -330,7 +330,6 @@ TransactionTableModel::TransactionTableModel(const PlatformStyle *platformStyle,
     columnToAddress = TransactionTableModel::TransactionColumnToAddress;
     columnAmount = TransactionTableModel::TransactionColumnAmount;
 
-	bIsRefreshWallet = false;
 	nUpdateCount = 0;
 
  //   priv->refreshWallet();
@@ -1170,16 +1169,6 @@ void TransactionTableModel::setUpdatingWallet(bool updatingWallet)
 bool TransactionTableModel::getUpdatingWallet()
 {
     return fUpdatingWallet;
-}
-
-bool TransactionTableModel::isRefreshWallet()
-{
-	return bIsRefreshWallet;
-}
-
-void TransactionTableModel::setRefreshWalletFlag(bool flag)
-{
-	bIsRefreshWallet = flag;
 }
 
 void TransactionTableModel::refreshPage()

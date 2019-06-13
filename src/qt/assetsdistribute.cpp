@@ -40,10 +40,9 @@ void RefreshAssetData(AssetsDistribute* assetsDistribute)
     while(true)
     {
         boost::this_thread::interruption_point();
+        MilliSleep(1000);
         bool fThreadUpdateData = assetsDistribute->getThreadUpdateData();
-        if(!fThreadUpdateData)
-        {
-            MilliSleep(100);
+        if(!fThreadUpdateData){
             continue;
         }
         if(fThreadUpdateData)
