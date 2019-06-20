@@ -4900,11 +4900,18 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
 
-    if(masternodeSync.IsBlockchainSynced())
     {
-        for(std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it = assetName_assetId_index.begin(); it != assetName_assetId_index.end(); it++)
-            uiInterface.AssetFound(it->first);
-    }
+				std::vector<std::string> listAssetName;
+				for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it = assetName_assetId_index.begin(); it != assetName_assetId_index.end(); it++)
+				{
+					listAssetName.push_back(it->first);
+				}
+
+				if (listAssetName.size() > 0)
+				{
+					uiInterface.AssetFound(listAssetName);
+				}
+	  }
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint("bench", "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime5 - nTime4), nTimeIndex * 0.000001);

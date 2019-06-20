@@ -482,7 +482,7 @@ void LockedTransactionView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getLockedTransactionTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+    model->getUpdateTransaction()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void LockedTransactionView::copyAddress()

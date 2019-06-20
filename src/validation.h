@@ -173,6 +173,8 @@ static const int DIP0001_PROTOCOL_VERSION = 70208;
 extern std::atomic<bool> fDIP0001WasLockedIn;
 extern std::atomic<bool> fDIP0001ActiveAtTip;
 
+extern int64_t g_nAllowableErrorTime;
+
 /** Block hash whose ancestors we will assume to have valid scripts without checking them. */
 extern uint256 hashAssumeValid;
 

@@ -7,6 +7,7 @@
 
 #include "paymentrequestplus.h"
 #include "walletmodeltransaction.h"
+#include "updateTransaction.h"
 
 #include "wallet/wallet.h"
 #include "support/allocators/secure.h"
@@ -204,11 +205,6 @@ public:
     CAmount getWatchLockedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
     EncryptionStatus getEncryptionStatus() const;
 
-    void getAssetsNames(bool needInMainChain,QStringList& lst);
-
-    //assets name
-    QMap<QString,AssetsDisplayInfo>& getAssetsNamesUnits();
-
     // Check address for validity
     bool validateAddress(const QString &address);
 
@@ -282,6 +278,12 @@ public:
 
 	void setWalletView(WalletView *walletView);
 
+	CWallet *getWallet() { return wallet; }
+
+	void ShowHistoryPage();
+
+	CUpdateTransaction *getUpdateTransaction();
+
 private:
     CWallet *wallet;
     bool fHaveWatchOnly;
@@ -290,9 +292,6 @@ private:
     // Wallet has an options model for wallet-specific options
     // (transaction fee, for example)
     OptionsModel *optionsModel;
-
-    //assets name
-    QMap<QString,AssetsDisplayInfo> assetsNamesInfo;
 
     AddressTableModel *addressTableModel;
     TransactionTableModel *transactionTableModel;
@@ -319,6 +318,8 @@ private:
     int nCheckIncrease;
 
 	WalletView *pWalletView;
+
+	CUpdateTransaction *pUpdateTransaction;
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
@@ -351,6 +352,8 @@ Q_SIGNALS:
 
     void updateConfirm();
 
+	void refreshFinish(QMap<QString, AssetsDisplayInfo> mapAssetDisplay, QMap<QString, AssetBalance> mapAssetBalance);
+
 public Q_SLOTS:
     /* Wallet status might have changed */
     void updateStatus();
@@ -363,6 +366,8 @@ public Q_SLOTS:
     /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
     void pollBalanceChanged(bool checkIncrease);
     void updateAllBalanceChanged(bool checkIncrease=false);
+
+	void refreshFinish_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay, QMap<QString, AssetBalance> mapAssetBalance);
 };
 
 class EncryptWorker: public QObject {

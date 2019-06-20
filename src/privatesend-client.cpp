@@ -1208,7 +1208,7 @@ bool CPrivateSendClient::MakeCollateralAmounts(const CompactTallyItem& tallyItem
     assert(reservekeyCollateral.GetReservedKey(vchPubKey, false)); // should never fail, as we just unlocked
     scriptCollateral = GetScriptForDestination(vchPubKey.GetID());
 
-    vecSend.push_back((CRecipient){scriptCollateral, CPrivateSend::GetMaxCollateralAmount(), 0, false});
+    vecSend.push_back(CRecipient(scriptCollateral, CPrivateSend::GetMaxCollateralAmount(), 0, false));
 
     // try to use non-denominated and not mn-like funds first, select them explicitly
     CCoinControl coinControl;
@@ -1292,7 +1292,7 @@ bool CPrivateSendClient::CreateDenominated(const CompactTallyItem& tallyItem, bo
 
     if(fCreateMixingCollaterals) {
         CScript scriptCollateral = keyHolderStorageDenom.AddKey(pwalletMain).GetScriptForDestination();
-        vecSend.push_back((CRecipient){ scriptCollateral, CPrivateSend::GetMaxCollateralAmount(), 0, false });
+        vecSend.push_back(CRecipient( scriptCollateral, CPrivateSend::GetMaxCollateralAmount(), 0, false ));
         nValueLeft -= CPrivateSend::GetMaxCollateralAmount();
     }
 
@@ -1328,7 +1328,7 @@ bool CPrivateSendClient::CreateDenominated(const CompactTallyItem& tallyItem, bo
             while(nValueLeft - nDenomValue >= 0 && nOutputs <= 10) {
                 CScript scriptDenom = keyHolderStorageDenom.AddKey(pwalletMain).GetScriptForDestination();
 
-                vecSend.push_back((CRecipient){ scriptDenom, nDenomValue, 0, false });
+                vecSend.push_back(CRecipient(scriptDenom, nDenomValue, 0, false ));
 
                 //increment outputs and subtract denomination amount
                 nOutputs++;

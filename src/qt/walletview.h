@@ -7,8 +7,11 @@
 
 #include "amount.h"
 #include "masternodelist.h"
+#include "transactionrecord.h"
+#include "overviewpage.h"
 
 #include <QStackedWidget>
+#include <qmap.h>
 
 class BitcoinGUI;
 class ClientModel;
@@ -66,11 +69,10 @@ public:
 
 	int getPageType();
 
-	void ShowHistoryPage();
-
 	WalletModel *getWalletMode();
 
-    void setUpdateOverviewPage(bool update){fUpdateOverviewPage = update;}
+	void ShowHistoryPage();
+
 
 private:
     ClientModel *clientModel;
@@ -100,10 +102,6 @@ private:
     QLabel *assetsTransactionSum;
     QLabel *candyTransactionSum;
     const PlatformStyle *platformStyle;
-    bool fUpdateCandyPage = false;
-    bool fUpdateReceivedDlg = false;
-    bool fUpdateAssetsPage = false;
-    bool fUpdateOverviewPage = false;
 
 public Q_SLOTS:
     /** Switch to overview (home) page */
@@ -173,12 +171,9 @@ public Q_SLOTS:
     /** Update selected Candy amount from candytransactionview */
     void candyTrxAmount(QString amount);
 
-    /** Update assets names*/
-    void updateAssetsInfo(int showType,bool bConfirmedNewAssets=false,const QString& strAssetName="");
-
     void updateAssetsDisplay(bool updateAsset=true);
 
-    void refreshFinish_slot();
+	void refreshFinish_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay, QMap<QString, AssetBalance> mapAssetBalance);
 
 Q_SIGNALS:
     /** Signal that we want to show the main window */
@@ -194,8 +189,6 @@ Q_SIGNALS:
                              const QString& label,bool fAsset,const QString& strAssetUnit,const QString& strAssetName);
     /** Notify that the out of sync warning icon has been pressed */
     void outOfSyncWarningClicked();
-
-    void refreshFinish();
 };
 
 #endif // BITCOIN_QT_WALLETVIEW_H

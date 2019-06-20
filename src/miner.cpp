@@ -64,7 +64,6 @@ extern int64_t g_nStartNewLoopTimeMS;
 extern std::vector<CMasternode> g_vecResultMasternodes;
 extern std::map<CNetAddr, LocalServiceInfo> mapLocalHost;
 extern CCriticalSection cs_spos;
-extern unsigned int g_nAllowableErrorTime;
 extern int g_nTimeoutPushForwardHeight;
 extern int g_nMinerBlockTimeout;
 extern int g_nSelectGlobalDefaultValue;

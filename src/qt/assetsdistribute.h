@@ -20,13 +20,6 @@ public:
     explicit AssetsDistribute(AssetsPage* assetsPage);
     ~AssetsDistribute();
 
-    void setThreadUpdateData(bool update){fThreadUpdateData = update;}
-    bool getThreadUpdateData(){return fThreadUpdateData;}
-    void setAssetStringList(QStringList stringList){assetStringList = stringList;}
-
-Q_SIGNALS:
-    void refreshAssetsInfo();
-
 private:
     void clearDisplay();
     void initWidget();
@@ -42,7 +35,7 @@ private:
     void updateTotalAssetsEdit();
 
 public Q_SLOTS:
-    void updateAssetsInfo();
+    void updateAssetsInfo(QStringList listAsset);
 
 private Q_SLOTS:
     void on_distributeComboBox_currentIndexChanged(int index);
@@ -68,8 +61,6 @@ private:
     QString msgboxTitle;
     QCompleter* completer;
     QStringListModel* stringListModel;
-    bool fThreadUpdateData;
-    QStringList assetStringList;
 };
 
 #endif // ASSETSDISTRIBUTE_H

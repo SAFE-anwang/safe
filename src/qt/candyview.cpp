@@ -437,7 +437,7 @@ void CandyView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getCandyTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+    model->getUpdateTransaction()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void CandyView::copyAddress()

@@ -28,55 +28,20 @@ extern bool gInitByDefault;
 extern std::vector<CCandy_BlockTime_Info> gAllCandyInfoVec;
 extern std::mutex g_mutexAllCandyInfo;
 extern unsigned int nCandyPageCount;
-extern boost::thread_group *g_threadGroup;
 
-void RefreshCandyPageData(CandyPage* candyPage)
-{
-    RenameThread("RefreshCandyPageData");
-    while(true)
-    {
-        boost::this_thread::interruption_point();
-        MilliSleep(1000);
-        bool fThreadUpdateData = candyPage->getThreadUpdateData();
-        if(!fThreadUpdateData){
-            continue;
-        }
-        if(fThreadUpdateData)
-            candyPage->setThreadUpdateData(false);
+//extern boost::thread_group *g_threadGroup;
+//
+//void UpdateCandyPage(CandyPage* candyPage)
+//{
+//	RenameThread("UpdateCandyPage");
+//
+//	std::map<uint256, CAssetData> mapIssueAsset;
+//	if (GetIssueAssetInfo(mapIssueAsset))
+//	{
+//		candyPage->getModel()->getUpdateTransaction()->RefreshCandyPageData(mapIssueAsset);
+//	}
+//}
 
-        std::map<uint256, CAssetData> issueAssetMap;
-        std::vector<std::string> assetNameVec;
-        if(GetIssueAssetInfo(issueAssetMap))
-        {
-            for(std::map<uint256, CAssetData>::iterator iter = issueAssetMap.begin();iter != issueAssetMap.end();++iter)
-            {
-                boost::this_thread::interruption_point();
-                uint256 assetId = (*iter).first;
-                CAssetData& assetData = (*iter).second;
-
-                int memoryPutCandyCount = mempool.get_PutCandy_count(assetId);
-                int dbPutCandyCount = 0;
-                map<COutPoint, CCandyInfo> mapCandyInfo;
-                if(GetAssetIdCandyInfo(assetId, mapCandyInfo))
-                    dbPutCandyCount = mapCandyInfo.size();
-                int putCandyCount = memoryPutCandyCount + dbPutCandyCount;
-                if(putCandyCount<MAX_PUTCANDY_VALUE){
-                    assetNameVec.push_back(assetData.strAssetName);
-                }
-            }
-            std::sort(assetNameVec.begin(),assetNameVec.end());
-        }
-        QStringList stringList;
-        for(unsigned int i=0;i<assetNameVec.size();i++)
-        {
-            QString assetName = QString::fromStdString(assetNameVec[i]);
-            stringList.append(assetName);
-        }
-        candyPage->setAssetStringList(stringList);
-
-        Q_EMIT candyPage->refreshAssetsInfo();
-    }
-}
 
 CandyPage::CandyPage():
     ui(new Ui::CandyPage)
@@ -116,8 +81,6 @@ CandyPage::CandyPage():
     ui->candyRatioSlider->initLabel(sliderFixedHeight);
     ui->labelTotal->setVisible(false);
     isUnlockByGlobal = false;
-    fThreadUpdateData = false;
-    assetStringList.clear();
 
     completer = new QCompleter;
     stringListModel = new QStringListModel;
@@ -151,8 +114,6 @@ CandyPage::CandyPage():
     connect(this, SIGNAL(stopThread()), getCandyThread, SLOT(quit()));
     connect(candyWorker, SIGNAL(resultReady(bool, QString, int, CAmount)), this, SLOT(handlerGetCandyResult(bool, QString, int, CAmount)));
     connect(this,SIGNAL(refreshAssetsInfo()),this,SLOT(updateAssetsInfo()));
-    if(g_threadGroup)
-        g_threadGroup->create_thread(boost::bind(&RefreshCandyPageData, this));
 }
 
 CandyPage::~CandyPage()
@@ -683,23 +644,25 @@ void CandyPage::setModel(WalletModel *model)
     this->model = model;
 }
 
-void CandyPage::updateAssetsInfo()
+WalletModel *CandyPage::getModel()
 {
-    disconnect(ui->assetsComboBox,SIGNAL(currentTextChanged(QString)),this,SLOT(updateCandyInfo(QString)));
+	return model;
+}
 
+void CandyPage::updateAssetsInfo(QStringList listAsset)
+{
     QString currText = ui->assetsComboBox->currentText();
     ui->assetsComboBox->clear();
 
-    stringListModel->setStringList(assetStringList);
+    stringListModel->setStringList(listAsset);
     completer->setModel(stringListModel);
     completer->popup()->setStyleSheet("font: 12px;");
-    ui->assetsComboBox->addItems(assetStringList);
+    ui->assetsComboBox->addItems(listAsset);
     ui->assetsComboBox->setCompleter(completer);
 
-    if(assetStringList.contains(currText))
+    if(listAsset.contains(currText))
         ui->assetsComboBox->setCurrentText(currText);
     updateCandyInfo(ui->assetsComboBox->currentText());
-    connect(ui->assetsComboBox,SIGNAL(currentTextChanged(QString)),this,SLOT(updateCandyInfo(QString)));
 }
 
 bool CandyPage::amountFromString(const std::string &valueStr, const QString &msgboxTitle, int decimal, CAmount &amount)
@@ -849,8 +812,6 @@ bool CandyPage::putCandy()
     if(putCandyCount>=MAX_PUTCANDY_VALUE)
     {
         QMessageBox::warning(this, strPutCandy,tr("Put candy times used up"),tr("Ok"));
-        //updateAssetsInfo();
-        setThreadUpdateData(true);
         return false;
     }
 
@@ -959,8 +920,15 @@ bool CandyPage::putCandy()
         return false;
     }
 
-    if(MAX_PUTCANDY_VALUE-putCandyCount==1){
-        setThreadUpdateData(true);
+    if(MAX_PUTCANDY_VALUE-putCandyCount==1){	
+			
+		QStringListModel *pListMode = (QStringListModel *)ui->assetsComboBox->completer()->model();
+		pListMode->stringList().removeOne(QString::fromStdString(strAssetName));
+		updateCandyInfo(ui->assetsComboBox->currentText());
+		ui->assetsComboBox->removeItem(ui->assetsComboBox->currentIndex());
+		
+		/*if (g_threadGroup)
+			g_threadGroup->create_thread(boost::bind(&UpdateCandyPage, this));*/
     }
     return true;
 }

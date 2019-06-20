@@ -2,6 +2,7 @@
 #define ASSETSPAGE_H
 
 #include "platformstyle.h"
+#include "assetsdistribute.h"
 
 #include <QWidget>
 
@@ -29,9 +30,10 @@ public:
     void setClientModel(ClientModel *model);
     void setWalletModel(WalletModel *model);
     void setDistributeRecordLayout(QVBoxLayout * layout);
-    void updateAssetsInfo();
-    void setThreadUpdateData(bool update);
     WalletModel* getWalletModel() const;
+
+	AssetsDistribute *getAssetDistribute();
+
 private:
     Ui::AssetsPage *ui;
     ClientModel *clientModel;

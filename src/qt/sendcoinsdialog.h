@@ -50,7 +50,15 @@ public:
     void setAddress(const QString &address);
     void pasteEntry(const SendCoinsRecipient &rv);
     bool handlePaymentRequest(const SendCoinsRecipient &recipient);
-    void updateAssetsInfo();
+    
+
+	bool addAssetDisplay(const QMap<QString, AssetsDisplayInfo> &mapAssetDisplay);
+
+	bool getAssetsDisplay(QMap<QString, AssetsDisplayInfo> &mapAssetDispaly);
+
+	bool delAssetDisplay(QStringList listAssetName);
+
+	bool addConfirmedAssetDisplay(const QMap<QString, AssetsDisplayInfo> &mapAssetDisplay);
 
 public Q_SLOTS:
     void clear();
@@ -60,6 +68,10 @@ public Q_SLOTS:
     void updateTabsAndLabels();
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& lockedBalance, const CAmount& anonymizedBalance,
                     const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance);
+
+	void updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay);
+
+	void updateAssetsInfo_slot(QStringList listAssetName);
 
 private:
     Ui::SendCoinsDialog *ui;
@@ -75,12 +87,19 @@ private:
     QCompleter* completer;
     QStringListModel* stringListModel;
 
+	//assets name
+	QMap<QString, AssetsDisplayInfo> mapConfirmedAssetDisplay;
+
+	QMap<QString, AssetsDisplayInfo> mapNewAssetDisplay;
+
     // Process WalletModel::SendCoinsReturn and generate a pair consisting
     // of a message and message flags for use in Q_EMIT message().
     // Additional parameter msgArg can be used via .arg(msgArg).
     void processSendCoinsReturn(const WalletModel::SendCoinsReturn &sendCoinsReturn, const QString &msgArg = QString());
     void minimizeFeeSection(bool fMinimize);
     void updateFeeMinimizedLabel();
+
+	void addSafeToCombox();
 
 private Q_SLOTS:
     void on_sendButton_clicked();
@@ -111,6 +130,8 @@ private Q_SLOTS:
 Q_SIGNALS:
     // Fired when a message should be reported to the user
     void message(const QString &title, const QString &message, unsigned int style);
+
+	void updateAssetInfo(QStringList listAssetName);
 };
 
 #endif // BITCOIN_QT_SENDCOINSDIALOG_H

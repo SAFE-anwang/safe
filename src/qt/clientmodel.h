@@ -120,7 +120,7 @@ Q_SIGNALS:
     // Show progress dialog e.g. for verifychain
     void showProgress(const QString &title, int nProgress);
 
-    void assetFound(const QString& strAssetName);
+    void assetFound(QStringList listAssetName);
 
     void candyPut(const QString& strAssetId, const QString& strAssetName, const quint8& nAssetDecimals, const qint64& nCandyAmount, const quint16& nCandyExpired, const QString& strTime, const QString& strTxId, const quint32& nIndex);
     void candyPutVec();
@@ -133,7 +133,7 @@ public Q_SLOTS:
     void updateNetworkActive(bool networkActive);
     void updateAlert(const QString &hash, int status);
     void updateBanlist();
-    void updateAsset(const QString& strAssetName);
+    void updateAsset(QStringList listAssetName);
     void updateForbit();
     void updateCandyPutVec();
 };

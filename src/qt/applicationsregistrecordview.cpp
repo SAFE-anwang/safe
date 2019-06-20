@@ -427,7 +427,7 @@ void ApplicationsRegistRecordView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getApplicationRegistTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+	model->getUpdateTransaction()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void ApplicationsRegistRecordView::copyAddress()

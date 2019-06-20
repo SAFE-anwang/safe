@@ -474,7 +474,7 @@ void TransactionView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getTransactionTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+    model->getUpdateTransaction()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void TransactionView::copyAddress()

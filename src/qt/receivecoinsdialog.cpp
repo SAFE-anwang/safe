@@ -36,68 +36,71 @@ extern boost::thread_group *g_threadGroup;
 
 CCriticalSection cs_receive;
 
+
 void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
 {
-    RenameThread("RefreshReceiveCoinsData");
-    while(true)
-    {
-        boost::this_thread::interruption_point();
-        MilliSleep(1000);
-        bool fThreadUpdateData = receiveCoinsDialog->getThreadUpdateData();
-        if(!fThreadUpdateData){
-            continue;
-        }
+	RenameThread("RefreshReceiveCoinsData");
+	while (true)
+	{
+		boost::this_thread::interruption_point();
 
-        if(fThreadUpdateData)
-            receiveCoinsDialog->setThreadUpdateData(false);
-        std::vector<uint256>  assetIdVec;
+		std::vector<uint256>  assetIdVec;
+		if (receiveCoinsDialog->bFirstInit)
+		{
+			receiveCoinsDialog->bFirstInit = false;
+			GetAssetListInfo(assetIdVec);
+		}
 
-        {
-            LOCK(cs_receive);
-            if(receiveCoinsDialog->getAssetFound())
-            {
-                uint256 assetId;
-                while(!receiveCoinsDialog->assetToUpdate.isEmpty())
-                {
-                    boost::this_thread::interruption_point();
-                    QString assetName = receiveCoinsDialog->assetToUpdate.pop();
-                    if(!GetAssetIdByAssetName(assetName.toStdString(),assetId))
-                        continue;
-                    assetIdVec.push_back(assetId);
-                }
-            }else
-            {
-                GetAssetListInfo(assetIdVec);
-            }
-        }
+		{
+			LOCK(cs_receive);
 
+			uint256 assetId;
+			while (!receiveCoinsDialog->assetToUpdate.isEmpty())
+			{
+				boost::this_thread::interruption_point();
+				QString assetName = receiveCoinsDialog->assetToUpdate.pop();
+				if (!GetAssetIdByAssetName(assetName.toStdString(), assetId))
+				{
+					continue;
+				}
 
-        BOOST_FOREACH(const uint256& assetId,assetIdVec)
-        {
-            boost::this_thread::interruption_point();
-            if(assetId.IsNull()){
-                continue;
-            }
-            CAssetId_AssetInfo_IndexValue assetInfo;
-            if(!GetAssetInfoByAssetId(assetId, assetInfo)){
-                continue;
-            }
-            QString assetName = QString::fromStdString(assetInfo.assetData.strAssetName);
-            if(!receiveCoinsDialog->assetDataMap.contains(assetName))
-                receiveCoinsDialog->assetDataMap[assetName] = assetInfo.assetData;
-        }
+				assetIdVec.push_back(assetId);
+			}
+		}
 
-        QStringList stringList;
-        stringList.append(gStrSafe);
-        //QMap<QString,QString>& assetNamesUnits = model->getAssetsNamesUnits();
-        stringList.append(receiveCoinsDialog->assetDataMap.keys());
-        receiveCoinsDialog->setAssetStringList(stringList);
+		if (assetIdVec.size() <= 0)
+		{
+			MilliSleep(1000);
+			continue;
+		}
 
-        Q_EMIT receiveCoinsDialog->refreshAssetsInfo();
-    }
+		QMap<QString, CAssetId_AssetInfo_IndexValue> mapAssetInfo;
 
+		BOOST_FOREACH(const uint256& assetId, assetIdVec)
+		{
+			boost::this_thread::interruption_point();
+			if (assetId.IsNull())
+			{
+				continue;
+			}
 
+			CAssetId_AssetInfo_IndexValue assetInfo;
+			if (!GetAssetInfoByAssetId(assetId, assetInfo))
+			{
+				continue;
+			}
+
+			QString assetName = QString::fromStdString(assetInfo.assetData.strAssetName);
+			mapAssetInfo.insert(assetName, assetInfo);
+		}
+
+		assetIdVec.clear();
+		Q_EMIT receiveCoinsDialog->refreshAssetsInfo(mapAssetInfo);
+
+		MilliSleep(1000);
+	}
 }
+
 
 ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidget *parent) :
     QDialog(parent),
@@ -136,6 +139,8 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     contextMenu->addAction(copyAmountAction);
     contextMenu->setStyleSheet("font-size:12px;");
 
+    //addSafeToCombox();
+
     // context menu signals
     connect(ui->recentRequestsView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
     connect(copyURIAction, SIGNAL(triggered()), this, SLOT(copyURI()));
@@ -143,19 +148,16 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     connect(copyMessageAction, SIGNAL(triggered()), this, SLOT(copyMessage()));
     connect(copyAmountAction, SIGNAL(triggered()), this, SLOT(copyAmount()));
 
-    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
     connect(ui->clearButton, SIGNAL(clicked()), this, SLOT(clear()));
     connect(ui->reqLabel, SIGNAL(textChanged(QString)), this, SLOT(on_reqLabel_textChanged(QString)));
     connect(ui->reqMessage, SIGNAL(textChanged(QString)), this, SLOT(on_reqMessage_textChanged(QString)));
     fAssets = false;
     assetDecimal = 0;
     strAssetUnit = "";
+	bFirstInit = true;
 
     completer = new QCompleter;
     stringListModel = new QStringListModel;
-    fAssetsFound = false;
-    fThreadUpdateData = false;
-    assetStringList.clear();
 
     completer->setCaseSensitivity(Qt::CaseInsensitive);
     completer->setCompletionMode(QCompleter::PopupCompletion);
@@ -176,7 +178,11 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     regExpReqMessageEdit.setPattern("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9-+*/。，$%^&*,!?.()#_\u4e00-\u9fa5 ]{1,150}");
     ui->reqMessage->setValidator (new QRegExpValidator(regExpReqMessageEdit, this));
     initWidget();
-    connect(this,SIGNAL(refreshAssetsInfo()),this,SLOT(updateAssetsInfo()));
+
+	qRegisterMetaType<QMap<QString, CAssetId_AssetInfo_IndexValue> >("QMap<QString, CAssetId_AssetInfo_IndexValue>");
+
+    connect(this,SIGNAL(refreshAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue>)),this,SLOT(updateAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue>)));
+    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
     if(g_threadGroup)
         g_threadGroup->create_thread(boost::bind(&RefreshReceiveCoinsData, this));
 }
@@ -219,29 +225,47 @@ void ReceiveCoinsDialog::updateCurrentAsset(const QString &currText)
     ui->reqAmount->updateAssetUnit(strAssetUnit,fAssets,assetDecimal);
 }
 
-void ReceiveCoinsDialog::updateAssetsFound(const QString &assetName)
+void ReceiveCoinsDialog::updateAssetsFound(QStringList listAssetName)
 {
     LOCK(cs_receive);
-    fAssetsFound = true;
-    assetToUpdate.push_back(assetName);
-    setThreadUpdateData(true);
+	for (int i = 0; i < listAssetName.size(); i++)
+	{
+		assetToUpdate.push_back(listAssetName[i]);
+	}
 }
 
-void ReceiveCoinsDialog::updateAssetsInfo(const QString &assetName)
+void ReceiveCoinsDialog::updateAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue> mapAssetInfo)
 {
-    disconnect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
-    QString currText = ui->assetsComboBox->currentText();
-    ui->assetsComboBox->clear();
+	QMap<QString, CAssetId_AssetInfo_IndexValue>::iterator it = mapAssetInfo.begin();
+	while (it != mapAssetInfo.end())
+	{
+		if (!assetDataMap.contains(it.key()))
+		{
+			assetDataMap.insert(it.key(), it.value().assetData);
+		}
 
-    stringListModel->setStringList(assetStringList);
-    completer->setModel(stringListModel);
-    completer->popup()->setStyleSheet("font: 12px;");
-    ui->assetsComboBox->addItems(assetStringList);
-    ui->assetsComboBox->setCompleter(completer);
+		it++;
+	}
 
-    if(assetDataMap.contains(currText))
-        ui->assetsComboBox->setCurrentText(currText);
-    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
+	QStringList listTemp;
+	const QStringList &listNew = mapAssetInfo.keys();
+
+	for (int i = 0; i < listNew.count(); i++)
+	{
+		if (ui->assetsComboBox->findText(listNew[i]) < 0)
+		{
+			listTemp.push_back(listNew[i]);
+		}
+	}
+
+	if (listTemp.count() > 0)
+	{
+		stringListModel->setStringList(listTemp);
+		completer->setModel(stringListModel);
+		completer->popup()->setStyleSheet("font: 12px;");
+		ui->assetsComboBox->addItems(listTemp);
+		ui->assetsComboBox->setCompleter(completer);
+	}
 }
 
 void ReceiveCoinsDialog::setModel(WalletModel *model)
@@ -277,7 +301,7 @@ void ReceiveCoinsDialog::setClientModel(ClientModel *clientModel)
 {
     this->clientModel = clientModel;
     if(clientModel){
-        connect(clientModel,SIGNAL(assetFound(QString)),this,SLOT(updateAssetsFound(QString)));
+        connect(clientModel,SIGNAL(assetFound(QStringList)),this,SLOT(updateAssetsFound(QStringList)));
     }
 }
 
@@ -515,4 +539,21 @@ void ReceiveCoinsDialog::copyMessage()
 void ReceiveCoinsDialog::copyAmount()
 {
     copyColumnToClipboard(RecentRequestsTableModel::Amount);
+}
+
+void ReceiveCoinsDialog::addSafeToCombox()
+{
+	QStringList stringList;
+	stringList.append(gStrSafe);
+
+	stringListModel->setStringList(stringList);
+	completer->setModel(stringListModel);
+	completer->popup()->setStyleSheet("font: 12px;");
+	ui->assetsComboBox->addItems(stringList);
+	ui->assetsComboBox->setCompleter(completer);
+}
+
+void ReceiveCoinsDialog::clearData()
+{
+	bFirstInit = true;
 }

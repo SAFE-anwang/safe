@@ -451,7 +451,7 @@ void AssetsDistributeRecordView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getAssetsDistributeTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+    model->getUpdateTransaction()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void AssetsDistributeRecordView::copyAddress()

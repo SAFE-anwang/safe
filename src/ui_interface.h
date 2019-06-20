@@ -118,7 +118,7 @@ public:
     boost::signals2::signal<void (void)> BannedListChanged;
 
     /** New asset has been found */
-    boost::signals2::signal<void (const std::string& strAssetName)> AssetFound;
+    boost::signals2::signal<void (const std::vector<std::string> &listAssetName)> AssetFound;
 
     /** New candy has been put */
     boost::signals2::signal<void ()> CandyVecPut;

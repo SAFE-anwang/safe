@@ -108,7 +108,6 @@ extern unsigned int g_nMasternodeCanBeSelectedTime;
 extern unsigned int g_nMasternodeMinCount;
 extern std::mutex g_mutexAllPayeeInfo;
 extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
-extern unsigned int g_nAllowableErrorTime;
 extern int64_t g_nAllowMasterNodeSyncErrorTime;
 extern int g_nLogMaxCnt;
 extern int g_nLocalStartSavePayeeHeight;

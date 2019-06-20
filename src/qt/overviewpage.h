@@ -47,6 +47,7 @@ public:
     QString strUnit;
 };
 
+
 /** Overview ("home") page widget */
 class OverviewPage : public QWidget
 {
@@ -60,18 +61,8 @@ public:
     void setWalletModel(WalletModel *walletModel);
     void showOutOfSyncWarning(bool fShow);
 
-    /** Set up the tab chain manually, as Qt messes up the tab chain by default in some cases (issue https://bugreports.qt-project.org/browse/QTBUG-10907).
-     */
-    QWidget *setupTabChain(QWidget *prev);
     OverViewEntry *insertEntry(const QString assetName,const CAmount& balance,const CAmount& unconfirmedBalance,const CAmount& lockedBalance,const QString& strAssetUnit,int nDecimals,const QString& logoURL="");
 
-    void setThreadUpdateData(bool update){fThreadUpdateData = update;}
-    void setUpdateAssetsInfo(bool update){fUpdateAssetInfo = update;}
-    bool getThreadUpdateData(){return fThreadUpdateData;}
-    bool getUpdateAssetsInfo(){return fUpdateAssetInfo;}
-
-    void setAssetStringList(QStringList stringList){assetNames = stringList;}
-    void addAssetToUpdate(QString assetName);
     bool getCurrAssetInfoByName(const QString& strAssetName,CAmount& amount,CAmount& unconfirmAmount,CAmount& lockedAmount,int& nDecimals,QString& strUnit);
 
 public Q_SLOTS:
@@ -80,18 +71,11 @@ public Q_SLOTS:
                     const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance);
     void add();
     void clear();
-    void updateTabsAndLabels();
-    void updateAssetsInfo();
+    void updateAssetsInfo(QMap<QString, AssetBalance> mapAssetBalance);
 
 Q_SIGNALS:
     void transactionClicked(const QModelIndex &index);
     void outOfSyncWarningClicked();
-    void testRefresh();
-    void refreshAssetsInfo();
-
-public:
-    QStack<QString> assetToUpdate;
-    QMap<QString,AssetBalance> assetBalanceMap;
 
 private:
     QTimer *timer;
@@ -109,14 +93,11 @@ private:
     CAmount currentWatchLockedBalance;
     int nDisplayUnit;
     bool fShowAdvancedPSUI;
-    bool fUpdateAssetInfo;
     //GUIUtil::TableViewLastColumnResizingFixer *columnResizingFixer;
 
     TxViewDelegate *txdelegate;
     const PlatformStyle *platformStyle;
     std::unique_ptr<TransactionFilterProxy> filter;
-    bool fThreadUpdateData;
-    QStringList assetNames;
 
     void SetupTransactionList(int nNumItems);
     void DisablePrivateSendCompletely();

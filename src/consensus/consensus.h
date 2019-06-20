@@ -30,7 +30,7 @@ static const int COINBASE_MATURITY = 10;
 #error unsupported <safe chain name>
 #endif
 
-static const int COINBASE_MATURITY_SPOS = COINBASE_MATURITY*15;
+static const int COINBASE_MATURITY_SPOS = COINBASE_MATURITY*15;//XJTODO next version maybe change to 5
 
 /** Flags for nSequence and nLockTime locks */
 enum {

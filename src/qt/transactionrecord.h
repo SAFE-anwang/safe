@@ -12,6 +12,7 @@
 #include <QList>
 #include <QString>
 #include <QMap>
+#include <vector>
 
 class CWallet;
 class CWalletTx;
@@ -38,6 +39,7 @@ public:
     QString strAssetsUnit;
     bool bInMainChain;
     bool bNewAssets;
+	uint256 txHash;
 };
 
 /** UI model for transaction status. The transaction status is the part of a transaction that will change over time.
@@ -127,6 +129,7 @@ public:
         ,bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),appHeader(),bIssueAsset(false),transferSafeData()
         ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth(""), nVersion(0)
     {
+        vtShowType.push_back(SHOW_TX);
     }
 
     TransactionRecord(uint256 hash, qint64 time, const int32_t& nVersion):
@@ -134,6 +137,7 @@ public:
             ,bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),appHeader(),bIssueAsset(false),transferSafeData()
             ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth(""), nVersion(nVersion)
     {
+        vtShowType.push_back(SHOW_TX);
     }
 
     TransactionRecord(uint256 hash, qint64 time,
@@ -143,24 +147,24 @@ public:
             ,nUnlockedHeight(0),bApp(false),appData(),bAssets(false),assetsData(),commonData(),bPutCandy(false),putCandyData(),bGetCandy(false),getCandyData(),bIssueAsset(false),appHeader(),transferSafeData()
             ,bForbidDash(false),idx(0),nTxHeight(0),strLockedMonth(""), nVersion(nVersion)
     {
+        vtShowType.push_back(SHOW_TX);
     }
 
     /** Decompose CWallet transaction to model transaction records.
      */
     static bool showTransaction(const CWalletTx &wtx);
-    static bool needParseAppAssetData(int appCmd,int showType);
-    static QList<TransactionRecord> decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx, int showType,QMap<QString,AssetsDisplayInfo>& assetNamesUnits);
-    static void decomposeToMe(const CWallet *wallet, const CWalletTx &wtx,int showType,QList<TransactionRecord>& parts,int64_t nTime,
-                                                            const uint256& hash,std::map<std::string, std::string>& mapValue,QMap<QString,AssetsDisplayInfo>& assetNamesUnits,CAmount& nAssetCredit,CAmount& nAssetDebit);
-    static void decomposeFromMeToMe(const CWallet *wallet, const CWalletTx &wtx,int showType,QList<TransactionRecord>& parts,int64_t nTime,
-                                    const uint256& hash,std::map<std::string, std::string>& mapValue,CAmount& nCredit,CAmount& nDebit,CAmount& nAssetCredit
-                                    ,CAmount& nAssetDebit,bool involvesWatchAddress,QMap<QString, AssetsDisplayInfo> &assetNamesUnits,bool hasAsset);
-    static void decomposeFromMe(const CWallet *wallet, const CWalletTx &wtx, int showType,QList<TransactionRecord>& parts,int64_t nTime,const uint256& hash,
-                                std::map<std::string, std::string>& mapValue,CAmount& nDebit,bool involvesWatchAddress,QMap<QString,AssetsDisplayInfo>& assetNamesUnits,CAmount& nAssetCredit,CAmount& nAssetDebit);
-    static bool getReserveData(const CWallet *wallet,const CWalletTx &wtx,QList<TransactionRecord> &parts,TransactionRecord& sub,const CTxOut& txout,int showType,QMap<QString, AssetsDisplayInfo> &assetNamesUnits
-                                 ,CAmount& nAssetDebit,bool getAddress=true);
 
     int64_t getRealUnlockHeight()const;
+
+	static bool decomposeAppAsset(const CWallet *wallet,
+        const CWalletTx &wtx,
+		TransactionRecord &sub,
+        const CTxOut &txout,
+		QMap<QString, AssetsDisplayInfo> &assetNamesUnits);
+
+	static bool decomposeLockTx(const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout);
+
+	static bool decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx, QList<TransactionRecord> &listTransaction, QMap<QString, AssetsDisplayInfo> &mapAssetInfo);
 
     /** @name Immutable transaction attributes
       @{*/
@@ -196,6 +200,8 @@ public:
 
     /** Subtransaction index, for sort key */
     int idx;
+
+	std::vector<int> vtShowType;
 
     int64_t nTxHeight;
     QString strLockedMonth;

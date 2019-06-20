@@ -36,7 +36,84 @@
 #include <QSettings>
 #include <QTextDocument>
 #include <QCompleter>
+#include <boost/thread.hpp>
+
 extern QString gStrSafe;
+extern boost::thread_group *g_threadGroup;
+
+CCriticalSection cs_sendcoins;
+
+void RefreshSendCoinsData(SendCoinsDialog* sendCoinsDialog)
+{
+	RenameThread("RefreshSendCoinsData");
+	QMap<QString, AssetsDisplayInfo> mapNewAssetDisplay;
+	
+	while (true)
+	{
+		boost::this_thread::interruption_point();
+		QMap<QString, AssetsDisplayInfo> mapConfirmedAssetDisplay;
+		QMap<QString, AssetsDisplayInfo> mapTempAssetDisplay;
+		
+
+		{
+			LOCK(cs_sendcoins);			
+			sendCoinsDialog->getAssetsDisplay(mapTempAssetDisplay);
+		}
+
+		QMap<QString, AssetsDisplayInfo>::iterator itTemp = mapTempAssetDisplay.begin();
+		while (itTemp != mapTempAssetDisplay.end())
+		{
+			boost::this_thread::interruption_point();
+			mapNewAssetDisplay.insert(itTemp.key(), itTemp.value());
+			itTemp++;
+		}
+		
+
+		QMap<QString, AssetsDisplayInfo>::iterator itAssetDiaply = mapNewAssetDisplay.begin();
+		while (itAssetDiaply != mapNewAssetDisplay.end())
+		{
+			boost::this_thread::interruption_point();
+			if (itAssetDiaply.value().bInMainChain)
+			{
+				mapConfirmedAssetDisplay.insert(itAssetDiaply.key(), itAssetDiaply.value());
+				itAssetDiaply = mapNewAssetDisplay.erase(itAssetDiaply);
+				continue;
+			}
+
+			itAssetDiaply++;
+		}
+
+		if (mapConfirmedAssetDisplay.size() > 0)
+		{
+			sendCoinsDialog->delAssetDisplay(mapConfirmedAssetDisplay.keys());
+			sendCoinsDialog->addConfirmedAssetDisplay(mapConfirmedAssetDisplay);
+			Q_EMIT sendCoinsDialog->updateAssetInfo(mapConfirmedAssetDisplay.keys());
+		}
+
+		itAssetDiaply = mapNewAssetDisplay.begin();
+		while (itAssetDiaply != mapNewAssetDisplay.end())
+		{
+			boost::this_thread::interruption_point();
+			TRY_LOCK(cs_main, lockMain);
+			if (lockMain)
+			{
+				TRY_LOCK(pwalletMain->cs_wallet, lockWallet);
+				std::map<uint256, CWalletTx>::iterator mi = pwalletMain->mapWallet.find(itAssetDiaply.value().txHash);
+				if (mi != pwalletMain->mapWallet.end())
+				{
+					const CWalletTx& wtx = mi->second;
+					itAssetDiaply.value().bInMainChain = wtx.IsInMainChain();
+				}
+			}
+
+			itAssetDiaply++;
+			MilliSleep(100);
+		}
+
+		MilliSleep(1000);
+	}
+}
+
 
 SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *parent) :
     QDialog(parent),
@@ -72,7 +149,6 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *pa
     connect(ui->pushButtonCoinControl, SIGNAL(clicked()), this, SLOT(coinControlButtonClicked()));
     connect(ui->checkBoxCoinControlChange, SIGNAL(stateChanged(int)), this, SLOT(coinControlChangeChecked(int)));
     connect(ui->lineEditCoinControlChange, SIGNAL(textEdited(const QString &)), this, SLOT(coinControlChangeEdited(const QString &)));
-    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
 
     // Safe specific
     QSettings settings;
@@ -168,6 +244,14 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *pa
     ui->frameFee->setMouseTracking(true);
     ui->frameFeeSelection->setMouseTracking(true);
     setMouseTracking(true);
+
+	connect(this, SIGNAL(updateAssetInfo(QStringList)), this, SLOT(updateAssetsInfo_slot(QStringList)));
+
+    addSafeToCombox();
+
+    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
+	if (g_threadGroup)
+		g_threadGroup->create_thread(boost::bind(&RefreshSendCoinsData, this));
 }
 
 void SendCoinsDialog::setClientModel(ClientModel *clientModel)
@@ -389,7 +473,7 @@ void SendCoinsDialog::send(QList<SendCoinsRecipient> recipients, QString strFee,
 
     CAmount txFee = currentTransaction.getTransactionFee();
 
-    const QMap<QString,AssetsDisplayInfo>& assetNamesUnits = model->getAssetsNamesUnits();
+    const QMap<QString,AssetsDisplayInfo>& assetNamesUnits = mapConfirmedAssetDisplay;
     // Format confirmation message
     QStringList formatted;
     Q_FOREACH(const SendCoinsRecipient &rcp, currentTransaction.getRecipients())
@@ -575,7 +659,7 @@ SendCoinsEntry *SendCoinsDialog::addEntry(bool showLocked)
 
     // Focus the field, so that entry can start immediately
     entry->clear();
-    QMap<QString,AssetsDisplayInfo>& assetNamesUnits = model->getAssetsNamesUnits();
+    QMap<QString,AssetsDisplayInfo>& assetNamesUnits = mapConfirmedAssetDisplay;
     QString assetName = ui->assetsComboBox->currentText();
     QString assetUnit = "";
     if(assetNamesUnits.contains(assetName))
@@ -598,22 +682,26 @@ void SendCoinsDialog::updateTabsAndLabels()
     coinControlUpdateLabels();
 }
 
-void SendCoinsDialog::updateAssetsInfo()
+void SendCoinsDialog::updateAssetsInfo_slot(QStringList listAssetName)
 {
-    disconnect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
-    QString currText = ui->assetsComboBox->currentText();
-    ui->assetsComboBox->clear();
-    QStringList stringList;
-    stringList.append(gStrSafe);
-    model->getAssetsNames(true,stringList);
-    ui->assetsComboBox->addItems(stringList);
-    if(!currText.isEmpty()&&stringList.contains(currText))
-        ui->assetsComboBox->setCurrentText(currText);
-    stringListModel->setStringList(stringList);
-    completer->setModel(stringListModel);
-    completer->popup()->setStyleSheet("font: 12px;");
-    ui->assetsComboBox->setCompleter(completer);
-    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
+	QStringList listTemp;
+
+	for (int i = 0; i < listAssetName.count(); i++)
+	{
+		if (ui->assetsComboBox->findText(listAssetName[i]) < 0)
+		{
+			listTemp.push_back(listAssetName[i]);
+		}
+	}
+
+	if (listTemp.count() > 0)
+	{
+		ui->assetsComboBox->addItems(listTemp);
+		stringListModel->setStringList(listTemp);
+		completer->setModel(stringListModel);
+		completer->popup()->setStyleSheet("font: 12px;");
+		ui->assetsComboBox->setCompleter(completer);
+	}
 }
 
 void SendCoinsDialog::removeEntry(SendCoinsEntry* entry)
@@ -991,7 +1079,7 @@ void SendCoinsDialog::updateCurrentAsset(const QString &currText)
             ui->labelBalance->setText(QString("%1 %2").arg(BitcoinUnits::format(nAssetsDecimals,amount,false,BitcoinUnits::separatorAlways,true)).arg(strAssetsUnit));
         }
     }
-    QMap<QString,AssetsDisplayInfo>& assetNamesUnits = model->getAssetsNamesUnits();
+    QMap<QString,AssetsDisplayInfo>& assetNamesUnits = mapConfirmedAssetDisplay;
     for(int i = 0; i < ui->entries->count(); ++i)
     {
         SendCoinsEntry *entry = qobject_cast<SendCoinsEntry*>(ui->entries->itemAt(i)->widget());
@@ -1237,4 +1325,73 @@ void SendCoinsDialog::coinControlUpdateLabels()
         ui->widgetCoinControl->hide();
         ui->labelCoinControlInsuffFunds->hide();
     }
+}
+
+void SendCoinsDialog::updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay)
+{
+	addAssetDisplay(mapAssetDisplay);
+}
+
+bool SendCoinsDialog::getAssetsDisplay(QMap<QString, AssetsDisplayInfo> &mapAssetDispaly)
+{
+	LOCK(cs_sendcoins);
+	mapAssetDispaly = mapNewAssetDisplay;
+	return true;
+}
+
+bool SendCoinsDialog::addAssetDisplay(const QMap<QString, AssetsDisplayInfo> &mapAssetDisplay)
+{
+	LOCK(cs_sendcoins);
+	QMap<QString, AssetsDisplayInfo>::const_iterator itAsset = mapAssetDisplay.begin();
+	while (itAsset != mapAssetDisplay.end())
+	{
+        if (mapNewAssetDisplay.find(itAsset.key()) == mapNewAssetDisplay.end())
+		{
+			mapNewAssetDisplay.insert(itAsset.key(), itAsset.value());
+		}
+
+		itAsset++;
+	}
+
+	return true;
+}
+
+bool SendCoinsDialog::delAssetDisplay(QStringList listAssetName)
+{
+	LOCK(cs_sendcoins);
+	for (int i = 0; i < listAssetName.count(); i++)
+	{
+		QMap<QString, AssetsDisplayInfo>::iterator it = mapNewAssetDisplay.find(listAssetName[i]);
+		if (it != mapNewAssetDisplay.end())
+		{
+			mapNewAssetDisplay.erase(it);
+		}
+	}
+
+	return true;
+}
+
+bool SendCoinsDialog::addConfirmedAssetDisplay(const QMap<QString, AssetsDisplayInfo> &mapAssetDisplay)
+{
+	QMap<QString, AssetsDisplayInfo>::const_iterator it = mapAssetDisplay.begin();
+
+	while (it != mapAssetDisplay.end())
+	{
+		mapConfirmedAssetDisplay.insert(it.key(), it.value());
+		it++;
+	}
+
+	return true;
+}
+
+void SendCoinsDialog::addSafeToCombox()
+{
+	QStringList stringList;
+	stringList.append(gStrSafe);
+
+	ui->assetsComboBox->addItems(stringList);
+	stringListModel->setStringList(stringList);
+	completer->setModel(stringListModel);
+	completer->popup()->setStyleSheet("font: 12px;");
+	ui->assetsComboBox->setCompleter(completer);
 }
