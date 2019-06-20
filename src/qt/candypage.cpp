@@ -36,17 +36,13 @@ void RefreshCandyPageData(CandyPage* candyPage)
     while(true)
     {
         boost::this_thread::interruption_point();
+        MilliSleep(1000);
         bool fThreadUpdateData = candyPage->getThreadUpdateData();
-        bool fThreadNoticeSlot = candyPage->getThreadNoticeSlot();
-        if(!fThreadUpdateData&&!fThreadNoticeSlot)
-        {
-            MilliSleep(100);
+        if(!fThreadUpdateData){
             continue;
         }
         if(fThreadUpdateData)
             candyPage->setThreadUpdateData(false);
-        if(fThreadNoticeSlot)
-            candyPage->setThreadNoticeSlot(false);
 
         std::map<uint256, CAssetData> issueAssetMap;
         std::vector<std::string> assetNameVec;
@@ -78,8 +74,7 @@ void RefreshCandyPageData(CandyPage* candyPage)
         }
         candyPage->setAssetStringList(stringList);
 
-        if(fThreadNoticeSlot)
-            Q_EMIT candyPage->refreshAssetsInfo();
+        Q_EMIT candyPage->refreshAssetsInfo();
     }
 }
 
@@ -122,7 +117,6 @@ CandyPage::CandyPage():
     ui->labelTotal->setVisible(false);
     isUnlockByGlobal = false;
     fThreadUpdateData = false;
-    fThreadNoticeSlot = false;
     assetStringList.clear();
 
     completer = new QCompleter;
@@ -856,7 +850,7 @@ bool CandyPage::putCandy()
     {
         QMessageBox::warning(this, strPutCandy,tr("Put candy times used up"),tr("Ok"));
         //updateAssetsInfo();
-        setThreadNoticeSlot(true);
+        setThreadUpdateData(true);
         return false;
     }
 
@@ -966,7 +960,7 @@ bool CandyPage::putCandy()
     }
 
     if(MAX_PUTCANDY_VALUE-putCandyCount==1){
-        setThreadNoticeSlot(true);
+        setThreadUpdateData(true);
     }
     return true;
 }

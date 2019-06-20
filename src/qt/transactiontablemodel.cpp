@@ -106,12 +106,28 @@ void TransactionTablePriv::updateWallet(const uint256 &hash, int status, bool sh
     bool inModel = (lower != upper);
     bUpdateAssets = false;
 
+    bool fReupdate = false;
+
     if(status == CT_UPDATED)
     {
         if(showTransaction && !inModel)
             status = CT_NEW; /* Not in model, but want to show, treat as new */
         if(!showTransaction && inModel)
             status = CT_DELETED; /* In model, but want to hide, treat as deleted */
+        if(showType==SHOW_LOCKED_TX&&inModel&&showTransaction&&status==CT_UPDATED)
+        {
+            std::map<uint256, CWalletTx>::iterator mi = wallet->mapWallet.find(hash);
+            const CWalletTx& wtx = mi->second;
+            for(unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
+            {
+                const CTxOut& txout = wtx.vout[nOut];
+                if(txout.nUnlockedHeight <= 0)
+                    continue;
+                status = CT_NEW;
+                fReupdate = true;
+                break;
+            }
+        }
     }
 
     qDebug() << "    inModel=" + QString::number(inModel) +
@@ -124,7 +140,8 @@ void TransactionTablePriv::updateWallet(const uint256 &hash, int status, bool sh
         if(inModel)
         {
             qWarning() << "TransactionTablePriv::updateWallet: Warning: Got CT_NEW, but transaction is already in model";
-            break;
+            if(!fReupdate)
+                break;
         }
         if(showTransaction)
         {
@@ -142,19 +159,38 @@ void TransactionTablePriv::updateWallet(const uint256 &hash, int status, bool sh
             QList<TransactionRecord> toInsert = TransactionRecord::decomposeTransaction(wallet, mi->second, showType, mapTempAssetList);
             if(!toInsert.isEmpty()) /* only if something to insert */
             {
-                parent->beginInsertRows(QModelIndex(), lowerIndex, lowerIndex+toInsert.size()-1);
-                int insert_idx = lowerIndex;
-                Q_FOREACH(const TransactionRecord &rec, toInsert)
+                if(fReupdate)
                 {
-                    cachedWallet.insert(insert_idx, rec);
-                    insert_idx += 1;
-                    if((rec.bAssets||rec.bGetCandy||rec.bPutCandy)&&!rec.bSAFETransaction)
+                    for(int i=0;i<cachedWallet.size();i++)
                     {
-                        bUpdateAssets = true;
-                        strAssetName = QString::fromStdString(rec.assetsData.strAssetName);
+                        TransactionRecord &rec = cachedWallet[i];
+                        for(int j=0;j<toInsert.size();j++)
+                        {
+                            TransactionRecord &toInsertRec = toInsert[j];
+                            if(rec.bLocked && rec.hash == mi->second.GetHash())
+                            {
+                                rec.nTxHeight = toInsertRec.nTxHeight;
+                                rec.updateLockedMonth();
+                            }
+                        }
                     }
+                }else
+                {
+                    //insert new data
+                    parent->beginInsertRows(QModelIndex(), lowerIndex, lowerIndex+toInsert.size()-1);
+                    int insert_idx = lowerIndex;
+                    Q_FOREACH(const TransactionRecord &rec, toInsert)
+                    {
+                        cachedWallet.insert(insert_idx, rec);
+                        insert_idx += 1;
+                        if((rec.bAssets||rec.bGetCandy||rec.bPutCandy)&&!rec.bSAFETransaction)
+                        {
+                            bUpdateAssets = true;
+                            strAssetName = QString::fromStdString(rec.assetsData.strAssetName);
+                        }
+                    }
+                    parent->endInsertRows();
                 }
-                parent->endInsertRows();
             }
 
 			QMap<QString, AssetsDisplayInfo>::iterator itAsset = mapTempAssetList.begin();
@@ -294,7 +330,6 @@ TransactionTableModel::TransactionTableModel(const PlatformStyle *platformStyle,
     columnToAddress = TransactionTableModel::TransactionColumnToAddress;
     columnAmount = TransactionTableModel::TransactionColumnAmount;
 
-	bIsRefreshWallet = false;
 	nUpdateCount = 0;
 
  //   priv->refreshWallet();
@@ -1060,6 +1095,7 @@ static void NotifyTransactionChanged(TransactionTableModel *ttm, CWallet *wallet
     std::map<uint256, CWalletTx>::iterator mi = wallet->mapWallet.find(hash);
     // Determine whether to show transaction or not (determine this here so that no relocking is needed in GUI thread)
     bool inWallet = mi != wallet->mapWallet.end();
+
     bool showTransaction = (inWallet && TransactionRecord::showTransaction(mi->second));
 
     TransactionNotification notification(hash, status, showTransaction);
@@ -1133,16 +1169,6 @@ void TransactionTableModel::setUpdatingWallet(bool updatingWallet)
 bool TransactionTableModel::getUpdatingWallet()
 {
     return fUpdatingWallet;
-}
-
-bool TransactionTableModel::isRefreshWallet()
-{
-	return bIsRefreshWallet;
-}
-
-void TransactionTableModel::setRefreshWalletFlag(bool flag)
-{
-	bIsRefreshWallet = flag;
 }
 
 void TransactionTableModel::refreshPage()

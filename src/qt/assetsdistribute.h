@@ -21,9 +21,7 @@ public:
     ~AssetsDistribute();
 
     void setThreadUpdateData(bool update){fThreadUpdateData = update;}
-    void setThreadNoticeSlot(bool notice){fThreadNoticeSlot = notice;}
     bool getThreadUpdateData(){return fThreadUpdateData;}
-    bool getThreadNoticeSlot(){return fThreadNoticeSlot;}
     void setAssetStringList(QStringList stringList){assetStringList = stringList;}
 
 Q_SIGNALS:
@@ -71,7 +69,6 @@ private:
     QCompleter* completer;
     QStringListModel* stringListModel;
     bool fThreadUpdateData;
-    bool fThreadNoticeSlot;
     QStringList assetStringList;
 };
 

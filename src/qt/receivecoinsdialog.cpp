@@ -42,19 +42,14 @@ void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
     while(true)
     {
         boost::this_thread::interruption_point();
-
+        MilliSleep(1000);
         bool fThreadUpdateData = receiveCoinsDialog->getThreadUpdateData();
-        bool fThreadNoticeSlot = receiveCoinsDialog->getThreadNoticeSlot();
-        if(!fThreadUpdateData&&!fThreadNoticeSlot)
-        {
-            MilliSleep(100);
+        if(!fThreadUpdateData){
             continue;
         }
 
         if(fThreadUpdateData)
             receiveCoinsDialog->setThreadUpdateData(false);
-        if(fThreadNoticeSlot)
-            receiveCoinsDialog->setThreadNoticeSlot(false);
         std::vector<uint256>  assetIdVec;
 
         {
@@ -98,8 +93,7 @@ void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
         stringList.append(receiveCoinsDialog->assetDataMap.keys());
         receiveCoinsDialog->setAssetStringList(stringList);
 
-        if(fThreadNoticeSlot)
-            Q_EMIT receiveCoinsDialog->refreshAssetsInfo();
+        Q_EMIT receiveCoinsDialog->refreshAssetsInfo();
     }
 
 
@@ -161,7 +155,6 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     stringListModel = new QStringListModel;
     fAssetsFound = false;
     fThreadUpdateData = false;
-    fThreadNoticeSlot = false;
     assetStringList.clear();
 
     completer->setCaseSensitivity(Qt::CaseInsensitive);
@@ -203,7 +196,6 @@ ReceiveCoinsDialog::~ReceiveCoinsDialog()
 
 void ReceiveCoinsDialog::updateCurrentAsset(const QString &currText)
 {
-    LOCK2(cs_main, pwalletMain->cs_wallet);
     if(currText==gStrSafe)
     {
         fAssets = false;
@@ -232,7 +224,7 @@ void ReceiveCoinsDialog::updateAssetsFound(const QString &assetName)
     LOCK(cs_receive);
     fAssetsFound = true;
     assetToUpdate.push_back(assetName);
-    setThreadNoticeSlot(true);
+    setThreadUpdateData(true);
 }
 
 void ReceiveCoinsDialog::updateAssetsInfo(const QString &assetName)

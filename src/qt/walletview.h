@@ -178,7 +178,7 @@ public Q_SLOTS:
 
     void updateAssetsDisplay(bool updateAsset=true);
 
-	void refreshFinished_slot(TransactionTableModel* txModel);
+    void refreshFinish_slot();
 
 Q_SIGNALS:
     /** Signal that we want to show the main window */
@@ -195,7 +195,7 @@ Q_SIGNALS:
     /** Notify that the out of sync warning icon has been pressed */
     void outOfSyncWarningClicked();
 
-	void refreshFinished(TransactionTableModel* txModel);
+    void refreshFinish();
 };
 
 #endif // BITCOIN_QT_WALLETVIEW_H

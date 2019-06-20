@@ -66,10 +66,8 @@ public:
     OverViewEntry *insertEntry(const QString assetName,const CAmount& balance,const CAmount& unconfirmedBalance,const CAmount& lockedBalance,const QString& strAssetUnit,int nDecimals,const QString& logoURL="");
 
     void setThreadUpdateData(bool update){fThreadUpdateData = update;}
-    void setThreadNoticeSlot(bool notice){fThreadNoticeSlot = notice;}
     void setUpdateAssetsInfo(bool update){fUpdateAssetInfo = update;}
     bool getThreadUpdateData(){return fThreadUpdateData;}
-    bool getThreadNoticeSlot(){return fThreadNoticeSlot;}
     bool getUpdateAssetsInfo(){return fUpdateAssetInfo;}
 
     void setAssetStringList(QStringList stringList){assetNames = stringList;}
@@ -118,7 +116,6 @@ private:
     const PlatformStyle *platformStyle;
     std::unique_ptr<TransactionFilterProxy> filter;
     bool fThreadUpdateData;
-    bool fThreadNoticeSlot;
     QStringList assetNames;
 
     void SetupTransactionList(int nNumItems);

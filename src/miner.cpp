@@ -896,6 +896,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                         LogPrintf("SPOS_Warning:self masternode outpoint is empty,if self is masternode maybe need to wait sync or reindex or start alias\n");
                         nLogOutput = 1;
                     }
+                    MilliSleep(nSposSleeptime);
                     continue;
                 }
 
@@ -915,6 +916,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 if(pindexPrev != chainActive.Tip())
                 {
                     LogPrintf("SPOS_Message:create new block(%d) fail,already recived the block:%d\n",nNewBlockHeight,chainActive.Height());
+                    MilliSleep(nSposSleeptime);
                     continue;
                 }
 
@@ -951,7 +953,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
             if(nSleepMS>0)
                 MilliSleep(nSleepMS);
             else
-                MilliSleep(50);
+                MilliSleep(nSposSleeptime);
         }
     }
     catch (const boost::thread_interrupted&)
