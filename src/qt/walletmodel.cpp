@@ -1145,7 +1145,6 @@ void RefreshDataStartUp(WalletModel* walletModel)
 		}
 	}
 
-    int asset_count = 0,tx_count=0,locked_tx_count=0,candy_count=0,app_count=0;
 	for (int i = 0; i < listTransaction.size(); i++)
 	{
 		boost::this_thread::interruption_point();
@@ -1154,27 +1153,22 @@ void RefreshDataStartUp(WalletModel* walletModel)
             if (listTransaction[i].vtShowType[j] == SHOW_TX)
             {
                 walletModel->getTransactionTableModel()->insertTransaction(listTransaction[i]);
-                ++tx_count;
             }
             else if (listTransaction[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
 			{
-				walletModel->getAssetsDistributeTableModel()->insertTransaction(listTransaction[i]);
-                ++asset_count;
+                walletModel->getAssetsDistributeTableModel()->insertTransaction(listTransaction[i]);
 			}
 			else if (listTransaction[i].vtShowType[j] == SHOW_APPLICATION_REGIST)
 			{
-				walletModel->getApplicationRegistTableModel()->insertTransaction(listTransaction[i]);
-                ++app_count;
+                walletModel->getApplicationRegistTableModel()->insertTransaction(listTransaction[i]);
 			}
 			else if (listTransaction[i].vtShowType[j] == SHOW_CANDY_TX)
 			{
-				walletModel->getCandyTableModel()->insertTransaction(listTransaction[i]);
-                ++candy_count;
+                walletModel->getCandyTableModel()->insertTransaction(listTransaction[i]);
 			}
 			else if (listTransaction[i].vtShowType[j] == SHOW_LOCKED_TX)
 			{
-				walletModel->getLockedTransactionTableModel()->insertTransaction(listTransaction[i]);
-                ++locked_tx_count;
+                walletModel->getLockedTransactionTableModel()->insertTransaction(listTransaction[i]);
 			}
 		}
 	}
