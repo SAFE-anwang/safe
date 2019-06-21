@@ -233,37 +233,39 @@ public:
         nPoolMaxTransactions = 3;
         nFulfilledRequestExpireTime = 60*60; // fulfilled requests expire in 1 hour
         strSporkPubKey = "034e7922968f837f384ffa717b459fe144715dbe293c96aaca7ff3d61592fcc18f";
-        checkpointData = (CCheckpointData) {
-            boost::assign::map_list_of
-            (  1500, uint256S("0x000000aaf0300f59f49bc3e970bad15c11f961fe2347accffff19d96ec9778e3"))
-            (  4991, uint256S("0x000000003b01809551952460744d5dbb8fcbd6cbae3c220267bf7fa43f837367"))
-            (  9918, uint256S("0x00000000213e229f332c0ffbe34defdaa9e74de87f2d8d1f01af8d121c3c170b"))
-            ( 16912, uint256S("0x00000000075c0d10371d55a60634da70f197548dbbfa4123e12abfcbc5738af9"))
-            ( 23912, uint256S("0x0000000000335eac6703f3b1732ec8b2f89c3ba3a7889e5767b090556bb9a276"))
-            ( 35457, uint256S("0x0000000000b0ae211be59b048df14820475ad0dd53b9ff83b010f71a77342d9f"))
-            ( 45479, uint256S("0x000000000063d411655d590590e16960f15ceea4257122ac430c6fbe39fbf02d"))
-            ( 55895, uint256S("0x0000000000ae4c53a43639a4ca027282f69da9c67ba951768a20415b6439a2d7"))
-            ( 68899, uint256S("0x0000000000194ab4d3d9eeb1f2f792f21bb39ff767cb547fe977640f969d77b7"))
-            ( 74619, uint256S("0x000000000011d28f38f05d01650a502cc3f4d0e793fbc26e2a2ca71f07dc3842"))
-            ( 75095, uint256S("0x0000000000193d12f6ad352a9996ee58ef8bdc4946818a5fec5ce99c11b87f0d"))
-            ( 88805, uint256S("0x00000000001392f1652e9bf45cd8bc79dc60fe935277cd11538565b4a94fa85f"))
-            ( 107996, uint256S("0x00000000000a23840ac16115407488267aa3da2b9bc843e301185b7d17e4dc40"))
-            ( 137993, uint256S("0x00000000000cf69ce152b1bffdeddc59188d7a80879210d6e5c9503011929c3c"))
-            ( 167996, uint256S("0x000000000009486020a80f7f2cc065342b0c2fb59af5e090cd813dba68ab0fed"))
-            ( 207992, uint256S("0x00000000000d85c22be098f74576ef00b7aa00c05777e966aff68a270f1e01a5"))
-            ( 312645, uint256S("0x0000000000059dcb71ad35a9e40526c44e7aae6c99169a9e7017b7d84b1c2daf"))
-            ( 407452, uint256S("0x000000000003c6a87e73623b9d70af7cd908ae22fee466063e4ffc20be1d2dbc"))
-            ( 523412, uint256S("0x000000000000e54f036576a10597e0e42cc22a5159ce572f999c33975e121d4d"))
-            ( 523930, uint256S("0x0000000000000bccdb11c2b1cfb0ecab452abf267d89b7f46eaf2d54ce6e652c"))
-            ( 750000, uint256S("0x00000000000000b4181bbbdddbae464ce11fede5d0292fb63fdede1e7c8ab21c"))
-            ( 807085, uint256S("0xa39e69b248f2ecf4b3a0d881722d339ba14dc6c4e28a88f1e35eb4b3aef05b82"))
-            ( 817480, uint256S("0x000000000000020ad251d844a084f7f637acb0ec93e8cc919be7c18271a09b7e"))
-            ( 934502, uint256S("0x000000000000046b287f99b4af92dccc7df328677c4eab94880ec39c1e8c9042")),
-            1536460910, // * UNIX timestamp of last checkpoint block
-            4796365,    // * total number of transactions between genesis and last checkpoint
-                        //   (the tx=... number in the SetBestChain debug.log lines)
-            5000        // * estimated number of transactions per day after checkpoint
-        };
+
+		checkpointData.mapCheckpoints = {
+			boost::assign::map_list_of
+			(1500, uint256S("0x000000aaf0300f59f49bc3e970bad15c11f961fe2347accffff19d96ec9778e3"))
+			(4991, uint256S("0x000000003b01809551952460744d5dbb8fcbd6cbae3c220267bf7fa43f837367"))
+			(9918, uint256S("0x00000000213e229f332c0ffbe34defdaa9e74de87f2d8d1f01af8d121c3c170b"))
+			(16912, uint256S("0x00000000075c0d10371d55a60634da70f197548dbbfa4123e12abfcbc5738af9"))
+			(23912, uint256S("0x0000000000335eac6703f3b1732ec8b2f89c3ba3a7889e5767b090556bb9a276"))
+			(35457, uint256S("0x0000000000b0ae211be59b048df14820475ad0dd53b9ff83b010f71a77342d9f"))
+			(45479, uint256S("0x000000000063d411655d590590e16960f15ceea4257122ac430c6fbe39fbf02d"))
+			(55895, uint256S("0x0000000000ae4c53a43639a4ca027282f69da9c67ba951768a20415b6439a2d7"))
+			(68899, uint256S("0x0000000000194ab4d3d9eeb1f2f792f21bb39ff767cb547fe977640f969d77b7"))
+			(74619, uint256S("0x000000000011d28f38f05d01650a502cc3f4d0e793fbc26e2a2ca71f07dc3842"))
+			(75095, uint256S("0x0000000000193d12f6ad352a9996ee58ef8bdc4946818a5fec5ce99c11b87f0d"))
+			(88805, uint256S("0x00000000001392f1652e9bf45cd8bc79dc60fe935277cd11538565b4a94fa85f"))
+			(107996, uint256S("0x00000000000a23840ac16115407488267aa3da2b9bc843e301185b7d17e4dc40"))
+			(137993, uint256S("0x00000000000cf69ce152b1bffdeddc59188d7a80879210d6e5c9503011929c3c"))
+			(167996, uint256S("0x000000000009486020a80f7f2cc065342b0c2fb59af5e090cd813dba68ab0fed"))
+			(207992, uint256S("0x00000000000d85c22be098f74576ef00b7aa00c05777e966aff68a270f1e01a5"))
+			(312645, uint256S("0x0000000000059dcb71ad35a9e40526c44e7aae6c99169a9e7017b7d84b1c2daf"))
+			(407452, uint256S("0x000000000003c6a87e73623b9d70af7cd908ae22fee466063e4ffc20be1d2dbc"))
+			(523412, uint256S("0x000000000000e54f036576a10597e0e42cc22a5159ce572f999c33975e121d4d"))
+			(523930, uint256S("0x0000000000000bccdb11c2b1cfb0ecab452abf267d89b7f46eaf2d54ce6e652c"))
+			(750000, uint256S("0x00000000000000b4181bbbdddbae464ce11fede5d0292fb63fdede1e7c8ab21c"))
+			(807085, uint256S("0xa39e69b248f2ecf4b3a0d881722d339ba14dc6c4e28a88f1e35eb4b3aef05b82"))
+			(817480, uint256S("0x000000000000020ad251d844a084f7f637acb0ec93e8cc919be7c18271a09b7e"))
+			(934502, uint256S("0x000000000000046b287f99b4af92dccc7df328677c4eab94880ec39c1e8c9042"))
+		};
+
+		checkpointData.nTimeLastCheckpoint = 1536460910;         // * UNIX timestamp of last checkpoint block
+		checkpointData.nTransactionsLastCheckpoint = 4796365;    // * total number of transactions between genesis and last checkpoint
+						                                         //   (the tx=... number in the SetBestChain debug.log lines)
+		checkpointData.fTransactionsPerDay = 5000;               // * estimated number of transactions per day after checkpoint
     }
 };
 static CMainParams mainParams;
@@ -373,17 +375,18 @@ public:
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
         strSporkPubKey = "03df675c49736a1f46e3d12f5cd89cd423ef5fd2850a09e9685aff0895e75c4b7b";
 
-        checkpointData = (CCheckpointData) {
+        checkpointData.mapCheckpoints =  {
             boost::assign::map_list_of
             (    261, uint256S("0x00000c26026d0815a7e2ce4fa270775f61403c040647ff2c3091f99e894a4618"))
             (   1999, uint256S("0x00000052e538d27fa53693efe6fb6892a0c1d26c0235f599171c48a3cce553b1"))
-            (   2999, uint256S("0x0000024bc3f4f4cb30d29827c13d921ad77d2c6072e586c7f60d83c2722cdcc5")),
-
-            1462856598, // * UNIX timestamp of last checkpoint block
-            3094,       // * total number of transactions between genesis and last checkpoint
-                        //   (the tx=... number in the SetBestChain debug.log lines)
-            500         // * estimated number of transactions per day after checkpoint
+            (   2999, uint256S("0x0000024bc3f4f4cb30d29827c13d921ad77d2c6072e586c7f60d83c2722cdcc5"))
         };
+
+
+		checkpointData.nTimeLastCheckpoint = 1462856598;         // * UNIX timestamp of last checkpoint block
+		checkpointData.nTransactionsLastCheckpoint = 3094;       // * total number of transactions between genesis and last checkpoint
+																 //   (the tx=... number in the SetBestChain debug.log lines)
+		checkpointData.fTransactionsPerDay = 500;                // * estimated number of transactions per day after checkpoint
 
     }
 };
@@ -464,13 +467,15 @@ public:
 
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
 
-        checkpointData = (CCheckpointData){
+        checkpointData.mapCheckpoints = {
             boost::assign::map_list_of
-            ( 0, uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e")),
-            0,
-            0,
-            0
+            ( 0, uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e"))
         };
+
+		checkpointData.nTimeLastCheckpoint = 0;
+		checkpointData.nTransactionsLastCheckpoint = 0;
+		checkpointData.fTransactionsPerDay = 0;
+
         // Regtest Safe addresses start with 'y'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,140);
         // Regtest Safe script addresses start with '8' or '9'
@@ -615,14 +620,16 @@ public:
         nFulfilledRequestExpireTime = 60*60; // fulfilled requests expire in 1 hour
         strSporkPubKey = "038617dc28e0fdb59b2d4f2fd8ff10bb06f67a7cc2c5c201cc538261d5279f74d3";
 
-        checkpointData = (CCheckpointData) {
+		
+        checkpointData.mapCheckpoints =  {
             boost::assign::map_list_of
             (   0, uint256S("0x000d8b21044326f9b58110404510ce2b4ee30af5d97dd7de30d551c34dfdc9a2"))
-            ( 175, uint256S("0x0d5e5bc5423d162dd4b97c0c90648864802d73ffbfade1c6cc2dd8fedb7cb151")),
-            0,
-            0,
-            0
+            ( 175, uint256S("0x0d5e5bc5423d162dd4b97c0c90648864802d73ffbfade1c6cc2dd8fedb7cb151"))
         };
+
+		checkpointData.nTimeLastCheckpoint = 0;
+		checkpointData.nTransactionsLastCheckpoint = 0;
+		checkpointData.fTransactionsPerDay = 0;
     }
 };
 static CMainParams mainParams;
@@ -735,13 +742,14 @@ public:
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
         strSporkPubKey = "03c191713d2962efcfb95f1e0e89cbfd7fed818e279ee942d5a9f131ee1d38cbad";
 
-        checkpointData = (CCheckpointData) {
+        checkpointData.mapCheckpoints = {
             boost::assign::map_list_of
-            ( 0, uint256S("0x0033f6eca2a16b3838f177f6fe158101a9351d52067e9c33e7bfceb131d073b5")),
-            0,
-            0,
-            0
+            ( 0, uint256S("0x0033f6eca2a16b3838f177f6fe158101a9351d52067e9c33e7bfceb131d073b5"))
         };
+
+		checkpointData.nTimeLastCheckpoint = 0;
+		checkpointData.nTransactionsLastCheckpoint = 0;
+		checkpointData.fTransactionsPerDay = 0;
 
     }
 };
@@ -822,13 +830,15 @@ public:
 
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
 
-        checkpointData = (CCheckpointData){
+        checkpointData.mapCheckpoints = {
             boost::assign::map_list_of
-            ( 0, uint256S("0x0046b8ca77aef6704d0ef452bb14c50b7e8ca772839b5c3a08193d4a951522ae")),
-            0,
-            0,
-            0
+            ( 0, uint256S("0x0046b8ca77aef6704d0ef452bb14c50b7e8ca772839b5c3a08193d4a951522ae"))
         };
+
+		checkpointData.nTimeLastCheckpoint = 0;
+		checkpointData.nTransactionsLastCheckpoint = 0;
+		checkpointData.fTransactionsPerDay = 0;
+
         // Regtest Safe addresses start with 'y'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,140);
         // Regtest Safe script addresses start with '8' or '9'
@@ -958,14 +968,15 @@ public:
         nFulfilledRequestExpireTime = 60*60; // fulfilled requests expire in 1 hour
         strSporkPubKey = "038617dc28e0fdb59b2d4f2fd8ff10bb06f67a7cc2c5c201cc538261d5279f74d3";
 
-        checkpointData = (CCheckpointData) {
+        checkpointData.mapCheckpoints = {
             boost::assign::map_list_of
             (   0, uint256S("0x000d8b21044326f9b58110404510ce2b4ee30af5d97dd7de30d551c34dfdc9a2"))
-            ( 175, uint256S("0x0d5e5bc5423d162dd4b97c0c90648864802d73ffbfade1c6cc2dd8fedb7cb151")),
-            0,
-            0,
-            0
+            ( 175, uint256S("0x0d5e5bc5423d162dd4b97c0c90648864802d73ffbfade1c6cc2dd8fedb7cb151"))
         };
+
+		checkpointData.nTimeLastCheckpoint = 0;
+		checkpointData.nTransactionsLastCheckpoint = 0;
+		checkpointData.fTransactionsPerDay = 0;
     }
 };
 static CMainParams mainParams;
@@ -1075,13 +1086,14 @@ public:
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
         strSporkPubKey = "03c191713d2962efcfb95f1e0e89cbfd7fed818e279ee942d5a9f131ee1d38cbad";
 
-        checkpointData = (CCheckpointData) {
+        checkpointData.mapCheckpoints =  {
             boost::assign::map_list_of
-            ( 0, uint256S("0x0033f6eca2a16b3838f177f6fe158101a9351d52067e9c33e7bfceb131d073b5")),
-            0,
-            0,
-            0
+            ( 0, uint256S("0x0033f6eca2a16b3838f177f6fe158101a9351d52067e9c33e7bfceb131d073b5"))
         };
+
+		checkpointData.nTimeLastCheckpoint = 0;
+		checkpointData.nTransactionsLastCheckpoint = 0;
+		checkpointData.fTransactionsPerDay = 0;
 
     }
 };
@@ -1162,13 +1174,15 @@ public:
 
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
 
-        checkpointData = (CCheckpointData){
+        checkpointData.mapCheckpoints = {
             boost::assign::map_list_of
-            ( 0, uint256S("0x0046b8ca77aef6704d0ef452bb14c50b7e8ca772839b5c3a08193d4a951522ae")),
-            0,
-            0,
-            0
+            ( 0, uint256S("0x0046b8ca77aef6704d0ef452bb14c50b7e8ca772839b5c3a08193d4a951522ae"))
         };
+
+		checkpointData.nTimeLastCheckpoint = 0;
+		checkpointData.nTransactionsLastCheckpoint = 0;
+		checkpointData.fTransactionsPerDay = 0;
+
         // Regtest Safe addresses start with 'y'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,140);
         // Regtest Safe script addresses start with '8' or '9'

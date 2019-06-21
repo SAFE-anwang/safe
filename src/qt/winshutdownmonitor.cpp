@@ -6,13 +6,18 @@
 
 #if defined(Q_OS_WIN) && QT_VERSION >= 0x050000
 #include "init.h"
+
+#ifndef Q_OS_WIN
 #include "util.h"
+#endif
 
 #include <windows.h>
 
 #include <QDebug>
 
 #include <openssl/rand.h>
+
+
 
 // If we don't want a message to be processed by Qt, return true and set result to
 // the value that the window procedure should return. Otherwise return false.
@@ -27,7 +32,11 @@ bool WinShutdownMonitor::nativeEventFilter(const QByteArray &eventType, void *pM
             // Warn only once as this is performance-critical
             static bool warned = false;
             if (!warned) {
+
+#ifndef Q_OS_WIN
                 LogPrintf("%s: OpenSSL RAND_event() failed to seed OpenSSL PRNG with enough data.\n", __func__);
+#endif
+
                 warned = true;
             }
        }

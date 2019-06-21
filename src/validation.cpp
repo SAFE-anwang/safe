@@ -7,6 +7,7 @@
 
 #if defined(HAVE_CONFIG_H)
 #include "config/safe-chain.h"
+#include "config/safe-config.h"
 #endif
 
 #include "alert.h"
