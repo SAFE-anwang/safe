@@ -234,8 +234,7 @@ public:
         nFulfilledRequestExpireTime = 60*60; // fulfilled requests expire in 1 hour
         strSporkPubKey = "034e7922968f837f384ffa717b459fe144715dbe293c96aaca7ff3d61592fcc18f";
 
-		checkpointData.mapCheckpoints = {
-			boost::assign::map_list_of
+        checkpointData.mapCheckpoints = boost::assign::map_list_of
 			(1500, uint256S("0x000000aaf0300f59f49bc3e970bad15c11f961fe2347accffff19d96ec9778e3"))
 			(4991, uint256S("0x000000003b01809551952460744d5dbb8fcbd6cbae3c220267bf7fa43f837367"))
 			(9918, uint256S("0x00000000213e229f332c0ffbe34defdaa9e74de87f2d8d1f01af8d121c3c170b"))
@@ -259,8 +258,7 @@ public:
 			(750000, uint256S("0x00000000000000b4181bbbdddbae464ce11fede5d0292fb63fdede1e7c8ab21c"))
 			(807085, uint256S("0xa39e69b248f2ecf4b3a0d881722d339ba14dc6c4e28a88f1e35eb4b3aef05b82"))
 			(817480, uint256S("0x000000000000020ad251d844a084f7f637acb0ec93e8cc919be7c18271a09b7e"))
-			(934502, uint256S("0x000000000000046b287f99b4af92dccc7df328677c4eab94880ec39c1e8c9042"))
-		};
+            (934502, uint256S("0x000000000000046b287f99b4af92dccc7df328677c4eab94880ec39c1e8c9042"));
 
 		checkpointData.nTimeLastCheckpoint = 1536460910;         // * UNIX timestamp of last checkpoint block
 		checkpointData.nTransactionsLastCheckpoint = 4796365;    // * total number of transactions between genesis and last checkpoint
@@ -375,12 +373,10 @@ public:
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
         strSporkPubKey = "03df675c49736a1f46e3d12f5cd89cd423ef5fd2850a09e9685aff0895e75c4b7b";
 
-        checkpointData.mapCheckpoints =  {
-            boost::assign::map_list_of
+        checkpointData.mapCheckpoints =  boost::assign::map_list_of
             (    261, uint256S("0x00000c26026d0815a7e2ce4fa270775f61403c040647ff2c3091f99e894a4618"))
             (   1999, uint256S("0x00000052e538d27fa53693efe6fb6892a0c1d26c0235f599171c48a3cce553b1"))
-            (   2999, uint256S("0x0000024bc3f4f4cb30d29827c13d921ad77d2c6072e586c7f60d83c2722cdcc5"))
-        };
+            (   2999, uint256S("0x0000024bc3f4f4cb30d29827c13d921ad77d2c6072e586c7f60d83c2722cdcc5"));
 
 
 		checkpointData.nTimeLastCheckpoint = 1462856598;         // * UNIX timestamp of last checkpoint block
@@ -467,10 +463,8 @@ public:
 
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
 
-        checkpointData.mapCheckpoints = {
-            boost::assign::map_list_of
-            ( 0, uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e"))
-        };
+        checkpointData.mapCheckpoints = boost::assign::map_list_of
+            ( 0, uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e"));
 
 		checkpointData.nTimeLastCheckpoint = 0;
 		checkpointData.nTransactionsLastCheckpoint = 0;
@@ -621,11 +615,9 @@ public:
         strSporkPubKey = "038617dc28e0fdb59b2d4f2fd8ff10bb06f67a7cc2c5c201cc538261d5279f74d3";
 
 		
-        checkpointData.mapCheckpoints =  {
-            boost::assign::map_list_of
+        checkpointData.mapCheckpoints = boost::assign::map_list_of
             (   0, uint256S("0x000d8b21044326f9b58110404510ce2b4ee30af5d97dd7de30d551c34dfdc9a2"))
-            ( 175, uint256S("0x0d5e5bc5423d162dd4b97c0c90648864802d73ffbfade1c6cc2dd8fedb7cb151"))
-        };
+            ( 175, uint256S("0x0d5e5bc5423d162dd4b97c0c90648864802d73ffbfade1c6cc2dd8fedb7cb151"));
 
 		checkpointData.nTimeLastCheckpoint = 0;
 		checkpointData.nTransactionsLastCheckpoint = 0;
@@ -742,10 +734,8 @@ public:
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
         strSporkPubKey = "03c191713d2962efcfb95f1e0e89cbfd7fed818e279ee942d5a9f131ee1d38cbad";
 
-        checkpointData.mapCheckpoints = {
-            boost::assign::map_list_of
-            ( 0, uint256S("0x0033f6eca2a16b3838f177f6fe158101a9351d52067e9c33e7bfceb131d073b5"))
-        };
+        checkpointData.mapCheckpoints = boost::assign::map_list_of
+            ( 0, uint256S("0x0033f6eca2a16b3838f177f6fe158101a9351d52067e9c33e7bfceb131d073b5"));
 
 		checkpointData.nTimeLastCheckpoint = 0;
 		checkpointData.nTransactionsLastCheckpoint = 0;
@@ -830,10 +820,8 @@ public:
 
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
 
-        checkpointData.mapCheckpoints = {
-            boost::assign::map_list_of
-            ( 0, uint256S("0x0046b8ca77aef6704d0ef452bb14c50b7e8ca772839b5c3a08193d4a951522ae"))
-        };
+        checkpointData.mapCheckpoints = boost::assign::map_list_of
+            ( 0, uint256S("0x0046b8ca77aef6704d0ef452bb14c50b7e8ca772839b5c3a08193d4a951522ae"));
 
 		checkpointData.nTimeLastCheckpoint = 0;
 		checkpointData.nTransactionsLastCheckpoint = 0;
@@ -968,11 +956,9 @@ public:
         nFulfilledRequestExpireTime = 60*60; // fulfilled requests expire in 1 hour
         strSporkPubKey = "038617dc28e0fdb59b2d4f2fd8ff10bb06f67a7cc2c5c201cc538261d5279f74d3";
 
-        checkpointData.mapCheckpoints = {
-            boost::assign::map_list_of
+        checkpointData.mapCheckpoints = boost::assign::map_list_of
             (   0, uint256S("0x000d8b21044326f9b58110404510ce2b4ee30af5d97dd7de30d551c34dfdc9a2"))
-            ( 175, uint256S("0x0d5e5bc5423d162dd4b97c0c90648864802d73ffbfade1c6cc2dd8fedb7cb151"))
-        };
+            ( 175, uint256S("0x0d5e5bc5423d162dd4b97c0c90648864802d73ffbfade1c6cc2dd8fedb7cb151"));
 
 		checkpointData.nTimeLastCheckpoint = 0;
 		checkpointData.nTransactionsLastCheckpoint = 0;
@@ -1086,10 +1072,9 @@ public:
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
         strSporkPubKey = "03c191713d2962efcfb95f1e0e89cbfd7fed818e279ee942d5a9f131ee1d38cbad";
 
-        checkpointData.mapCheckpoints =  {
+        checkpointData.mapCheckpoints =
             boost::assign::map_list_of
-            ( 0, uint256S("0x0033f6eca2a16b3838f177f6fe158101a9351d52067e9c33e7bfceb131d073b5"))
-        };
+            ( 0, uint256S("0x0033f6eca2a16b3838f177f6fe158101a9351d52067e9c33e7bfceb131d073b5"));
 
 		checkpointData.nTimeLastCheckpoint = 0;
 		checkpointData.nTransactionsLastCheckpoint = 0;
@@ -1174,10 +1159,8 @@ public:
 
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
 
-        checkpointData.mapCheckpoints = {
-            boost::assign::map_list_of
-            ( 0, uint256S("0x0046b8ca77aef6704d0ef452bb14c50b7e8ca772839b5c3a08193d4a951522ae"))
-        };
+        checkpointData.mapCheckpoints = boost::assign::map_list_of
+            ( 0, uint256S("0x0046b8ca77aef6704d0ef452bb14c50b7e8ca772839b5c3a08193d4a951522ae"));
 
 		checkpointData.nTimeLastCheckpoint = 0;
 		checkpointData.nTransactionsLastCheckpoint = 0;
