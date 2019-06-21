@@ -8,9 +8,21 @@
  * IPv4 as well as onion addresses are wrapped inside a IPv6 address accordingly.
  */
  // ***TODO*** fix generate-seeds.py and REGENERATE
+
+#if defined(HAVE_CONFIG_H)
+
+static SeedSpec6 pnSeed6_main[1];
+
+static SeedSpec6 pnSeed6_test[1];
+
+#else
+
 static SeedSpec6 pnSeed6_main[] = {
 };
 
 static SeedSpec6 pnSeed6_test[] = {
 };
+
+#endif  // HAVE_CONFIG_H
+
 #endif // BITCOIN_CHAINPARAMSSEEDS_H

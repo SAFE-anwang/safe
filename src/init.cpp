@@ -2054,15 +2054,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 
     RandAddSeedPerfmon();
 
-    if(IsCriticalHeight(g_nChainHeight + 1)) // create critical block
-    {
-        CBlock block = CreateCriticalBlock(chainActive.Tip());
-        LogPrintf("%s\n", block.ToString());
-        LogPrintf("generated %s\n", FormatMoney(block.vtx[0].vout[0].nValue));
-        if(!ProcessNewBlock(chainparams, &block, true, NULL, NULL))
-            return error("ProcessBlockFound -- ProcessNewBlock() failed, block not accepted");
-    }
-
     //// debug print
     LogPrintf("mapBlockIndex.size() = %u\n",   mapBlockIndex.size());
     LogPrintf("chainActive.Height() = %d\n",   chainActive.Height());

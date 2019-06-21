@@ -138,3 +138,4 @@ safed
 safe-qt
 make
 depends_bin
+/build_msvc

@@ -95,7 +95,7 @@ AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
     {
         ui->assetsNameEdit->setText("铂金");
         ui->assetsShortNameEdit->setText("bojin");
- //       ui->assetsUnitEdit->setText("克");
+        ui->assetsUnitEdit->setText("克");
         ui->totalAssetsEdit->setText("9999999.9999999999");
         ui->firstAssetsEdit->setText("999999");
         ui->decimalEdit->setText("10");
