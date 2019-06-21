@@ -594,14 +594,14 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
                 if (ExtractDestination(txout.scriptPubKey, address))
                 {
                     // Sent to Safe Address
-                    sub.type = TransactionRecord::SendToAddress;
+                    sub.type = TransactionRecord::RecvWithAddress;
                     sub.address = CBitcoinAddress(address).ToString();
                 }
                 else
                 {
                     // Sent to IP, or other non-address transaction like OP_EVAL
-                    sub.type = TransactionRecord::SendToOther;
-                    sub.address = mapValue["to"];
+                    sub.type = TransactionRecord::RecvFromOther;
+                    sub.address = mapValue["from"];
                 }
 
                 if (!decomposeAppAsset(wallet, wtx, sub, txout,mapAssetInfo))

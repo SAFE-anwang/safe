@@ -66,31 +66,9 @@ void RefreshSendCoinsData(SendCoinsDialog* sendCoinsDialog)
 			boost::this_thread::interruption_point();
 			mapNewAssetDisplay.insert(itTemp.key(), itTemp.value());
 			itTemp++;
-		}
-		
+        }
 
-		QMap<QString, AssetsDisplayInfo>::iterator itAssetDiaply = mapNewAssetDisplay.begin();
-		while (itAssetDiaply != mapNewAssetDisplay.end())
-		{
-			boost::this_thread::interruption_point();
-			if (itAssetDiaply.value().bInMainChain)
-			{
-				mapConfirmedAssetDisplay.insert(itAssetDiaply.key(), itAssetDiaply.value());
-				itAssetDiaply = mapNewAssetDisplay.erase(itAssetDiaply);
-				continue;
-			}
-
-			itAssetDiaply++;
-		}
-
-		if (mapConfirmedAssetDisplay.size() > 0)
-		{
-			sendCoinsDialog->delAssetDisplay(mapConfirmedAssetDisplay.keys());
-			sendCoinsDialog->addConfirmedAssetDisplay(mapConfirmedAssetDisplay);
-			Q_EMIT sendCoinsDialog->updateAssetInfo(mapConfirmedAssetDisplay.keys());
-		}
-
-		itAssetDiaply = mapNewAssetDisplay.begin();
+        QMap<QString, AssetsDisplayInfo>::iterator itAssetDiaply = mapNewAssetDisplay.begin();
 		while (itAssetDiaply != mapNewAssetDisplay.end())
 		{
 			boost::this_thread::interruption_point();
@@ -109,6 +87,27 @@ void RefreshSendCoinsData(SendCoinsDialog* sendCoinsDialog)
 			itAssetDiaply++;
 			MilliSleep(100);
 		}
+
+        itAssetDiaply = mapNewAssetDisplay.begin();
+        while (itAssetDiaply != mapNewAssetDisplay.end())
+        {
+            boost::this_thread::interruption_point();
+            if (itAssetDiaply.value().bInMainChain)
+            {
+                mapConfirmedAssetDisplay.insert(itAssetDiaply.key(), itAssetDiaply.value());
+                itAssetDiaply = mapNewAssetDisplay.erase(itAssetDiaply);
+                continue;
+            }
+
+            itAssetDiaply++;
+        }
+
+        if (mapConfirmedAssetDisplay.size() > 0)
+        {
+            sendCoinsDialog->delAssetDisplay(mapConfirmedAssetDisplay.keys());
+            sendCoinsDialog->addConfirmedAssetDisplay(mapConfirmedAssetDisplay);
+            Q_EMIT sendCoinsDialog->updateAssetInfo(mapConfirmedAssetDisplay.keys());
+        }
 
 		MilliSleep(1000);
 	}
@@ -1343,15 +1342,15 @@ bool SendCoinsDialog::addAssetDisplay(const QMap<QString, AssetsDisplayInfo> &ma
 {
 	LOCK(cs_sendcoins);
 	QMap<QString, AssetsDisplayInfo>::const_iterator itAsset = mapAssetDisplay.begin();
-	while (itAsset != mapAssetDisplay.end())
-	{
+    while (itAsset != mapAssetDisplay.end())
+    {
         if (mapNewAssetDisplay.find(itAsset.key()) == mapNewAssetDisplay.end())
-		{
-			mapNewAssetDisplay.insert(itAsset.key(), itAsset.value());
-		}
+        {
+            mapNewAssetDisplay.insert(itAsset.key(), itAsset.value());
+        }
 
-		itAsset++;
-	}
+        itAsset++;
+    }
 
 	return true;
 }

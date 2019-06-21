@@ -379,7 +379,7 @@ void WalletView::setWalletModel(WalletModel* walletModel)
 			candyPage, SLOT(updateAssetsInfo(QStringList)));
 
 		connect(walletModel->getUpdateTransaction(), SIGNAL(updateAssetDisplayInfo(QMap<QString, AssetsDisplayInfo>)),
-			this, SLOT(updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo>)));
+            sendCoinsPage, SLOT(updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo>)));
 
 
 		connect(walletModel, SIGNAL(refreshFinish(QMap<QString, AssetsDisplayInfo>, QMap<QString, AssetBalance>)),
