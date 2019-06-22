@@ -93,9 +93,9 @@ AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
 
     if(gInitByDefault)
     {
-        ui->assetsNameEdit->setText("é“‚é‡‘");
+        ui->assetsNameEdit->setText("²¬½ð");
         ui->assetsShortNameEdit->setText("bojin");
-        ui->assetsUnitEdit->setText("å…‹");
+        ui->assetsUnitEdit->setText("¿Ë");
         ui->totalAssetsEdit->setText("9999999.9999999999");
         ui->firstAssetsEdit->setText("999999");
         ui->decimalEdit->setText("10");
