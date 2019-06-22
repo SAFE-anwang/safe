@@ -1,4 +1,4 @@
-#include "customslider.h"
+ï»¿#include "customslider.h"
 #include "customlineedit.h"
 #include "assetsdistribute.h"
 #include "ui_assetsdistribute.h"
@@ -93,9 +93,9 @@ AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
 
     if(gInitByDefault)
     {
-        ui->assetsNameEdit->setText("²¬½ð");
+        ui->assetsNameEdit->setText("é“‚é‡‘");
         ui->assetsShortNameEdit->setText("bojin");
-        ui->assetsUnitEdit->setText("¿Ë");
+        ui->assetsUnitEdit->setText("å…‹");
         ui->totalAssetsEdit->setText("9999999.9999999999");
         ui->firstAssetsEdit->setText("999999");
         ui->decimalEdit->setText("10");
