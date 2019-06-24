@@ -147,7 +147,6 @@ public:
     virtual QVariant data(const QModelIndex &index, int role) const;
     virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const;
     QModelIndex index(int row, int column, const QModelIndex & parent = QModelIndex()) const;
-	void refreshPage();
     int getShowType(){return showType;}
 
 	void insertTransaction(const TransactionRecord &tr);
@@ -155,6 +154,10 @@ public:
 	void clearData();
 
 	void updateConfirmations();
+
+	void beginRefresh();
+
+	void endRefresh();
 
 private:
     CWallet* wallet;

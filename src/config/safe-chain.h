@@ -14,7 +14,6 @@
 #define SCN__test       20
 
 ////////////////////////////////////////////////////////////
-#define SAFE_CHAIN_NAME dev
 
 #if !defined(SAFE_CHAIN_NAME)
 #pragma message("use default safe-chain-name: main")

@@ -1231,6 +1231,13 @@ void ThreadUpdateBalanceChanged(WalletModel* walletModel)
 void WalletModel::ShowHistoryPage()
 {
 	if (g_threadGroup != NULL) {
+
+		assetsDistributeTableModel->beginRefresh();
+		transactionTableModel->beginRefresh();
+		lockedTransactionTableModel->beginRefresh();
+		applicationsRegistTableModel->beginRefresh();
+		candyTableModel->beginRefresh();
+
 		g_threadGroup->create_thread(boost::bind(&RefreshDataStartUp, this));
 	}
 }
@@ -1239,11 +1246,11 @@ void WalletModel::refreshFinish_slot(QMap<QString, AssetsDisplayInfo> mapAssetDi
 {
 	LogPrintf("guidebug_message:start refreshFinished_slot\n");
 
-	assetsDistributeTableModel->refreshPage();
-	transactionTableModel->refreshPage();
-	lockedTransactionTableModel->refreshPage();
-	applicationsRegistTableModel->refreshPage();
-	candyTableModel->refreshPage();
+	assetsDistributeTableModel->endRefresh();
+	transactionTableModel->endRefresh();
+	lockedTransactionTableModel->endRefresh();
+	applicationsRegistTableModel->endRefresh();
+	candyTableModel->endRefresh();
 
 	if (g_threadGroup)
 		g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, this));

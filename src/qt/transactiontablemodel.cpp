@@ -897,10 +897,14 @@ void TransactionTableModel::updateDisplayUnit()
     Q_EMIT dataChanged(index(0, columnAmount), index(priv->size() - 1, columnAmount));
 }
 
-void TransactionTableModel::refreshPage()
+void TransactionTableModel::beginRefresh()
 {
-    beginResetModel();
-    endResetModel();
+	beginResetModel();
+}
+
+void TransactionTableModel::endRefresh()
+{
+	endResetModel();
 }
 
 void TransactionTableModel::insertTransaction(const TransactionRecord &tr)
