@@ -114,6 +114,7 @@ extern int g_nLogMaxCnt;
 extern int g_nLocalStartSavePayeeHeight;
 extern int g_nCanSelectMasternodeHeight;
 extern int g_nMinerBlockTimeout;
+extern int g_nAdjustMiningRewardHeight;
 
 
 std::unique_ptr<CConnman> g_connman;
@@ -1555,6 +1556,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nLogMaxCnt = GetArg("-spos_log_max_cnt", g_nLogMaxCnt);
     g_nCanSelectMasternodeHeight = GetArg("-spos_can_select_masternode_height", g_nCanSelectMasternodeHeight);
     g_nMinerBlockTimeout = GetArg("-spos_miner_block_timeout",g_nMinerBlockTimeout);
+    g_nAdjustMiningRewardHeight = GetArg("-spos_adjust_mining_reward_height", g_nAdjustMiningRewardHeight);
 #else
 #error unsupported <safe chain name>
 #endif
