@@ -2996,7 +2996,7 @@ CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusP
     CAmount nSuperblockPart = (nPrevHeight > consensusParams.nBudgetPaymentsStartBlock) ? nSubsidy/10 : 0;
 
     //SQTODO
-    LogPrintf("SPOS_INFO:nSuperblockPart:%d----nSubsidy:%d\n", nSuperblockPart, nSubsidy);
+    LogPrintf("SPOS_INFO:nSuperblockPart:%d----nSubsidy:%d----nPrevHeight:%d\n", nSuperblockPart, nSubsidy, nPrevHeight);
 
     return fSuperblockPartOnly ? nSuperblockPart : nSubsidy - nSuperblockPart;
 }
