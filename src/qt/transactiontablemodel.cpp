@@ -1173,6 +1173,9 @@ bool TransactionTableModel::getUpdatingWallet()
 
 void TransactionTableModel::refreshPage()
 {
-	beginResetModel();
-	endResetModel();
+    if(priv!=NULL&&priv->size()>0)
+    {
+        beginResetModel();
+        endResetModel();
+    }
 }
