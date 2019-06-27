@@ -1570,7 +1570,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nCanSelectMasternodeHeight = GetArg("-spos_can_select_masternode_height", g_nCanSelectMasternodeHeight);
     g_nMinerBlockTimeout = GetArg("-spos_miner_block_timeout",g_nMinerBlockTimeout);
     g_nAdjustMiningRewardHeight = GetArg("-spos_adjust_mining_reward_height", g_nAdjustMiningRewardHeight);
-    g_nForbidOldVersionHeight = GetArg("-spos_forbid_old_version_height", g_nAdjustMiningRewardHeight);
+    g_nForbidOldVersionHeight = GetArg("-spos_forbid_old_version_height", g_nForbidOldVersionHeight);
 #else
 #error unsupported <safe chain name>
 #endif
