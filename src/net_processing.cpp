@@ -1229,7 +1229,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
                     // disconnect from peers older
                     LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
                     connman.PushMessageWithVersion(pfrom, INIT_PROTO_VERSION, NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
-                                       strprintf("Sub version(%s) must be 2.5.2 or greater",strSubVer));
+                                       strprintf("Sub version(%s) must be %s or greater",strSubVer, FormatFullVersion()));
                     pfrom->fDisconnect = true;
                     return false;
                 }

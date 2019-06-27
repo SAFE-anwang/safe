@@ -140,8 +140,8 @@ int nPOWAfterSPOSfirstSuperblock = 556;
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
 
-int g_nAdjustMiningRewardHeight = 183281; //SQTODO
-int g_nForbidOldVersionHeight = 183271;
+int g_nAdjustMiningRewardHeight = 1109103;
+int g_nForbidOldVersionHeight =  1101183;
 vector<string> g_versionVec;
 
 
