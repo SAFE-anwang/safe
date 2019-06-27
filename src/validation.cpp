@@ -141,6 +141,8 @@ int nPOWAfterSPOSfirstSuperblock = 556;
 #endif//#if SCN_CURRENT == SCN__main
 
 int g_nAdjustMiningRewardHeight = 1093248; //SQTODO
+int g_nForbidOldVersionHeight = 1093248;
+vector<string> g_versionVec;
 
 
 
