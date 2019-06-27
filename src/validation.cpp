@@ -2976,6 +2976,7 @@ double ConvertBitsToDouble(unsigned int nBits)
 CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
 {
     CAmount nSubsidy = nMiningIncentives;
+
     if (nPrevHeight >= g_nAdjustMiningRewardHeight)
         nSubsidy = nSPOSAdjustMiningIncentives;
 
@@ -2994,9 +2995,6 @@ CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusP
     nSubsidy = nSubsidy / ConvertBlockHeight(consensusParams);
     // Hard fork to reduce the block reward by 10 extra percent (allowing budget/superblocks)
     CAmount nSuperblockPart = (nPrevHeight > consensusParams.nBudgetPaymentsStartBlock) ? nSubsidy/10 : 0;
-
-    //SQTODO
-    LogPrintf("SPOS_INFO:nSuperblockPart:%d----nSubsidy:%d----nPrevHeight:%d\n", nSuperblockPart, nSubsidy, nPrevHeight);
 
     return fSuperblockPartOnly ? nSuperblockPart : nSubsidy - nSuperblockPart;
 }
