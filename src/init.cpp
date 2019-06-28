@@ -113,6 +113,9 @@ extern int g_nLogMaxCnt;
 extern int g_nLocalStartSavePayeeHeight;
 extern int g_nCanSelectMasternodeHeight;
 extern int g_nMinerBlockTimeout;
+extern int g_nAdjustMiningRewardHeight;
+extern int g_nForbidOldVersionHeight;
+extern vector<string> g_versionVec;
 
 
 std::unique_ptr<CConnman> g_connman;
@@ -954,6 +957,15 @@ void InitLogging()
     LogPrintf("Safe Core version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
 }
 
+void initVersionVec()
+{
+    if(g_versionVec.empty())
+    {
+        g_versionVec.push_back("Safe Core:2.5.0");
+        g_versionVec.push_back("Safe Core:2.5.1");
+    }
+}
+
 /** Initialize Safe Core.
  *  @pre Parameters should be parsed and config file should be read.
  */
@@ -983,6 +995,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     PSETPROCDEPPOL setProcDEPPol = (PSETPROCDEPPOL)GetProcAddress(GetModuleHandleA("Kernel32.dll"), "SetProcessDEPPolicy");
     if (setProcDEPPol != NULL) setProcDEPPol(PROCESS_DEP_ENABLE);
 #endif
+
+    initVersionVec();
 
     if (!SetupNetworking())
         return InitError("Initializing networking failed");
@@ -1554,6 +1568,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nLogMaxCnt = GetArg("-spos_log_max_cnt", g_nLogMaxCnt);
     g_nCanSelectMasternodeHeight = GetArg("-spos_can_select_masternode_height", g_nCanSelectMasternodeHeight);
     g_nMinerBlockTimeout = GetArg("-spos_miner_block_timeout",g_nMinerBlockTimeout);
+    g_nAdjustMiningRewardHeight = GetArg("-spos_adjust_mining_reward_height", g_nAdjustMiningRewardHeight);
+    g_nForbidOldVersionHeight = GetArg("-spos_forbid_old_version_height", g_nForbidOldVersionHeight);
 #else
 #error unsupported <safe chain name>
 #endif

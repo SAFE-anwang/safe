@@ -114,11 +114,14 @@ bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
 int64_t g_nAllowableErrorTime = 60;
 #if SCN_CURRENT == SCN__main
-CAmount nMiningIncentives = 310662692;//SQTODO
+CAmount nMiningIncentives = 310662692;
+CAmount nSPOSAdjustMiningIncentives = 345180768;
 #elif SCN_CURRENT == SCN__dev
-CAmount nMiningIncentives = 450000000;//SQTODO
+CAmount nMiningIncentives = 450000000;
+CAmount nSPOSAdjustMiningIncentives = 500000000;
 #elif SCN_CURRENT == SCN__test
-CAmount nMiningIncentives = 45000000000;//SQTODO
+CAmount nMiningIncentives = 45000000000;
+CAmount nSPOSAdjustMiningIncentives = 50000000000;
 #else
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
@@ -138,6 +141,9 @@ int nPOWAfterSPOSfirstSuperblock = 556;
 #error unsupported <safe chain name>
 #endif//#if SCN_CURRENT == SCN__main
 
+int g_nAdjustMiningRewardHeight = 1109103;
+int g_nForbidOldVersionHeight =  1101183;
+vector<string> g_versionVec;
 
 
 
@@ -2973,6 +2979,10 @@ double ConvertBitsToDouble(unsigned int nBits)
 CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
 {
     CAmount nSubsidy = nMiningIncentives;
+
+    if (nPrevHeight >= g_nAdjustMiningRewardHeight)
+        nSubsidy = nSPOSAdjustMiningIncentives;
+
     int nNextDecrementHeight = 1261441;
 
     int nOffset = nNextDecrementHeight - g_nStartSPOSHeight;

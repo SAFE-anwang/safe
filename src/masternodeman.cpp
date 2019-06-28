@@ -1720,8 +1720,7 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
             mnpair.second.nTxHeight = -1;
             CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,mnpair.second.nTxHeight);
             unsigned int canBeSelectTime = mnpair.second.getCanbeSelectTime(nHeight);
-            if (err == CMasternode::COLLATERAL_OK && (fOfficialMasterNode || canBeSelectTime > g_nMasternodeCanBeSelectedTime) &&
-                    mnpair.second.nProtocolVersion >= PROTOCOL_VERSION)
+            if (err == CMasternode::COLLATERAL_OK && (fOfficialMasterNode || canBeSelectTime > g_nMasternodeCanBeSelectedTime))
             {
                 mapOutMasternodes[mnpair.first] = mnpair.second;
                 if(fSelfMasternode)

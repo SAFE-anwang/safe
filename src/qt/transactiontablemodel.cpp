@@ -917,8 +917,9 @@ void TransactionTableModel::insertTransaction(const TransactionRecord &tr)
 
 void TransactionTableModel::clearData()
 {
-	if (priv != NULL)
-	{
-		priv->clearData();
-	}
+    if(priv!=NULL&&priv->size()>0)
+    {
+        beginResetModel();
+        endResetModel();
+    }
 }

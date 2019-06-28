@@ -48,6 +48,8 @@ using namespace std;
 #endif
 
 extern int g_nStartSPOSHeight;
+extern int g_nForbidOldVersionHeight;
+extern vector<string> g_versionVec;
 
 int64_t nTimeBestReceived = 0; // Used only to inform the wallet of when we last received a block
 
@@ -1218,15 +1220,22 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             vRecv >> LIMITED_STRING(strSubVer, MAX_SUBVERSION_LENGTH);
         }
 
-        if(strSubVer.find("Safe Core:1.0.0")!=string::npos||strSubVer.find("Safe Core:1.0.1")!=string::npos)
+        if(chainActive.Height()>=g_nForbidOldVersionHeight)
         {
-            // disconnect from peers older
-            LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
-            connman.PushMessageWithVersion(pfrom, INIT_PROTO_VERSION, NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
-                               strprintf("Sub version(%s) must be 2.0.0 or greater",strSubVer));
-            pfrom->fDisconnect = true;
-            return false;
+            for(unsigned int i=0;i<g_versionVec.size();i++)
+            {
+                if(strSubVer.find(g_versionVec[i])!=string::npos)
+                {
+                    // disconnect from peers older
+                    LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
+                    connman.PushMessageWithVersion(pfrom, INIT_PROTO_VERSION, NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
+                                       strprintf("Sub version(%s) must be %s or greater",strSubVer, FormatFullVersion()));
+                    pfrom->fDisconnect = true;
+                    return false;
+                }
+            }
         }
+
         if (!vRecv.empty()) {
             vRecv >> nStartingHeight;
         }
