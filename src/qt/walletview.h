@@ -173,7 +173,9 @@ public Q_SLOTS:
 
     void updateAssetsDisplay(bool updateAsset=true);
 
-	void refreshFinish_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay, QMap<QString, AssetBalance> mapAssetBalance);
+	void loadWalletFinish_slot();
+
+	void loadWalletProcess_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay);
 
 Q_SIGNALS:
     /** Signal that we want to show the main window */

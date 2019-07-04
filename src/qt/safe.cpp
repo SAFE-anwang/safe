@@ -473,9 +473,9 @@ void BitcoinApplication::requestShutdown()
     // Request shutdown from core thread
     // ui also has some thread to shutdown
 #ifdef ENABLE_WALLET
-    window->removeAllWallets();
     delete walletModel;
     walletModel = 0;
+	window->removeAllWallets();
 #endif
 
     Q_EMIT requestedShutdown();

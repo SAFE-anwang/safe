@@ -381,9 +381,10 @@ void WalletView::setWalletModel(WalletModel* walletModel)
 		connect(walletModel->getUpdateTransaction(), SIGNAL(updateAssetDisplayInfo(QMap<QString, AssetsDisplayInfo>)),
             sendCoinsPage, SLOT(updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo>)));
 
+		connect(walletModel, SIGNAL(loadWalletFinish()), this, SLOT(loadWalletFinish_slot()));
 
-		connect(walletModel, SIGNAL(refreshFinish(QMap<QString, AssetsDisplayInfo>, QMap<QString, AssetBalance>)),
-			this, SLOT(refreshFinish_slot(QMap<QString, AssetsDisplayInfo>, QMap<QString, AssetBalance>)));
+		connect(walletModel, SIGNAL(loadWalletProcess(QMap<QString, AssetsDisplayInfo>)),
+			this, SLOT(loadWalletProcess_slot(QMap<QString, AssetsDisplayInfo>)));
     }
 }
 
@@ -672,9 +673,20 @@ void WalletView::ShowHistoryPage()
 	walletModel->ShowHistoryPage();
 }
 
-void WalletView::refreshFinish_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay, QMap<QString, AssetBalance> mapAssetBalance)
+void WalletView::loadWalletFinish_slot()
 {
-	overviewPage->updateAssetsInfo(mapAssetBalance);
+	LogPrintf("WalletView: loadWalletFinish_slot start refresh page\n");
+	transactionView->refreshPage();
+	lockedTransactionView->refreshPage();
+	candyView->refreshPage();
+	assetsDistributeRecordView->refreshPage();
+	applicationsView->refreshPage();
+	LogPrintf("WalletView: loadWalletFinish_slot end refresh page\n");
 
+	walletModel->startUpdate();
+}
+
+void WalletView::loadWalletProcess_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay)
+{
 	sendCoinsPage->addAssetDisplay(mapAssetDisplay);
 }

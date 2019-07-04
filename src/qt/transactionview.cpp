@@ -785,3 +785,11 @@ void TransactionView::updateWatchOnlyColumn(bool fHaveWatchOnly)
     watchOnlyWidget->setVisible(true);
     transactionView->setColumnHidden(TransactionTableModel::TransactionColumnWatchonly, !fHaveWatchOnly);
 }
+
+void TransactionView::refreshPage()
+{
+	if (model->getTransactionTableModel()->size() > 0)
+	{
+		transactionProxyModel->invalidate();
+	}
+}

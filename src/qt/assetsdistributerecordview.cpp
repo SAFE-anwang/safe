@@ -747,3 +747,10 @@ void AssetsDistributeRecordView::updateWatchOnlyColumn(bool fHaveWatchOnly)
     distributeView->setColumnHidden(AssetsDistributeRecordModel::AssetsDistributeColumnWatchonly, !fHaveWatchOnly);
 }
 
+void AssetsDistributeRecordView::refreshPage()
+{
+	if (model->getAssetsDistributeTableModel()->size() > 0)
+	{
+		transactionProxyModel->invalidate();
+	}
+}

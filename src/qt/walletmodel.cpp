@@ -90,8 +90,6 @@ WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, Op
 	qRegisterMetaType<QList<TransactionRecord> >("QList<TransactionRecord>");
 	qRegisterMetaType<uint256>("uint256");
 
-    connect(this, SIGNAL(refreshFinish(QMap<QString, AssetsDisplayInfo>, QMap<QString, AssetBalance>)), this, SLOT(refreshFinish_slot(QMap<QString, AssetsDisplayInfo>, QMap<QString, AssetBalance>)));
-
 	pUpdateTransaction = new CUpdateTransaction();
 	pUpdateTransaction->setWallet(wallet);
 	connect(pUpdateTransaction, SIGNAL(updateTransactionModel(uint256, QList<TransactionRecord>, int, bool)), transactionTableModel, SLOT(updateTransaction(uint256, QList<TransactionRecord>, int, bool)));
@@ -100,7 +98,7 @@ WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, Op
 	connect(pUpdateTransaction, SIGNAL(updateCandyTransactionModel(uint256, QList<TransactionRecord>, int, bool)), candyTableModel, SLOT(updateTransaction(uint256, QList<TransactionRecord>, int, bool)));
 	connect(pUpdateTransaction, SIGNAL(updateLockTransactionModel(uint256, QList<TransactionRecord>, int, bool)), lockedTransactionTableModel, SLOT(updateTransaction(uint256, QList<TransactionRecord>, int, bool)));
 
-	pUpdateTransaction->startMonitor();
+	pUpdateTransaction->init();
 }
 
 WalletModel::~WalletModel()
@@ -1124,13 +1122,100 @@ void EncryptWorker::doEncrypt()
 //    QApplication::restoreOverrideCursor();
     Q_EMIT resultReady(ret);
 }
+//
+//void RefreshDataStartUp(WalletModel* walletModel)
+//{
+//	QMap<QString, AssetsDisplayInfo> mapTempAssetList;
+//	CWallet *wallet = walletModel->getWallet();
+//	QList<TransactionRecord> listTransaction;
+//
+//	{
+//		LOCK2(cs_main, wallet->cs_wallet);
+//
+//		for (std::map<uint256, CWalletTx>::iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
+//		{
+//			boost::this_thread::interruption_point();
+//			if (TransactionRecord::showTransaction(it->second))
+//			{
+//				TransactionRecord::decomposeTransaction(wallet, it->second, listTransaction, mapTempAssetList);
+//			}	
+//		}
+//	}
+//
+//
+//	for (int i = 0; i < listTransaction.size(); i++)
+//	{
+//		boost::this_thread::interruption_point();
+//		for (int j = 0; j < listTransaction[i].vtShowType.size(); j++)
+//		{
+//			if (listTransaction[i].vtShowType[j] == SHOW_TX)
+//			{
+//				walletModel->getTransactionTableModel()->insertTransaction(listTransaction[i]);
+//			}
+//			else if (listTransaction[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
+//			{
+//				walletModel->getAssetsDistributeTableModel()->insertTransaction(listTransaction[i]);
+//			}
+//			else if (listTransaction[i].vtShowType[j] == SHOW_APPLICATION_REGIST)
+//			{
+//				walletModel->getApplicationRegistTableModel()->insertTransaction(listTransaction[i]);
+//			}
+//			else if (listTransaction[i].vtShowType[j] == SHOW_CANDY_TX)
+//			{
+//				walletModel->getCandyTableModel()->insertTransaction(listTransaction[i]);
+//			}
+//			else if (listTransaction[i].vtShowType[j] == SHOW_LOCKED_TX)
+//			{
+//				walletModel->getLockedTransactionTableModel()->insertTransaction(listTransaction[i]);
+//			}
+//		}
+//	}
+//
+//	
+//	// get alance for all asset
+//	QMap<QString, AssetBalance> mapAssetBalance;
+//	for (QMap<QString, AssetsDisplayInfo>::iterator it = mapTempAssetList.begin(); it != mapTempAssetList.end(); it++)
+//	{		
+//		boost::this_thread::interruption_point();
+//
+//		uint256 assetId;
+//		if (GetAssetIdByAssetName(it.key().toStdString(), assetId, false))
+//		{
+//			CAssetId_AssetInfo_IndexValue assetsInfo;
+//			AssetBalance assetBalance;
+//			if (GetAssetInfoByAssetId(assetId, assetsInfo, false))
+//			{
+//				assetBalance.amount = wallet->GetBalance(true, &assetId, NULL, true);
+//				assetBalance.unconfirmAmount = wallet->GetUnconfirmedBalance(true, &assetId, NULL, true);
+//				assetBalance.lockedAmount = wallet->GetLockedBalance(true, &assetId, NULL, true);
+//				assetBalance.strUnit = QString::fromStdString(assetsInfo.assetData.strAssetUnit);
+//				assetBalance.nDecimals = assetsInfo.assetData.nDecimals;
+//				mapAssetBalance.insert(it.key(), assetBalance);
+//			}
+//		}
+//	}
+//
+//
+//    std::map<uint256, CAssetData> mapIssueAsset;
+//    if (GetIssueAssetInfo(mapIssueAsset))
+//    {
+//        walletModel->getUpdateTransaction()->RefreshAssetData(mapIssueAsset);
+//        walletModel->getUpdateTransaction()->RefreshCandyPageData(mapIssueAsset);
+//    }
+//	
+//	Q_EMIT walletModel->refreshFinish(mapTempAssetList, mapAssetBalance);
+//}
+
+
 
 
 void RefreshDataStartUp(WalletModel* walletModel)
 {
 	QMap<QString, AssetsDisplayInfo> mapTempAssetList;
-	QList<TransactionRecord> listTransaction;
 	CWallet *wallet = walletModel->getWallet();
+	QList<TransactionRecord> listTransaction;
+	QMap<QString, AssetBalance> mapAssetBalance;
+	int nAssetCount = 0;
 
 	{
 		LOCK2(cs_main, wallet->cs_wallet);
@@ -1141,71 +1226,84 @@ void RefreshDataStartUp(WalletModel* walletModel)
 			if (TransactionRecord::showTransaction(it->second))
 			{
 				TransactionRecord::decomposeTransaction(wallet, it->second, listTransaction, mapTempAssetList);
-			}	
+			}
+
+			// get alance for all asset
+			for (QMap<QString, AssetsDisplayInfo>::iterator it = mapTempAssetList.begin(); it != mapTempAssetList.end(); it++)
+			{
+				if (mapAssetBalance.find(it.key()) != mapAssetBalance.end())
+				{
+					continue;
+				}
+
+				boost::this_thread::interruption_point();
+
+				uint256 assetId;
+				if (GetAssetIdByAssetName(it.key().toStdString(), assetId, false))
+				{
+					CAssetId_AssetInfo_IndexValue assetsInfo;
+					AssetBalance assetBalance;
+					if (GetAssetInfoByAssetId(assetId, assetsInfo, false))
+					{
+						assetBalance.amount = wallet->GetBalance(true, &assetId, NULL, true);
+						assetBalance.unconfirmAmount = wallet->GetUnconfirmedBalance(true, &assetId, NULL, true);
+						assetBalance.lockedAmount = wallet->GetLockedBalance(true, &assetId, NULL, true);
+						assetBalance.strUnit = QString::fromStdString(assetsInfo.assetData.strAssetUnit);
+						assetBalance.nDecimals = assetsInfo.assetData.nDecimals;
+						mapAssetBalance.insert(it.key(), assetBalance);
+
+						Q_EMIT walletModel->getUpdateTransaction()->updateOverviePage(mapAssetBalance);
+					}
+				}
+			}
+			
+			if (mapTempAssetList.size() > nAssetCount)
+			{
+				nAssetCount = mapTempAssetList.size();
+				Q_EMIT walletModel->loadWalletProcess(mapTempAssetList);
+			}
 		}
 	}
+
 
 	for (int i = 0; i < listTransaction.size(); i++)
 	{
 		boost::this_thread::interruption_point();
 		for (int j = 0; j < listTransaction[i].vtShowType.size(); j++)
 		{
-            if (listTransaction[i].vtShowType[j] == SHOW_TX)
-            {
-                walletModel->getTransactionTableModel()->insertTransaction(listTransaction[i]);
-            }
-            else if (listTransaction[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
+			if (listTransaction[i].vtShowType[j] == SHOW_TX)
 			{
-                walletModel->getAssetsDistributeTableModel()->insertTransaction(listTransaction[i]);
+				walletModel->getTransactionTableModel()->insertTransaction(listTransaction[i]);
+			}
+			else if (listTransaction[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
+			{
+				walletModel->getAssetsDistributeTableModel()->insertTransaction(listTransaction[i]);
 			}
 			else if (listTransaction[i].vtShowType[j] == SHOW_APPLICATION_REGIST)
 			{
-                walletModel->getApplicationRegistTableModel()->insertTransaction(listTransaction[i]);
+				walletModel->getApplicationRegistTableModel()->insertTransaction(listTransaction[i]);
 			}
 			else if (listTransaction[i].vtShowType[j] == SHOW_CANDY_TX)
 			{
-                walletModel->getCandyTableModel()->insertTransaction(listTransaction[i]);
+				walletModel->getCandyTableModel()->insertTransaction(listTransaction[i]);
 			}
 			else if (listTransaction[i].vtShowType[j] == SHOW_LOCKED_TX)
 			{
-                walletModel->getLockedTransactionTableModel()->insertTransaction(listTransaction[i]);
-			}
-		}
-	}
-	
-	// get all alance for asset
-	QMap<QString, AssetBalance> mapAssetBalance;
-	for (QMap<QString, AssetsDisplayInfo>::iterator it = mapTempAssetList.begin(); it != mapTempAssetList.end(); it++)
-	{		
-		boost::this_thread::interruption_point();
-
-		uint256 assetId;
-		if (GetAssetIdByAssetName(it.key().toStdString(), assetId, false))
-		{
-			CAssetId_AssetInfo_IndexValue assetsInfo;
-			AssetBalance assetBalance;
-			if (GetAssetInfoByAssetId(assetId, assetsInfo, false))
-			{
-				assetBalance.amount = wallet->GetBalance(true, &assetId, NULL, true);
-				assetBalance.unconfirmAmount = wallet->GetUnconfirmedBalance(true, &assetId, NULL, true);
-				assetBalance.lockedAmount = wallet->GetLockedBalance(true, &assetId, NULL, true);
-				assetBalance.strUnit = QString::fromStdString(assetsInfo.assetData.strAssetUnit);
-				assetBalance.nDecimals = assetsInfo.assetData.nDecimals;
-				mapAssetBalance.insert(it.key(), assetBalance);
+				walletModel->getLockedTransactionTableModel()->insertTransaction(listTransaction[i]);
 			}
 		}
 	}
 
+	std::map<uint256, CAssetData> mapIssueAsset;
+	if (GetIssueAssetInfo(mapIssueAsset))
+	{
+		walletModel->getUpdateTransaction()->RefreshAssetData(mapIssueAsset);
+		walletModel->getUpdateTransaction()->RefreshCandyPageData(mapIssueAsset);
+	}
 
-    std::map<uint256, CAssetData> mapIssueAsset;
-    if (GetIssueAssetInfo(mapIssueAsset))
-    {
-        walletModel->getUpdateTransaction()->RefreshAssetData(mapIssueAsset);
-        walletModel->getUpdateTransaction()->RefreshCandyPageData(mapIssueAsset);
-    }
-	
-	Q_EMIT walletModel->refreshFinish(mapTempAssetList, mapAssetBalance);
+	Q_EMIT walletModel->loadWalletFinish();
 }
+
 
 void ThreadUpdateBalanceChanged(WalletModel* walletModel)
 {
@@ -1231,34 +1329,19 @@ void ThreadUpdateBalanceChanged(WalletModel* walletModel)
 void WalletModel::ShowHistoryPage()
 {
 	if (g_threadGroup != NULL) {
-
-		assetsDistributeTableModel->beginRefresh();
-		transactionTableModel->beginRefresh();
-		lockedTransactionTableModel->beginRefresh();
-		applicationsRegistTableModel->beginRefresh();
-		candyTableModel->beginRefresh();
-
 		g_threadGroup->create_thread(boost::bind(&RefreshDataStartUp, this));
 	}
-}
-
-void WalletModel::refreshFinish_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay, QMap<QString, AssetBalance> mapAssetBalance)
-{
-	LogPrintf("guidebug_message:start refreshFinished_slot\n");
-
-	assetsDistributeTableModel->endRefresh();
-	transactionTableModel->endRefresh();
-	lockedTransactionTableModel->endRefresh();
-	applicationsRegistTableModel->endRefresh();
-	candyTableModel->endRefresh();
-
-	if (g_threadGroup)
-		g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, this));
-
-	LogPrintf("guidebug_message:end refreshFinish_slot\n");
 }
 
 CUpdateTransaction *WalletModel::getUpdateTransaction()
 {
 	return pUpdateTransaction;
+}
+
+void WalletModel::startUpdate()
+{
+	if (g_threadGroup)
+		g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, this));
+
+	pUpdateTransaction->startMonitor();
 }

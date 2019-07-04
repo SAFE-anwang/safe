@@ -83,6 +83,7 @@ CUpdateTransaction::CUpdateTransaction(QThread* pParent) : QThread(pParent)
 
 CUpdateTransaction::~CUpdateTransaction()
 {
+	uninit();
     stopMonitor();
 }
 
@@ -116,13 +117,11 @@ void CUpdateTransaction::startMonitor()
 {
     stopMonitor();
     m_bIsExit = false;
-    subscribeToCoreSignals();
     start();
 }
 
 void CUpdateTransaction::stopMonitor()
 {
-    unsubscribeFromCoreSignals();
 	m_bIsExit = true;
     if (isRunning())
 	{        
@@ -331,17 +330,17 @@ void CUpdateTransaction::run()
 
 		if (listAppTx.size() > 0)
 		{
-			Q_EMIT updateAssetTransactionModel(updatedHash, listAppTx, stTxData.nStatus, stTxData.bShowTx);
+			Q_EMIT updateAppTransactionModel(updatedHash, listAppTx, stTxData.nStatus, stTxData.bShowTx);
 		}
 
 		if (listCandyTx.size() > 0)
 		{
-			Q_EMIT updateAssetTransactionModel(updatedHash, listCandyTx, stTxData.nStatus, stTxData.bShowTx);
+			Q_EMIT updateCandyTransactionModel(updatedHash, listCandyTx, stTxData.nStatus, stTxData.bShowTx);
 		}
 
 		if (listLockTx.size() > 0)
 		{
-			Q_EMIT updateAssetTransactionModel(updatedHash, listLockTx, stTxData.nStatus, stTxData.bShowTx);
+			Q_EMIT updateLockTransactionModel(updatedHash, listLockTx, stTxData.nStatus, stTxData.bShowTx);
 		}
 
 
@@ -382,4 +381,14 @@ void CUpdateTransaction::setProcessingQueuedTransactions(bool value)
 bool CUpdateTransaction::processingQueuedTransactions()
 {
 	return m_bProcessingQueuedTransactions;
+}
+
+void CUpdateTransaction::init()
+{
+	subscribeToCoreSignals();
+}
+
+void CUpdateTransaction::uninit()
+{
+	unsubscribeFromCoreSignals();
 }

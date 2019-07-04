@@ -155,9 +155,7 @@ public:
 
 	void updateConfirmations();
 
-	void beginRefresh();
-
-	void endRefresh();
+	int size();
 
 private:
     CWallet* wallet;

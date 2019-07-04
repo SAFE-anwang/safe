@@ -897,16 +897,6 @@ void TransactionTableModel::updateDisplayUnit()
     Q_EMIT dataChanged(index(0, columnAmount), index(priv->size() - 1, columnAmount));
 }
 
-void TransactionTableModel::beginRefresh()
-{
-	beginResetModel();
-}
-
-void TransactionTableModel::endRefresh()
-{
-	endResetModel();
-}
-
 void TransactionTableModel::insertTransaction(const TransactionRecord &tr)
 {
 	if (priv != NULL)
@@ -917,9 +907,18 @@ void TransactionTableModel::insertTransaction(const TransactionRecord &tr)
 
 void TransactionTableModel::clearData()
 {
-    if(priv!=NULL&&priv->size()>0)
-    {
-        beginResetModel();
-        endResetModel();
-    }
+	if (priv != NULL)
+	{
+		priv->clearData();
+	}
+}
+
+int TransactionTableModel::size()
+{
+	if (priv != NULL)
+	{
+		return priv->size();
+	}
+
+	return 0;
 }

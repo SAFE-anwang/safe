@@ -702,4 +702,10 @@ void ApplicationsRegistRecordView::updateWatchOnlyColumn(bool fHaveWatchOnly)
     applicationsView->setColumnHidden(ApplicationsRegistRecordModel::ApplicationsRegistColumnWatchonly, !fHaveWatchOnly);
 }
 
-
+void ApplicationsRegistRecordView::refreshPage()
+{
+	if (model->getApplicationRegistTableModel()->size() > 0)
+	{
+		transactionProxyModel->invalidate();
+	}
+}

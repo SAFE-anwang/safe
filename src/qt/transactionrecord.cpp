@@ -252,13 +252,11 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
 		}
 	}
 
-	CAmount nAssetCredit = 0;
-	CAmount nAssetDebit = 0;
 	CAmount nAssetNet = 0;
 	if (fHasAssets)
 	{
-		nAssetCredit = wtx.GetCredit(ISMINE_ALL, true, &assetId);
-		nAssetDebit = wtx.GetDebit(ISMINE_ALL, true, &assetId);
+		CAmount nAssetCredit = wtx.GetCredit(ISMINE_ALL, true, &assetId);
+		CAmount nAssetDebit = wtx.GetDebit(ISMINE_ALL, true, &assetId);
 		nAssetNet = nAssetCredit - nAssetDebit;
 	}
 
@@ -316,14 +314,6 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
                     continue;
                 }
 
- /*               if (txout.IsApp() || txout.IsAsset())
-				{
-                    if (!decomposeAppAsset(wallet, wtx, listTransaction, sub, txout, nAssetDebit, nAssetCredit, mapAssetInfo))
-                    {
-                        continue;
-                    }
-				}
-*/
 				if (txout.nUnlockedHeight > 0)
 				{
 					decomposeLockTx(wtx, sub, txout);
@@ -331,23 +321,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
 
                 listTransaction.append(sub);
 			}
-  /*          else
-            {
-                if (txout.IsApp() || txout.IsAsset())
-                {
-                    CTxDestination dest;
-                    if(ExtractDestination(txout.scriptPubKey, dest))
-                    {
-                        CBitcoinAddress address(dest);
-                        sub.address = address.ToString();
-                    }
 
-                    decomposeAppAsset(wallet, wtx, listTransaction, sub, txout, nAssetDebit, nAssetCredit, mapAssetInfo);
-
-                    listTransaction.append(sub);
-                }
-            }
-*/
 			nIndex++;
 		}
 	}
@@ -404,8 +378,6 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
 			// TODO: this section still not accurate but covers most cases,
 			// might need some additional work however
 
-            //int nTotalAssetCredit = 0; XJTODO remove it
-
 			TransactionRecord sub(hash, nTime, wtx.nVersion);
 			// Payment to self by default
 			sub.type = TransactionRecord::SendToSelf;
@@ -450,11 +422,6 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
                         {
                             continue;
                         }
-
-//						if (txout.IsAsset() && sub.appHeader.nAppCmd != CHANGE_ASSET_CMD)
-//						{
-//							nTotalAssetCredit += sub.assetCredit;
-//						}
 					}
 					else
 					{
@@ -479,17 +446,6 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
                     }
 				}
 			}
-            //XJTODO remove it
-//			sub.assetCredit = nTotalAssetCredit;
-//			if (sub.appHeader.nAppCmd == ADD_ASSET_CMD)
-//			{
-//				sub.assetDebit = 0;
-//			}
-//			else
-//			{
-//				// from me to me transaction,result shuld be 0;
-//				sub.assetDebit = -nTotalAssetCredit;
-//			}
 
 			CAmount nChange = wtx.GetChange(fHasAssets);
 
@@ -524,12 +480,6 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
 					// from a transaction sent back to our own address.
 					continue;
 				}
-
-/*                if (wallet->IsChange(txout))
-                {
-                    continue;
-                }
-*/
 
 				CTxDestination address;
 				if (ExtractDestination(txout.scriptPubKey, address))

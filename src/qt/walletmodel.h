@@ -284,6 +284,8 @@ public:
 
 	CUpdateTransaction *getUpdateTransaction();
 
+	void startUpdate();
+
 private:
     CWallet *wallet;
     bool fHaveWatchOnly;
@@ -352,7 +354,9 @@ Q_SIGNALS:
 
     void updateConfirm();
 
-	void refreshFinish(QMap<QString, AssetsDisplayInfo> mapAssetDisplay, QMap<QString, AssetBalance> mapAssetBalance);
+	void loadWalletProcess(QMap<QString, AssetsDisplayInfo> mapAssetDisplay);
+
+	void loadWalletFinish();
 
 public Q_SLOTS:
     /* Wallet status might have changed */
@@ -366,8 +370,6 @@ public Q_SLOTS:
     /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
     void pollBalanceChanged(bool checkIncrease);
     void updateAllBalanceChanged(bool checkIncrease=false);
-
-	void refreshFinish_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay, QMap<QString, AssetBalance> mapAssetBalance);
 };
 
 class EncryptWorker: public QObject {

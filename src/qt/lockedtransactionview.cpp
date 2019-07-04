@@ -786,3 +786,11 @@ void LockedTransactionView::updateWatchOnlyColumn(bool fHaveWatchOnly)
     watchOnlyWidget->setVisible(true);
     lockedTransactionView->setColumnHidden(LockedTransactionTableModel::LockedColumnWatchonly, !fHaveWatchOnly);
 }
+
+void LockedTransactionView::refreshPage()
+{
+	if (model->getLockedTransactionTableModel()->size() > 0)
+	{
+		lockedTransactionProxyModel->invalidate();
+	}
+}

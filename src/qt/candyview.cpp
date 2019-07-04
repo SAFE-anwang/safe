@@ -726,3 +726,11 @@ void CandyView::updateWatchOnlyColumn(bool fHaveWatchOnly)
     watchOnlyWidget->setVisible(true);
     candyView->setColumnHidden(CandyTableModel::CandyColumnWatchonly, !fHaveWatchOnly);
 }
+
+void CandyView::refreshPage()
+{
+	if (model->getCandyTableModel()->size() > 0)
+	{
+		transactionProxyModel->invalidate();
+	}
+}

@@ -44,6 +44,10 @@ public:
 
     bool RefreshCandyPageData(const std::map<uint256, CAssetData>& mapIssueAssetMap);
 
+	void init();
+
+	void uninit();
+
 
 Q_SIGNALS:
     void updateOverviePage(QMap<QString, AssetBalance> mapAssetBalance);
