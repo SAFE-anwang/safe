@@ -8589,8 +8589,8 @@ void ThreadCalculateAddressAmount()
                 MilliSleep(1000);
             }
         }
-        else
-            MilliSleep(1000);
+        
+        MilliSleep(1000);
     }
 }
 
@@ -9124,8 +9124,8 @@ void ThreadWriteChangeInfo()
                 MilliSleep(100);
             }
         }
-        else
-            MilliSleep(10);
+        
+        MilliSleep(100);
     }
 }
 

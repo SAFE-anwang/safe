@@ -60,83 +60,75 @@ struct TxLessThan {
 };
 
 
-void TransactionTablePriv::updateWallet(uint256 hash, QList<TransactionRecord> listNew, int status, bool showTransaction)
+bool timeCompartor(const TransactionRecord& a, const TransactionRecord& b)
 {
-	qDebug() << "TransactionTablePriv::updateWallet: " + QString::fromStdString(hash.ToString()) + " " + QString::number(status);
+	if (a.time > b.time)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
+void TransactionTablePriv::updateWallet(uint256 hash, const QList<TransactionRecord> &listNew, int status, bool showTransaction)
+{
+	qDebug() << "TransactionTablePriv::start updateWallet: " + QString::fromStdString(hash.ToString()) + " " + QString::number(status);
 
 	// Find bounds of this transaction in model
-	QList<TransactionRecord>::iterator lower = qLowerBound(
-		cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
-	QList<TransactionRecord>::iterator upper = qUpperBound(
-		cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
+	QList<TransactionRecord>::iterator lower = qLowerBound(cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
+	QList<TransactionRecord>::iterator upper = qUpperBound(cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
 	int lowerIndex = (lower - cachedWallet.begin());
 	int upperIndex = (upper - cachedWallet.begin());
 	bool inModel = (lower != upper);
-
-	bool fReupdate = false;
-
-	if (status == CT_UPDATED) {
+	
+	if (status == CT_UPDATED)
+	{
 		if (showTransaction && !inModel)
 			status = CT_NEW; /* Not in model, but want to show, treat as new */
 		if (!showTransaction && inModel)
 			status = CT_DELETED; /* In model, but want to hide, treat as deleted */
-		if (showType == SHOW_LOCKED_TX && inModel && showTransaction && status == CT_UPDATED) {
-			std::map<uint256, CWalletTx>::iterator mi = wallet->mapWallet.find(hash);
-			const CWalletTx& wtx = mi->second;
-			for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++) {
-				const CTxOut& txout = wtx.vout[nOut];
-				if (txout.nUnlockedHeight <= 0)
-					continue;
-				status = CT_NEW;
-				fReupdate = true;
-				break;
-			}
-		}
+	}
+	else if (status == CT_NEW)
+	{
+		if (showTransaction && inModel)
+			status = CT_UPDATED;
 	}
 
 	qDebug() << "    inModel=" + QString::number(inModel) +
 		" Index=" + QString::number(lowerIndex) + "-" + QString::number(upperIndex) +
 		" showTransaction=" + QString::number(showTransaction) + " derivedStatus=" + QString::number(status);
 
-	switch (status) {
+	switch (status) 
+	{
 	case CT_NEW:
-		if (inModel) {
+		if (inModel)
+		{
 			qWarning() << "TransactionTablePriv::updateWallet: Warning: Got CT_NEW, but transaction is already in model";
-			if (!fReupdate)
-				break;
+			break;
 		}
-		if (showTransaction) {
 
-			if (fReupdate) {
-				for (int i = 0; i < cachedWallet.size(); i++) {
-					TransactionRecord& rec = cachedWallet[i];
-					for (int j = 0; j < listNew.size(); j++) {
-						TransactionRecord& toInsertRec = listNew[j];
-						if (rec.bLocked && rec.hash == hash) {
-							rec.nTxHeight = toInsertRec.nTxHeight;
-							rec.updateLockedMonth();
-						}
-					}
-				}
-			}
-			else {
-				//insert new data
-				parent->beginInsertRows(QModelIndex(), lowerIndex, lowerIndex + listNew.size() - 1);
-				int insert_idx = lowerIndex;
-				Q_FOREACH(const TransactionRecord& rec, listNew) {
-					cachedWallet.insert(insert_idx, rec);
-					insert_idx += 1;
-				}
-				parent->endInsertRows();
+		if (showTransaction)
+		{
+			Q_FOREACH(const TransactionRecord& rec, listNew)
+			{
+				cachedWallet.push_back(rec);
 			}
 
+			qSort(cachedWallet.begin(), cachedWallet.end(), timeCompartor);
+			if (parent->pProxyModel != NULL)
+			{
+				parent->pProxyModel->invalidate();
+			}
 		}
 		break;
 	case CT_DELETED:
-		if (!inModel) {
+		if (!inModel)
+		{
 			qWarning() << "TransactionTablePriv::updateWallet: Warning: Got CT_DELETED, but transaction is not in model";
 			break;
 		}
+
 		// Removed -- remove entire transaction from table
 		parent->beginRemoveRows(QModelIndex(), lowerIndex, upperIndex - 1);
 		cachedWallet.erase(lower, upper);
@@ -145,9 +137,134 @@ void TransactionTablePriv::updateWallet(uint256 hash, QList<TransactionRecord> l
 	case CT_UPDATED:
 		// Miscellaneous updates -- nothing to do, status update will take care of this, and is only computed for
 		// visible transactions.
+
+		while (lowerIndex <= upperIndex && inModel && lowerIndex < cachedWallet.size())
+		{
+			TransactionRecord &tempTr = cachedWallet[lowerIndex];
+			for (int i = 0; i < listNew.size(); i++)
+			{
+				if (tempTr.bSAFETransaction)
+				{
+					if (tempTr.credit == listNew[i].credit && tempTr.debit == listNew[i].debit && tempTr.idx == listNew[i].idx)
+					{
+						tempTr = listNew[i];
+						break;
+					}
+				}
+				else
+				{
+					if (tempTr.assetCredit == listNew[i].assetCredit && tempTr.assetDebit == listNew[i].assetDebit && tempTr.idx == listNew[i].idx)
+					{
+						tempTr = listNew[i];
+						break;
+					}
+				}
+			}
+
+			lowerIndex++;
+		}
+
 		break;
 	}
+
+	qDebug() << "TransactionTablePriv::end updateWallet: " + QString::fromStdString(hash.ToString()) + " " + QString::number(status);
 }
+
+
+//void TransactionTablePriv::updateWallet(uint256 hash, QList<TransactionRecord> listNew, int status, bool showTransaction)
+//{
+//	qDebug() << "TransactionTablePriv::updateWallet: " + QString::fromStdString(hash.ToString()) + " " + QString::number(status);
+//
+//	// Find bounds of this transaction in model
+//	QList<TransactionRecord>::iterator lower = qLowerBound(
+//		cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
+//	QList<TransactionRecord>::iterator upper = qUpperBound(
+//		cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
+//	int lowerIndex = (lower - cachedWallet.begin());
+//	int upperIndex = (upper - cachedWallet.begin());
+//	bool inModel = (lower != upper);
+//
+//	bool fReupdate = false;
+//
+//	if (status == CT_UPDATED)
+//	{
+//		if (showTransaction && !inModel)
+//			status = CT_NEW; /* Not in model, but want to show, treat as new */
+//		if (!showTransaction && inModel)
+//			status = CT_DELETED; /* In model, but want to hide, treat as deleted */
+//
+//		if (showType == SHOW_LOCKED_TX && inModel && showTransaction && status == CT_UPDATED) 
+//		{
+//			std::map<uint256, CWalletTx>::iterator mi = wallet->mapWallet.find(hash);
+//			if (mi != wallet->mapWallet.end())
+//			{
+//				const CWalletTx& wtx = mi->second;
+//				for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++) {
+//					const CTxOut& txout = wtx.vout[nOut];
+//					if (txout.nUnlockedHeight <= 0)
+//						continue;
+//					status = CT_NEW;
+//					fReupdate = true;
+//					break;
+//				}
+//			}
+//		}
+//	}
+//
+//	qDebug() << "    inModel=" + QString::number(inModel) +
+//		" Index=" + QString::number(lowerIndex) + "-" + QString::number(upperIndex) +
+//		" showTransaction=" + QString::number(showTransaction) + " derivedStatus=" + QString::number(status);
+//
+//	switch (status) {
+//	case CT_NEW:
+//		if (inModel) {
+//			qWarning() << "TransactionTablePriv::updateWallet: Warning: Got CT_NEW, but transaction is already in model";
+//			if (!fReupdate)
+//				break;
+//		}
+//		if (showTransaction) {
+//
+//			if (fReupdate) {
+//				for (int i = 0; i < cachedWallet.size(); i++) {
+//					TransactionRecord& rec = cachedWallet[i];
+//					for (int j = 0; j < listNew.size(); j++) {
+//						TransactionRecord& toInsertRec = listNew[j];
+//						if (rec.bLocked && rec.hash == hash) {
+//							rec.nTxHeight = toInsertRec.nTxHeight;
+//							rec.updateLockedMonth();
+//						}
+//					}
+//				}
+//			}
+//			else {
+//				//insert new data
+//				parent->beginInsertRows(QModelIndex(), lowerIndex, lowerIndex + listNew.size() - 1);
+//				int insert_idx = lowerIndex;
+//				Q_FOREACH(const TransactionRecord& rec, listNew) {
+//					cachedWallet.insert(insert_idx, rec);
+//					insert_idx += 1;
+//				}
+//				parent->endInsertRows();
+//			}
+//
+//		}
+//		break;
+//	case CT_DELETED:
+//		if (!inModel) {
+//			qWarning() << "TransactionTablePriv::updateWallet: Warning: Got CT_DELETED, but transaction is not in model";
+//			break;
+//		}
+//		// Removed -- remove entire transaction from table
+//		parent->beginRemoveRows(QModelIndex(), lowerIndex, upperIndex - 1);
+//		cachedWallet.erase(lower, upper);
+//		parent->endRemoveRows();
+//		break;
+//	case CT_UPDATED:
+//		// Miscellaneous updates -- nothing to do, status update will take care of this, and is only computed for
+//		// visible transactions.
+//		break;
+//	}
+//}
 
 int TransactionTablePriv::size()
 {
@@ -221,6 +338,11 @@ void TransactionTablePriv::clearData()
 	QList<TransactionRecord>().swap(cachedWallet);
 }
 
+void TransactionTablePriv::sortData()
+{
+	qSort(cachedWallet.begin(), cachedWallet.end(), timeCompartor);
+}
+
 TransactionTableModel::TransactionTableModel(const PlatformStyle* platformStyle, CWallet* wallet, int showType, WalletModel* parent) :
 	QAbstractTableModel(parent),
 	wallet(wallet),
@@ -235,6 +357,7 @@ TransactionTableModel::TransactionTableModel(const PlatformStyle* platformStyle,
     columnToAddress = TransactionTableModel::TransactionColumnToAddress;
     columnAmount = TransactionTableModel::TransactionColumnAmount;
     nUpdateCount = 0;
+	pProxyModel = NULL;
 
     connect(walletModel->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
 }
@@ -921,4 +1044,17 @@ int TransactionTableModel::size()
 	}
 
 	return 0;
+}
+
+void TransactionTableModel::sortData()
+{
+	if (priv != NULL && priv->size() > 0)
+	{
+		return priv->sortData();
+	}
+}
+
+void TransactionTableModel::setProxyModel(TransactionFilterProxy *value)
+{
+	pProxyModel = value;
 }

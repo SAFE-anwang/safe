@@ -262,7 +262,7 @@ void CUpdateTransaction::run()
         if (m_vtNewTx.size() <= 0)
 		{
             m_txLock.unlock();
-            msleep(200);
+            msleep(1000);
             continue;
         }
 
@@ -282,65 +282,77 @@ void CUpdateTransaction::run()
 			std::map<uint256, CWalletTx>::iterator mi = m_pWallet->mapWallet.find(updatedHash);
 			if (mi == m_pWallet->mapWallet.end())
 			{
-				msleep(200);
+				msleep(1000);
 				continue;
 			}
 			
 			if (!TransactionRecord::decomposeTransaction(m_pWallet, mi->second, listToInsert, mapTempAssetList))
 			{
-				msleep(200);
+				msleep(1000);
 				continue;
 			}
 		}
 
-		Q_EMIT updateTransactionModel(updatedHash, listToInsert, stTxData.nStatus, stTxData.bShowTx);
 		
-		QList<TransactionRecord> listAssetTx;
-		QList<TransactionRecord> listAppTx;
-		QList<TransactionRecord> listCandyTx;
-		QList<TransactionRecord> listLockTx;
-
-		for (int i = 0; i < listToInsert.size(); i++)
 		{
-			for (int j = 0; j < listToInsert[i].vtShowType.size(); j++)
+			QList<TransactionRecord> listTx;
+			QList<TransactionRecord> listAssetTx;
+			QList<TransactionRecord> listAppTx;
+			QList<TransactionRecord> listCandyTx;
+			QList<TransactionRecord> listLockTx;
+
+			for (int i = 0; i < listToInsert.size(); i++)
 			{
-				if (listToInsert[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
+				for (int j = 0; j < listToInsert[i].vtShowType.size(); j++)
 				{
-					listAssetTx.push_back(listToInsert[i]);
-				}
-				else if (listToInsert[i].vtShowType[j] == SHOW_APPLICATION_REGIST)
-				{
-					listAppTx.push_back(listToInsert[i]);
-				}
-				else if (listToInsert[i].vtShowType[j] == SHOW_CANDY_TX)
-				{
-					listCandyTx.push_back(listToInsert[i]);
-				}
-				else if (listToInsert[i].vtShowType[j] == SHOW_LOCKED_TX)
-				{
-					listLockTx.push_back(listToInsert[i]);
+					if (listToInsert[i].vtShowType[j] == SHOW_TX)
+					{
+						listTx.push_back(listToInsert[i]);
+					}
+					else if (listToInsert[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
+					{
+						listAssetTx.push_back(listToInsert[i]);
+					}
+					else if (listToInsert[i].vtShowType[j] == SHOW_APPLICATION_REGIST)
+					{
+						listAppTx.push_back(listToInsert[i]);
+					}
+					else if (listToInsert[i].vtShowType[j] == SHOW_CANDY_TX)
+					{
+						listCandyTx.push_back(listToInsert[i]);
+					}
+					else if (listToInsert[i].vtShowType[j] == SHOW_LOCKED_TX)
+					{
+						listLockTx.push_back(listToInsert[i]);
+					}
 				}
 			}
-		}
 
-		if (listAssetTx.size() > 0)
-		{
-			Q_EMIT updateAssetTransactionModel(updatedHash, listAssetTx, stTxData.nStatus, stTxData.bShowTx);
-		}
+			if (listTx.size() > 0)
+			{
+				Q_EMIT updateTransactionModel(updatedHash, listTx, stTxData.nStatus, stTxData.bShowTx);
+			}
 
-		if (listAppTx.size() > 0)
-		{
-			Q_EMIT updateAppTransactionModel(updatedHash, listAppTx, stTxData.nStatus, stTxData.bShowTx);
-		}
+			if (listAssetTx.size() > 0)
+			{
+				Q_EMIT updateAssetTransactionModel(updatedHash, listAssetTx, stTxData.nStatus, stTxData.bShowTx);
+			}
 
-		if (listCandyTx.size() > 0)
-		{
-			Q_EMIT updateCandyTransactionModel(updatedHash, listCandyTx, stTxData.nStatus, stTxData.bShowTx);
-		}
+			if (listAppTx.size() > 0)
+			{
+				Q_EMIT updateAppTransactionModel(updatedHash, listAppTx, stTxData.nStatus, stTxData.bShowTx);
+			}
 
-		if (listLockTx.size() > 0)
-		{
-			Q_EMIT updateLockTransactionModel(updatedHash, listLockTx, stTxData.nStatus, stTxData.bShowTx);
+			if (listCandyTx.size() > 0)
+			{
+				Q_EMIT updateCandyTransactionModel(updatedHash, listCandyTx, stTxData.nStatus, stTxData.bShowTx);
+			}
+
+			if (listLockTx.size() > 0)
+			{
+				Q_EMIT updateLockTransactionModel(updatedHash, listLockTx, stTxData.nStatus, stTxData.bShowTx);
+			}
+
 		}
 
 
@@ -357,7 +369,7 @@ void CUpdateTransaction::run()
 			std::map<uint256, CAssetData> mapIssueAsset;
 			if (!GetIssueAssetInfo(mapIssueAsset))
 			{
-				msleep(200);
+				msleep(1000);
 				continue;
 			}
 
@@ -369,7 +381,7 @@ void CUpdateTransaction::run()
 		}
         
 		
-		msleep(200);
+		msleep(1000);
     }
 }
 

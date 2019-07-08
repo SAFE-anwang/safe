@@ -201,12 +201,14 @@ void CandyView::setModel(WalletModel *model)
     {
         transactionProxyModel = new TransactionFilterProxy(this);
         transactionProxyModel->setSourceModel(model->getCandyTableModel());
-        transactionProxyModel->setDynamicSortFilter(true);
-        transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
+    //    transactionProxyModel->setDynamicSortFilter(true);
+    //    transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
         transactionProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
         transactionProxyModel->setFilterType(false);
 
-        transactionProxyModel->setSortRole(Qt::EditRole);
+    //    transactionProxyModel->setSortRole(Qt::EditRole);
+
+		model->getCandyTableModel()->setProxyModel(transactionProxyModel);
 
         candyView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         candyView->setModel(transactionProxyModel);

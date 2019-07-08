@@ -1683,16 +1683,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         }
     }
 
-    if(!VerifyDetailFile())
-        return error("Verify detail.dat failed. Exiting");
-    if(!LoadChangeInfoToList())
-        return error("Load change info failed. Exiting.");
-    if(!LoadCandyHeightToList())
-        return error("Load candy height failed. Exiting.");
-
-    threadGroup.create_thread(boost::bind(&ThreadWriteChangeInfo));
-    threadGroup.create_thread(boost::bind(&ThreadCalculateAddressAmount));
-
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
@@ -1909,7 +1899,19 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         }
     }
 
-    // ********************************************************* Step 10: import blocks
+	// ********************************************************* Step 10: start candy module
+	if (!VerifyDetailFile())
+		return error("Verify detail.dat failed. Exiting");
+	if (!LoadChangeInfoToList())
+		return error("Load change info failed. Exiting.");
+	if (!LoadCandyHeightToList())
+		return error("Load candy height failed. Exiting.");
+
+	threadGroup.create_thread(boost::bind(&ThreadWriteChangeInfo));
+	threadGroup.create_thread(boost::bind(&ThreadCalculateAddressAmount));
+
+
+    // ********************************************************* Step 11: import blocks
 
     if (mapArgs.count("-blocknotify"))
         uiInterface.NotifyBlockTip.connect(BlockNotifyCallback);
@@ -1927,7 +1929,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
             MilliSleep(10);
     }
 
-    // ********************************************************* Step 11a: setup PrivateSend
+    // ********************************************************* Step 12a: setup PrivateSend
     fMasterNode = GetBoolArg("-masternode", false);
 
     if((fMasterNode || masternodeConfig.getCount() > -1) && fTxIndex == false) {
@@ -2005,7 +2007,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 
     CPrivateSend::InitStandardDenominations();
 
-    // ********************************************************* Step 11b: Load cache data
+    // ********************************************************* Step 12b: Load cache data
 
     // LOAD SERIALIZED DAT FILES INTO DATA CACHES FOR INTERNAL USE
 
@@ -2045,14 +2047,14 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         return InitError(_("Failed to load fulfilled requests cache from") + "\n" + (pathDB / strDBName).string());
     }
 
-    // ********************************************************* Step 11c: update block tip in Safe modules
+    // ********************************************************* Step 12c: update block tip in Safe modules
 
     // force UpdatedBlockTip to initialize nCachedBlockHeight for DS, MN payments and budgets
     // but don't call it directly to prevent triggering of other listeners like zmq etc.
     // GetMainSignals().UpdatedBlockTip(chainActive.Tip());
     pdsNotificationInterface->InitializeCurrentBlockTip();
 
-    // ********************************************************* Step 11d: start safe-ps-<smth> threads
+    // ********************************************************* Step 12d: start safe-ps-<smth> threads
 
     threadGroup.create_thread(boost::bind(&ThreadCheckPrivateSend, boost::ref(*g_connman)));
     if (fMasterNode)
@@ -2060,7 +2062,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     else
         threadGroup.create_thread(boost::bind(&ThreadCheckPrivateSendClient, boost::ref(*g_connman)));
 
-    // ********************************************************* Step 12: start node
+
+    // ********************************************************* Step 13: start node
 
     if (!CheckDiskSpace())
         return false;

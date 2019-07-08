@@ -202,11 +202,13 @@ void ApplicationsRegistRecordView::setModel(WalletModel *model)
     {
         transactionProxyModel = new TransactionFilterProxy(this);
         transactionProxyModel->setSourceModel(model->getApplicationRegistTableModel());
-        transactionProxyModel->setDynamicSortFilter(true);
-        transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
+    //    transactionProxyModel->setDynamicSortFilter(true);
+    //    transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
         transactionProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
 
-        transactionProxyModel->setSortRole(Qt::EditRole);
+    //    transactionProxyModel->setSortRole(Qt::EditRole);
+
+		model->getApplicationRegistTableModel()->setProxyModel(transactionProxyModel);
 
         applicationsView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         applicationsView->setModel(transactionProxyModel);

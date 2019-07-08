@@ -8,6 +8,7 @@
 #include "amount.h"
 #include "uint256.h"
 #include "app/app.h"
+#include "wallet/wallet.h"
 
 #include <QList>
 #include <QString>
@@ -163,6 +164,8 @@ public:
 		QMap<QString, AssetsDisplayInfo> &assetNamesUnits);
 
 	static bool decomposeLockTx(const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout);
+
+	static void setAddressType(isminetype fAllFromMe, isminetype fAllToMe, const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout);
 
 	static bool decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx, QList<TransactionRecord> &listTransaction, QMap<QString, AssetsDisplayInfo> &mapAssetInfo);
 

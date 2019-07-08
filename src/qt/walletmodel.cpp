@@ -1208,6 +1208,14 @@ void RefreshDataStartUp(WalletModel* walletModel)
 		}
 	}
 
+
+	walletModel->getTransactionTableModel()->sortData();
+	walletModel->getAssetsDistributeTableModel()->sortData();
+	walletModel->getApplicationRegistTableModel()->sortData();
+	walletModel->getCandyTableModel()->sortData();
+	walletModel->getLockedTransactionTableModel()->sortData();
+	
+
 	std::map<uint256, CAssetData> mapIssueAsset;
 	if (GetIssueAssetInfo(mapIssueAsset))
 	{

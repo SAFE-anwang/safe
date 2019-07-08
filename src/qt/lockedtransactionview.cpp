@@ -230,11 +230,13 @@ void LockedTransactionView::setModel(WalletModel *model)
     {
         lockedTransactionProxyModel = new TransactionFilterProxy(this);
         lockedTransactionProxyModel->setSourceModel(model->getLockedTransactionTableModel());
-        lockedTransactionProxyModel->setDynamicSortFilter(true);
-        lockedTransactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
+  //      lockedTransactionProxyModel->setDynamicSortFilter(true);
+  //      lockedTransactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
         lockedTransactionProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
 
-        lockedTransactionProxyModel->setSortRole(Qt::EditRole);
+    //    lockedTransactionProxyModel->setSortRole(Qt::EditRole);
+
+		model->getLockedTransactionTableModel()->setProxyModel(lockedTransactionProxyModel);
 
         lockedTransactionView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         lockedTransactionView->setModel(lockedTransactionProxyModel);

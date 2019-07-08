@@ -7,6 +7,7 @@
 
 #include "bitcoinunits.h"
 #include "transactionrecord.h"
+#include "transactionfilterproxy.h"
 #include "uint256.h"
 #include <QAbstractTableModel>
 #include <QSet>
@@ -47,7 +48,7 @@ public:
 
        Call with transaction that was added, removed or changed.
      */
-	void updateWallet(uint256 hash, QList<TransactionRecord> listNew, int status, bool showTransaction);
+	void updateWallet(uint256 hash, const QList<TransactionRecord> &listNew, int status, bool showTransaction);
 
     int size();
 
@@ -60,6 +61,8 @@ public:
 	void insertTransaction(const TransactionRecord &tr);
 
 	void clearData();
+
+	void sortData();
 };
 
 /** UI model for the transaction table of a wallet.
@@ -157,6 +160,10 @@ public:
 
 	int size();
 
+	void sortData();
+
+	void setProxyModel(TransactionFilterProxy *value);
+
 private:
     CWallet* wallet;
     WalletModel *walletModel;
@@ -169,6 +176,8 @@ private:
     int columnAmount;
 	
 	int nUpdateCount;
+
+	TransactionFilterProxy *pProxyModel;
 
     QString lookupAddress(const std::string &address, bool tooltip) const;
     QVariant addressColor(const TransactionRecord *wtx) const;
