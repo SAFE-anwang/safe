@@ -72,10 +72,10 @@ void RefreshSendCoinsData(SendCoinsDialog* sendCoinsDialog)
 		while (itAssetDiaply != mapNewAssetDisplay.end())
 		{
 			boost::this_thread::interruption_point();
-			TRY_LOCK(cs_main, lockMain);
-			if (lockMain)
+	//		TRY_LOCK(cs_main, lockMain);
+	//		if (lockMain)
 			{
-				TRY_LOCK(pwalletMain->cs_wallet, lockWallet);
+	//			TRY_LOCK(pwalletMain->cs_wallet, lockWallet);
 				std::map<uint256, CWalletTx>::iterator mi = pwalletMain->mapWallet.find(itAssetDiaply.value().txHash);
 				if (mi != pwalletMain->mapWallet.end())
 				{
@@ -85,7 +85,7 @@ void RefreshSendCoinsData(SendCoinsDialog* sendCoinsDialog)
 			}
 
 			itAssetDiaply++;
-			MilliSleep(100);
+			MilliSleep(200);
 		}
 
         itAssetDiaply = mapNewAssetDisplay.begin();
@@ -1348,6 +1348,10 @@ bool SendCoinsDialog::addAssetDisplay(const QMap<QString, AssetsDisplayInfo> &ma
         {
             mapNewAssetDisplay.insert(itAsset.key(), itAsset.value());
         }
+		else
+		{
+			mapNewAssetDisplay[itAsset.key()] = itAsset.value();
+		}
 
         itAsset++;
     }

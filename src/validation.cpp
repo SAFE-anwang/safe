@@ -4908,21 +4908,23 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if(!PutChangeInfoToList(pindex->nHeight, blockReward - nFees, !putCandy_index.empty(), mapAddressAmount))
         return AbortNode(state, "Failed to write change info");
 
-    // add this block to the view's block chain
-    view.SetBestBlock(pindex->GetBlockHash());
+	// add this block to the view's block chain
+	view.SetBestBlock(pindex->GetBlockHash());
 
-    {
-				std::vector<std::string> listAssetName;
-				for (std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it = assetName_assetId_index.begin(); it != assetName_assetId_index.end(); it++)
-				{
-					listAssetName.push_back(it->first);
-				}
+	{
+		std::vector<uint256> listAssetId;
+		std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> >::const_iterator itAssetId;
 
-				if (listAssetName.size() > 0)
-				{
-					uiInterface.AssetFound(listAssetName);
-				}
-	  }
+		for (itAssetId = assetId_assetInfo_index.begin(); itAssetId != assetId_assetInfo_index.end(); itAssetId++)
+		{
+			listAssetId.push_back(itAssetId->first);
+		}
+
+		if (listAssetId.size() > 0)
+		{
+			uiInterface.AssetFound(listAssetId);
+		}
+	}
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint("bench", "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime5 - nTime4), nTimeIndex * 0.000001);

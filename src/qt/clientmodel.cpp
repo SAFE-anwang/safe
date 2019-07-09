@@ -217,9 +217,9 @@ void ClientModel::updateAlert(const QString &hash, int status)
     Q_EMIT alertsChanged(getStatusBarWarnings());
 }
 
-void ClientModel::updateAsset(QStringList listAssetName)
+void ClientModel::updateAsset(std::vector<uint256> listAssetId)
 {
-    Q_EMIT assetFound(listAssetName);
+    Q_EMIT assetFound(listAssetId);
 }
 
 void ClientModel::updateForbit()
@@ -397,17 +397,11 @@ static void NotifyAdditionalDataSyncProgressChanged(ClientModel *clientmodel, do
                               Q_ARG(double, nSyncProgress));
 }
 
-static void AssetFound(ClientModel* clientmodel, const std::vector<std::string> &listAssetName)
+static void AssetFound(ClientModel* clientmodel, const std::vector<uint256> &listAssetId)
 {
-	QStringList listTemp;
-	for (int i = 0; i < listAssetName.size(); i++)
+	if (listAssetId.size() > 0)
 	{
-		listTemp.push_back(QString::fromStdString(listAssetName[i]));
-	}
-
-	if (listTemp.size() > 0)
-	{
-		QMetaObject::invokeMethod(clientmodel, "updateAsset", Qt::QueuedConnection,	Q_ARG(QStringList, listTemp));
+		QMetaObject::invokeMethod(clientmodel, "updateAsset", Qt::QueuedConnection,	Q_ARG(std::vector<uint256>, listAssetId));
 	}
 }
 

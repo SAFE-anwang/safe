@@ -54,16 +54,10 @@ void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
 		{
 			LOCK(cs_receive);
 
-			uint256 assetId;
 			while (!receiveCoinsDialog->assetToUpdate.isEmpty())
 			{
 				boost::this_thread::interruption_point();
-				QString assetName = receiveCoinsDialog->assetToUpdate.pop();
-				if (!GetAssetIdByAssetName(assetName.toStdString(), assetId))
-				{
-					continue;
-				}
-
+				uint256 assetId = receiveCoinsDialog->assetToUpdate.pop();
 				assetIdVec.push_back(assetId);
 			}
 		}
@@ -225,12 +219,12 @@ void ReceiveCoinsDialog::updateCurrentAsset(const QString &currText)
     ui->reqAmount->updateAssetUnit(strAssetUnit,fAssets,assetDecimal);
 }
 
-void ReceiveCoinsDialog::updateAssetsFound(QStringList listAssetName)
+void ReceiveCoinsDialog::updateAssetsFound(std::vector<uint256> listAssetId)
 {
     LOCK(cs_receive);
-	for (int i = 0; i < listAssetName.size(); i++)
+	for (int i = 0; i < listAssetId.size(); i++)
 	{
-		assetToUpdate.push_back(listAssetName[i]);
+		assetToUpdate.push_back(listAssetId[i]);
 	}
 }
 
@@ -301,7 +295,8 @@ void ReceiveCoinsDialog::setClientModel(ClientModel *clientModel)
 {
     this->clientModel = clientModel;
     if(clientModel){
-        connect(clientModel,SIGNAL(assetFound(QStringList)),this,SLOT(updateAssetsFound(QStringList)));
+		qRegisterMetaType<std::vector<uint256> >("std::vector<uint256>");
+        connect(clientModel,SIGNAL(assetFound(std::vector<uint256>)),this,SLOT(updateAssetsFound(std::vector<uint256>)));
     }
 }
 
