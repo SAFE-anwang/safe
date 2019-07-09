@@ -8054,7 +8054,7 @@ void ThreadGetAllCandyInfo()
             LogPrintf("Message:GetAllCandyInfo finished\n");
             break;
         }
-        MilliSleep(1000);
+        MilliSleep(100);
     }
 }
 
@@ -8583,14 +8583,14 @@ void ThreadCalculateAddressAmount()
                 boost::this_thread::interruption_point();
                 if(GetHeightAddressAmount(nCandyHeight))
                 {
-                    MilliSleep(100);
                     break;
                 }
-                MilliSleep(1000);
+
+                MilliSleep(100);
             }
         }
         
-        MilliSleep(1000);
+        MilliSleep(100);
     }
 }
 
