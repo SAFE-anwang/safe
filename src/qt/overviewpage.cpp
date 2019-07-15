@@ -312,7 +312,6 @@ void OverviewPage::updateAssetsInfo(QMap<QString, AssetBalance> mapAssetBalance)
     //update existed assets entry
     for(int i = 0; i < ui->entries->count(); ++i)
     {
-        boost::this_thread::interruption_point();
         OverViewEntry *entry = qobject_cast<OverViewEntry*>(ui->entries->itemAt(i)->widget());
         QString strEntryAssetName = entry->getAssetName();
         if(!mapAssetBalance.contains(strEntryAssetName))
@@ -400,8 +399,8 @@ void OverviewPage::setWalletModel(WalletModel *model)
         // update the display unit, to not use the default ("SAFE")
         updateDisplayUnit();
         // Keep up to date with wallet
-        setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getImmatureBalance(), model->getLockedBalance(), model->getAnonymizedBalance(),
-                   model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance(), model->getWatchLockedBalance());
+//        setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getImmatureBalance(), model->getLockedBalance(), model->getAnonymizedBalance(),
+//                   model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance(), model->getWatchLockedBalance());
         connect(model, SIGNAL(balanceChanged(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)), this, SLOT(setBalance(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)));
 
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));

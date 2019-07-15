@@ -56,7 +56,6 @@ void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
 
 			while (!receiveCoinsDialog->assetToUpdate.isEmpty())
 			{
-				boost::this_thread::interruption_point();
 				uint256 assetId = receiveCoinsDialog->assetToUpdate.pop();
 				assetIdVec.push_back(assetId);
 			}
@@ -95,6 +94,10 @@ void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
 	}
 }
 
+static void AssetFound(ReceiveCoinsDialog* receive, const std::vector<uint256> &vtNewAssetId)
+{
+	QMetaObject::invokeMethod(receive, "updateAssetsFound", Qt::QueuedConnection,	Q_ARG(std::vector<uint256>, vtNewAssetId));
+}
 
 ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidget *parent) :
     QDialog(parent),
@@ -179,6 +182,8 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
     if(g_threadGroup)
         g_threadGroup->create_thread(boost::bind(&RefreshReceiveCoinsData, this));
+
+	GetMainSignals().AssetFound.connect(boost::bind(AssetFound, this, _1));
 }
 
 void ReceiveCoinsDialog::initWidget()
@@ -191,6 +196,8 @@ void ReceiveCoinsDialog::initWidget()
 
 ReceiveCoinsDialog::~ReceiveCoinsDialog()
 {
+	GetMainSignals().AssetFound.disconnect(boost::bind(AssetFound, this, _1));
+
     delete ui;
 }
 
@@ -219,12 +226,12 @@ void ReceiveCoinsDialog::updateCurrentAsset(const QString &currText)
     ui->reqAmount->updateAssetUnit(strAssetUnit,fAssets,assetDecimal);
 }
 
-void ReceiveCoinsDialog::updateAssetsFound(std::vector<uint256> listAssetId)
+void ReceiveCoinsDialog::updateAssetsFound(std::vector<uint256> vtNewAssetId)
 {
     LOCK(cs_receive);
-	for (int i = 0; i < listAssetId.size(); i++)
+	for (int i = 0; i < vtNewAssetId.size(); i++)
 	{
-		assetToUpdate.push_back(listAssetId[i]);
+		assetToUpdate.push_back(vtNewAssetId[i]);
 	}
 }
 
@@ -294,10 +301,6 @@ void ReceiveCoinsDialog::setModel(WalletModel *model)
 void ReceiveCoinsDialog::setClientModel(ClientModel *clientModel)
 {
     this->clientModel = clientModel;
-    if(clientModel){
-		qRegisterMetaType<std::vector<uint256> >("std::vector<uint256>");
-        connect(clientModel,SIGNAL(assetFound(std::vector<uint256>)),this,SLOT(updateAssetsFound(std::vector<uint256>)));
-    }
 }
 
 void ReceiveCoinsDialog::clear()

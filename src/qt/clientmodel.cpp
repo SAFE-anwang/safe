@@ -217,19 +217,9 @@ void ClientModel::updateAlert(const QString &hash, int status)
     Q_EMIT alertsChanged(getStatusBarWarnings());
 }
 
-void ClientModel::updateAsset(std::vector<uint256> listAssetId)
-{
-    Q_EMIT assetFound(listAssetId);
-}
-
 void ClientModel::updateForbit()
 {
     Q_EMIT updateForbitChanged(false);
-}
-
-void ClientModel::updateCandyPutVec()
-{
-    Q_EMIT candyPutVec();
 }
 
 bool ClientModel::inInitialBlockDownload() const
@@ -397,19 +387,6 @@ static void NotifyAdditionalDataSyncProgressChanged(ClientModel *clientmodel, do
                               Q_ARG(double, nSyncProgress));
 }
 
-static void AssetFound(ClientModel* clientmodel, const std::vector<uint256> &listAssetId)
-{
-	if (listAssetId.size() > 0)
-	{
-		QMetaObject::invokeMethod(clientmodel, "updateAsset", Qt::QueuedConnection,	Q_ARG(std::vector<uint256>, listAssetId));
-	}
-}
-
-static void CandyVecPut(ClientModel* clientmodel)
-{
-    QMetaObject::invokeMethod(clientmodel, "updateCandyPutVec", Qt::QueuedConnection);
-}
-
 void ClientModel::subscribeToCoreSignals()
 {
     // Connect signals to client
@@ -421,8 +398,6 @@ void ClientModel::subscribeToCoreSignals()
     uiInterface.NotifyBlockTip.connect(boost::bind(BlockTipChanged, this, _1, _2, false));
     uiInterface.NotifyHeaderTip.connect(boost::bind(BlockTipChanged, this, _1, _2, true));
     uiInterface.NotifyAdditionalDataSyncProgressChanged.connect(boost::bind(NotifyAdditionalDataSyncProgressChanged, this, _1));
-    uiInterface.AssetFound.connect(boost::bind(AssetFound, this, _1));
-    uiInterface.CandyVecPut.connect(boost::bind(CandyVecPut, this));
 }
 
 void ClientModel::unsubscribeFromCoreSignals()
@@ -436,6 +411,4 @@ void ClientModel::unsubscribeFromCoreSignals()
     uiInterface.NotifyBlockTip.disconnect(boost::bind(BlockTipChanged, this, _1, _2, false));
     uiInterface.NotifyHeaderTip.disconnect(boost::bind(BlockTipChanged, this, _1, _2, true));
     uiInterface.NotifyAdditionalDataSyncProgressChanged.disconnect(boost::bind(NotifyAdditionalDataSyncProgressChanged, this, _1));
-    uiInterface.AssetFound.disconnect(boost::bind(AssetFound, this, _1));
-    uiInterface.CandyVecPut.disconnect(boost::bind(CandyVecPut, this));
 }

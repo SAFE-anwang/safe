@@ -301,6 +301,7 @@ public:
     char fFromMe;
     std::string strFromAccount;
     int64_t nOrderPos; //! position in ordered transaction list
+	
 
     // memory only
     mutable bool fDebitCached;
@@ -327,6 +328,7 @@ public:
     mutable CAmount nImmatureWatchCreditCached;
     mutable CAmount nAvailableWatchCreditCached;
     mutable CAmount nChangeCached;
+	mutable int64_t nTxHeight;
 
     CWalletTx()
     {
@@ -383,6 +385,7 @@ public:
         nImmatureWatchCreditCached = 0;
         nChangeCached = 0;
         nOrderPos = -1;
+		nTxHeight = 0;
     }
 
     ADD_SERIALIZE_METHODS;

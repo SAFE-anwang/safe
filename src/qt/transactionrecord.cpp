@@ -173,7 +173,7 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
 			sub.type = TransactionRecord::GETCandy;
 			sub.bGetCandy = true;
 			sub.bSAFETransaction = false;
-			sub.nTxHeight = GetTxHeight(wtx.GetHash());
+			sub.nTxHeight = wtx.nTxHeight;  // GetTxHeight(wtx.GetHash());
 			sub.vtShowType.push_back(SHOW_CANDY_TX);
 
             if(ParseGetCandyData(vData,sub.getCandyData))
@@ -199,7 +199,7 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
 
 bool TransactionRecord::decomposeLockTx(const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout)
 {
-	int nTxHeight = GetTxHeight(wtx.GetHash());
+	int nTxHeight = wtx.nTxHeight; // GetTxHeight(wtx.GetHash());
 	if (nTxHeight >= txout.nUnlockedHeight)
 	{
 		return false;

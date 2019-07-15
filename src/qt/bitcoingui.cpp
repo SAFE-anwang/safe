@@ -995,6 +995,13 @@ void BitcoinGUI::ShowHistoryPage(const QString& name)
 	return walletFrame->ShowHistoryPage(name);
 }
 
+void BitcoinGUI::disconnectSign(const QString& name)
+{
+	if (!walletFrame)
+		return;
+	return walletFrame->disconnectSign(name);
+}
+
 #endif // ENABLE_WALLET
 
 void BitcoinGUI::setWalletActionsEnabled(bool enabled)

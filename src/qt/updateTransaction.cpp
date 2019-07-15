@@ -137,9 +137,8 @@ void CUpdateTransaction::updateTransaction(const QString& hash, int status, bool
     stTxData.nStatus = status;
     stTxData.bShowTx = showTransaction;
 
-    m_txLock.lock();
+	LOCK(m_txLock);
     m_vtNewTx.push_back(stTxData);
-    m_txLock.unlock();
 }
 
 
@@ -254,43 +253,80 @@ bool CUpdateTransaction::RefreshCandyPageData(const std::map<uint256, CAssetData
 
 void CUpdateTransaction::run()
 {
+	int nMax = 0;
+
     while (!m_bIsExit)
 	{
-        NewTxData stTxData;
-
-        m_txLock.lock();
-        if (m_vtNewTx.size() <= 0)
+        QMap<uint256, NewTxData> mapNewTxData;
+		
 		{
-            m_txLock.unlock();
-            msleep(1000);
-            continue;
-        }
+			LOCK(m_txLock);
 
-        stTxData = m_vtNewTx[0];
-		m_vtNewTx.erase(m_vtNewTx.begin());
-        m_txLock.unlock();
-
-        uint256 updatedHash;
-		updatedHash.SetHex(stTxData.strHash.toStdString());
-
-		QMap<QString, AssetsDisplayInfo> mapTempAssetList;
-		QList<TransactionRecord> listToInsert;
-
-		{
-			LOCK2(cs_main, m_pWallet->cs_wallet);
-
-			std::map<uint256, CWalletTx>::iterator mi = m_pWallet->mapWallet.find(updatedHash);
-			if (mi == m_pWallet->mapWallet.end())
+			if (m_vtNewTx.size() <= 0)
 			{
+				m_txLock.unlock();
 				msleep(1000);
 				continue;
 			}
-			
-			if (!TransactionRecord::decomposeTransaction(m_pWallet, mi->second, listToInsert, mapTempAssetList))
+
+			nMax = 500;
+			if (m_vtNewTx.size() < 500)
 			{
-				msleep(1000);
-				continue;
+				nMax = m_vtNewTx.size();
 			}
+
+			for (int i = 0; i < nMax; i++)
+			{
+				uint256 updatedHash;
+				updatedHash.SetHex(m_vtNewTx[i].strHash.toStdString());
+				mapNewTxData.insert(updatedHash, m_vtNewTx[i]);
+			}
+
+			m_vtNewTx.erase(m_vtNewTx.begin(), m_vtNewTx.begin() + nMax);
+		}
+
+        
+		QMap<QString, AssetsDisplayInfo> mapAssetList;
+		QMap<uint256, QList<TransactionRecord> > mapListTx;
+
+		{
+			std::map<uint256, CWalletTx> mapTempWallet;
+
+			{
+				LOCK2(cs_main, m_pWallet->cs_wallet);
+				for (QMap<uint256, NewTxData>::iterator itNew = mapNewTxData.begin(); itNew != mapNewTxData.end() && !m_bIsExit; itNew++)
+				{
+					std::map<uint256, CWalletTx>::iterator mi = m_pWallet->mapWallet.find(itNew.key());
+					if (mi != m_pWallet->mapWallet.end())
+					{
+						mapTempWallet.insert(make_pair(mi->first, mi->second));
+					}
+				}
+			}
+
+
+			for (QMap<uint256, NewTxData>::iterator itNew = mapNewTxData.begin(); itNew != mapNewTxData.end() && !m_bIsExit; itNew++)
+			{
+				std::map<uint256, CWalletTx>::iterator mi = mapTempWallet.find(itNew.key());
+				if (mi == mapTempWallet.end())
+				{
+					continue;
+				}
+
+				QList<TransactionRecord> listTemp;
+				if (!TransactionRecord::decomposeTransaction(m_pWallet, mi->second, listTemp, mapAssetList))
+				{
+					continue;
+				}
+
+				mapListTx.insert(itNew.key(), listTemp);
+			}
+		}
+		
+
+		if (m_bIsExit)
+		{
+			break;
 		}
 
 		
@@ -301,67 +337,84 @@ void CUpdateTransaction::run()
 			QList<TransactionRecord> listCandyTx;
 			QList<TransactionRecord> listLockTx;
 
-			for (int i = 0; i < listToInsert.size(); i++)
+			QMap<uint256, QList<TransactionRecord> >::iterator it;
+
+			for (it = mapListTx.begin(); it != mapListTx.end(); it++)
 			{
-				for (int j = 0; j < listToInsert[i].vtShowType.size(); j++)
+				const QList<TransactionRecord> &listToInsert = it.value();
+				for (int i = 0; i < listToInsert.size(); i++)
 				{
-					if (listToInsert[i].vtShowType[j] == SHOW_TX)
+					for (int j = 0; j < listToInsert[i].vtShowType.size(); j++)
 					{
-						listTx.push_back(listToInsert[i]);
-					}
-					else if (listToInsert[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
-					{
-						listAssetTx.push_back(listToInsert[i]);
-					}
-					else if (listToInsert[i].vtShowType[j] == SHOW_APPLICATION_REGIST)
-					{
-						listAppTx.push_back(listToInsert[i]);
-					}
-					else if (listToInsert[i].vtShowType[j] == SHOW_CANDY_TX)
-					{
-						listCandyTx.push_back(listToInsert[i]);
-					}
-					else if (listToInsert[i].vtShowType[j] == SHOW_LOCKED_TX)
-					{
-						listLockTx.push_back(listToInsert[i]);
+						if (listToInsert[i].vtShowType[j] == SHOW_TX)
+						{
+							listTx.push_back(listToInsert[i]);
+						}
+						else if (listToInsert[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
+						{
+							listAssetTx.push_back(listToInsert[i]);
+						}
+						else if (listToInsert[i].vtShowType[j] == SHOW_APPLICATION_REGIST)
+						{
+							listAppTx.push_back(listToInsert[i]);
+						}
+						else if (listToInsert[i].vtShowType[j] == SHOW_CANDY_TX)
+						{
+							listCandyTx.push_back(listToInsert[i]);
+						}
+						else if (listToInsert[i].vtShowType[j] == SHOW_LOCKED_TX)
+						{
+							listLockTx.push_back(listToInsert[i]);
+						}
 					}
 				}
-			}
 
-			if (listTx.size() > 0)
-			{
-				Q_EMIT updateTransactionModel(updatedHash, listTx, stTxData.nStatus, stTxData.bShowTx);
-			}
 
-			if (listAssetTx.size() > 0)
-			{
-				Q_EMIT updateAssetTransactionModel(updatedHash, listAssetTx, stTxData.nStatus, stTxData.bShowTx);
-			}
+				QMap<uint256, NewTxData>::iterator itNew = mapNewTxData.find(it.key());
+				if (itNew == mapNewTxData.end())
+				{
+					continue;
+				}
 
-			if (listAppTx.size() > 0)
-			{
-				Q_EMIT updateAppTransactionModel(updatedHash, listAppTx, stTxData.nStatus, stTxData.bShowTx);
-			}
+				uint256 hash = itNew.key();
+				const NewTxData &stTxData = itNew.value();
 
-			if (listCandyTx.size() > 0)
-			{
-				Q_EMIT updateCandyTransactionModel(updatedHash, listCandyTx, stTxData.nStatus, stTxData.bShowTx);
-			}
+				if (listTx.size() > 0)
+				{
+					Q_EMIT updateTransactionModel(hash, listTx, stTxData.nStatus, stTxData.bShowTx);
+				}
 
-			if (listLockTx.size() > 0)
-			{
-				Q_EMIT updateLockTransactionModel(updatedHash, listLockTx, stTxData.nStatus, stTxData.bShowTx);
-			}
+				if (listAssetTx.size() > 0)
+				{
+					Q_EMIT updateAssetTransactionModel(hash, listAssetTx, stTxData.nStatus, stTxData.bShowTx);
+				}
 
+				if (listAppTx.size() > 0)
+				{
+					Q_EMIT updateAppTransactionModel(hash, listAppTx, stTxData.nStatus, stTxData.bShowTx);
+				}
+
+				if (listCandyTx.size() > 0)
+				{
+					Q_EMIT updateCandyTransactionModel(hash, listCandyTx, stTxData.nStatus, stTxData.bShowTx);
+				}
+
+				if (listLockTx.size() > 0)
+				{
+					Q_EMIT updateLockTransactionModel(hash, listLockTx, stTxData.nStatus, stTxData.bShowTx);
+				}
+				
+				msleep(100);
+			}
 		}
 
 
-		if (mapTempAssetList.size() > 0)
+		if (mapAssetList.size() > 0)
 		{
-			Q_EMIT updateAssetDisplayInfo(mapTempAssetList);
+			Q_EMIT updateAssetDisplayInfo(mapAssetList);
 
 
-			QString strAssetName = mapTempAssetList.begin().key();
+			QString strAssetName = mapAssetList.begin().key();
 
 			// update overview page
 			RefreshOverviewPageData(strAssetName);

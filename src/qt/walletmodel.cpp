@@ -85,7 +85,6 @@ WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, Op
     recentRequestsTableModel = new RecentRequestsTableModel(wallet, this);
 
     subscribeToCoreSignals();
-
 	
 	qRegisterMetaType<QList<TransactionRecord> >("QList<TransactionRecord>");
 	qRegisterMetaType<uint256>("uint256");
@@ -103,6 +102,12 @@ WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, Op
 
 WalletModel::~WalletModel()
 {
+	disconnect(pUpdateTransaction, SIGNAL(updateTransactionModel(uint256, QList<TransactionRecord>, int, bool)), transactionTableModel, SLOT(updateTransaction(uint256, QList<TransactionRecord>, int, bool)));
+	disconnect(pUpdateTransaction, SIGNAL(updateAssetTransactionModel(uint256, QList<TransactionRecord>, int, bool)), assetsDistributeTableModel, SLOT(updateTransaction(uint256, QList<TransactionRecord>, int, bool)));
+	disconnect(pUpdateTransaction, SIGNAL(updateAppTransactionModel(uint256, QList<TransactionRecord>, int, bool)), applicationsRegistTableModel, SLOT(updateTransaction(uint256, QList<TransactionRecord>, int, bool)));
+	disconnect(pUpdateTransaction, SIGNAL(updateCandyTransactionModel(uint256, QList<TransactionRecord>, int, bool)), candyTableModel, SLOT(updateTransaction(uint256, QList<TransactionRecord>, int, bool)));
+	disconnect(pUpdateTransaction, SIGNAL(updateLockTransactionModel(uint256, QList<TransactionRecord>, int, bool)), lockedTransactionTableModel, SLOT(updateTransaction(uint256, QList<TransactionRecord>, int, bool)));
+	
 	if (pUpdateTransaction != NULL)
 	{
 		delete pUpdateTransaction;
@@ -189,14 +194,6 @@ void WalletModel::updateAllBalanceChanged(bool checkIncrease)
     bool fPrivateSendRounds = privateSendClient.nPrivateSendRounds != cachedPrivateSendRounds;
     if(fForceCheckBalanceChanged || fCachedNumBlocks || fPrivateSendRounds || cachedTxLocks != nCompleteTXLocks)
     {
-        boost::this_thread::interruption_point();
-		bool bUpdateConfirmations = false;
-
-		if (chainActive.Height() != cachedNumBlocks)
-		{
-			bUpdateConfirmations = true;
-		}
-
         if(nCheckIncrease%5==0||fForceCheckBalanceChanged)
         {
             checkIncrease = false;
@@ -206,15 +203,18 @@ void WalletModel::updateAllBalanceChanged(bool checkIncrease)
             nCheckIncrease++;
         }
 
+		// Balance and number of transactions might have changed
+		cachedNumBlocks = chainActive.Height();
+		cachedPrivateSendRounds = privateSendClient.nPrivateSendRounds;
+
+
+		if (fForceCheckBalanceChanged || fPrivateSendRounds || cachedTxLocks != nCompleteTXLocks)
+		{
+			checkBalanceChanged(checkIncrease);
+		}
+
         fForceCheckBalanceChanged = false;
-
-        // Balance and number of transactions might have changed
-        cachedNumBlocks = chainActive.Height();
-        cachedPrivateSendRounds = privateSendClient.nPrivateSendRounds;
-
-        checkBalanceChanged(checkIncrease);
-		
-		if (/*!masternodeSync.IsSynced() ||*/ !bUpdateConfirmations)
+		if (!fCachedNumBlocks)
 		{
 			return ;
 		}
@@ -621,8 +621,17 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
         if(!wallet->CommitTransaction(*newTx, *keyChange, g_connman.get(), recipients[0].fUseInstantSend ? NetMsgType::TXLOCKREQUEST : NetMsgType::TX))
         {
             std::vector<int> prevheights;
-            BOOST_FOREACH(const CTxIn &txin, newTx->vin)
-                prevheights.push_back(GetTxHeight(txin.prevout.hash));
+			/*BOOST_FOREACH(const CTxIn &txin, newTx->vin)
+				prevheights.push_back(GetTxHeight(txin.prevout.hash));*/
+
+			BOOST_FOREACH(const CTxIn &txin, newTx->vin)
+			{
+				std::map<uint256, CWalletTx>::iterator it = wallet->mapWallet.find(txin.prevout.hash);
+				if (it != wallet->mapWallet.end())
+				{
+					prevheights.push_back(it->second.nTxHeight);
+				}
+			}
 
             if(ExistForbidTxin((uint32_t)g_nChainHeight + 1, prevheights))
                 return TransactionAmountSealed;
@@ -1133,53 +1142,56 @@ void RefreshDataStartUp(WalletModel* walletModel)
 
 	{
 		LOCK2(cs_main, wallet->cs_wallet);
+		wallet->mapWallet_tmp = wallet->mapWallet;
+	}
 
-		for (std::map<uint256, CWalletTx>::iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
+	for (std::map<uint256, CWalletTx>::iterator it = wallet->mapWallet_tmp.begin(); it != wallet->mapWallet_tmp.end(); ++it)
+	{
+		boost::this_thread::interruption_point();
+		if (TransactionRecord::showTransaction(it->second))
+		{
+			TransactionRecord::decomposeTransaction(wallet, it->second, listTransaction, mapTempAssetList);
+		}
+
+		// get alance for all asset
+		for (QMap<QString, AssetsDisplayInfo>::iterator it = mapTempAssetList.begin(); it != mapTempAssetList.end(); it++)
 		{
 			boost::this_thread::interruption_point();
-			if (TransactionRecord::showTransaction(it->second))
+
+			if (mapAssetBalance.find(it.key()) != mapAssetBalance.end())
 			{
-				TransactionRecord::decomposeTransaction(wallet, it->second, listTransaction, mapTempAssetList);
+				continue;
 			}
 
-			// get alance for all asset
-			for (QMap<QString, AssetsDisplayInfo>::iterator it = mapTempAssetList.begin(); it != mapTempAssetList.end(); it++)
+			uint256 assetId;
+			if (GetAssetIdByAssetName(it.key().toStdString(), assetId, false))
 			{
-				if (mapAssetBalance.find(it.key()) != mapAssetBalance.end())
+				CAssetId_AssetInfo_IndexValue assetsInfo;
+				AssetBalance assetBalance;
+				if (GetAssetInfoByAssetId(assetId, assetsInfo, false))
 				{
-					continue;
-				}
+					assetBalance.amount = wallet->GetBalance(true, &assetId, NULL, false);
+					assetBalance.unconfirmAmount = wallet->GetUnconfirmedBalance(true, &assetId, NULL, false);
+					assetBalance.lockedAmount = wallet->GetLockedBalance(true, &assetId, NULL, false);
+					assetBalance.strUnit = QString::fromStdString(assetsInfo.assetData.strAssetUnit);
+					assetBalance.nDecimals = assetsInfo.assetData.nDecimals;
+					mapAssetBalance.insert(it.key(), assetBalance);
 
-				boost::this_thread::interruption_point();
-
-				uint256 assetId;
-				if (GetAssetIdByAssetName(it.key().toStdString(), assetId, false))
-				{
-					CAssetId_AssetInfo_IndexValue assetsInfo;
-					AssetBalance assetBalance;
-					if (GetAssetInfoByAssetId(assetId, assetsInfo, false))
-					{
-						assetBalance.amount = wallet->GetBalance(true, &assetId, NULL, true);
-						assetBalance.unconfirmAmount = wallet->GetUnconfirmedBalance(true, &assetId, NULL, true);
-						assetBalance.lockedAmount = wallet->GetLockedBalance(true, &assetId, NULL, true);
-						assetBalance.strUnit = QString::fromStdString(assetsInfo.assetData.strAssetUnit);
-						assetBalance.nDecimals = assetsInfo.assetData.nDecimals;
-						mapAssetBalance.insert(it.key(), assetBalance);
-
-						Q_EMIT walletModel->getUpdateTransaction()->updateOverviePage(mapAssetBalance);
-					}
+					Q_EMIT walletModel->getUpdateTransaction()->updateOverviePage(mapAssetBalance);
 				}
 			}
-			
-			if (mapTempAssetList.size() > nAssetCount)
-			{
-				nAssetCount = mapTempAssetList.size();
-				Q_EMIT walletModel->loadWalletProcess(mapTempAssetList);
-			}
+		}
+
+		if (mapTempAssetList.size() > nAssetCount)
+		{
+			nAssetCount = mapTempAssetList.size();
+			Q_EMIT walletModel->loadWalletProcess(mapTempAssetList);
 		}
 	}
 
-
+	wallet->mapWallet_tmp.clear();
+	map<uint256, CWalletTx>().swap(wallet->mapWallet_tmp);
+	
 	for (int i = 0; i < listTransaction.size(); i++)
 	{
 		boost::this_thread::interruption_point();

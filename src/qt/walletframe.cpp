@@ -283,3 +283,12 @@ void WalletFrame::ShowHistoryPage(const QString& name)
 		walletView->ShowHistoryPage();
 	}
 }
+
+void WalletFrame::disconnectSign(const QString& name)
+{
+	WalletView *walletView = mapWalletViews.value(name);
+	if (walletView != NULL)
+	{
+		walletView->disconnectSign();
+	}
+}

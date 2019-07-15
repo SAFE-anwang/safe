@@ -41,6 +41,8 @@ public:
 
 	void ShowHistoryPage(const QString& name);
 
+	void disconnectSign(const QString& name);
+
 Q_SIGNALS:
     /** Notify that the user has requested more information about the out-of-sync warning */
     void requestedSyncWarningInfo();

@@ -283,6 +283,8 @@ WalletView::WalletView(const PlatformStyle* platformStyle, QWidget* parent) : QS
 
 WalletView::~WalletView()
 {
+	
+
 }
 
 void WalletView::setBitcoinGUI(BitcoinGUI* gui)
@@ -670,6 +672,36 @@ WalletModel* WalletView::getWalletMode()
 
 void WalletView::ShowHistoryPage()
 {
+	CAmount balance = walletModel->getBalance();
+	CAmount unconfirmeBalance = walletModel->getUnconfirmedBalance();
+	CAmount immatureBalance = walletModel->getImmatureBalance();
+	CAmount lockedBalance = walletModel->getLockedBalance();
+	CAmount anonymizeBalance = walletModel->getAnonymizedBalance();
+	CAmount watchBalance = walletModel->getWatchBalance();
+	CAmount watchUnconfirmeBalance = walletModel->getWatchUnconfirmedBalance();
+	CAmount watchImmatureBalance = walletModel->getWatchImmatureBalance();
+	CAmount watchLockedBalance = walletModel->getWatchLockedBalance();
+
+	overviewPage->setBalance(balance,
+		unconfirmeBalance,
+		immatureBalance,
+		lockedBalance,
+		anonymizeBalance,
+		watchBalance,
+		watchUnconfirmeBalance,
+		watchImmatureBalance,
+		watchLockedBalance);
+
+	sendCoinsPage->setBalance(balance,
+		unconfirmeBalance,
+		immatureBalance,
+		lockedBalance,
+		anonymizeBalance,
+		watchBalance,
+		watchUnconfirmeBalance,
+		watchImmatureBalance,
+		watchLockedBalance);
+
 	walletModel->ShowHistoryPage();
 }
 
@@ -689,4 +721,19 @@ void WalletView::loadWalletFinish_slot()
 void WalletView::loadWalletProcess_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay)
 {
 	sendCoinsPage->addAssetDisplay(mapAssetDisplay);
+}
+
+void WalletView::disconnectSign()
+{
+	disconnect(walletModel->getUpdateTransaction(), SIGNAL(updateOverviePage(QMap<QString, AssetBalance>)),
+		overviewPage, SLOT(updateAssetsInfo(QMap<QString, AssetBalance>)));
+
+	disconnect(walletModel->getUpdateTransaction(), SIGNAL(updateAssetPage(QStringList)),
+		assetsPage->getAssetDistribute(), SLOT(updateAssetsInfo(QStringList)));
+
+	disconnect(walletModel->getUpdateTransaction(), SIGNAL(updateCandyPage(QStringList)),
+		candyPage, SLOT(updateAssetsInfo(QStringList)));
+
+	disconnect(walletModel->getUpdateTransaction(), SIGNAL(updateAssetDisplayInfo(QMap<QString, AssetsDisplayInfo>)),
+		sendCoinsPage, SLOT(updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo>)));
 }

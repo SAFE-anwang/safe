@@ -63,7 +63,7 @@ public Q_SLOTS:
     void reject();
     void accept();
     void updateAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue> mapAssetInfo);
-    void updateAssetsFound(std::vector<uint256> listAssetId);
+    void updateAssetsFound(std::vector<uint256> vtNewAssetId);
 
     void on_reqLabel_textChanged(const QString &address);
     void on_reqMessage_textChanged(const QString &address);

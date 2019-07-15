@@ -4911,6 +4911,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 	// add this block to the view's block chain
 	view.SetBestBlock(pindex->GetBlockHash());
 
+
 	{
 		std::vector<uint256> listAssetId;
 		std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> >::const_iterator itAssetId;
@@ -4922,7 +4923,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
 		if (listAssetId.size() > 0)
 		{
-			uiInterface.AssetFound(listAssetId);
+			GetMainSignals().AssetFound(listAssetId);
 		}
 	}
 
@@ -7963,7 +7964,7 @@ static bool GetAllCandyInfo()
 
             icounter++;
             if (icounter <= nCandyPageCount && fHaveGUI)
-                uiInterface.CandyVecPut();
+				GetMainSignals().CandyVecPut();
 
             {
                 std::lock_guard<std::mutex> lock(g_mutexAllCandyInfo);
@@ -8026,7 +8027,7 @@ static bool GetAllCandyInfo()
         }
 
         if(sendToFirstPage && fHaveGUI)
-            uiInterface.CandyVecPut();
+			GetMainSignals().CandyVecPut();
     }
 
     return fRet;
@@ -8564,7 +8565,7 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
         }
     }
     if(fUpdateUI && fHaveGUI)
-        uiInterface.CandyVecPut();
+		GetMainSignals().CandyVecPut();
 
     return true;
 }

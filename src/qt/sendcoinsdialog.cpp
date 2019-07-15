@@ -63,35 +63,33 @@ void RefreshSendCoinsData(SendCoinsDialog* sendCoinsDialog)
 		QMap<QString, AssetsDisplayInfo>::iterator itTemp = mapTempAssetDisplay.begin();
 		while (itTemp != mapTempAssetDisplay.end())
 		{
-			boost::this_thread::interruption_point();
 			mapNewAssetDisplay.insert(itTemp.key(), itTemp.value());
 			itTemp++;
         }
 
         QMap<QString, AssetsDisplayInfo>::iterator itAssetDiaply = mapNewAssetDisplay.begin();
-		while (itAssetDiaply != mapNewAssetDisplay.end())
-		{
-			boost::this_thread::interruption_point();
-	//		TRY_LOCK(cs_main, lockMain);
-	//		if (lockMain)
-			{
-	//			TRY_LOCK(pwalletMain->cs_wallet, lockWallet);
-				std::map<uint256, CWalletTx>::iterator mi = pwalletMain->mapWallet.find(itAssetDiaply.value().txHash);
-				if (mi != pwalletMain->mapWallet.end())
-				{
-					const CWalletTx& wtx = mi->second;
-					itAssetDiaply.value().bInMainChain = wtx.IsInMainChain();
-				}
-			}
+	//	while (itAssetDiaply != mapNewAssetDisplay.end())
+	//	{
+	//		boost::this_thread::interruption_point();
+	////		TRY_LOCK(cs_main, lockMain);
+	////		if (lockMain)
+	//		{
+	////			TRY_LOCK(pwalletMain->cs_wallet, lockWallet);
+	//			std::map<uint256, CWalletTx>::iterator mi = pwalletMain->mapWallet.find(itAssetDiaply.value().txHash);
+	//			if (mi != pwalletMain->mapWallet.end())
+	//			{
+	//				const CWalletTx& wtx = mi->second;
+	//				itAssetDiaply.value().bInMainChain = wtx.IsInMainChain();
+	//			}
+	//		}
 
-			itAssetDiaply++;
-			MilliSleep(200);
-		}
+	//		itAssetDiaply++;
+	//		MilliSleep(200);
+	//	}
 
         itAssetDiaply = mapNewAssetDisplay.begin();
         while (itAssetDiaply != mapNewAssetDisplay.end())
         {
-            boost::this_thread::interruption_point();
             if (itAssetDiaply.value().bInMainChain)
             {
                 mapConfirmedAssetDisplay.insert(itAssetDiaply.key(), itAssetDiaply.value());
@@ -279,8 +277,6 @@ void SendCoinsDialog::setModel(WalletModel *model)
             }
         }
 
-        setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getImmatureBalance(), model->getLockedBalance(), model->getAnonymizedBalance(),
-                   model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance(), model->getWatchLockedBalance());
         connect(model, SIGNAL(balanceChanged(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)), this, SLOT(setBalance(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)));
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
         updateDisplayUnit();
@@ -791,45 +787,45 @@ bool SendCoinsDialog::handlePaymentRequest(const SendCoinsRecipient &rv)
 }
 
 void SendCoinsDialog::setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& lockedBalance, const CAmount& anonymizedBalance,
-                                 const CAmount& watchBalance, const CAmount& watchUnconfirmedBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance)
+	const CAmount& watchBalance, const CAmount& watchUnconfirmedBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance)
 {
-    Q_UNUSED(unconfirmedBalance);
-    Q_UNUSED(immatureBalance);
-    Q_UNUSED(lockedBalance);
-    Q_UNUSED(anonymizedBalance);
-    Q_UNUSED(watchBalance);
-    Q_UNUSED(watchUnconfirmedBalance);
-    Q_UNUSED(watchImmatureBalance);
-    Q_UNUSED(watchLockedBalance);
+	Q_UNUSED(unconfirmedBalance);
+	Q_UNUSED(immatureBalance);
+	Q_UNUSED(lockedBalance);
+	Q_UNUSED(anonymizedBalance);
+	Q_UNUSED(watchBalance);
+	Q_UNUSED(watchUnconfirmedBalance);
+	Q_UNUSED(watchImmatureBalance);
+	Q_UNUSED(watchLockedBalance);
 
-    if(model && model->getOptionsModel() && !ShutdownRequested())
-    {
-	    uint64_t bal = 0;
-        QSettings settings;
-        settings.setValue("bUseDarkSend", ui->checkUsePrivateSend->isChecked());
-	    if(ui->checkUsePrivateSend->isChecked()) {
-		    bal = anonymizedBalance;
-	    } else {
-		    bal = balance;
-	    }
+	if (model && model->getOptionsModel() && !ShutdownRequested())
+	{
+		uint64_t bal = 0;
+		QSettings settings;
+		settings.setValue("bUseDarkSend", ui->checkUsePrivateSend->isChecked());
+		if (ui->checkUsePrivateSend->isChecked()) {
+			bal = anonymizedBalance;
+		}
+		else {
+			bal = balance;
+		}
 
-        if(fAssets)
-        {
-            uint256 assetId;
-            if(GetAssetIdByAssetName(ui->assetsComboBox->currentText().trimmed().toStdString(),assetId)){
-                bal = model->getBalance(NULL,true,&assetId);
-            }
-            ui->labelBalance->setText(QString("%1 %2").arg(BitcoinUnits::format(nAssetsDecimals,bal,false,BitcoinUnits::separatorAlways,true)).arg(strAssetsUnit));
-        }else{
-            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), bal));
-        }
-    }
+		if (fAssets)
+		{
+			uint256 assetId;
+			if (GetAssetIdByAssetName(ui->assetsComboBox->currentText().trimmed().toStdString(), assetId)) {
+				bal = model->getBalance(NULL, true, &assetId);
+			}
+			ui->labelBalance->setText(QString("%1 %2").arg(BitcoinUnits::format(nAssetsDecimals, bal, false, BitcoinUnits::separatorAlways, true)).arg(strAssetsUnit));
+		}
+		else {
+			ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), bal));
+		}
+	}
 }
 
 void SendCoinsDialog::updateDisplayUnit()
 {
-    setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getImmatureBalance(), model->getLockedBalance(), model->getAnonymizedBalance(),
-                   model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance(), model->getWatchLockedBalance());
     CoinControlDialog::coinControl->fUsePrivateSend = ui->checkUsePrivateSend->isChecked();
     coinControlUpdateLabels();
     ui->customFee->setDisplayUnit(model->getOptionsModel()->getDisplayUnit());

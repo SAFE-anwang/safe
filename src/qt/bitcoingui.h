@@ -74,6 +74,8 @@ public:
 
 	void ShowHistoryPage(const QString& name);
 
+	void disconnectSign(const QString& name);
+
     //void handleResize();
 #endif // ENABLE_WALLET
     bool enableWallet;

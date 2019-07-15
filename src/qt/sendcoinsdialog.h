@@ -66,8 +66,8 @@ public Q_SLOTS:
     void accept();
     SendCoinsEntry *addEntry(bool showLocked=false);
     void updateTabsAndLabels();
-    void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& lockedBalance, const CAmount& anonymizedBalance,
-                    const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance);
+	void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& lockedBalance, const CAmount& anonymizedBalance,
+		const CAmount& watchBalance, const CAmount& watchUnconfirmedBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance);
 
 	void updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay);
 

@@ -73,6 +73,7 @@ public:
 
 	void ShowHistoryPage();
 
+	void disconnectSign();
 
 private:
     ClientModel *clientModel;

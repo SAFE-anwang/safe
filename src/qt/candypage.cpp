@@ -42,6 +42,10 @@ extern unsigned int nCandyPageCount;
 //	}
 //}
 
+static void CandyVecPut(CandyPage* candyPage)
+{
+	QMetaObject::invokeMethod(candyPage, "updateGetCandyList", Qt::QueuedConnection);
+}
 
 CandyPage::CandyPage():
     ui(new Ui::CandyPage)
@@ -114,10 +118,13 @@ CandyPage::CandyPage():
     connect(this, SIGNAL(stopThread()), getCandyThread, SLOT(quit()));
     connect(candyWorker, SIGNAL(resultReady(bool, QString, int, CAmount)), this, SLOT(handlerGetCandyResult(bool, QString, int, CAmount)));
     connect(this,SIGNAL(refreshAssetsInfo()),this,SLOT(updateAssetsInfo()));
+
+	GetMainSignals().CandyVecPut.connect(boost::bind(CandyVecPut, this));
 }
 
 CandyPage::~CandyPage()
 {
+	GetMainSignals().CandyVecPut.disconnect(boost::bind(CandyVecPut, this));
     Q_EMIT stopThread();
     getCandyThread->wait();
 }
@@ -632,11 +639,6 @@ void CandyPage::setGetHistoryTabLayout(QVBoxLayout *layout)
 void CandyPage::setClientModel(ClientModel *model)
 {
     this->clientModel = model;
-    if(model)
-    {
-        connect(model,SIGNAL(candyPut(QString,QString,quint8,qint64,quint16,QString,QString,quint32)),this,SLOT(updateCandyListWidget(QString,QString,quint8,qint64,quint16,QString,QString,quint32)));
-        connect(model,SIGNAL(candyPutVec()),this,SLOT(updateGetCandyList()));
-    }
 }
 
 void CandyPage::setModel(WalletModel *model)

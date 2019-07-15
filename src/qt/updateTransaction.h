@@ -87,7 +87,7 @@ private:
 private:
     CWallet* m_pWallet;
     QVector<NewTxData> m_vtNewTx;
-    QMutex m_txLock;
+	CCriticalSection m_txLock;
     bool m_bIsExit;
 	bool m_bProcessingQueuedTransactions;
 };
