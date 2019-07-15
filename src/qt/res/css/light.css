@@ -1229,6 +1229,11 @@ padding-left:20px;
 font-size:15px;
 }
 
+QWidget#OverviewPage .QScrollArea#OverviewScrollArea .QWidget#scrollAreaWidgetContents .QFrame#frameOtherAssets .QLabel#labelLoadingAsset {
+qproperty-alignment: 'AlignVCenter | AlignLeft';
+font-size:15px;
+}
+
 QWidget#OverViewEntry .QLabel#labelOtherAvailableText{
 qproperty-alignment: 'AlignVCenter | AlignLeft';
 font-weight:normal;

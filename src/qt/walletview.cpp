@@ -713,6 +713,7 @@ void WalletView::loadWalletFinish_slot()
 	candyView->refreshPage();
 	assetsDistributeRecordView->refreshPage();
 	applicationsView->refreshPage();
+    overviewPage->loadAssetFinish();
 	LogPrintf("WalletView: loadWalletFinish_slot end refresh page\n");
 
 	walletModel->startUpdate();

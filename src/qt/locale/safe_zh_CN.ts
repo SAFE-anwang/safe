@@ -3337,6 +3337,10 @@ http://www.anwang.com/</translation>
         <translation>其它资产</translation>
     </message>
     <message>
+        <source>Loading...</source>
+        <translation>正在加载...</translation>
+    </message>
+    <message>
         <source>Available:</source>
         <translation>可使用的余额：</translation>
     </message>

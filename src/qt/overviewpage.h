@@ -64,6 +64,7 @@ public:
     OverViewEntry *insertEntry(const QString assetName,const CAmount& balance,const CAmount& unconfirmedBalance,const CAmount& lockedBalance,const QString& strAssetUnit,int nDecimals,const QString& logoURL="");
 
     bool getCurrAssetInfoByName(const QString& strAssetName,CAmount& amount,CAmount& unconfirmAmount,CAmount& lockedAmount,int& nDecimals,QString& strUnit);
+    void loadAssetFinish();
 
 public Q_SLOTS:
     void privateSendStatus();
