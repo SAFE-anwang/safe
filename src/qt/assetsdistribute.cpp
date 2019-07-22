@@ -118,12 +118,17 @@ AssetsDistribute::~AssetsDistribute()
 
 void AssetsDistribute::updateAssetsInfo(QStringList listAsset)
 {
-    ui->assetsNameComboBox->clear();
-    ui->assetsNameComboBox->addItems(listAsset);
-    stringListModel->setStringList(listAsset);
-    completer->setModel(stringListModel);
-    completer->popup()->setStyleSheet("font: 12px;");
-    ui->assetsNameComboBox->setCompleter(completer);
+	QStringList listTemp;
+	for (int i = 0; i < listAsset.size(); i++)
+	{
+		if (ui->assetsNameComboBox->findText(listAsset[i]) < 0)
+		{
+			listTemp.push_back(listAsset[i]);
+		}
+	}
+
+	ui->assetsNameComboBox->addItems(listTemp);
+	stringListModel->setStringList(listTemp);
 }
 
 void AssetsDistribute::on_assetsCandyRatioSlider_valueChanged(int /*value*/)

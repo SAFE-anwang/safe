@@ -161,13 +161,14 @@ public:
         const CWalletTx &wtx,
 		TransactionRecord &sub,
         const CTxOut &txout,
-		QMap<QString, AssetsDisplayInfo> &assetNamesUnits);
+		QMap<QString, AssetsDisplayInfo> &assetNamesUnits,
+		QMap<uint256, CAssetData> &mapIssueAsset);
 
 	static bool decomposeLockTx(const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout);
 
 	static void setAddressType(isminetype fAllFromMe, isminetype fAllToMe, const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout);
 
-	static bool decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx, QList<TransactionRecord> &listTransaction, QMap<QString, AssetsDisplayInfo> &mapAssetInfo);
+	static bool decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx, QList<TransactionRecord> &listTransaction, QMap<QString, AssetsDisplayInfo> &mapAssetInfo, QMap<uint256, CAssetData> &mapIssueAsset);
 
     /** @name Immutable transaction attributes
       @{*/

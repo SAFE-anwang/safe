@@ -228,8 +228,6 @@ void AssetsDistributeRecordView::setModel(WalletModel *model)
 
      //   transactionProxyModel->setSortRole(Qt::EditRole);
 
-		model->getAssetsDistributeTableModel()->setProxyModel(transactionProxyModel);
-
         distributeView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         distributeView->setModel(transactionProxyModel);
         distributeView->setAlternatingRowColors(true);

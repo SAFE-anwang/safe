@@ -4911,7 +4911,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 	// add this block to the view's block chain
 	view.SetBestBlock(pindex->GetBlockHash());
 
-
+	if (masternodeSync.IsBlockchainSynced())
 	{
 		std::vector<uint256> listAssetId;
 		std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> >::const_iterator itAssetId;
@@ -4923,7 +4923,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
 		if (listAssetId.size() > 0)
 		{
-			GetMainSignals().AssetFound(listAssetId);
+			uiInterface.AssetFound(listAssetId);
 		}
 	}
 
@@ -7632,56 +7632,115 @@ bool GetAssetListInfo(std::vector<uint256> &vAssetId, const bool fWithMempool)
 
     return vAssetId.size();
 }
+//
+//CAmount GetAddedAmountByAssetId(const uint256& assetId, const bool fWithMempool)
+//{
+//    if (assetId.IsNull())
+//        return 0;
+//
+//    CAmount value = 0;
+//    vector<COutPoint> tempvOut;
+//    GetTxInfoByAssetIdTxClass(assetId, ADD_ISSUE_TXOUT, tempvOut, fWithMempool);
+//    if (tempvOut.empty())
+//        return 0;
+//
+//    std::vector<uint256> vTx;
+//    BOOST_FOREACH(const COutPoint& out, tempvOut)
+//    {
+//        if (find(vTx.begin(), vTx.end(), out.hash) == vTx.end())
+//            vTx.push_back(out.hash);
+//    }
+//
+//    std::vector<uint256>::iterator it = vTx.begin();
+//    for (; it != vTx.end(); it++)
+//    {
+//        CTransaction txTmp;
+//        uint256 hashBlock;
+//        if (GetTransaction(*it, txTmp, Params().GetConsensus(), hashBlock, true))
+//        {
+//            BOOST_FOREACH(const CTxOut& txout, txTmp.vout)
+//            {
+//                if (!txout.IsAsset())
+//                    continue;
+//
+//                CAppHeader header;
+//                vector<unsigned char> vData;
+//                if (ParseReserve(txout.vReserve, header, vData))
+//                {
+//                    if (header.nAppCmd == ADD_ASSET_CMD)
+//                    {
+//                        CCommonData commonData;
+//                        if (ParseCommonData(vData, commonData))
+//                        {
+//                            if (assetId == commonData.assetId)
+//                                value += commonData.nAmount;
+//                        }
+//                    }
+//                }
+//           }
+//        }
+//    }
+//
+//    return value;
+//}
+
 
 CAmount GetAddedAmountByAssetId(const uint256& assetId, const bool fWithMempool)
 {
-    if (assetId.IsNull())
-        return 0;
+	if (assetId.IsNull() || NULL == pwalletMain)
+		return 0;
 
-    CAmount value = 0;
-    vector<COutPoint> tempvOut;
-    GetTxInfoByAssetIdTxClass(assetId, ADD_ISSUE_TXOUT, tempvOut, fWithMempool);
-    if (tempvOut.empty())
-        return 0;
+	CAmount value = 0;
+	vector<COutPoint> tempvOut;
+	GetTxInfoByAssetIdTxClass(assetId, ADD_ISSUE_TXOUT, tempvOut, fWithMempool);
+	if (tempvOut.empty())
+		return 0;
 
-    std::vector<uint256> vTx;
-    BOOST_FOREACH(const COutPoint& out, tempvOut)
-    {
-        if (find(vTx.begin(), vTx.end(), out.hash) == vTx.end())
-            vTx.push_back(out.hash);
-    }
+	std::vector<uint256> vTx;
+	BOOST_FOREACH(const COutPoint& out, tempvOut)
+	{
+		if (find(vTx.begin(), vTx.end(), out.hash) == vTx.end())
+			vTx.push_back(out.hash);
+	}
 
-    std::vector<uint256>::iterator it = vTx.begin();
-    for (; it != vTx.end(); it++)
-    {
-        CTransaction txTmp;
-        uint256 hashBlock;
-        if (GetTransaction(*it, txTmp, Params().GetConsensus(), hashBlock, true))
-        {
-            BOOST_FOREACH(const CTxOut& txout, txTmp.vout)
-            {
-                if (!txout.IsAsset())
-                    continue;
+	std::vector<uint256>::iterator it = vTx.begin();
+	for (; it != vTx.end(); it++)
+	{
+		std::map<uint256, CWalletTx>::iterator itTx;
 
-                CAppHeader header;
-                vector<unsigned char> vData;
-                if (ParseReserve(txout.vReserve, header, vData))
-                {
-                    if (header.nAppCmd == ADD_ASSET_CMD)
-                    {
-                        CCommonData commonData;
-                        if (ParseCommonData(vData, commonData))
-                        {
-                            if (assetId == commonData.assetId)
-                                value += commonData.nAmount;
-                        }
-                    }
-                }
-           }
-        }
-    }
+		{
+			LOCK(pwalletMain->cs_wallet);
+			itTx = pwalletMain->mapWallet.find(*it);
+			if (itTx == pwalletMain->mapWallet.end())
+			{
+				continue;
+			}
+		}
 
-    return value;
+
+		BOOST_FOREACH(const CTxOut& txout, itTx->second.vout)
+		{
+			if (!txout.IsAsset())
+				continue;
+
+			CAppHeader header;
+			vector<unsigned char> vData;
+			if (ParseReserve(txout.vReserve, header, vData))
+			{
+				if (header.nAppCmd == ADD_ASSET_CMD)
+				{
+					CCommonData commonData;
+					if (ParseCommonData(vData, commonData))
+					{
+						if (assetId == commonData.assetId)
+							value += commonData.nAmount;
+					}
+				}
+			}
+		}
+	}
+
+	return value;
 }
 
 bool GetRangeChangeHeight(const int nCandyHeight, vector<int>& vChangeHeight)
@@ -7964,7 +8023,7 @@ static bool GetAllCandyInfo()
 
             icounter++;
             if (icounter <= nCandyPageCount && fHaveGUI)
-				GetMainSignals().CandyVecPut();
+				uiInterface.CandyVecPut();
 
             {
                 std::lock_guard<std::mutex> lock(g_mutexAllCandyInfo);
@@ -8027,7 +8086,7 @@ static bool GetAllCandyInfo()
         }
 
         if(sendToFirstPage && fHaveGUI)
-			GetMainSignals().CandyVecPut();
+			uiInterface.CandyVecPut();
     }
 
     return fRet;
@@ -8035,30 +8094,30 @@ static bool GetAllCandyInfo()
 
 void ThreadGetAllCandyInfo()
 {
-    SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
-    RenameThread("safe-get-allcandy");
+	SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
+	RenameThread("safe-get-allcandy");
 
-    static bool fOneThread;
-    if (fOneThread)
-        return;
-    fOneThread = true;
+	static bool fOneThread;
+	if (fOneThread)
+		return;
+	fOneThread = true;
 
-    while(true)
-    {
-        boost::this_thread::interruption_point();
-        if(!fGetCandyInfoStart)
-        {
-            MilliSleep(100);
-            continue;
-        }
-        if(GetAllCandyInfo())
-        {
-            fUpdateAllCandyInfoFinished = true;
-            LogPrintf("Message:GetAllCandyInfo finished\n");
-            break;
-        }
-        MilliSleep(100);
-    }
+	while (true)
+	{
+		boost::this_thread::interruption_point();
+		if (!fGetCandyInfoStart)
+		{
+			MilliSleep(100);
+			continue;
+		}
+		if (GetAllCandyInfo())
+		{
+			fUpdateAllCandyInfoFinished = true;
+			LogPrintf("Message:GetAllCandyInfo finished\n");
+			break;
+		}
+		MilliSleep(1000);
+	}
 }
 
 bool LoadCandyHeightToList()
@@ -8565,36 +8624,36 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
         }
     }
     if(fUpdateUI && fHaveGUI)
-		GetMainSignals().CandyVecPut();
+		uiInterface.CandyVecPut();
 
     return true;
 }
 
 void ThreadCalculateAddressAmount()
 {
-    SetThreadPriority(THREAD_PRIORITY_NORMAL);
-    RenameThread("safe-calculate-amount");
+	SetThreadPriority(THREAD_PRIORITY_NORMAL);
+	RenameThread("safe-calculate-amount");
 
-    while (true)
-    {
-        boost::this_thread::interruption_point();
-        int nCandyHeight = 0;
-        if (GetCandyHeightFromList(nCandyHeight))
-        {
-            while(true)
-            {
-                boost::this_thread::interruption_point();
-                if(GetHeightAddressAmount(nCandyHeight))
-                {
-                    break;
-                }
-
-                MilliSleep(100);
-            }
-        }
-        
-        MilliSleep(100);
-    }
+	while (true)
+	{
+		boost::this_thread::interruption_point();
+		int nCandyHeight = 0;
+		if (GetCandyHeightFromList(nCandyHeight))
+		{
+			while (true)
+			{
+				boost::this_thread::interruption_point();
+				if (GetHeightAddressAmount(nCandyHeight))
+				{
+					MilliSleep(100);
+					break;
+				}
+				MilliSleep(1000);
+			}
+		}
+		else
+			MilliSleep(1000);
+	}
 }
 
 static bool CheckDetailFile(FILE* pFile, const int& nHeight, int& nLastCandyHeight, bool& fValid)
@@ -9110,26 +9169,26 @@ static bool WriteChangeInfo(const CChangeInfo& changeInfo)
 
 void ThreadWriteChangeInfo()
 {
-    SetThreadPriority(THREAD_PRIORITY_NORMAL);
-    RenameThread("safe-change");
+	SetThreadPriority(THREAD_PRIORITY_NORMAL);
+	RenameThread("safe-change");
 
-    while(true)
-    {
-        boost::this_thread::interruption_point();
-        CChangeInfo changeInfo;
-        if(GetChangeInfoFromList(changeInfo))
-        {
-            while(true)
-            {
-                boost::this_thread::interruption_point();
-                if(WriteChangeInfo(changeInfo))
-                    break;
-                MilliSleep(100);
-            }
-        }
-        
-        MilliSleep(100);
-    }
+	while (true)
+	{
+		boost::this_thread::interruption_point();
+		CChangeInfo changeInfo;
+		if (GetChangeInfoFromList(changeInfo))
+		{
+			while (true)
+			{
+				boost::this_thread::interruption_point();
+				if (WriteChangeInfo(changeInfo))
+					break;
+				MilliSleep(100);
+			}
+		}
+		else
+			MilliSleep(10);
+	}
 }
 
 void resetNumA(std::string numAStr)

@@ -236,8 +236,6 @@ void LockedTransactionView::setModel(WalletModel *model)
 
     //    lockedTransactionProxyModel->setSortRole(Qt::EditRole);
 
-		model->getLockedTransactionTableModel()->setProxyModel(lockedTransactionProxyModel);
-
         lockedTransactionView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         lockedTransactionView->setModel(lockedTransactionProxyModel);
         lockedTransactionView->setAlternatingRowColors(true);

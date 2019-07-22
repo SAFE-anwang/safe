@@ -15,7 +15,6 @@
 
 ////////////////////////////////////////////////////////////
 
-
 #if !defined(SAFE_CHAIN_NAME)
 #pragma message("use default safe-chain-name: main")
 #define SAFE_CHAIN_NAME main

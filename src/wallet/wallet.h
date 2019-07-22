@@ -901,6 +901,7 @@ public:
     CAmount GetUnconfirmedWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
     CAmount GetImmatureWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
     CAmount GetLockedWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
+	bool GetAssetBalance(const uint256* pAssetId, bool bLock, CAmount &totalBalance, CAmount &unconfirmedBalance, CAmount &lockBalance) const;
 
     CAmount GetAnonymizableBalance(bool fSkipDenominated = false, bool fSkipUnconfirmed = true) const;
     CAmount GetAnonymizedBalance(bool bLock=true) const;

@@ -8,13 +8,16 @@
 #define BITCOIN_QT_GUICONSTANTS_H
 
 /* Milliseconds between model updates */
-static const int MODEL_UPDATE_DELAY = 250 * 4;
+static const int MODEL_UPDATE_DELAY = 1000;
 
 /* AskPassphraseDialog -- Maximum passphrase length */
 static const int MAX_PASSPHRASE_SIZE = 1024;
 
 /* SafeGUI -- Size of icons in status bar */
 static const int STATUSBAR_ICONSIZE = 16;
+
+/* maximum transaction display */
+static const int MAX_TX_DISPLAY = 10000;
 
 
 /* SafeGUI -- main Window normal size */

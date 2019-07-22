@@ -208,8 +208,6 @@ void ApplicationsRegistRecordView::setModel(WalletModel *model)
 
     //    transactionProxyModel->setSortRole(Qt::EditRole);
 
-		model->getApplicationRegistTableModel()->setProxyModel(transactionProxyModel);
-
         applicationsView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         applicationsView->setModel(transactionProxyModel);
         applicationsView->setAlternatingRowColors(true);

@@ -286,6 +286,11 @@ public:
 
 	void startUpdate();
 
+	/* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
+	void pollBalanceChanged(bool checkIncrease);
+
+	void loadHistroyData();
+
 private:
     CWallet *wallet;
     bool fHaveWatchOnly;
@@ -320,12 +325,18 @@ private:
     int nCheckIncrease;
 
 	WalletView *pWalletView;
-
 	CUpdateTransaction *pUpdateTransaction;
+	QMap<uint256, QList<TransactionRecord> > mapDecTransaction;
+	QMap<uint256, NewTxData> mapTransactionStatus;
+	QTimer *pTimer;
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
     void checkBalanceChanged(bool checkIncrease=false);
+
+	void updateAllBalanceChanged(bool checkIncrease = false);
+
+	void updateConfirmations();
 
 Q_SIGNALS:
     // Signal that balance in wallet changed
@@ -354,8 +365,6 @@ Q_SIGNALS:
 
     void updateConfirm();
 
-	void loadWalletProcess(QMap<QString, AssetsDisplayInfo> mapAssetDisplay);
-
 	void loadWalletFinish();
 
 public Q_SLOTS:
@@ -367,9 +376,10 @@ public Q_SLOTS:
     void updateAddressBook(const QString &address, const QString &label, bool isMine, const QString &purpose, int status);
     /* Watch-only added */
     void updateWatchOnlyFlag(bool fHaveWatchonly);
-    /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
-    void pollBalanceChanged(bool checkIncrease);
-    void updateAllBalanceChanged(bool checkIncrease=false);
+
+	void updateAllTransaction_slot(const QMap<uint256, QList<TransactionRecord> > &mapDecTransaction, const QMap<uint256, NewTxData> &mapTransactionStatus);
+
+	void refreshTransaction_slot();
 };
 
 class EncryptWorker: public QObject {

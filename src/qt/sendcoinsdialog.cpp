@@ -39,78 +39,6 @@
 #include <boost/thread.hpp>
 
 extern QString gStrSafe;
-extern boost::thread_group *g_threadGroup;
-
-CCriticalSection cs_sendcoins;
-
-void RefreshSendCoinsData(SendCoinsDialog* sendCoinsDialog)
-{
-	RenameThread("RefreshSendCoinsData");
-	QMap<QString, AssetsDisplayInfo> mapNewAssetDisplay;
-	
-	while (true)
-	{
-		boost::this_thread::interruption_point();
-		QMap<QString, AssetsDisplayInfo> mapConfirmedAssetDisplay;
-		QMap<QString, AssetsDisplayInfo> mapTempAssetDisplay;
-		
-
-		{
-			LOCK(cs_sendcoins);			
-			sendCoinsDialog->getAssetsDisplay(mapTempAssetDisplay);
-		}
-
-		QMap<QString, AssetsDisplayInfo>::iterator itTemp = mapTempAssetDisplay.begin();
-		while (itTemp != mapTempAssetDisplay.end())
-		{
-			mapNewAssetDisplay.insert(itTemp.key(), itTemp.value());
-			itTemp++;
-        }
-
-        QMap<QString, AssetsDisplayInfo>::iterator itAssetDiaply = mapNewAssetDisplay.begin();
-	//	while (itAssetDiaply != mapNewAssetDisplay.end())
-	//	{
-	//		boost::this_thread::interruption_point();
-	////		TRY_LOCK(cs_main, lockMain);
-	////		if (lockMain)
-	//		{
-	////			TRY_LOCK(pwalletMain->cs_wallet, lockWallet);
-	//			std::map<uint256, CWalletTx>::iterator mi = pwalletMain->mapWallet.find(itAssetDiaply.value().txHash);
-	//			if (mi != pwalletMain->mapWallet.end())
-	//			{
-	//				const CWalletTx& wtx = mi->second;
-	//				itAssetDiaply.value().bInMainChain = wtx.IsInMainChain();
-	//			}
-	//		}
-
-	//		itAssetDiaply++;
-	//		MilliSleep(200);
-	//	}
-
-        itAssetDiaply = mapNewAssetDisplay.begin();
-        while (itAssetDiaply != mapNewAssetDisplay.end())
-        {
-            if (itAssetDiaply.value().bInMainChain)
-            {
-                mapConfirmedAssetDisplay.insert(itAssetDiaply.key(), itAssetDiaply.value());
-                itAssetDiaply = mapNewAssetDisplay.erase(itAssetDiaply);
-                continue;
-            }
-
-            itAssetDiaply++;
-        }
-
-        if (mapConfirmedAssetDisplay.size() > 0)
-        {
-            sendCoinsDialog->delAssetDisplay(mapConfirmedAssetDisplay.keys());
-            sendCoinsDialog->addConfirmedAssetDisplay(mapConfirmedAssetDisplay);
-            Q_EMIT sendCoinsDialog->updateAssetInfo(mapConfirmedAssetDisplay.keys());
-        }
-
-		MilliSleep(1000);
-	}
-}
-
 
 SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *parent) :
     QDialog(parent),
@@ -242,13 +170,8 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *pa
     ui->frameFeeSelection->setMouseTracking(true);
     setMouseTracking(true);
 
-	connect(this, SIGNAL(updateAssetInfo(QStringList)), this, SLOT(updateAssetsInfo_slot(QStringList)));
-
     addSafeToCombox();
-
     connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
-	if (g_threadGroup)
-		g_threadGroup->create_thread(boost::bind(&RefreshSendCoinsData, this));
 }
 
 void SendCoinsDialog::setClientModel(ClientModel *clientModel)
@@ -675,28 +598,6 @@ void SendCoinsDialog::updateTabsAndLabels()
 {
     setupTabChain(0);
     coinControlUpdateLabels();
-}
-
-void SendCoinsDialog::updateAssetsInfo_slot(QStringList listAssetName)
-{
-	QStringList listTemp;
-
-	for (int i = 0; i < listAssetName.count(); i++)
-	{
-		if (ui->assetsComboBox->findText(listAssetName[i]) < 0)
-		{
-			listTemp.push_back(listAssetName[i]);
-		}
-	}
-
-	if (listTemp.count() > 0)
-	{
-		ui->assetsComboBox->addItems(listTemp);
-		stringListModel->setStringList(listTemp);
-		completer->setModel(stringListModel);
-		completer->popup()->setStyleSheet("font: 12px;");
-		ui->assetsComboBox->setCompleter(completer);
-	}
 }
 
 void SendCoinsDialog::removeEntry(SendCoinsEntry* entry)
@@ -1327,57 +1228,34 @@ void SendCoinsDialog::updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInf
 	addAssetDisplay(mapAssetDisplay);
 }
 
-bool SendCoinsDialog::getAssetsDisplay(QMap<QString, AssetsDisplayInfo> &mapAssetDispaly)
-{
-	LOCK(cs_sendcoins);
-	mapAssetDispaly = mapNewAssetDisplay;
-	return true;
-}
-
 bool SendCoinsDialog::addAssetDisplay(const QMap<QString, AssetsDisplayInfo> &mapAssetDisplay)
 {
-	LOCK(cs_sendcoins);
+	QStringList listAssetName;
 	QMap<QString, AssetsDisplayInfo>::const_iterator itAsset = mapAssetDisplay.begin();
-    while (itAsset != mapAssetDisplay.end())
-    {
-        if (mapNewAssetDisplay.find(itAsset.key()) == mapNewAssetDisplay.end())
-        {
-            mapNewAssetDisplay.insert(itAsset.key(), itAsset.value());
-        }
-		else
+	while (itAsset != mapAssetDisplay.end())
+	{
+		if (itAsset.value().bInMainChain)
 		{
-			mapNewAssetDisplay[itAsset.key()] = itAsset.value();
+			listAssetName.push_back(itAsset.key());
 		}
+		
+		itAsset++;
+	}
 
-        itAsset++;
-    }
 
-	return true;
-}
-
-bool SendCoinsDialog::delAssetDisplay(QStringList listAssetName)
-{
-	LOCK(cs_sendcoins);
+	QStringList listTemp;
 	for (int i = 0; i < listAssetName.count(); i++)
 	{
-		QMap<QString, AssetsDisplayInfo>::iterator it = mapNewAssetDisplay.find(listAssetName[i]);
-		if (it != mapNewAssetDisplay.end())
+		if (ui->assetsComboBox->findText(listAssetName[i]) < 0)
 		{
-			mapNewAssetDisplay.erase(it);
+			listTemp.push_back(listAssetName[i]);
 		}
 	}
 
-	return true;
-}
-
-bool SendCoinsDialog::addConfirmedAssetDisplay(const QMap<QString, AssetsDisplayInfo> &mapAssetDisplay)
-{
-	QMap<QString, AssetsDisplayInfo>::const_iterator it = mapAssetDisplay.begin();
-
-	while (it != mapAssetDisplay.end())
+	if (listTemp.count() > 0)
 	{
-		mapConfirmedAssetDisplay.insert(it.key(), it.value());
-		it++;
+		ui->assetsComboBox->addItems(listTemp);
+		stringListModel->setStringList(listTemp);
 	}
 
 	return true;
@@ -1390,7 +1268,12 @@ void SendCoinsDialog::addSafeToCombox()
 
 	ui->assetsComboBox->addItems(stringList);
 	stringListModel->setStringList(stringList);
-	completer->setModel(stringListModel);
-	completer->popup()->setStyleSheet("font: 12px;");
-	ui->assetsComboBox->setCompleter(completer);
+}
+
+void SendCoinsDialog::disconnectSign()
+{
+	disconnect(model,
+		SIGNAL(balanceChanged(CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount)),
+		this,
+		SLOT(setBalance(CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount)));
 }

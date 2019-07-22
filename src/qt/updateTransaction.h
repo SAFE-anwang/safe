@@ -19,6 +19,8 @@ public:
     bool bShowTx;
 };
 
+class WalletModel;
+
 class CUpdateTransaction : public QThread
 {
     Q_OBJECT
@@ -27,8 +29,6 @@ public:
     CUpdateTransaction(QThread* pParent = NULL);
 
     virtual ~CUpdateTransaction();
-
-    void setWallet(CWallet* pWallet);
 
     void subscribeToCoreSignals();
 
@@ -40,11 +40,13 @@ public:
 
 	bool processingQueuedTransactions();
 
-    bool RefreshAssetData(const std::map<uint256, CAssetData>& mapIssueAssetMap);
+    bool RefreshAssetData(const QMap<uint256, CAssetData>& mapIssueAsset);
 
-    bool RefreshCandyPageData(const std::map<uint256, CAssetData>& mapIssueAssetMap);
+    bool RefreshCandyPageData(const QMap<uint256, CAssetData>& mapIssueAsset);
 
-	void init();
+	bool RefreshOverviewPageData(const QList<QString>& listAssetName);
+
+	void init(const WalletModel *pWalletModel, const CWallet *pWallet);
 
 	void uninit();
 
@@ -56,17 +58,10 @@ Q_SIGNALS:
 
 	void updateCandyPage(QStringList listAsset);
 
-	void updateTransactionModel(uint256 hash, QList<TransactionRecord> lsitNew, int status, bool showTransaction);
-
-	void updateAssetTransactionModel(uint256 hash, QList<TransactionRecord> lsitNew, int status, bool showTransaction);
-
-	void updateAppTransactionModel(uint256 hash, QList<TransactionRecord> lsitNew, int status, bool showTransaction);
-
-	void updateCandyTransactionModel(uint256 hash, QList<TransactionRecord> lsitNew, int status, bool showTransaction);
-
-	void updateLockTransactionModel(uint256 hash, QList<TransactionRecord> lsitNew, int status, bool showTransaction);
-
 	void updateAssetDisplayInfo(QMap<QString, AssetsDisplayInfo> mapAssetDisplay);
+
+	void updateAllTransaction(const QMap<uint256, QList<TransactionRecord> > &mapDecTransaction, const QMap<uint256, NewTxData> &mapTransactionStatus);
+
 
 public Q_SLOTS:
 
@@ -81,15 +76,12 @@ protected:
     void run();
 
 private:
-    bool RefreshOverviewPageData(const QString& strAssetName);
-	
-
-private:
     CWallet* m_pWallet;
     QVector<NewTxData> m_vtNewTx;
 	CCriticalSection m_txLock;
     bool m_bIsExit;
 	bool m_bProcessingQueuedTransactions;
+	WalletModel *m_pWalletModel;
 };
 
 

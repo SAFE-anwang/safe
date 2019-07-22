@@ -910,7 +910,20 @@ void CWallet::MarkDirty()
 bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletDB* pwalletdb)
 {
     uint256 hash = wtxIn.GetHash();
-	int nTxHeight = GetTxHeight(hash);
+	int64_t nTxHeight = 0;
+	{
+		LOCK(cs_main);
+		BlockMap::iterator mi = mapBlockIndex.find(wtxIn.hashBlock);
+		if (mi != mapBlockIndex.end() && (*mi).second)
+		{
+			nTxHeight = (*mi).second->nHeight;
+		}
+		else
+		{
+			nTxHeight = g_nChainHeight + 1;
+			LogPrintf("CWallet::AddToWallet, failed find height for tx: %s", hash.ToString());
+		}
+	}
 
     if (fFromLoadWallet)
     {
@@ -1104,7 +1117,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
             // Do not flush the wallet here for performance reasons
             // this is safe, as in case of a crash, we rescan the necessary blocks on startup through our SetBestChain-mechanism
             CWalletDB walletdb(strWalletFile, "r+", false);
-
+			
             return AddToWallet(wtx, false, &walletdb);
         }
     }
@@ -3011,9 +3024,9 @@ CAmount CWallet::GetImmatureBalance(const bool fAsset, const uint256* pAssetId, 
                 if(pcoin->IsForbid())
                     continue;
                 nTotal += pcoin->GetImmatureCredit(fAsset, pAssetId, pAddress, !fAsset);
-                count++;
-                if(count%g_sleepCount==0)
-                    MilliSleep(g_sleepTime);
+                //count++;
+                //if(count%g_sleepCount==0)
+                //    MilliSleep(g_sleepTime);
             }
         }
     }
@@ -3144,6 +3157,7 @@ CAmount CWallet::GetImmatureWatchOnlyBalance(const bool fAsset, const uint256* p
 CAmount CWallet::GetLockedWatchOnlyBalance(const bool fAsset, const uint256* pAssetId, const CBitcoinAddress* pAddress,bool bLock) const
 {
     CAmount nTotal = 0;
+
     {
         if(bLock)
         {
@@ -3154,7 +3168,8 @@ CAmount CWallet::GetLockedWatchOnlyBalance(const bool fAsset, const uint256* pAs
                 const CWalletTx* pcoin = &(*it).second;
                 nTotal += pcoin->GetLockedWatchOnlyCredit(fAsset, pAssetId, pAddress);
             }
-        }else
+        }
+		else
         {
             int count = 0;
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet_tmp.begin(); it != mapWallet_tmp.end(); ++it)
@@ -3170,6 +3185,73 @@ CAmount CWallet::GetLockedWatchOnlyBalance(const bool fAsset, const uint256* pAs
     }
 
     return nTotal;
+}
+
+
+bool CWallet::GetAssetBalance(const uint256* pAssetId, bool bLock, CAmount &totalBalance, CAmount &unconfirmedBalance, CAmount &lockBalance) const
+{
+	if (NULL == pAssetId)
+	{
+		return false;
+	}
+
+	totalBalance = 0;
+	unconfirmedBalance = 0;
+	lockBalance = 0;
+
+	if (bLock)
+	{
+		LOCK2(cs_main, cs_wallet);
+		for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+		{
+			boost::this_thread::interruption_point();
+			const CWalletTx* pcoin = &(*it).second;
+
+			if (pcoin->IsForbid())
+				continue;
+
+			if (pcoin->IsTrusted())
+			{
+				totalBalance += pcoin->GetAvailableCredit(true, pAssetId, NULL, false);
+			}
+			else
+			{
+				if (pcoin->GetDepthInMainChain() == 0 && pcoin->InMempool())
+				{
+					unconfirmedBalance += pcoin->GetAvailableCredit(true, pAssetId, NULL, false);
+				}
+			}
+
+			lockBalance += pcoin->GetLockedCredit(true, pAssetId, NULL);
+		}
+	}
+	else
+	{
+		for (map<uint256, CWalletTx>::const_iterator it = mapWallet_tmp.begin(); it != mapWallet_tmp.end(); ++it)
+		{
+			boost::this_thread::interruption_point();
+			const CWalletTx* pcoin = &(*it).second;
+
+			if (pcoin->IsForbid())
+				continue;
+
+			if (pcoin->IsTrusted())
+			{
+				totalBalance += pcoin->GetAvailableCredit(true, pAssetId, NULL, false);
+			}
+			else
+			{
+				if (pcoin->GetDepthInMainChain() == 0 && pcoin->InMempool())
+				{
+					unconfirmedBalance += pcoin->GetAvailableCredit(true, pAssetId, NULL, false);
+				}
+			}
+
+			lockBalance += pcoin->GetLockedCredit(true, pAssetId, NULL);
+		}
+	}
+	
+	return true;
 }
 
 void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const CCoinControl *coinControl, bool fIncludeZeroValue, AvailableCoinsType nCoinType, bool fUseInstantSend, bool fContainLockedTxOut, const CBitcoinAddress* pFixedSrcAddress, const bool fAsset, const uint256* pAssetId) const

@@ -514,6 +514,8 @@ void BitcoinApplication::initializeResult(int retval)
         }
 #endif
 
+		window->ShowHistoryPage(BitcoinGUI::DEFAULT_WALLET);
+
         // If -min option passed, start window minimized.
         if(GetBoolArg("-min", false))
         {
@@ -534,9 +536,7 @@ void BitcoinApplication::initializeResult(int retval)
                          paymentServer, SLOT(handleURIOrFile(QString)));
         connect(paymentServer, SIGNAL(message(QString,QString,unsigned int)),
                          window, SLOT(message(QString,QString,unsigned int)));
-        QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
-
-		window->ShowHistoryPage(BitcoinGUI::DEFAULT_WALLET);
+        QTimer::singleShot(100, paymentServer, SLOT(uiReady()));	
 #endif
     } else {
         quit(); // Exit main loop

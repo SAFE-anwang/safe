@@ -279,6 +279,13 @@ WalletView::WalletView(const PlatformStyle* platformStyle, QWidget* parent) : QS
 
 
     qRegisterMetaType<TransactionTableModel*>("TransactionTableModel *");
+
+
+	bRefreshTransactionView = false;
+	bRefreshAssetTxView = false;
+	bRefreshLockTxView = false;
+	bRefreshAppTxView = false;
+	bRefreshCandyTxView = false;
 }
 
 WalletView::~WalletView()
@@ -384,9 +391,6 @@ void WalletView::setWalletModel(WalletModel* walletModel)
             sendCoinsPage, SLOT(updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo>)));
 
 		connect(walletModel, SIGNAL(loadWalletFinish()), this, SLOT(loadWalletFinish_slot()));
-
-		connect(walletModel, SIGNAL(loadWalletProcess(QMap<QString, AssetsDisplayInfo>)),
-			this, SLOT(loadWalletProcess_slot(QMap<QString, AssetsDisplayInfo>)));
     }
 }
 
@@ -437,26 +441,56 @@ void WalletView::gotoOverviewPage()
 
 void WalletView::gotoHistoryPage()
 {
+	if (bRefreshTransactionView)
+	{
+		bRefreshTransactionView = false;
+		transactionView->refreshPage();
+	}
+
     setCurrentWidget(transactionsPage);
 }
 
 void WalletView::gotoLockedHistoryPage()
 {
+	if (bRefreshLockTxView)
+	{
+		bRefreshLockTxView = false;
+		lockedTransactionView->refreshPage();
+	}
+
     setCurrentWidget(lockedTransactionsPage);
 }
 
 void WalletView::gotoAssetsPage()
 {
+	if (bRefreshAssetTxView)
+	{
+		bRefreshAssetTxView = false;
+		assetsDistributeRecordView->refreshPage();
+	}
+
     setCurrentWidget(assetsPage);
 }
 
 void WalletView::gotoApplicationPage()
 {
+	if (bRefreshAppTxView)
+	{
+		bRefreshAppTxView = false;
+		applicationsView->refreshPage();
+	}
+
     setCurrentWidget(applicationsPage);
 }
 
 void WalletView::gotoCandyPage()
 {
+	if (bRefreshCandyTxView)
+	{
+		bRefreshCandyTxView = false;
+		candyView->refreshPage();
+	}
+
     setCurrentWidget(candyPage);
 }
 
@@ -672,6 +706,8 @@ WalletModel* WalletView::getWalletMode()
 
 void WalletView::ShowHistoryPage()
 {
+	walletModel->ShowHistoryPage();
+
 	CAmount balance = walletModel->getBalance();
 	CAmount unconfirmeBalance = walletModel->getUnconfirmedBalance();
 	CAmount immatureBalance = walletModel->getImmatureBalance();
@@ -701,8 +737,6 @@ void WalletView::ShowHistoryPage()
 		watchUnconfirmeBalance,
 		watchImmatureBalance,
 		watchLockedBalance);
-
-	walletModel->ShowHistoryPage();
 }
 
 void WalletView::loadWalletFinish_slot()
@@ -719,11 +753,6 @@ void WalletView::loadWalletFinish_slot()
 	walletModel->startUpdate();
 }
 
-void WalletView::loadWalletProcess_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay)
-{
-	sendCoinsPage->addAssetDisplay(mapAssetDisplay);
-}
-
 void WalletView::disconnectSign()
 {
 	disconnect(walletModel->getUpdateTransaction(), SIGNAL(updateOverviePage(QMap<QString, AssetBalance>)),
@@ -737,4 +766,76 @@ void WalletView::disconnectSign()
 
 	disconnect(walletModel->getUpdateTransaction(), SIGNAL(updateAssetDisplayInfo(QMap<QString, AssetsDisplayInfo>)),
 		sendCoinsPage, SLOT(updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo>)));
+
+	sendCoinsPage->disconnectSign();
+}
+
+void WalletView::refreshTransactionView()
+{
+	bRefreshTransactionView = true;
+
+	QWidget* pCurrentWidget = currentWidget();
+	if (pCurrentWidget == transactionsPage)
+	{
+		bRefreshTransactionView = false;
+		transactionView->setUpdatesEnabled(false);
+		transactionView->refreshPage();
+		transactionView->setUpdatesEnabled(true);
+	}
+}
+
+void WalletView::refreshLockTransactionView()
+{
+	bRefreshLockTxView = true;
+
+	QWidget* pCurrentWidget = currentWidget();
+	if (pCurrentWidget == lockedTransactionsPage)
+	{
+		bRefreshLockTxView = false;
+		lockedTransactionView->setUpdatesEnabled(false);
+		lockedTransactionView->refreshPage();
+		lockedTransactionView->setUpdatesEnabled(true);
+	}
+}
+
+void WalletView::refreshCandyTransactionView()
+{
+	bRefreshCandyTxView = true;
+
+	QWidget* pCurrentWidget = currentWidget();
+	if (pCurrentWidget == candyPage)
+	{
+		bRefreshCandyTxView = false;
+		candyView->setUpdatesEnabled(false);
+		candyView->refreshPage();
+		candyView->setUpdatesEnabled(true);
+	}
+}
+
+void WalletView::refreshAssetTransactionView()
+{
+	bRefreshAssetTxView = true;
+
+	QWidget* pCurrentWidget = currentWidget();
+	if (pCurrentWidget == assetsPage)
+	{
+		bRefreshAssetTxView = false;
+		assetsDistributeRecordView->setUpdatesEnabled(false);
+		assetsDistributeRecordView->refreshPage();
+		assetsDistributeRecordView->setUpdatesEnabled(true);
+	}
+}
+
+void WalletView::refreshAppTransactionView()
+{
+	bRefreshAppTxView = true;
+
+	QWidget* pCurrentWidget = currentWidget();
+	if (pCurrentWidget == applicationsPage)
+	{
+		bRefreshAppTxView = false;
+		applicationsView->setUpdatesEnabled(false);
+		applicationsView->refreshPage();
+		applicationsView->setUpdatesEnabled(true);
+	}
 }

@@ -79,7 +79,8 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
     const CWalletTx &wtx,
     TransactionRecord &sub,
     const CTxOut &txout,
-    QMap<QString, AssetsDisplayInfo> &assetNamesUnits)
+    QMap<QString, AssetsDisplayInfo> &assetNamesUnits,
+	QMap<uint256, CAssetData> &mapIssueAsset)
 {
     std::vector<unsigned char> vData;
     if(ParseReserve(txout.vReserve, sub.appHeader, vData))
@@ -112,6 +113,8 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
                 displayInfo.bInMainChain = wtx.IsInMainChain();
                 displayInfo.strAssetsUnit = QString::fromStdString(sub.assetsData.strAssetUnit);
                 displayInfo.txHash = wtx.GetHash();
+
+				mapIssueAsset.insert(sub.assetsData.GetHash(), sub.assetsData);
             }
 
 			return true;
@@ -265,7 +268,7 @@ void TransactionRecord::setAddressType(isminetype fAllFromMe, isminetype fAllToM
 /*
  * Decompose CWallet transaction to model transaction records.
  */
-bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx, QList<TransactionRecord> &listTransaction, QMap<QString, AssetsDisplayInfo> &mapAssetInfo)
+bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx, QList<TransactionRecord> &listTransaction, QMap<QString, AssetsDisplayInfo> &mapAssetInfo, QMap<uint256, CAssetData> &mapIssueAsset)
 {
 	int64_t nTime = wtx.GetTxTime();
 	CAmount nCredit = wtx.GetCredit(ISMINE_ALL);
@@ -315,10 +318,10 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
 					sub.bForbidDash = true;
 				}
 
-                if (wallet->IsChange(txout))
-                {
-                    continue;
-                }
+                //if (wallet->IsChange(txout))
+                //{
+                //    continue;
+                //}
 
 				if (txout.nUnlockedHeight > 0)
 				{
@@ -378,7 +381,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
 			sub.involvesWatchAddress = wallet->IsMine(txout) & ISMINE_WATCH_ONLY;
 			setAddressType(fAllFromMe, fAllToMe, wtx, sub, txout);
 
-			decomposeAppAsset(wallet, wtx, sub, txout, mapAssetInfo);
+			decomposeAppAsset(wallet, wtx, sub, txout, mapAssetInfo, mapIssueAsset);
 
 			if (txout.nUnlockedHeight > 0)
 			{

@@ -75,6 +75,16 @@ public:
 
 	void disconnectSign();
 
+	void refreshTransactionView();
+
+	void refreshLockTransactionView();
+
+	void refreshCandyTransactionView();
+
+	void refreshAssetTransactionView();
+
+	void refreshAppTransactionView();
+
 private:
     ClientModel *clientModel;
     WalletModel *walletModel;
@@ -103,6 +113,12 @@ private:
     QLabel *assetsTransactionSum;
     QLabel *candyTransactionSum;
     const PlatformStyle *platformStyle;
+
+	bool bRefreshTransactionView;
+	bool bRefreshAssetTxView;
+	bool bRefreshLockTxView;
+	bool bRefreshAppTxView;
+	bool bRefreshCandyTxView;
 
 public Q_SLOTS:
     /** Switch to overview (home) page */
@@ -175,8 +191,6 @@ public Q_SLOTS:
     void updateAssetsDisplay(bool updateAsset=true);
 
 	void loadWalletFinish_slot();
-
-	void loadWalletProcess_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay);
 
 Q_SIGNALS:
     /** Signal that we want to show the main window */

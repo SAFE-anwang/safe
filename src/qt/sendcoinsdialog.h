@@ -51,14 +51,9 @@ public:
     void pasteEntry(const SendCoinsRecipient &rv);
     bool handlePaymentRequest(const SendCoinsRecipient &recipient);
     
-
 	bool addAssetDisplay(const QMap<QString, AssetsDisplayInfo> &mapAssetDisplay);
 
-	bool getAssetsDisplay(QMap<QString, AssetsDisplayInfo> &mapAssetDispaly);
-
-	bool delAssetDisplay(QStringList listAssetName);
-
-	bool addConfirmedAssetDisplay(const QMap<QString, AssetsDisplayInfo> &mapAssetDisplay);
+	void disconnectSign();
 
 public Q_SLOTS:
     void clear();
@@ -70,8 +65,6 @@ public Q_SLOTS:
 		const CAmount& watchBalance, const CAmount& watchUnconfirmedBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance);
 
 	void updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay);
-
-	void updateAssetsInfo_slot(QStringList listAssetName);
 
 private:
     Ui::SendCoinsDialog *ui;
@@ -130,8 +123,6 @@ private Q_SLOTS:
 Q_SIGNALS:
     // Fired when a message should be reported to the user
     void message(const QString &title, const QString &message, unsigned int style);
-
-	void updateAssetInfo(QStringList listAssetName);
 };
 
 #endif // BITCOIN_QT_SENDCOINSDIALOG_H

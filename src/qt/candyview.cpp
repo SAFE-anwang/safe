@@ -208,8 +208,6 @@ void CandyView::setModel(WalletModel *model)
 
     //    transactionProxyModel->setSortRole(Qt::EditRole);
 
-		model->getCandyTableModel()->setProxyModel(transactionProxyModel);
-
         candyView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         candyView->setModel(transactionProxyModel);
         candyView->setAlternatingRowColors(true);

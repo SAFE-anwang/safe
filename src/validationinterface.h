@@ -72,10 +72,6 @@ struct CMainSignals {
     boost::signals2::signal<void (boost::shared_ptr<CReserveScript>&)> ScriptForMining;
     /** Notifies listeners that a block has been successfully mined */
     boost::signals2::signal<void (const uint256 &)> BlockFound;
-	/** New asset has been found */
-	boost::signals2::signal<void(const std::vector<uint256> &vtNewAssetId)> AssetFound;
-	/** New candy has been put */
-	boost::signals2::signal<void()> CandyVecPut;
 };
 
 CMainSignals& GetMainSignals();

@@ -119,12 +119,12 @@ CandyPage::CandyPage():
     connect(candyWorker, SIGNAL(resultReady(bool, QString, int, CAmount)), this, SLOT(handlerGetCandyResult(bool, QString, int, CAmount)));
     connect(this,SIGNAL(refreshAssetsInfo()),this,SLOT(updateAssetsInfo()));
 
-	GetMainSignals().CandyVecPut.connect(boost::bind(CandyVecPut, this));
+	uiInterface.CandyVecPut.connect(boost::bind(CandyVecPut, this));
 }
 
 CandyPage::~CandyPage()
 {
-	GetMainSignals().CandyVecPut.disconnect(boost::bind(CandyVecPut, this));
+	uiInterface.CandyVecPut.disconnect(boost::bind(CandyVecPut, this));
     Q_EMIT stopThread();
     getCandyThread->wait();
 }
@@ -653,18 +653,18 @@ WalletModel *CandyPage::getModel()
 
 void CandyPage::updateAssetsInfo(QStringList listAsset)
 {
-    QString currText = ui->assetsComboBox->currentText();
-    ui->assetsComboBox->clear();
+	QStringList listTemp;
+	for (int i = 0; i < listAsset.size(); i++)
+	{
+		if (ui->assetsComboBox->findText(listAsset[i]) < 0)
+		{
+			listTemp.push_back(listAsset[i]);
+		}
+	}
 
-    stringListModel->setStringList(listAsset);
-    completer->setModel(stringListModel);
-    completer->popup()->setStyleSheet("font: 12px;");
-    ui->assetsComboBox->addItems(listAsset);
-    ui->assetsComboBox->setCompleter(completer);
-
-    if(listAsset.contains(currText))
-        ui->assetsComboBox->setCurrentText(currText);
-    updateCandyInfo(ui->assetsComboBox->currentText());
+	ui->assetsComboBox->addItems(listTemp);
+	stringListModel->setStringList(listTemp);
+	updateCandyInfo(ui->assetsComboBox->currentText());
 }
 
 bool CandyPage::amountFromString(const std::string &valueStr, const QString &msgboxTitle, int decimal, CAmount &amount)
@@ -735,7 +735,7 @@ void CandyPage::updateCandyInfo(const QString &text)
 {
     if (!pwalletMain)
         return;
-    LOCK(cs_main);
+ //   LOCK(cs_main);
     std::string strAssetName = text.trimmed().toStdString();
     uint256 assetId;
     if(!GetAssetIdByAssetName(strAssetName,assetId)){

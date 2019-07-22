@@ -39,6 +39,7 @@ CCriticalSection cs_receive;
 
 void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
 {
+	SetThreadPriority(THREAD_PRIORITY_LOWEST);
 	RenameThread("RefreshReceiveCoinsData");
 	while (true)
 	{
@@ -183,7 +184,7 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     if(g_threadGroup)
         g_threadGroup->create_thread(boost::bind(&RefreshReceiveCoinsData, this));
 
-	GetMainSignals().AssetFound.connect(boost::bind(AssetFound, this, _1));
+	uiInterface.AssetFound.connect(boost::bind(AssetFound, this, _1));
 }
 
 void ReceiveCoinsDialog::initWidget()
@@ -196,7 +197,7 @@ void ReceiveCoinsDialog::initWidget()
 
 ReceiveCoinsDialog::~ReceiveCoinsDialog()
 {
-	GetMainSignals().AssetFound.disconnect(boost::bind(AssetFound, this, _1));
+	uiInterface.AssetFound.disconnect(boost::bind(AssetFound, this, _1));
 
     delete ui;
 }
@@ -262,10 +263,7 @@ void ReceiveCoinsDialog::updateAssetsInfo(QMap<QString, CAssetId_AssetInfo_Index
 	if (listTemp.count() > 0)
 	{
 		stringListModel->setStringList(listTemp);
-		completer->setModel(stringListModel);
-		completer->popup()->setStyleSheet("font: 12px;");
 		ui->assetsComboBox->addItems(listTemp);
-		ui->assetsComboBox->setCompleter(completer);
 	}
 }
 
@@ -545,10 +543,7 @@ void ReceiveCoinsDialog::addSafeToCombox()
 	stringList.append(gStrSafe);
 
 	stringListModel->setStringList(stringList);
-	completer->setModel(stringListModel);
-	completer->popup()->setStyleSheet("font: 12px;");
 	ui->assetsComboBox->addItems(stringList);
-	ui->assetsComboBox->setCompleter(completer);
 }
 
 void ReceiveCoinsDialog::clearData()
