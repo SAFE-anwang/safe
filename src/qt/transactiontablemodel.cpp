@@ -96,10 +96,10 @@ void TransactionTablePriv::updateWallet(uint256 hash, const QList<TransactionRec
 	int upperIndex = (upper - cachedWallet.begin());
 	bool inModel = (lower != upper);
 
-	if (lowerIndex == upperIndex && lowerIndex < cachedWallet.size())
-	{
-		inModel = true;
-	}
+	//if (lowerIndex > 0 && lowerIndex == upperIndex && lowerIndex < cachedWallet.size())
+	//{
+	//	inModel = true;
+	//}
 
 	if (status == CT_UPDATED)
 	{

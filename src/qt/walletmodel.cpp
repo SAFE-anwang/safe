@@ -1339,7 +1339,7 @@ void WalletModel::updateAllTransaction_slot(const QMap<uint256, QList<Transactio
 
 	if (!pTimer->isActive())
 	{
-		pTimer->start(100);
+		pTimer->start(250);
 	}
 }
 
@@ -1355,7 +1355,7 @@ void WalletModel::refreshTransaction_slot()
 	qDebug() << strDebug;
 
 	QMap<uint256, QList<TransactionRecord> >::iterator itTx = mapDecTransaction.begin();
-	while (itTx != mapDecTransaction.end())
+	for (; itTx != mapDecTransaction.end(); itTx++)
 	{
 		QList<TransactionRecord> listTx;
 		QList<TransactionRecord> listAssetTx;
@@ -1395,7 +1395,6 @@ void WalletModel::refreshTransaction_slot()
 		QMap<uint256, NewTxData>::iterator itNew = mapTransactionStatus.find(itTx.key());
 		if (itNew == mapTransactionStatus.end())
 		{
-			itTx++;
 			continue;
 		}
 
@@ -1426,8 +1425,6 @@ void WalletModel::refreshTransaction_slot()
 		{
 			lockedTransactionTableModel->updateTransaction(hash, listLockTx, stTxData.nStatus, stTxData.bShowTx, bLockRefresh);
 		}
-
-		itTx++;
 	}
 
 	mapDecTransaction.clear();
