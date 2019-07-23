@@ -746,8 +746,7 @@ void WalletView::loadWalletFinish_slot()
 	lockedTransactionView->refreshPage();
 	candyView->refreshPage();
 	assetsDistributeRecordView->refreshPage();
-	applicationsView->refreshPage();
-    overviewPage->loadAssetFinish();
+    applicationsView->refreshPage();
 	LogPrintf("WalletView: loadWalletFinish_slot end refresh page\n");
 
 	walletModel->startUpdate();

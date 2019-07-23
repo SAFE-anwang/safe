@@ -513,8 +513,16 @@ void BitcoinApplication::initializeResult(int retval)
                              paymentServer, SLOT(fetchPaymentACK(CWallet*,const SendCoinsRecipient&,QByteArray)));
         }
 #endif
+        uiInterface.InitMessage(_("Analyzing transactions,please wait..."));
 
-		window->ShowHistoryPage(BitcoinGUI::DEFAULT_WALLET);
+        int i = 0;
+        while(i<5)
+        {
+            QApplication::processEvents();
+            i++;
+        }
+
+        window->ShowHistoryPage(BitcoinGUI::DEFAULT_WALLET);
 
         // If -min option passed, start window minimized.
         if(GetBoolArg("-min", false))

@@ -3341,10 +3341,6 @@ http://www.anwang.com/</translation>
         <translation>其它資產</translation>
     </message>
     <message>
-        <source>Loading...</source>
-        <translation>正在加載...</translation>
-    </message>
-    <message>
         <source>Available:</source>
         <translation>可用金額:</translation>
     </message>
@@ -6569,6 +6565,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Done loading</source>
         <translation>載入完成</translation>
+    </message>
+    <message>
+        <source>Analyzing transactions,please wait...</source>
+        <translation>正在解析交易,請稍等...</translation>
     </message>
     <message>
         <source>Entries are full.</source>
