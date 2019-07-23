@@ -335,7 +335,7 @@ CAmount BitcoinAmountField::value(bool *valid_out) const
 QString BitcoinAmountField::textValue()const
 {
     QString str = amount->textValue().trimmed();
-	QStringList list = str.split(" ");
+    QStringList list = str.split(" ");
 
 	return list.join("");
 }
