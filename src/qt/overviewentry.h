@@ -34,7 +34,7 @@ public:
 
     const QString& getAssetName()const;
 
-    void setAssetsInfo(CAmount& amount,CAmount& unconfirmAmount,CAmount& lockedBalance,int& nDecimals,QString& strUnit);
+    void setAssetsInfo(const CAmount& amount, const CAmount& unconfirmAmount, const CAmount& lockedAmount,int nDecimals, const QString strUnit);
     void updateAssetsInfo();
 
 public Q_SLOTS:

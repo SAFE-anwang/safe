@@ -306,31 +306,33 @@ bool OverviewPage::getCurrAssetInfoByName(const QString &strAssetName, CAmount &
     return false;
 }
 
-void OverviewPage::updateAssetsInfo(QMap<QString, AssetBalance> mapAssetBalance)
+void OverviewPage::updateAssetsInfo(const QList<AssetBalance> &listAssetBalance)
 {
     QList<QString> entryList;
     //update existed assets entry
     for(int i = 0; i < ui->entries->count(); ++i)
     {
         OverViewEntry *entry = qobject_cast<OverViewEntry*>(ui->entries->itemAt(i)->widget());
-        QString strEntryAssetName = entry->getAssetName();
-        if(!mapAssetBalance.contains(strEntryAssetName))
-            continue;
-        AssetBalance& assetBalance = mapAssetBalance[strEntryAssetName];
-        entry->setAssetsInfo(assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,assetBalance.nDecimals,assetBalance.strUnit);
-        entry->updateAssetsInfo();
-        entryList.push_back(strEntryAssetName);
+		QString strEntryAssetName = entry->getAssetName();
+		QList<AssetBalance>::const_iterator itFind = qFind(listAssetBalance.begin(), listAssetBalance.end(), strEntryAssetName);
+		if (itFind != listAssetBalance.end())
+		{
+			const AssetBalance& assetBalance = *itFind;
+			entry->setAssetsInfo(assetBalance.amount, assetBalance.unconfirmAmount, assetBalance.lockedAmount, assetBalance.nDecimals, assetBalance.strUnit);
+			entry->updateAssetsInfo();
+			entryList.push_back(strEntryAssetName);
+		}
     }
 
     //insert new assets entry
-    QMap<QString,AssetBalance>::iterator iter = mapAssetBalance.begin();
-    for(;iter != mapAssetBalance.end();++iter)
+	QList<AssetBalance>::const_iterator iter = listAssetBalance.begin();
+    for(;iter != listAssetBalance.end();++iter)
     {
-        QString assetName = iter.key();
+        QString assetName = iter->strAssetName;
         if(entryList.contains(assetName))
             continue;
 
-        const AssetBalance& assetBalance = iter.value();
+        const AssetBalance& assetBalance = *iter;
         insertEntry(assetName,assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,assetBalance.strUnit,assetBalance.nDecimals);
     }
 }

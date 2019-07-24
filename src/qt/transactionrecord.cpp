@@ -73,14 +73,34 @@ int64_t TransactionRecord::getRealUnlockHeight() const
 }
 
 
+void TransactionRecord::addAssetDisplay(const CWalletTx &wtx, const CAssetData &stAssetData, QList<AssetsDisplayInfo> &listMyAsset)
+{
+	if (qFind(listMyAsset.begin(), listMyAsset.end(), QString::fromStdString(stAssetData.strAssetName)) == listMyAsset.end())
+	{
+		AssetsDisplayInfo displayInfo;
+		displayInfo.strAssetName = QString::fromStdString(stAssetData.strAssetName);
+		displayInfo.strAssetsUnit = QString::fromStdString(stAssetData.strAssetUnit);
+		displayInfo.bInMainChain = wtx.IsInMainChain();
+		listMyAsset.push_back(displayInfo);
+	}
+}
+
+void TransactionRecord::addIssueAsset(const CAssetData &stAssetData, QList<CAssetData> &listIssueAsset)
+{
+	if (qFind(listIssueAsset.begin(), listIssueAsset.end(), stAssetData.strAssetName) == listIssueAsset.end())
+	{
+		listIssueAsset.push_back(stAssetData);
+	}
+}
+
 
 //get transfer safe or app or asset data
 bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
     const CWalletTx &wtx,
     TransactionRecord &sub,
     const CTxOut &txout,
-    QMap<QString, AssetsDisplayInfo> &assetNamesUnits,
-	QMap<uint256, CAssetData> &mapIssueAsset)
+	QList<AssetsDisplayInfo> &listMyAsset,
+	QList<CAssetData> &listIssueAsset)
 {
     std::vector<unsigned char> vData;
     if(ParseReserve(txout.vReserve, sub.appHeader, vData))
@@ -109,12 +129,8 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
 
             if(ParseIssueData(vData, sub.assetsData))
             {
-                AssetsDisplayInfo& displayInfo = assetNamesUnits[QString::fromStdString(sub.assetsData.strAssetName)];
-                displayInfo.bInMainChain = wtx.IsInMainChain();
-                displayInfo.strAssetsUnit = QString::fromStdString(sub.assetsData.strAssetUnit);
-                displayInfo.txHash = wtx.GetHash();
-
-				mapIssueAsset.insert(sub.assetsData.GetHash(), sub.assetsData);
+				addAssetDisplay(wtx, sub.assetsData, listMyAsset);
+				addIssueAsset(sub.assetsData, listIssueAsset);
             }
 
 			return true;
@@ -139,11 +155,7 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
                 if(GetAssetInfoByAssetId(sub.commonData.assetId,assetInfo))
                 {
                     sub.assetsData = assetInfo.assetData;
-
-                    AssetsDisplayInfo& displayInfo = assetNamesUnits[QString::fromStdString(sub.assetsData.strAssetName)];
-                    displayInfo.bInMainChain = wtx.IsInMainChain();
-                    displayInfo.strAssetsUnit = QString::fromStdString(sub.assetsData.strAssetUnit);
-                    displayInfo.txHash = wtx.GetHash();                    
+					addAssetDisplay(wtx, sub.assetsData, listMyAsset);
                 }
             }
 
@@ -185,11 +197,7 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
                 if(GetAssetInfoByAssetId(sub.getCandyData.assetId, assetInfo))
                 {  
 					sub.assetsData = assetInfo.assetData;
-
-                    AssetsDisplayInfo& displayInfo = assetNamesUnits[QString::fromStdString(sub.assetsData.strAssetName)];
-                    displayInfo.bInMainChain = wtx.IsInMainChain();
-                    displayInfo.strAssetsUnit = QString::fromStdString(sub.assetsData.strAssetUnit);
-                    displayInfo.txHash = wtx.GetHash();
+					addAssetDisplay(wtx, sub.assetsData, listMyAsset);
                 }
             }
 
@@ -323,7 +331,11 @@ bool TransactionRecord::decomposeAppAssetSafe(const CWallet *wallet, const CWall
 /*
  * Decompose CWallet transaction to model transaction records.
  */
-bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx, QList<TransactionRecord> &listTransaction, QMap<QString, AssetsDisplayInfo> &mapAssetInfo, QMap<uint256, CAssetData> &mapIssueAsset)
+bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
+	const CWalletTx &wtx,
+	QList<TransactionRecord> &listTransaction,
+	QList<AssetsDisplayInfo> &listMyAsset,
+	QList<CAssetData> &listIssueAsset)
 {
 	int64_t nTime = wtx.GetTxTime();
 	CAmount nCredit = wtx.GetCredit(ISMINE_ALL);
@@ -443,7 +455,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
             sub.idx = nOut;
             sub.involvesWatchAddress = wallet->IsMine(txout) & ISMINE_WATCH_ONLY;
             setAddressType(fAllFromMe, fAllToMe, wtx, sub, txout);
-            if(decomposeAppAsset(wallet, wtx, sub, txout, mapAssetInfo, mapIssueAsset))
+            if(decomposeAppAsset(wallet, wtx, sub, txout, listMyAsset, listIssueAsset))
             {
                 if(sub.appHeader.nAppCmd == ISSUE_ASSET_CMD || sub.appHeader.nAppCmd == REGISTER_APP_CMD)
                 {

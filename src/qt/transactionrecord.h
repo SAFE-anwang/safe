@@ -33,14 +33,19 @@ public:
     {
         strAssetsUnit = "";
         bInMainChain = false;
-        bNewAssets = true;
     }
     ~AssetsDisplayInfo(){}
+
+	friend inline bool operator==(const AssetsDisplayInfo& a, const AssetsDisplayInfo& b) { return a.strAssetName == b.strAssetName; }
+
+	friend inline bool operator==(const AssetsDisplayInfo& a, const QString& b) { return a.strAssetName == b; }
+
+	friend inline bool operator==(const QString& a, const AssetsDisplayInfo& b) { return a == b.strAssetName; }
+
 public:
+	QString strAssetName;
     QString strAssetsUnit;
     bool bInMainChain;
-    bool bNewAssets;
-	uint256 txHash;
 };
 
 /** UI model for transaction status. The transaction status is the part of a transaction that will change over time.
@@ -163,12 +168,16 @@ public:
 
     int64_t getRealUnlockHeight()const;
 
+	static void addAssetDisplay(const CWalletTx &wtx, const CAssetData &stAssetData, QList<AssetsDisplayInfo> &listMyAsset);
+
+	static void addIssueAsset(const CAssetData &stAssetData, QList<CAssetData> &listIssueAsset);
+
 	static bool decomposeAppAsset(const CWallet *wallet,
         const CWalletTx &wtx,
 		TransactionRecord &sub,
         const CTxOut &txout,
-		QMap<QString, AssetsDisplayInfo> &assetNamesUnits,
-		QMap<uint256, CAssetData> &mapIssueAsset);
+		QList<AssetsDisplayInfo> &listMyAsset,
+		QList<CAssetData> &listIssueAsset);
 
     static bool decomposeAppAssetSafe(const CWallet *wallet,const CWalletTx &wtx,const CTxOut& txout,TransactionRecord& sub,int nOut,const CAmount& nDebit,
                                       isminetype fAllFromMe, isminetype fAllToMe,std::map<std::string, std::string>& mapValue);
@@ -177,7 +186,11 @@ public:
 
 	static void setAddressType(isminetype fAllFromMe, isminetype fAllToMe, const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout);
 
-	static bool decomposeTransaction(const CWallet *wallet, const CWalletTx &wtx, QList<TransactionRecord> &listTransaction, QMap<QString, AssetsDisplayInfo> &mapAssetInfo, QMap<uint256, CAssetData> &mapIssueAsset);
+	static bool decomposeTransaction(const CWallet *wallet, 
+		const CWalletTx &wtx,
+		QList<TransactionRecord> &listTransaction,
+		QList<AssetsDisplayInfo> &listMyAsset,
+		QList<CAssetData> &listIssueAsset);
 
     /** @name Immutable transaction attributes
       @{*/

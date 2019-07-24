@@ -40,11 +40,11 @@ public:
 
 	bool processingQueuedTransactions();
 
-    bool RefreshAssetData(const QMap<uint256, CAssetData>& mapIssueAsset);
+    bool RefreshAssetData(const QList<CAssetData> &listIssueAsset);
 
-    bool RefreshCandyPageData(const QMap<uint256, CAssetData>& mapIssueAsset);
+    bool RefreshCandyPageData(const QList<CAssetData> &listIssueAsset);
 
-	bool RefreshOverviewPageData(const QList<QString>& listAssetName);
+	bool RefreshOverviewPageData(const QList<AssetsDisplayInfo> &listAssetDisplay);
 
 	void init(const WalletModel *pWalletModel, const CWallet *pWallet);
 
@@ -52,13 +52,13 @@ public:
 
 
 Q_SIGNALS:
-    void updateOverviePage(QMap<QString, AssetBalance> mapAssetBalance);
+    void updateOverviePage(const QList<AssetBalance> &listAssetBalance);
 
     void updateAssetPage(QStringList listAsset);
 
 	void updateCandyPage(QStringList listAsset);
 
-	void updateAssetDisplayInfo(QMap<QString, AssetsDisplayInfo> mapAssetDisplay);
+	void updateAssetDisplayInfo(const QList<AssetsDisplayInfo> &listAssetDisplay);
 
 	void updateAllTransaction(const QMap<uint256, QList<TransactionRecord> > &mapDecTransaction, const QMap<uint256, NewTxData> &mapTransactionStatus);
 

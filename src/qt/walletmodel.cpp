@@ -1144,9 +1144,9 @@ void EncryptWorker::doEncrypt()
 
 void WalletModel::loadHistroyData()
 {
-	QMap<QString, AssetsDisplayInfo> mapAssetList;
+	QList<AssetsDisplayInfo> listMyAsset;
 	QList<TransactionRecord> listTransaction;
-	QMap<uint256, CAssetData> mapIssueAsset;
+	QList<CAssetData> listIssueAsset;
 
 	{
 		LOCK2(cs_main, wallet->cs_wallet);
@@ -1155,7 +1155,7 @@ void WalletModel::loadHistroyData()
 			boost::this_thread::interruption_point();
 			if (TransactionRecord::showTransaction(it->second))
 			{
-				TransactionRecord::decomposeTransaction(wallet, it->second, listTransaction, mapAssetList, mapIssueAsset);
+				TransactionRecord::decomposeTransaction(wallet, it->second, listTransaction, listMyAsset, listIssueAsset);
 			}
 		}
 	}
@@ -1269,16 +1269,16 @@ void WalletModel::loadHistroyData()
 	candyTableModel->sortData();
 	lockedTransactionTableModel->sortData();
 
-	if (mapAssetList.size() > 0)
+	if (listMyAsset.size() > 0)
 	{
-		Q_EMIT pUpdateTransaction->updateAssetDisplayInfo(mapAssetList);
-		pUpdateTransaction->RefreshOverviewPageData(mapAssetList.keys());
+		Q_EMIT pUpdateTransaction->updateAssetDisplayInfo(listMyAsset);
+		pUpdateTransaction->RefreshOverviewPageData(listMyAsset);
 	}
 
-	if (mapIssueAsset.size() > 0)
+	if (listIssueAsset.size() > 0)
 	{
-		pUpdateTransaction->RefreshAssetData(mapIssueAsset);
-		pUpdateTransaction->RefreshCandyPageData(mapIssueAsset);
+		pUpdateTransaction->RefreshAssetData(listIssueAsset);
+		pUpdateTransaction->RefreshCandyPageData(listIssueAsset);
 	}
 
 	Q_EMIT loadWalletFinish();

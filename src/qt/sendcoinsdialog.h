@@ -50,8 +50,6 @@ public:
     void setAddress(const QString &address);
     void pasteEntry(const SendCoinsRecipient &rv);
     bool handlePaymentRequest(const SendCoinsRecipient &recipient);
-    
-	bool addAssetDisplay(const QMap<QString, AssetsDisplayInfo> &mapAssetDisplay);
 
 	void disconnectSign();
 
@@ -64,7 +62,7 @@ public Q_SLOTS:
 	void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& lockedBalance, const CAmount& anonymizedBalance,
 		const CAmount& watchBalance, const CAmount& watchUnconfirmedBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance);
 
-	void updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay);
+	void updateAssetDisplayInfo_slot(const QList<AssetsDisplayInfo> &listAssetDisplay);
 
 private:
     Ui::SendCoinsDialog *ui;
@@ -82,8 +80,6 @@ private:
 
 	//assets name
 	QMap<QString, AssetsDisplayInfo> mapConfirmedAssetDisplay;
-
-	QMap<QString, AssetsDisplayInfo> mapNewAssetDisplay;
 
     // Process WalletModel::SendCoinsReturn and generate a pair consisting
     // of a message and message flags for use in Q_EMIT message().

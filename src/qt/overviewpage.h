@@ -39,12 +39,20 @@ public:
       nDecimals = 0;
       strUnit = "SAFE";
     }
+
+	friend inline bool operator==(const AssetBalance& a, const AssetBalance& b) { return a.strAssetName == b.strAssetName; }
+
+	friend inline bool operator==(const AssetBalance& a, const QString& b) { return a.strAssetName == b; }
+
+	friend inline bool operator==(const QString& a, const AssetBalance& b) { return a == b.strAssetName; }
+
 public:
     CAmount amount;
     CAmount unconfirmAmount;
     CAmount lockedAmount;
     int nDecimals;
     QString strUnit;
+	QString strAssetName;
 };
 
 
@@ -71,7 +79,7 @@ public Q_SLOTS:
                     const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance);
     void add();
     void clear();
-    void updateAssetsInfo(QMap<QString, AssetBalance> mapAssetBalance);
+    void updateAssetsInfo(const QList<AssetBalance> &listAssetBalance);
 
 Q_SIGNALS:
     void transactionClicked(const QModelIndex &index);

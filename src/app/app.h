@@ -367,7 +367,7 @@ public:
           nCandyAmount(nCandyAmountIn),
           nCandyExpired(nCandyExpiredIn),
           strRemarks(strRemarksIn) {
-    }
+    }		
 
     CAssetData& operator=(const CAssetData& data)
     {
@@ -427,10 +427,20 @@ public:
         READWRITE(LIMITED_STRING(strRemarks, MAX_REMARKS_SIZE));
     }
 
-    uint256 GetHash()
+    uint256 GetHash() const
     {
         return SerializeHash(*this);
     }
+
+	friend inline bool operator==(const CAssetData& a, const CAssetData& b) { return a.strAssetName == b.strAssetName; }
+
+	friend inline bool operator==(const CAssetData& a, const std::string& b) { return a.strAssetName == b; }
+
+	friend inline bool operator==(const std::string& a, const CAssetData& b) { return a == b.strAssetName; }
+
+	friend inline bool operator==(const CAssetData& a, const uint256& b) { return a.GetHash() == b; }
+
+	friend inline bool operator==(const uint256& a, const CAssetData& b) { return a == b.GetHash(); }
 };
 
 class CCommonData // for asset add, transfer and destory

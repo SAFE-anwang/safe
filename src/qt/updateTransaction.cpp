@@ -147,19 +147,19 @@ void CUpdateTransaction::updateTransaction(const QString& hash, int status, bool
 }
 
 
-bool CUpdateTransaction::RefreshOverviewPageData(const QList<QString>& listAssetName)
+bool CUpdateTransaction::RefreshOverviewPageData(const QList<AssetsDisplayInfo> &listAssetDisplay)
 {
-    if (listAssetName.size() <= 0)
+    if (listAssetDisplay.size() <= 0)
 	{
         return false;
     }
 
-	QMap<QString, AssetBalance> mapAssetBalance;
+	QList<AssetBalance> listAssetBalance;
 
-	for (int i = 0; i < listAssetName.size(); i++)
+	for (int i = 0; i < listAssetDisplay.size(); i++)
 	{
 		uint256 assetId;
-		if (GetAssetIdByAssetName(listAssetName[i].toStdString(), assetId, false))
+		if (GetAssetIdByAssetName(listAssetDisplay[i].strAssetName.toStdString(), assetId, false))
 		{
 			CAssetId_AssetInfo_IndexValue assetsInfo;
 			AssetBalance assetBalance;
@@ -173,42 +173,42 @@ bool CUpdateTransaction::RefreshOverviewPageData(const QList<QString>& listAsset
 				assetBalance.lockedAmount = lockBalance;
 				assetBalance.strUnit = QString::fromStdString(assetsInfo.assetData.strAssetUnit);
 				assetBalance.nDecimals = assetsInfo.assetData.nDecimals;
+				assetBalance.strAssetName = listAssetDisplay[i].strAssetName;
 
-				mapAssetBalance.insert(listAssetName[i], assetBalance);				
+				listAssetBalance.push_back(assetBalance);
 			}
 		}
 	}
 
-	if (mapAssetBalance.size() > 0)
+	if (listAssetBalance.size() > 0)
 	{
-		Q_EMIT updateOverviePage(mapAssetBalance);
+		Q_EMIT updateOverviePage(listAssetBalance);
 		return true;
 	}
 
     return false;
 }
 
-bool CUpdateTransaction::RefreshAssetData(const QMap<uint256, CAssetData>& mapIssueAsset)
+bool CUpdateTransaction::RefreshAssetData(const QList<CAssetData> &listIssueAsset)
 {
-    if (mapIssueAsset.size() <= 0)
+    if (listIssueAsset.size() <= 0)
 	{
         return false;
     }
 
-    std::vector<std::string> assetNameVec;
+    std::vector<std::string> vtAssetName;
 
-    for (QMap<uint256, CAssetData>::const_iterator iter = mapIssueAsset.begin(); iter != mapIssueAsset.end(); ++iter)
+    for (QList<CAssetData>::const_iterator iter = listIssueAsset.begin(); iter != listIssueAsset.end(); ++iter)
 	{
-        const CAssetData& assetData = iter.value();
-        assetNameVec.push_back(assetData.strAssetName);
+		vtAssetName.push_back(iter->strAssetName);
     }
 
-    std::sort(assetNameVec.begin(), assetNameVec.end());
+    std::sort(vtAssetName.begin(), vtAssetName.end());
 
     QStringList stringList;
-    for (unsigned int i = 0; i < assetNameVec.size(); i++)
+    for (unsigned int i = 0; i < vtAssetName.size(); i++)
 	{
-        stringList.append(QString::fromStdString(assetNameVec[i]));
+        stringList.append(QString::fromStdString(vtAssetName[i]));
     }
 
     if (stringList.size() > 0)
@@ -220,19 +220,19 @@ bool CUpdateTransaction::RefreshAssetData(const QMap<uint256, CAssetData>& mapIs
     return false;
 }
 
-bool CUpdateTransaction::RefreshCandyPageData(const QMap<uint256, CAssetData>& mapIssueAsset)
+bool CUpdateTransaction::RefreshCandyPageData(const QList<CAssetData> &listIssueAsset)
 {
-    if (mapIssueAsset.size() <= 0)
+    if (listIssueAsset.size() <= 0)
 	{
         return false;
     }
 
     std::vector<std::string> assetNameVec;
 
-    for (QMap<uint256, CAssetData>::const_iterator iter = mapIssueAsset.begin(); iter != mapIssueAsset.end(); ++iter)
+    for (QList<CAssetData>::const_iterator iter = listIssueAsset.begin(); iter != listIssueAsset.end(); ++iter)
 	{
-        uint256 assetId = iter.key();
-        const CAssetData& assetData = iter.value();
+        const CAssetData &assetData = *iter;
+		uint256 assetId = assetData.GetHash();
 
         int memoryPutCandyCount = mempool.get_PutCandy_count(assetId);
         int dbPutCandyCount = 0;
@@ -301,9 +301,9 @@ void CUpdateTransaction::run()
 		}
 
         
-		QMap<QString, AssetsDisplayInfo> mapAssetList;
+		QList<AssetsDisplayInfo> listMyAsset;
 		QMap<uint256, QList<TransactionRecord> > mapListTx;
-		QMap<uint256, CAssetData> mapIssueAsset;
+		QList<CAssetData> listIssueAsset;
 
 		{
 			int nIndex = 0;
@@ -315,7 +315,7 @@ void CUpdateTransaction::run()
 				if (mi != m_pWallet->mapWallet.end())
 				{
 					QList<TransactionRecord> listTemp;
-					if (TransactionRecord::decomposeTransaction(m_pWallet, mi->second, listTemp, mapAssetList, mapIssueAsset))
+					if (TransactionRecord::decomposeTransaction(m_pWallet, mi->second, listTemp, listMyAsset, listIssueAsset))
 					{
 						mapListTx.insert(itNew.key(), listTemp);
 					}
@@ -330,28 +330,28 @@ void CUpdateTransaction::run()
 		}
 
 
-		if (mapAssetList.size() > 0)
+		if (listMyAsset.size() > 0)
 		{
 			// update send coin page
-			Q_EMIT updateAssetDisplayInfo(mapAssetList);
+			Q_EMIT updateAssetDisplayInfo(listMyAsset);
 
 			// update overview page
-			RefreshOverviewPageData(mapAssetList.keys());
+			RefreshOverviewPageData(listMyAsset);
 		}
 
-		if (mapIssueAsset.size() > 0)
+		if (listIssueAsset.size() > 0)
 		{
 			// update asset page
-			RefreshAssetData(mapIssueAsset);
+			RefreshAssetData(listIssueAsset);
 
 			// update candy page
-			RefreshCandyPageData(mapIssueAsset);
+			RefreshCandyPageData(listIssueAsset);
 		}
 
 		QString strDebug = "CUpdateTransaction::decomposeTransaction result: ";
 		strDebug += "txCount: " + QString::number(mapListTx.size());
-		strDebug += ", assetCount: " + QString::number(mapAssetList.size());
-		strDebug += ", issueAssetCount: " + QString::number(mapIssueAsset.size());
+		strDebug += ", assetCount: " + QString::number(listMyAsset.size());
+		strDebug += ", issueAssetCount: " + QString::number(listIssueAsset.size());
 		qDebug() << strDebug;
     }
 }

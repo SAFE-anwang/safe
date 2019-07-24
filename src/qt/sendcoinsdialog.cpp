@@ -975,21 +975,16 @@ void SendCoinsDialog::updateCurrentAsset(const QString &currText)
             ui->labelBalance->setText(QString("%1 %2").arg(BitcoinUnits::format(nAssetsDecimals,amount,false,BitcoinUnits::separatorAlways,true)).arg(strAssetsUnit));
         }
     }
-    QMap<QString,AssetsDisplayInfo>& assetNamesUnits = mapConfirmedAssetDisplay;
-    for(int i = 0; i < ui->entries->count(); ++i)
+
+	for(int i = 0; i < ui->entries->count(); ++i)
     {
         SendCoinsEntry *entry = qobject_cast<SendCoinsEntry*>(ui->entries->itemAt(i)->widget());
         if(entry)
         {
-            QString assetUnit = "";
-            if(assetNamesUnits.contains(currText))
-            {
-                if(assetNamesUnits[currText].bInMainChain)
-                    assetUnit = assetNamesUnits[currText].strAssetsUnit;
-            }
-            entry->updateAssetUnit(assetUnit,fAssets,nAssetsDecimals);
+            entry->updateAssetUnit(strAssetsUnit,fAssets,nAssetsDecimals);
         }
     }
+
     if(model->getOptionsModel()->getCoinControlFeatures()&&!fAssets)
         ui->frameCoinControl->setVisible(true);
     else
@@ -1223,33 +1218,33 @@ void SendCoinsDialog::coinControlUpdateLabels()
     }
 }
 
-void SendCoinsDialog::updateAssetDisplayInfo_slot(QMap<QString, AssetsDisplayInfo> mapAssetDisplay)
+void SendCoinsDialog::updateAssetDisplayInfo_slot(const QList<AssetsDisplayInfo> &listAssetDisplay)
 {
-	addAssetDisplay(mapAssetDisplay);
-}
-
-bool SendCoinsDialog::addAssetDisplay(const QMap<QString, AssetsDisplayInfo> &mapAssetDisplay)
-{
-	QStringList listAssetName;
-	QMap<QString, AssetsDisplayInfo>::const_iterator itAsset = mapAssetDisplay.begin();
-	while (itAsset != mapAssetDisplay.end())
+	QList<AssetsDisplayInfo>::const_iterator itAsset = listAssetDisplay.begin();
+	while (itAsset != listAssetDisplay.end())
 	{
-		if (itAsset.value().bInMainChain)
+		if (itAsset->bInMainChain)
 		{
-			listAssetName.push_back(itAsset.key());
+			QMap<QString, AssetsDisplayInfo>::iterator itConfiremed = mapConfirmedAssetDisplay.find(itAsset->strAssetName);
+			if (itConfiremed == mapConfirmedAssetDisplay.end())
+			{
+				mapConfirmedAssetDisplay.insert(itAsset->strAssetName, *itAsset);
+			}
 		}
-		
+
 		itAsset++;
 	}
 
-
 	QStringList listTemp;
-	for (int i = 0; i < listAssetName.count(); i++)
+	QMap<QString, AssetsDisplayInfo>::iterator itConfiremed = mapConfirmedAssetDisplay.begin();
+	while (itConfiremed != mapConfirmedAssetDisplay.end())
 	{
-		if (ui->assetsComboBox->findText(listAssetName[i]) < 0)
+		if (ui->assetsComboBox->findText(itConfiremed.key()) < 0)
 		{
-			listTemp.push_back(listAssetName[i]);
+			listTemp.push_back(itConfiremed.key());
 		}
+
+		itConfiremed++;
 	}
 
 	if (listTemp.count() > 0)
@@ -1257,8 +1252,6 @@ bool SendCoinsDialog::addAssetDisplay(const QMap<QString, AssetsDisplayInfo> &ma
 		ui->assetsComboBox->addItems(listTemp);
 		stringListModel->setStringList(listTemp);
 	}
-
-	return true;
 }
 
 void SendCoinsDialog::addSafeToCombox()

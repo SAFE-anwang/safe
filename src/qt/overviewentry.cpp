@@ -89,7 +89,7 @@ void OverViewEntry::replyFinished(QNetworkReply *reply)
     }
 }
 
-void OverViewEntry::setAssetsInfo(CAmount &amount, CAmount &unconfirmAmount, CAmount &lockedAmount, int &nDecimals, QString &strUnit)
+void OverViewEntry::setAssetsInfo(const CAmount& amount, const CAmount& unconfirmAmount, const CAmount& lockedAmount, int nDecimals, const QString strUnit)
 {
     this->balance = amount;
     this->unconfirmedBalance = unconfirmAmount;
