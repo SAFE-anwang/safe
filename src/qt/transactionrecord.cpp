@@ -305,25 +305,6 @@ bool TransactionRecord::decomposeAppAssetSafe(const CWallet *wallet, const CWall
         sub.bForbidDash = true;
     }
 
-    CTxDestination address;
-    if (ExtractDestination(txout.scriptPubKey, address))
-    {
-        // Sent to Safe Address
-        sub.type = TransactionRecord::SendToAddress;
-        sub.address = CBitcoinAddress(address).ToString();
-    }
-    else
-    {
-        // Sent to IP, or other non-address transaction like OP_EVAL
-        sub.type = TransactionRecord::SendToOther;
-        sub.address = mapValue["to"];
-    }
-
-    if (mapValue["DS"] == "1")
-    {
-        sub.type = TransactionRecord::PrivateSend;
-    }
-
     CAmount nValue = txout.nValue;
     /* Add fee to first output */
     if (nTxFee > 0 && txout.IsSafeOnly())

@@ -840,6 +840,11 @@ QVariant TransactionTableModel::data(const QModelIndex& index, int role) const
         break;
     }
     case TypeRole:
+        if(rec->type == TransactionRecord::FirstDistribute || rec->type == TransactionRecord::AddDistribute
+                || rec->type == TransactionRecord::PUTCandy)
+        {
+            return TransactionRecord::SendToAddress;
+        }
         return rec->type;
     case DateRole:
         return formatTxDate(rec);
