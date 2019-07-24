@@ -206,6 +206,8 @@ private:
 Q_SIGNALS:
     void updateAssets(int,bool,QString);
 
+	void rowsInserted(int first, int last);
+
 public Q_SLOTS:
 
     void updateTransaction(uint256 hash, QList<TransactionRecord> listNew, int status, bool showTransaction);

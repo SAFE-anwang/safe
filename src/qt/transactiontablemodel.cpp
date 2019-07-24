@@ -89,17 +89,14 @@ void TransactionTablePriv::updateWallet(uint256 hash, const QList<TransactionRec
 {
 	qDebug() << "TransactionTablePriv::start updateWallet: " + QString::fromStdString(hash.ToString()) + " " + QString::number(status);
 
-	// Find bounds of this transaction in model
-	QList<TransactionRecord>::iterator lower = qLowerBound(cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
-	QList<TransactionRecord>::iterator upper = qUpperBound(cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
-	int lowerIndex = (lower - cachedWallet.begin());
-	int upperIndex = (upper - cachedWallet.begin());
-	bool inModel = (lower != upper);
-
-	//if (lowerIndex > 0 && lowerIndex == upperIndex && lowerIndex < cachedWallet.size())
-	//{
-	//	inModel = true;
-	//}
+	bool inModel = false;
+	int nIndex = 0;
+	QList<TransactionRecord>::iterator itFind = qFind(cachedWallet.begin(), cachedWallet.end(), hash);
+	nIndex = itFind - cachedWallet.begin();
+	if (itFind != cachedWallet.end())
+	{
+		inModel = true;
+	}
 
 	if (status == CT_UPDATED)
 	{
@@ -114,9 +111,10 @@ void TransactionTablePriv::updateWallet(uint256 hash, const QList<TransactionRec
 			status = CT_UPDATED;
 	}
 
-	qDebug() << "    inModel=" + QString::number(inModel) +
-		" Index=" + QString::number(lowerIndex) + "-" + QString::number(upperIndex) +
-		" showTransaction=" + QString::number(showTransaction) + " derivedStatus=" + QString::number(status);
+	qDebug() << "    inModel=" + QString::number(inModel) 
+		+ " Index=" + QString::number(nIndex)
+		+ " showTransaction=" + QString::number(showTransaction) 
+		+ " derivedStatus=" + QString::number(status);
 
 	bRefresh = false;
 
@@ -135,13 +133,11 @@ void TransactionTablePriv::updateWallet(uint256 hash, const QList<TransactionRec
 			//int insertIndex = (itPos - cachedWallet.begin());
 
 			//parent->beginInsertRows(QModelIndex(), insertIndex, insertIndex + listNew.size() - 1);
-
 			//Q_FOREACH(const TransactionRecord& rec, listNew)
 			//{
 			//	cachedWallet.insert(insertIndex, rec);
 			//	insertIndex++;
 			//}
-
 			//parent->endInsertRows();
 
 			//qSort(cachedWallet.begin(), cachedWallet.end(), timeCompartor);
@@ -153,26 +149,37 @@ void TransactionTablePriv::updateWallet(uint256 hash, const QList<TransactionRec
 
 			QList<TransactionRecord>::iterator itPos = qLowerBound(cachedWallet.begin(), cachedWallet.end(), listNew[0].time, TimeGreaterThan());
 			int insertIndex = (itPos - cachedWallet.begin());
-			Q_FOREACH(const TransactionRecord& rec, listNew)
+			int id = insertIndex;
+			for(int i = 0; i < listNew.size(); i++)
 			{
-				cachedWallet.insert(insertIndex, rec);
-				insertIndex++;
+				cachedWallet.insert(id, listNew[i]);
+				id++;
 			}
+
+			Q_EMIT parent->rowsInserted(insertIndex, insertIndex + cachedWallet.size() - 1);
 
 			bRefresh = true;
 		}
 		break;
 	case CT_DELETED:
-		if (!inModel)
 		{
-			qWarning() << "TransactionTablePriv::updateWallet: Warning: Got CT_DELETED, but transaction is not in model";
-			break;
-		}
+			if (!inModel)
+			{
+				qWarning() << "TransactionTablePriv::updateWallet: Warning: Got CT_DELETED, but transaction is not in model";
+				break;
+			}
 
-		// Removed -- remove entire transaction from table
-		parent->beginRemoveRows(QModelIndex(), lowerIndex, upperIndex - 1);
-		cachedWallet.erase(lower, upper);
-		parent->endRemoveRows();
+			// Find bounds of this transaction in model
+			QList<TransactionRecord>::iterator lower = qLowerBound(cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
+			QList<TransactionRecord>::iterator upper = qUpperBound(cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
+			int lowerIndex = (lower - cachedWallet.begin());
+			int upperIndex = (upper - cachedWallet.begin());
+
+			// Removed -- remove entire transaction from table
+			parent->beginRemoveRows(QModelIndex(), lowerIndex, upperIndex - 1);
+			cachedWallet.erase(lower, upper);
+			parent->endRemoveRows();
+		}
 		break;
 	case CT_UPDATED:
 		if (!inModel)
@@ -182,21 +189,23 @@ void TransactionTablePriv::updateWallet(uint256 hash, const QList<TransactionRec
 
 		// Miscellaneous updates -- nothing to do, status update will take care of this, and is only computed for
 		// visible transactions.
-		qDebug() << "CT_UPDATED, hash: " + QString::fromStdString(hash.ToString());
-		while (lowerIndex <= upperIndex && lowerIndex < cachedWallet.size())
+		qDebug() << "CT_UPDATED, hash: " + QString::fromStdString(hash.ToString()) + ", txCount: " + QString::number(listNew.size());		
+		for (int i = 0; i < listNew.size(); i++)
 		{
-			TransactionRecord &tempTr = cachedWallet[lowerIndex];
-			for (int i = 0; i < listNew.size(); i++)
+			itFind = qFind(cachedWallet.begin(), cachedWallet.end(), hash);
+			while (itFind != cachedWallet.end())
 			{
+				nIndex = itFind - cachedWallet.begin();
+				TransactionRecord &tempTr = cachedWallet[nIndex];
 				if (tempTr.time == listNew[i].time && tempTr.idx == listNew[i].idx)
 				{
 					tempTr = listNew[i];
 					break;
 				}
-			}
 
-			lowerIndex++;
-		}
+				itFind = qFind(cachedWallet.begin() + nIndex + 1, cachedWallet.end(), hash);
+			}
+		}		
 
 		bRefresh = true;
 

@@ -151,6 +151,12 @@ public:
         vtShowType.push_back(SHOW_TX);
     }
 
+	friend inline bool operator==(const TransactionRecord& a, const TransactionRecord& b) { return a.hash == b.hash; }
+
+	friend inline bool operator==(const TransactionRecord& a, const uint256& b) { return a.hash == b; }
+
+	friend inline bool operator==(const uint256& a, const TransactionRecord& b) { return a == b.hash; }
+
     /** Decompose CWallet transaction to model transaction records.
      */
     static bool showTransaction(const CWalletTx &wtx);

@@ -366,8 +366,8 @@ void WalletView::setWalletModel(WalletModel* walletModel)
         Q_EMIT hdEnabledStatusChanged(walletModel->hdEnabled());
 
         // Balloon pop-up for new transaction
-        connect(walletModel->getTransactionTableModel(), SIGNAL(rowsInserted(QModelIndex, int, int)),
-            this, SLOT(processNewTransaction(QModelIndex, int, int)));
+        connect(walletModel->getTransactionTableModel(), SIGNAL(rowsInserted(int, int)),
+            this, SLOT(processNewTransaction(int, int)));
 
         // Ask for passphrase if needed
         connect(walletModel, SIGNAL(requireUnlock(bool)), this, SLOT(unlockWallet(bool)));
@@ -407,7 +407,7 @@ void WalletView::updateAssetsDisplay(bool updateAsset)
 	}
 }
 
-void WalletView::processNewTransaction(const QModelIndex& parent, int start, int /*end*/)
+void WalletView::processNewTransaction(int start, int /*end*/)
 {
     // Prevent balloon-spam when initial block download is in progress
     if (!walletModel || !clientModel || clientModel->inInitialBlockDownload())
@@ -417,10 +417,10 @@ void WalletView::processNewTransaction(const QModelIndex& parent, int start, int
     if (!ttm || walletModel->getUpdateTransaction()->processingQueuedTransactions())
         return;
 
-    QString date = ttm->index(start, TransactionTableModel::TransactionColumnDate, parent).data().toString();
-    qint64 amount = ttm->index(start, TransactionTableModel::TransactionColumnAmount, parent).data(Qt::EditRole).toULongLong();
-    QString type = ttm->index(start, TransactionTableModel::TransactionColumnType, parent).data().toString();
-    QModelIndex index = ttm->index(start, 0, parent);
+    QString date = ttm->index(start, TransactionTableModel::TransactionColumnDate).data().toString();
+    qint64 amount = ttm->index(start, TransactionTableModel::TransactionColumnAmount).data(Qt::EditRole).toULongLong();
+    QString type = ttm->index(start, TransactionTableModel::TransactionColumnType).data().toString();
+    QModelIndex index = ttm->index(start, 0);
     QString address = ttm->data(index, TransactionTableModel::AddressRole).toString();
     QString label = ttm->data(index, TransactionTableModel::LabelRole).toString();
     bool bSAFETransaction = ttm->data(index, TransactionTableModel::SAFERole).toBool();
