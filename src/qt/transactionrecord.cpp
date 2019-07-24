@@ -176,6 +176,7 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
                 if(GetAssetInfoByAssetId(sub.putCandyData.assetId, assetInfo))
                 { 
                     sub.assetsData = assetInfo.assetData;
+					addAssetDisplay(wtx, sub.assetsData, listMyAsset);
                 }
             }
 

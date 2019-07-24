@@ -29,18 +29,6 @@ extern std::vector<CCandy_BlockTime_Info> gAllCandyInfoVec;
 extern std::mutex g_mutexAllCandyInfo;
 extern unsigned int nCandyPageCount;
 
-//extern boost::thread_group *g_threadGroup;
-//
-//void UpdateCandyPage(CandyPage* candyPage)
-//{
-//	RenameThread("UpdateCandyPage");
-//
-//	std::map<uint256, CAssetData> mapIssueAsset;
-//	if (GetIssueAssetInfo(mapIssueAsset))
-//	{
-//		candyPage->getModel()->getUpdateTransaction()->RefreshCandyPageData(mapIssueAsset);
-//	}
-//}
 
 static void CandyVecPut(CandyPage* candyPage)
 {
@@ -923,14 +911,15 @@ bool CandyPage::putCandy()
     }
 
     if(MAX_PUTCANDY_VALUE-putCandyCount==1){	
-			
-		QStringListModel *pListMode = (QStringListModel *)ui->assetsComboBox->completer()->model();
-		pListMode->stringList().removeOne(QString::fromStdString(strAssetName));
-		updateCandyInfo(ui->assetsComboBox->currentText());
+		QStringList listTemp = stringListModel->stringList();
+		int nIndex = listTemp.indexOf(QString::fromStdString(strAssetName));
+		if (nIndex != -1)
+		{
+			stringListModel->removeRow(nIndex);
+		}
+
 		ui->assetsComboBox->removeItem(ui->assetsComboBox->currentIndex());
-		
-		/*if (g_threadGroup)
-			g_threadGroup->create_thread(boost::bind(&UpdateCandyPage, this));*/
+		//updateCandyInfo(ui->assetsComboBox->currentText());
     }
     return true;
 }
