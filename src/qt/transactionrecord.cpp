@@ -265,6 +265,61 @@ void TransactionRecord::setAddressType(isminetype fAllFromMe, isminetype fAllToM
 	}
 }
 
+bool TransactionRecord::decomposeAppAssetSafe(const CWallet *wallet, const CWalletTx &wtx, const CTxOut &txout, TransactionRecord &sub, int nOut,const CAmount &nDebit,
+                                              isminetype fAllFromMe, isminetype fAllToMe,std::map<std::string, std::string>& mapValue)
+{
+    if (wallet->IsChange(txout))
+    {
+        return false;
+    }
+
+    if (wallet->IsMine(txout) && txout.IsSafeOnly())
+    {
+        // Ignore parts sent to self, as this is usually the change
+        // from a transaction sent back to our own address.
+        return false;
+    }
+
+    CAmount nTxFee = nDebit - wtx.GetValueOut();
+    sub.idx = nOut;
+    sub.involvesWatchAddress = wallet->IsMine(txout) & ISMINE_WATCH_ONLY;
+    setAddressType(fAllFromMe, fAllToMe, wtx, sub, txout);
+
+    if (wtx.IsForbid() && !wallet->IsSpent(wtx.GetHash(), nOut))
+    {
+        sub.bForbidDash = true;
+    }
+
+    CTxDestination address;
+    if (ExtractDestination(txout.scriptPubKey, address))
+    {
+        // Sent to Safe Address
+        sub.type = TransactionRecord::SendToAddress;
+        sub.address = CBitcoinAddress(address).ToString();
+    }
+    else
+    {
+        // Sent to IP, or other non-address transaction like OP_EVAL
+        sub.type = TransactionRecord::SendToOther;
+        sub.address = mapValue["to"];
+    }
+
+    if (mapValue["DS"] == "1")
+    {
+        sub.type = TransactionRecord::PrivateSend;
+    }
+
+    CAmount nValue = txout.nValue;
+    /* Add fee to first output */
+    if (nTxFee > 0 && txout.IsSafeOnly())
+    {
+        nValue += nTxFee;
+        nTxFee = 0;
+    }
+    sub.debit = -nValue;
+    return true;
+}
+
 /*
  * Decompose CWallet transaction to model transaction records.
  */
@@ -365,32 +420,54 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
 			if (fAllToMe > mine) fAllToMe = mine;
 		}
 
-			   
+        bool bAssetAppSafe = false;
 		for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
 		{
-			const CTxOut& txout = wtx.vout[nOut];
-			if (txout.IsSafeOnly())
-			{
-				continue;
-			}
+            const CTxOut& txout = wtx.vout[nOut];
+            bool bSafeOnly = txout.IsSafeOnly();
+            if (bSafeOnly)
+            {
+                if(bAssetAppSafe)
+                {
+                    TransactionRecord subAfter(hash, nTime, wtx.nVersion);
+                    if(decomposeAppAssetSafe(wallet,wtx,txout,subAfter,nOut,nDebit,fAllFromMe,fAllToMe,mapValue))
+                    {
+                        listTransaction.append(subAfter);
+                    }
+                }
+                continue;
+            }
+            bSafe = false;
 
-			bSafe = false;
+            TransactionRecord sub(hash, nTime, wtx.nVersion);
+            sub.idx = nOut;
+            sub.involvesWatchAddress = wallet->IsMine(txout) & ISMINE_WATCH_ONLY;
+            setAddressType(fAllFromMe, fAllToMe, wtx, sub, txout);
+            if(decomposeAppAsset(wallet, wtx, sub, txout, mapAssetInfo, mapIssueAsset))
+            {
+                if(sub.appHeader.nAppCmd == ISSUE_ASSET_CMD || sub.appHeader.nAppCmd == REGISTER_APP_CMD)
+                {
+                    bAssetAppSafe = true;
+                    TransactionRecord subBefore(hash, nTime, wtx.nVersion);
+                    for (unsigned int nOutBefore = 0; nOutBefore < nOut; nOutBefore++)
+                    {
+                        const CTxOut& txoutBefore = wtx.vout[nOutBefore];
+                        bSafeOnly = txoutBefore.IsSafeOnly();
+                        if(bSafeOnly&&decomposeAppAssetSafe(wallet,wtx,txoutBefore,subBefore,nOutBefore,nDebit,fAllFromMe,fAllToMe,mapValue))
+                        {
+                            listTransaction.append(subBefore);
+                        }
+                    }
+                }
 
-			TransactionRecord sub(hash, nTime, wtx.nVersion);
-			sub.idx = nOut;
-			sub.involvesWatchAddress = wallet->IsMine(txout) & ISMINE_WATCH_ONLY;
-			setAddressType(fAllFromMe, fAllToMe, wtx, sub, txout);
+                if (txout.nUnlockedHeight > 0)
+                {
+                    decomposeLockTx(wtx, sub, txout);
+                }
 
-			decomposeAppAsset(wallet, wtx, sub, txout, mapAssetInfo, mapIssueAsset);
-
-			if (txout.nUnlockedHeight > 0)
-			{
-				decomposeLockTx(wtx, sub, txout);
-			}
-
-			listTransaction.append(sub);
+                listTransaction.append(sub);
+            }
 		}
-
 
 
 		if (bSafe)
@@ -481,7 +558,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet, const CWalle
 
 				for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
 				{
-					const CTxOut& txout = wtx.vout[nOut];
+                    const CTxOut& txout = wtx.vout[nOut];
 
 					TransactionRecord sub(hash, nTime, wtx.nVersion);
 					sub.idx = nOut;

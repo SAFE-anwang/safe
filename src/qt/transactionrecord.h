@@ -170,6 +170,9 @@ public:
 		QMap<QString, AssetsDisplayInfo> &assetNamesUnits,
 		QMap<uint256, CAssetData> &mapIssueAsset);
 
+    static bool decomposeAppAssetSafe(const CWallet *wallet,const CWalletTx &wtx,const CTxOut& txout,TransactionRecord& sub,int nOut,const CAmount& nDebit,
+                                      isminetype fAllFromMe, isminetype fAllToMe,std::map<std::string, std::string>& mapValue);
+
 	static bool decomposeLockTx(const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout);
 
 	static void setAddressType(isminetype fAllFromMe, isminetype fAllToMe, const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout);
