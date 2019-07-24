@@ -177,7 +177,8 @@ public:
 		TransactionRecord &sub,
         const CTxOut &txout,
 		QList<AssetsDisplayInfo> &listMyAsset,
-		QList<CAssetData> &listIssueAsset);
+        QList<CAssetData> &listIssueAsset,
+        int nToMe);
 
     static bool decomposeAppAssetSafe(const CWallet *wallet,const CWalletTx &wtx,const CTxOut& txout,TransactionRecord& sub,int nOut,const CAmount& nDebit,
                                       isminetype fAllFromMe, isminetype fAllToMe,std::map<std::string, std::string>& mapValue);

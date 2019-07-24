@@ -100,7 +100,8 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
     TransactionRecord &sub,
     const CTxOut &txout,
 	QList<AssetsDisplayInfo> &listMyAsset,
-	QList<CAssetData> &listIssueAsset)
+    QList<CAssetData> &listIssueAsset,
+    int nToMe)
 {
     std::vector<unsigned char> vData;
     if(ParseReserve(txout.vReserve, sub.appHeader, vData))
@@ -141,6 +142,11 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
 			sub.bSAFETransaction = false;
 			sub.assetCredit = 0;
 			sub.assetDebit = -txout.nValue;
+
+            if(sub.appHeader.nAppCmd == TRANSFER_ASSET_CMD && nToMe>0)
+            {
+                sub.assetDebit = txout.nValue;
+            }
 
 			if (sub.appHeader.nAppCmd == ADD_ASSET_CMD)
 			{
@@ -436,17 +442,8 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 		for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
 		{
             const CTxOut& txout = wtx.vout[nOut];
-            bool bSafeOnly = txout.IsSafeOnly();
-            if (bSafeOnly)
+            if (txout.IsSafeOnly())
             {
-                if(bAssetAppSafe)
-                {
-                    TransactionRecord subAfter(hash, nTime, wtx.nVersion);
-                    if(decomposeAppAssetSafe(wallet,wtx,txout,subAfter,nOut,nDebit,fAllFromMe,fAllToMe,mapValue))
-                    {
-                        listTransaction.append(subAfter);
-                    }
-                }
                 continue;
             }
             bSafe = false;
@@ -455,21 +452,11 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
             sub.idx = nOut;
             sub.involvesWatchAddress = wallet->IsMine(txout) & ISMINE_WATCH_ONLY;
             setAddressType(fAllFromMe, fAllToMe, wtx, sub, txout);
-            if(decomposeAppAsset(wallet, wtx, sub, txout, listMyAsset, listIssueAsset))
+            if(decomposeAppAsset(wallet, wtx, sub, txout, listMyAsset, listIssueAsset,nToMe))
             {
                 if(sub.appHeader.nAppCmd == ISSUE_ASSET_CMD || sub.appHeader.nAppCmd == REGISTER_APP_CMD)
                 {
                     bAssetAppSafe = true;
-                    TransactionRecord subBefore(hash, nTime, wtx.nVersion);
-                    for (unsigned int nOutBefore = 0; nOutBefore < nOut; nOutBefore++)
-                    {
-                        const CTxOut& txoutBefore = wtx.vout[nOutBefore];
-                        bSafeOnly = txoutBefore.IsSafeOnly();
-                        if(bSafeOnly&&decomposeAppAssetSafe(wallet,wtx,txoutBefore,subBefore,nOutBefore,nDebit,fAllFromMe,fAllToMe,mapValue))
-                        {
-                            listTransaction.append(subBefore);
-                        }
-                    }
                 }
 
                 if (txout.nUnlockedHeight > 0)
@@ -480,6 +467,24 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
                 listTransaction.append(sub);
             }
 		}
+
+        if(bAssetAppSafe)
+        {
+            for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
+            {
+                const CTxOut& txout = wtx.vout[nOut];
+                if (!txout.IsSafeOnly())
+                {
+                    continue;
+                }
+
+                TransactionRecord sub(hash, nTime, wtx.nVersion);
+                if(decomposeAppAssetSafe(wallet,wtx,txout,sub,nOut,nDebit,fAllFromMe,fAllToMe,mapValue))
+                {
+                    listTransaction.append(sub);
+                }
+            }
+        }
 
 
 		if (bSafe)
