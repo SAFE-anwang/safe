@@ -48,6 +48,7 @@
 #include <boost/thread.hpp>
 
 extern boost::thread_group* g_threadGroup;
+extern int g_nMaxDisplayTxCount;
 
 WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet), optionsModel(optionsModel), addressTableModel(0),
@@ -1194,29 +1195,29 @@ void WalletModel::loadHistroyData()
 		}
 	}
 
-	if (nTxCount > MAX_TX_DISPLAY)
+	if (nTxCount > g_nMaxDisplayTxCount)
 	{
-		nTxStart = nTxCount - MAX_TX_DISPLAY;
+		nTxStart = nTxCount - g_nMaxDisplayTxCount;
 	}
 
-	if (nAssetCount > MAX_TX_DISPLAY)
+	if (nAssetCount > g_nMaxDisplayTxCount)
 	{
-		nAssetStart = nAssetCount - MAX_TX_DISPLAY;
+		nAssetStart = nAssetCount - g_nMaxDisplayTxCount;
 	}
 
-	if (nAppCount > MAX_TX_DISPLAY)
+	if (nAppCount > g_nMaxDisplayTxCount)
 	{
-		nAppStart = nAppCount - MAX_TX_DISPLAY;
+		nAppStart = nAppCount - g_nMaxDisplayTxCount;
 	}
 
-	if (nCandyCount > MAX_TX_DISPLAY)
+	if (nCandyCount > g_nMaxDisplayTxCount)
 	{
-		nCandyStart = nCandyCount - MAX_TX_DISPLAY;
+		nCandyStart = nCandyCount - g_nMaxDisplayTxCount;
 	}
 
-	if (nLockCount > MAX_TX_DISPLAY)
+	if (nLockCount > g_nMaxDisplayTxCount)
 	{
-		nLockStart = nLockCount - MAX_TX_DISPLAY;
+		nLockStart = nLockCount - g_nMaxDisplayTxCount;
 	}
 
 

@@ -88,6 +88,7 @@ Q_DECLARE_METATYPE(bool*)
 Q_DECLARE_METATYPE(CAmount)
 
 boost::thread_group *g_threadGroup = NULL;
+int g_nMaxDisplayTxCount = 10000;
 
 static void InitMessage(const std::string &message)
 {
@@ -521,6 +522,9 @@ void BitcoinApplication::initializeResult(int retval)
             QApplication::processEvents();
             i++;
         }
+
+		// maximum display transactions count, if value is 0, display all transactions
+		g_nMaxDisplayTxCount = GetArg("-maxdisplaytxcount", 10000);
 
         window->ShowHistoryPage(BitcoinGUI::DEFAULT_WALLET);
 
