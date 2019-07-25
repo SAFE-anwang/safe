@@ -75,15 +75,7 @@ struct TimeGreaterThan {
 };
 
 
-bool timeCompartor(const TransactionRecord& a, const TransactionRecord& b)
-{
-	if (a.time > b.time)
-	{
-		return true;
-	}
 
-	return false;
-}
 
 void TransactionTablePriv::updateWallet(uint256 hash, const QList<TransactionRecord> &listNew, int status, bool showTransaction, bool &bRefresh)
 {
@@ -289,7 +281,7 @@ void TransactionTablePriv::clearData()
 
 void TransactionTablePriv::sortData()
 {
-	qSort(cachedWallet.begin(), cachedWallet.end(), timeCompartor);
+	qSort(cachedWallet.begin(), cachedWallet.end(), TRTimeGreaterCompartor);
 }
 
 TransactionTableModel::TransactionTableModel(const PlatformStyle* platformStyle, CWallet* wallet, int showType, WalletModel* parent) :

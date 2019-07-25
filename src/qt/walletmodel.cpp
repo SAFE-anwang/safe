@@ -1161,6 +1161,8 @@ void WalletModel::loadHistroyData()
 		}
 	}
 
+	qSort(listTransaction.begin(), listTransaction.end(), TRTimeLessCompartor);
+
 	int nTxStart = 0, nTxCount = 0;
 	int nAssetStart = 0, nAssetCount = 0;
 	int nAppStart = 0, nAppCount = 0;

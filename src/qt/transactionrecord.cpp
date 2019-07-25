@@ -27,6 +27,28 @@ extern int g_nChainHeight;
 
 extern int g_nStartSPOSHeight;
 
+
+bool TRTimeGreaterCompartor(const TransactionRecord& a, const TransactionRecord& b)
+{
+	if (a.time > b.time)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool TRTimeLessCompartor(const TransactionRecord& a, const TransactionRecord& b)
+{
+	if (a.time < b.time)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
 /* Return positive answer if transaction should be shown in list.
  */
 bool TransactionRecord::showTransaction(const CWalletTx &wtx)

@@ -258,4 +258,10 @@ public:
     void updateLockedMonth();
 };
 
+
+bool TRTimeGreaterCompartor(const TransactionRecord& a, const TransactionRecord& b);
+
+bool TRTimeLessCompartor(const TransactionRecord& a, const TransactionRecord& b);
+
+
 #endif // BITCOIN_QT_TRANSACTIONRECORD_H
