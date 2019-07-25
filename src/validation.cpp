@@ -180,7 +180,7 @@ struct CompareCandyInfo
 {
     bool operator()(const std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue>& l, const std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue>& r)
     {
-        return l.second.nHeight < r.second.nHeight;
+        return l.second.nHeight > r.second.nHeight;
     }
 };
 
