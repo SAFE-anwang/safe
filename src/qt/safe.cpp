@@ -499,6 +499,9 @@ void BitcoinApplication::initializeResult(int retval)
         paymentServer->setOptionsModel(optionsModel);
 #endif
 
+		// maximum display transactions count, if value is 0, display all transactions
+		g_nMaxDisplayTxCount = GetArg("-maxdisplaytxcount", 10000);
+
         clientModel = new ClientModel(optionsModel);
         window->setClientModel(clientModel);
 
@@ -522,9 +525,6 @@ void BitcoinApplication::initializeResult(int retval)
             QApplication::processEvents();
             i++;
         }
-
-		// maximum display transactions count, if value is 0, display all transactions
-		g_nMaxDisplayTxCount = GetArg("-maxdisplaytxcount", 10000);
 
         window->ShowHistoryPage(BitcoinGUI::DEFAULT_WALLET);
 

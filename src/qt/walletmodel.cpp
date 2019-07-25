@@ -1195,29 +1195,32 @@ void WalletModel::loadHistroyData()
 		}
 	}
 
-	if (nTxCount > g_nMaxDisplayTxCount)
+	if (g_nMaxDisplayTxCount > 0)
 	{
-		nTxStart = nTxCount - g_nMaxDisplayTxCount;
-	}
+		if (nTxCount > g_nMaxDisplayTxCount)
+		{
+			nTxStart = nTxCount - g_nMaxDisplayTxCount;
+		}
 
-	if (nAssetCount > g_nMaxDisplayTxCount)
-	{
-		nAssetStart = nAssetCount - g_nMaxDisplayTxCount;
-	}
+		if (nAssetCount > g_nMaxDisplayTxCount)
+		{
+			nAssetStart = nAssetCount - g_nMaxDisplayTxCount;
+		}
 
-	if (nAppCount > g_nMaxDisplayTxCount)
-	{
-		nAppStart = nAppCount - g_nMaxDisplayTxCount;
-	}
+		if (nAppCount > g_nMaxDisplayTxCount)
+		{
+			nAppStart = nAppCount - g_nMaxDisplayTxCount;
+		}
 
-	if (nCandyCount > g_nMaxDisplayTxCount)
-	{
-		nCandyStart = nCandyCount - g_nMaxDisplayTxCount;
-	}
+		if (nCandyCount > g_nMaxDisplayTxCount)
+		{
+			nCandyStart = nCandyCount - g_nMaxDisplayTxCount;
+		}
 
-	if (nLockCount > g_nMaxDisplayTxCount)
-	{
-		nLockStart = nLockCount - g_nMaxDisplayTxCount;
+		if (nLockCount > g_nMaxDisplayTxCount)
+		{
+			nLockStart = nLockCount - g_nMaxDisplayTxCount;
+		}
 	}
 
 
