@@ -44,6 +44,8 @@
 
 #include <boost/thread.hpp>
 
+extern int g_nMaxDisplayTxCount;
+
 
 WalletView::WalletView(const PlatformStyle* platformStyle, QWidget* parent) : QStackedWidget(parent),
                                                                               clientModel(0),
@@ -66,6 +68,11 @@ WalletView::WalletView(const PlatformStyle* platformStyle, QWidget* parent) : QS
         QString theme = GUIUtil::getThemeName();
         exportButton->setIcon(QIcon(":/icons/" + theme + "/export"));
     }
+    QLabel* transactionMaxDisplayLabel = new QLabel();
+    transactionMaxDisplayLabel->setObjectName("transactionMaxDisplayLabel");
+    transactionMaxDisplayLabel->setText(tr("Only display %1 recent record").arg(g_nMaxDisplayTxCount));
+    hbox_buttons->addWidget(transactionMaxDisplayLabel);
+
     hbox_buttons->addStretch();
 
     // Sum of selected transactions
@@ -97,6 +104,10 @@ WalletView::WalletView(const PlatformStyle* platformStyle, QWidget* parent) : QS
         QString theme = GUIUtil::getThemeName();
         lockedExportButton->setIcon(QIcon(":/icons/" + theme + "/export"));
     }
+    QLabel* lockedTransactionMaxDisplayLabel = new QLabel();
+    lockedTransactionMaxDisplayLabel->setObjectName("lockedTransactionMaxDisplayLabel");
+    lockedTransactionMaxDisplayLabel->setText(tr("Only display %1 recent record").arg(g_nMaxDisplayTxCount));
+    hbox_locked_buttons->addWidget(lockedTransactionMaxDisplayLabel);
     hbox_locked_buttons->addStretch();
 
     // Sum of selected transactions
@@ -138,6 +149,10 @@ WalletView::WalletView(const PlatformStyle* platformStyle, QWidget* parent) : QS
         candyExportButton->setIcon(QIcon(":/icons/" + theme + "/export"));
     }
     QHBoxLayout* candy_hbox_buttons = new QHBoxLayout();
+    QLabel* candyTransactionMaxDisplayLabel = new QLabel();
+    candyTransactionMaxDisplayLabel->setObjectName("candyTransactionMaxDisplayLabel");
+    candyTransactionMaxDisplayLabel->setText(tr("Only display %1 recent record").arg(g_nMaxDisplayTxCount));
+    candy_hbox_buttons->addWidget(candyTransactionMaxDisplayLabel);
     candy_hbox_buttons->addStretch();
 
     // Sum of selected transactions
@@ -169,6 +184,10 @@ WalletView::WalletView(const PlatformStyle* platformStyle, QWidget* parent) : QS
         assetsExportButton->setIcon(QIcon(":/icons/" + theme + "/export"));
     }
     QHBoxLayout* assets_hbox_buttons = new QHBoxLayout();
+    QLabel* assetsTransactionMaxDisplayLabel = new QLabel();
+    assetsTransactionMaxDisplayLabel->setObjectName("assetsTransactionMaxDisplayLabel");
+    assetsTransactionMaxDisplayLabel->setText(tr("Only display %1 recent record").arg(g_nMaxDisplayTxCount));
+    assets_hbox_buttons->addWidget(assetsTransactionMaxDisplayLabel);
     assets_hbox_buttons->addStretch();
 
     // Sum of selected transactions
@@ -201,6 +220,10 @@ WalletView::WalletView(const PlatformStyle* platformStyle, QWidget* parent) : QS
         appExportButton->setIcon(QIcon(":/icons/" + theme + "/export"));
     }
     QHBoxLayout* app_hbox_buttons = new QHBoxLayout();
+    QLabel* appTransactionMaxDisplayLabel = new QLabel();
+    appTransactionMaxDisplayLabel->setObjectName("appTransactionMaxDisplayLabel");
+    appTransactionMaxDisplayLabel->setText(tr("Only display %1 recent record").arg(g_nMaxDisplayTxCount));
+    app_hbox_buttons->addWidget(appTransactionMaxDisplayLabel);
     app_hbox_buttons->addStretch();
     app_hbox_buttons->addWidget(appExportButton);
     appLayout->addLayout(app_hbox_buttons);

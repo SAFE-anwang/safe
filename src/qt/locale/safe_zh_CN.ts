@@ -6371,6 +6371,10 @@ http://www.anwang.com/</translation>
         <translation>选择总额:</translation>
     </message>
     <message>
+        <source>Only display %1 recent record</source>
+        <translation>只显示最近%1条记录</translation>
+    </message>
+    <message>
         <source>Backup Wallet</source>
         <translation>备份钱包</translation>
     </message>
