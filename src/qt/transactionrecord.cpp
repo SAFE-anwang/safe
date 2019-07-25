@@ -123,7 +123,7 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
     const CTxOut &txout,
 	QList<AssetsDisplayInfo> &listMyAsset,
     QList<CAssetData> &listIssueAsset,
-    int nToMe)
+    isminetype fAllFromMe)
 {
     std::vector<unsigned char> vData;
     if(ParseReserve(txout.vReserve, sub.appHeader, vData))
@@ -165,7 +165,7 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
 			sub.assetCredit = 0;
 			sub.assetDebit = -txout.nValue;
 
-            if(sub.appHeader.nAppCmd == TRANSFER_ASSET_CMD && nToMe>0)
+            if(sub.appHeader.nAppCmd == TRANSFER_ASSET_CMD&&!fAllFromMe)
             {
                 sub.assetDebit = txout.nValue;
             }
@@ -456,7 +456,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
             sub.idx = nOut;
             sub.involvesWatchAddress = wallet->IsMine(txout) & ISMINE_WATCH_ONLY;
             setAddressType(fAllFromMe, fAllToMe, wtx, sub, txout);
-            if(decomposeAppAsset(wallet, wtx, sub, txout, listMyAsset, listIssueAsset,nToMe))
+            if(decomposeAppAsset(wallet, wtx, sub, txout, listMyAsset, listIssueAsset,fAllFromMe))
             {
                 if(sub.appHeader.nAppCmd == ISSUE_ASSET_CMD || sub.appHeader.nAppCmd == REGISTER_APP_CMD)
                 {
