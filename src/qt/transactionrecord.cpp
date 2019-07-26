@@ -237,7 +237,7 @@ bool TransactionRecord::decomposeAppAsset(const CWallet *wallet,
     return false;
 }
 
-bool TransactionRecord::decomposeLockTx(const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout)
+bool TransactionRecord::decomposeLockTx(const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout,isminetype fAllFromMe)
 {
 	int nTxHeight = wtx.nTxHeight; // GetTxHeight(wtx.GetHash());
 	if (nTxHeight >= txout.nUnlockedHeight)
@@ -246,7 +246,14 @@ bool TransactionRecord::decomposeLockTx(const CWalletTx &wtx, TransactionRecord 
 	}
 
 	sub.bLocked = true;
-	sub.nLockedAmount = txout.nValue;
+    if(fAllFromMe)
+    {
+        sub.nLockedAmount = -txout.nValue;
+    }
+    else
+    {
+        sub.nLockedAmount = txout.nValue;
+    }
 	sub.nUnlockedHeight = txout.nUnlockedHeight;
 	sub.nTxHeight = nTxHeight;
 	sub.updateLockedMonth();
@@ -402,7 +409,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 
 				if (txout.nUnlockedHeight > 0)
 				{
-					decomposeLockTx(wtx, sub, txout);
+                    decomposeLockTx(wtx, sub, txout,ISMINE_NO);
 				}
 
                 listTransaction.append(sub);
@@ -465,7 +472,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 
                 if (txout.nUnlockedHeight > 0)
                 {
-                    decomposeLockTx(wtx, sub, txout);
+                    decomposeLockTx(wtx, sub, txout,fAllFromMe);
                 }
 
                 listTransaction.append(sub);
@@ -558,7 +565,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 
 						if (txout.nUnlockedHeight > 0)
 						{
-							decomposeLockTx(wtx, sub, txout);
+                            decomposeLockTx(wtx, sub, txout,fAllFromMe);
 						}
 					}
 				}
@@ -627,7 +634,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 
 					if (txout.nUnlockedHeight > 0)
 					{
-						decomposeLockTx(wtx, sub, txout);
+                        decomposeLockTx(wtx, sub, txout,fAllFromMe);
 					}
 
 					listTransaction.append(sub);

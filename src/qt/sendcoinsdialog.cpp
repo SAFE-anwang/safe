@@ -98,7 +98,7 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *pa
         CoinControlDialog::coinControl->fUseInstantSend = fUseInstantSend;
     }
 
-    connect(ui->checkUsePrivateSend, SIGNAL(stateChanged ( int )), this, SLOT(updateDisplayUnit()));
+    connect(ui->checkUsePrivateSend, SIGNAL(stateChanged ( int )), this, SLOT(updateDisplayUnit(int)));
     connect(ui->checkUseInstantSend, SIGNAL(stateChanged ( int )), this, SLOT(updateInstantSend()));
 
     // Coin Control: clipboard actions
@@ -725,7 +725,7 @@ void SendCoinsDialog::setBalance(const CAmount& balance, const CAmount& unconfir
 	}
 }
 
-void SendCoinsDialog::updateDisplayUnit()
+void SendCoinsDialog::updateDisplayUnit(int state)
 {
     CoinControlDialog::coinControl->fUsePrivateSend = ui->checkUsePrivateSend->isChecked();
     coinControlUpdateLabels();
@@ -739,11 +739,21 @@ void SendCoinsDialog::updateDisplayUnit()
         fSendFreeTransactions = ui->checkBoxFreeTx->isChecked();
         ui->checkBoxFreeTx->hide();
         ui->labelFreeTx->hide();
+        if(ui->checkUsePrivateSend->isChecked() && state>=0)
+        {
+            CAmount amount = model->getAnonymizedBalance();
+            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        }
     }
     else
     {
         ui->checkBoxFreeTx->show();
         ui->labelFreeTx->show();
+        if(state >= 0)
+        {
+            CAmount amount = model->getBalance();
+            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        }
     }
 }
 
