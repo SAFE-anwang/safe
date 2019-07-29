@@ -409,8 +409,6 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 
                 listTransaction.append(sub);
 			}
-
-			nIndex++;
 		}
 	}
 	else
