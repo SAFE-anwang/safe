@@ -5245,8 +5245,9 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
             std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
             int nHeight = boost::lexical_cast<int>(strHeight);
             int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
-            LogPrintf("SPOS_Message: ConnectTip() strHeight:%s---strOfficialMasterNodeCount:%s---nHeight:%d--nOfficialMasterNodeCount:%d--pindexNew->nHeight:%d\n",
+            /*LogPrintf("SPOS_Message: ConnectTip() strHeight:%s---strOfficialMasterNodeCount:%s---nHeight:%d--nOfficialMasterNodeCount:%d--pindexNew->nHeight:%d\n",
                       strHeight, strOfficialMasterNodeCount, nHeight, nOfficialMasterNodeCount, pindexNew->nHeight);
+            */
             
             if (pindexNew->nHeight + 1 >= nHeight)
             {

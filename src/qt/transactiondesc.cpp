@@ -445,7 +445,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
                         CAmount tmpCredit = 0;
                         if(fAllFromMe)
                         {
-                            tmpCredit = rec->assetCredit;
+                            tmpCredit = rec->assetCredit + rec->assetDebit;
                         }
                         else
                         {
