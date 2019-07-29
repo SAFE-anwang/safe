@@ -359,9 +359,9 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 		//
 		// Credit
 		//
-		int nIndex = 0;
-		BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+		for (int nIndex = 0; nIndex < wtx.vout.size(); nIndex++)
 		{
+			const CTxOut& txout = wtx.vout[nIndex];
 			isminetype mine = wallet->IsMine(txout);
 			if (mine)
             {
@@ -394,11 +394,6 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 				{
 					sub.bForbidDash = true;
 				}
-
-                //if (wallet->IsChange(txout))
-                //{
-                //    continue;
-                //}
 
 				if (txout.nUnlockedHeight > 0)
 				{

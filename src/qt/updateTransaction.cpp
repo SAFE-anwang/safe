@@ -138,12 +138,6 @@ void CUpdateTransaction::updateTransaction(const QString& hash, int status, bool
 		LOCK(m_txLock);
 		m_vtNewTx.push_back(stTxData);
 	}
-
-	m_bIsExit = false;
-	if (!isRunning())
-	{
-		start(QThread::LowPriority);
-	}
 }
 
 
@@ -269,19 +263,24 @@ bool CUpdateTransaction::RefreshCandyPageData(const QList<CAssetData> &listIssue
 void CUpdateTransaction::run()
 {
 	int nMax = 0;
+	bool bSleep = false;
 
     while (!m_bIsExit)
 	{
+		if (bSleep)
+		{
+			bSleep = false;
+			msleep(1000);
+		}
+
         QMap<uint256, NewTxData> mapNewTxData;
 		
 		{
 			LOCK(m_txLock);
-
 			if (m_vtNewTx.size() <= 0)
 			{
-				/*msleep(100);
-				continue;*/
-				break;
+				bSleep = true;
+				continue;
 			}
 
 			nMax = 50;
@@ -321,6 +320,7 @@ void CUpdateTransaction::run()
 					}
 				}
 			}
+
 		}
 
 

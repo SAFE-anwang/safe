@@ -1325,6 +1325,7 @@ CUpdateTransaction *WalletModel::getUpdateTransaction()
 void WalletModel::startUpdate()
 {
 	g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, this));
+	pUpdateTransaction->startMonitor();
 }
 
 void WalletModel::updateAllTransaction_slot(const QMap<uint256, QList<TransactionRecord> > &mapDecTransaction, const QMap<uint256, NewTxData> &mapTransactionStatus)
