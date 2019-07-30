@@ -536,8 +536,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 					}
 
 					for (unsigned int nOut = 0; nOut < wtx.vout.size(); nOut++)
-					{
-						const CTxOut& txout = wtx.vout[nOut];
+                    {
 						if (wtx.IsForbid() && !wallet->IsSpent(wtx.GetHash(), nOut))
 						{
 							sub.bForbidDash = true;
@@ -551,10 +550,25 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 					{
 						const CTxOut& txout = wtx.vout[nOut];
 
-						sub.idx = nOut;
-						if (wallet->IsCollateralAmount(txout.nValue)) sub.type = TransactionRecord::PrivateSendMakeCollaterals;
-						if (wallet->IsDenominatedAmount(txout.nValue)) sub.type = TransactionRecord::PrivateSendCreateDenominations;
-						if (nDebit - wtx.GetValueOut() == CPrivateSend::GetCollateralAmount()) sub.type = TransactionRecord::PrivateSendCollateralPayment;
+                        sub.idx = nOut;
+
+                        if(wtx.vin.size() == 1 && wtx.vout.size() == 1
+                            && wallet->IsCollateralAmount(nDebit)
+                            && wallet->IsCollateralAmount(nCredit)
+                            && wallet->IsCollateralAmount(-nNet))
+                        {
+                            sub.type = TransactionRecord::PrivateSendCollateralPayment;
+                        } else {
+                            for (const auto& txout : wtx.vout) {
+                                if (txout.nValue == CPrivateSend::GetMaxCollateralAmount()) {
+                                    sub.type = TransactionRecord::PrivateSendMakeCollaterals;
+                                    continue; // Keep looking, could be a part of PrivateSendCreateDenominations
+                                } else if (wallet->IsDenominatedAmount(txout.nValue)) {
+                                    sub.type = TransactionRecord::PrivateSendCreateDenominations;
+                                    break; // Done, it's definitely a tx creating mixing denoms, no need to look any further
+                                }
+                            }
+                        }
 
 						if (txout.nUnlockedHeight > 0)
 						{
