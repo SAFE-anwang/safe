@@ -706,6 +706,11 @@ void ApplicationsRegistRecordView::refreshPage()
 {
 	if (model->getApplicationRegistTableModel()->size() > 0)
 	{
+        bool bHidden = applicationsView->isColumnHidden(ApplicationsRegistRecordModel::ApplicationsRegistColumnWatchonly);
 		transactionProxyModel->invalidate();
+        if(bHidden)
+        {
+            applicationsView->setColumnHidden(ApplicationsRegistRecordModel::ApplicationsRegistColumnWatchonly, bHidden);
+        }
 	}
 }

@@ -6385,7 +6385,7 @@ http://www.anwang.com/</translation>
     </message>
     <message>
         <source>Only display %1 recent record</source>
-        <translation>只選擇最近%1條記錄</translation>
+        <translation>啓動時只加載最近%1條記錄</translation>
     </message>
     <message>
         <source>Backup Wallet</source>

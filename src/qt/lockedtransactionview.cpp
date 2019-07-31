@@ -791,6 +791,11 @@ void LockedTransactionView::refreshPage()
 {
 	if (model->getLockedTransactionTableModel()->size() > 0)
 	{
+        bool bHidden = lockedTransactionView->isColumnHidden(LockedTransactionTableModel::LockedColumnWatchonly);
 		lockedTransactionProxyModel->invalidate();
+        if(bHidden)
+        {
+            lockedTransactionView->setColumnHidden(LockedTransactionTableModel::LockedColumnWatchonly, bHidden);
+        }
 	}
 }

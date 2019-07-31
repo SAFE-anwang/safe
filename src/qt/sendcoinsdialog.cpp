@@ -743,6 +743,10 @@ void SendCoinsDialog::updateDisplayUnit(int state)
         {
             CAmount amount = model->getAnonymizedBalance();
             ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        }else if(ui->checkUseInstantSend->isChecked() && state>=0)
+        {
+            CAmount amount = model->getBalance();
+            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
         }
     }
     else
