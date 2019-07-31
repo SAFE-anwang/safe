@@ -450,6 +450,7 @@ void WalletView::updateAssetsDisplay(bool updateAsset)
 		walletModel->getLockedTransactionTableModel()->clearData();
 		walletModel->getAssetsDistributeTableModel()->clearData();
 		walletModel->getCandyTableModel()->clearData();
+		walletModel->getApplicationRegistTableModel()->clearData();
 		ShowHistoryPage();
 	}
 }
