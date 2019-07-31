@@ -174,7 +174,6 @@ private:
     int columnStatus;
     int columnToAddress;
     int columnAmount;
-	int nUpdateCount;
 
     QString lookupAddress(const std::string &address, bool tooltip) const;
     QVariant addressColor(const TransactionRecord *wtx) const;
