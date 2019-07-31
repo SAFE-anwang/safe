@@ -790,6 +790,11 @@ void TransactionView::refreshPage()
 {
 	if (model->getTransactionTableModel()->size() > 0)
 	{
+        bool bHidden = transactionView->isColumnHidden(TransactionTableModel::TransactionColumnWatchonly);
 		transactionProxyModel->invalidate();
+        if(bHidden)
+        {
+            transactionView->setColumnHidden(TransactionTableModel::TransactionColumnWatchonly, bHidden);
+        }
 	}
 }

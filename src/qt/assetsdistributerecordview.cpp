@@ -751,6 +751,11 @@ void AssetsDistributeRecordView::refreshPage()
 {
 	if (model->getAssetsDistributeTableModel()->size() > 0)
 	{
+        bool bHidden = distributeView->isColumnHidden(AssetsDistributeRecordModel::AssetsDistributeColumnWatchonly);
 		transactionProxyModel->invalidate();
+        if(bHidden)
+        {
+            distributeView->setColumnHidden(AssetsDistributeRecordModel::AssetsDistributeColumnWatchonly, bHidden);
+        }
 	}
 }

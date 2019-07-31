@@ -731,6 +731,11 @@ void CandyView::refreshPage()
 {
 	if (model->getCandyTableModel()->size() > 0)
 	{
+        bool bHidden = candyView->isColumnHidden(CandyTableModel::CandyColumnWatchonly);
 		transactionProxyModel->invalidate();
+        if(bHidden)
+        {
+            candyView->setColumnHidden(CandyTableModel::CandyColumnWatchonly, bHidden);
+        }
 	}
 }
