@@ -8042,12 +8042,12 @@ static bool GetAllCandyInfo()
         if(vecSize>0&&vecSize<nCandyPageCount)
             sendToFirstPage = true;
         int64_t lastBlockTime = 0;
-        int lastBlockIndex = vecSize-1;
+        int lastBlockIndex = 0;
         if(vecSize>0)
         {
             lastBlockTime = gAllCandyInfoVec[vecSize-1].blocktime;
             bool foundIndex = false;
-            for(int i = lastBlockIndex;i>=0;i--)
+            for(int i = lastBlockIndex;i<vecSize-1;i++)
             {
                 if(lastBlockTime!=gAllCandyInfoVec[i].blocktime)
                 {
@@ -8057,7 +8057,7 @@ static bool GetAllCandyInfo()
                 }
             }
             if(!foundIndex)
-                lastBlockIndex = 0;
+                lastBlockIndex = vecSize-1;
         }
         if(gTmpAllCandyInfoVec.size()>0 && fRet)
         {
@@ -8082,7 +8082,7 @@ static bool GetAllCandyInfo()
                     }
                 }
                 if(!exist)
-                    gAllCandyInfoVec.push_back(gTmpAllCandyInfoVec[i]);
+                    gAllCandyInfoVec.insert(gAllCandyInfoVec.begin(),gTmpAllCandyInfoVec[i]);
             }
         }
 
@@ -8615,7 +8615,7 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
                 if(gAllCandyInfoVec.size()<nCandyPageCount)
                     fUpdateUI = true;
                 std::lock_guard<std::mutex> lock(g_mutexAllCandyInfo);
-                gAllCandyInfoVec.push_back(candyblocktimeinfo);
+                gAllCandyInfoVec.insert(gAllCandyInfoVec.begin(),candyblocktimeinfo);
             }
             else
             {
