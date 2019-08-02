@@ -969,8 +969,15 @@ void SendCoinsDialog::updateCurrentAsset(const QString &currText)
     {
         ui->frameFee->setVisible(true);
         fAssets = false;
-        CAmount amount = model->getBalance();
-        ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        if(ui->checkUsePrivateSend->isChecked())
+        {
+            CAmount amount = model->getAnonymizedBalance();
+            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        }else
+        {
+            CAmount amount = model->getBalance();
+            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        }
     }
     else
     {

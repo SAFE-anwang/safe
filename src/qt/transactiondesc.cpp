@@ -177,9 +177,14 @@ bool TransactionDesc::needDisplay(int descColumn, int showType, int type)
     }
     case DescGetCandyAssetId:
     case DescGetCandyAddress:
-    case DescGetCandyRemark:
     {
         if(showType==SHOW_CANDY_TX&&type==TransactionRecord::GETCandy)
+            ret = true;
+        break;
+    }
+    case DescPutCandyRemark:
+    {
+        if(showType==SHOW_TX&&type==TransactionRecord::PUTCandy)
             ret = true;
         break;
     }
@@ -603,7 +608,6 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
     if(needDisplay(DescAppManagerAddress,showType))
         strHTML += "<b>" + tr("Manager Address") + ":</b> " + GUIUtil::HtmlEscape(QString::fromStdString(rec->address)) + "<br>";
 
-
     //Assets
     if(needDisplay(DescAssetsName,showType,rec->type))
         strHTML += "<b>" + tr("Asset Name") + ":</b> " + GUIUtil::HtmlEscape(QString::fromStdString(rec->assetsData.strAssetName)) + "<br>";
@@ -683,6 +687,9 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
 
     if(needDisplay(DescCommonAssetsRemark,showType,rec->type))
         strHTML += "<b>" + tr("Assets Remarks") + ":</b> " + QString::fromStdString(rec->assetsData.strRemarks) + "<br>";
+
+    if(needDisplay(DescPutCandyRemark,showType,rec->type))
+        strHTML += "<b>" + tr("Comment") + ":</b> " + QString::fromStdString(rec->putCandyData.strRemarks) + "<br>";
 
     //Candy
     if(needDisplay(DescGetCandyAmount,showType,rec->type))
