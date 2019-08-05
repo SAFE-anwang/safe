@@ -8045,9 +8045,9 @@ static bool GetAllCandyInfo()
         int lastBlockIndex = 0;
         if(vecSize>0)
         {
-            lastBlockTime = gAllCandyInfoVec[vecSize-1].blocktime;
+            lastBlockTime = gAllCandyInfoVec[0].blocktime;
             bool foundIndex = false;
-            for(int i = lastBlockIndex;i<vecSize-1;i++)
+            for(int i = lastBlockIndex;i<vecSize;i++)
             {
                 if(lastBlockTime!=gAllCandyInfoVec[i].blocktime)
                 {
@@ -8056,8 +8056,6 @@ static bool GetAllCandyInfo()
                     break;
                 }
             }
-            if(!foundIndex)
-                lastBlockIndex = vecSize-1;
         }
         if(gTmpAllCandyInfoVec.size()>0 && fRet)
         {
