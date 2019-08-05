@@ -8047,7 +8047,7 @@ static bool GetAllCandyInfo()
         {
             lastBlockTime = gAllCandyInfoVec[0].blocktime;
             bool foundIndex = false;
-            for(int i = lastBlockIndex;i<vecSize;i++)
+            for(unsigned int i = lastBlockIndex;i<vecSize;i++)
             {
                 if(lastBlockTime!=gAllCandyInfoVec[i].blocktime)
                 {
@@ -8068,7 +8068,7 @@ static bool GetAllCandyInfo()
                 if(tmpInfo.blocktime==lastBlockTime)
                 {
                     //compare exists
-                    for(unsigned int i=lastBlockIndex;i<gAllCandyInfoVec.size();i++)
+                    for(unsigned int i=0;i<=lastBlockIndex;i++)
                     {
                         CCandy_BlockTime_Info& info = gAllCandyInfoVec[i];
                         if(info.assetId==tmpInfo.assetId&&info.outpoint==tmpInfo.outpoint&&info.candyinfo==tmpInfo.candyinfo
