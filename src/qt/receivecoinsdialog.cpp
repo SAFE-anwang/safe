@@ -178,6 +178,7 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     initWidget();
 
 	qRegisterMetaType<QMap<QString, CAssetId_AssetInfo_IndexValue> >("QMap<QString, CAssetId_AssetInfo_IndexValue>");
+    qRegisterMetaType<std::vector<uint256> >("std::vector<uint256>");
 
     connect(this,SIGNAL(refreshAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue>)),this,SLOT(updateAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue>)));
     connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
