@@ -2696,8 +2696,17 @@ bool CWalletTx::IsForbid()const
 
     //return false;
 
-	if (g_nChainHeight >= g_nProtocolV2Height && nTxHeight < g_nCriticalHeight /*&& !bIsSpent*/)
-		return true;
+	if (nTxHeight <= 0)
+	{
+		int nDepth = GetDepthInMainChain(false);
+		if (g_nChainHeight >= g_nProtocolV2Height && g_nChainHeight - nDepth + 1 < g_nCriticalHeight /*&& !bIsSpent*/)
+			return true;
+	}
+	else
+	{
+		if (g_nChainHeight >= g_nProtocolV2Height && nTxHeight < g_nCriticalHeight /*&& !bIsSpent*/)
+			return true;
+	}
 
 	return false;
 }
