@@ -262,6 +262,20 @@ bool TransactionRecord::decomposeLockTx(const CWalletTx &wtx, TransactionRecord 
 	return true;
 }
 
+bool TransactionRecord::decomposeTransferSafeData(const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout)
+{
+    std::vector<unsigned char> vData;
+    if(ParseReserve(txout.vReserve, sub.appHeader, vData))
+    {
+        if(sub.appHeader.nAppCmd == TRANSFER_SAFE_CMD)
+        {
+            ParseTransferSafeData(vData, sub.transferSafeData);
+            return true;
+        }
+    }
+    return false;
+}
+
 void TransactionRecord::setAddressType(isminetype fAllFromMe, isminetype fAllToMe, const CWalletTx &wtx, TransactionRecord &sub, const CTxOut &txout)
 {
 	std::map<std::string, std::string> mapValue = wtx.mapValue;
@@ -407,6 +421,8 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
                     decomposeLockTx(wtx, sub, txout,ISMINE_NO);
 				}
 
+                decomposeTransferSafeData(wtx,sub,txout);
+
                 listTransaction.append(sub);
 			}
 		}
@@ -505,6 +521,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 					}
 
 					nOut++;
+                    decomposeTransferSafeData(wtx,sub,txout);
 				}
 
 				listTransaction.append(sub);
@@ -574,6 +591,7 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 						{
                             decomposeLockTx(wtx, sub, txout,fAllFromMe);
 						}
+                        decomposeTransferSafeData(wtx,sub,txout);
 					}
 				}
 
@@ -643,6 +661,8 @@ bool TransactionRecord::decomposeTransaction(const CWallet *wallet,
 					{
                         decomposeLockTx(wtx, sub, txout,fAllFromMe);
 					}
+
+                    decomposeTransferSafeData(wtx,sub,txout);
 
 					listTransaction.append(sub);
 				}
