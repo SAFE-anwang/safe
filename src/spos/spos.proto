@@ -2,12 +2,12 @@ package Spos;
 option java_package = "org.safe.Spos";
 option java_outer_classname = "Spos";
 
-message DeterminedMasternodeList {
+message DeterminedMasternodeData {
     required bytes ip = 1;                // string
     required bytes port  = 2;             // uint16_t
     required bytes collateralAddress = 3; // string
     required bytes txid = 4;              // string
     required bytes outputIndex = 5;       // uint16_t
-    required bytes pubkeyId = 6;          // string
-    required bytes signMsg = 7;           // string
+    required bytes serialPubkeyId = 6;    // string
+    required bytes signedMsg = 7;         // string
 }

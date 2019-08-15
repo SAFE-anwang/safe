@@ -2,12 +2,10 @@
 #define SPOS_H
 
 #define SPOS_VERSION_REGIST_MASTERNODE 100
-#define SPOS_VERSION_COINBASE_OLD 1
-#define SPOS_VERSION_COINBASE_NEW 2
+#define SPOS_REGIST_MASTERNODE_MAX 50
 
 #include <vector>
 #include <string>
-#include "key.h"
 
 class CSposHeader
 {
@@ -46,18 +44,24 @@ public:
     std::string strCollateralAddress;
     std::string strTxid;
     uint16_t    nOutputIndex;
-    CKey        keyMasternode{};
-    CPubKey     pubKeyMasternode{};
+    std::string strSerialPubKeyId;
+    std::string strSignedMsg;
 
     CDeterminedMasternodeData()
     {
         SetNull();
     }
 
+    void initPubkeyIdAndSign(const std::string &strSerialPubKeyId,const std::string &strSignedMsg)
+    {
+        this->strSerialPubKeyId = strSerialPubKeyId;
+        this->strSignedMsg = strSignedMsg;
+    }
+
     CDeterminedMasternodeData(const std::string& strIP,const uint16_t& nPort,const std::string& strCollateralAddress,const std::string& strTxid,
-                              const uint16_t& nOutputIndex,const CKey& keyMasternode,const CPubKey& pubKeyMasternode)
+                              const uint16_t& nOutputIndex,const std::string& strSerialPubKeyId,const std::string& strSignedMsg)
         : strIP(strIP), nPort(nPort), strCollateralAddress(strCollateralAddress), strTxid(strTxid),nOutputIndex(nOutputIndex),
-          keyMasternode(keyMasternode),pubKeyMasternode(pubKeyMasternode){
+          strSerialPubKeyId(strSerialPubKeyId),strSignedMsg(strSignedMsg){
     }
 
     CDeterminedMasternodeData& operator=(const CDeterminedMasternodeData& data)
@@ -70,8 +74,8 @@ public:
         strCollateralAddress = data.strCollateralAddress;
         strTxid = data.strTxid;
         nOutputIndex = data.nOutputIndex;
-        keyMasternode = data.keyMasternode;
-        pubKeyMasternode = data.pubKeyMasternode;
+        strSerialPubKeyId = data.strSerialPubKeyId;
+        strSignedMsg = data.strSignedMsg;
         return *this;
     }
 
@@ -82,9 +86,19 @@ public:
         strCollateralAddress.clear();
         strTxid.clear();
         nOutputIndex = 0;
+        strSerialPubKeyId.clear();
+        strSignedMsg.clear();
     }
 };
 
-std::vector<unsigned char> FillDeterminedMasternode(const CSposHeader& header,const CDeterminedMasternodeData& dmn,bool& bRet);
+bool CheckDeterminedMasternode(CDeterminedMasternodeData& dmn,std::string& strMessage,std::string& strError);
+
+bool BuildDeterminedMasternode(CDeterminedMasternodeData& dmn,const std::string& strPrivKey,std::string& strError);
+bool RegisterDeterminedMasternodes(std::vector<CDeterminedMasternodeData>& dmnVec,std::string& strError);
+
+std::vector<unsigned char> FillDeterminedMasternode(const CSposHeader& header,const CDeterminedMasternodeData& dmn);
+
+bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData);
+bool ParseDeterminedMasternode(const std::vector<unsigned char>& vDMNData, CDeterminedMasternodeData& dmn);
 
 #endif // SPOS_H
