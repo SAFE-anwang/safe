@@ -61,6 +61,17 @@ int g_nLocalStartSavePayeeHeight = 0;
 int g_nCanSelectMasternodeHeight = 10000;
 
 
+//SQTODO
+int g_nStartDeterministicMNHeight = 1299269;
+int g_nForbidOldVersionHeightV2 = 1290000;
+
+std::vector<CMasternode> g_vecReSelectResultMasternodes;
+int g_nReSelectMasterNodeFail = -1;
+int g_nReSelectGlobalDefaultValue = -999;
+
+
+
+
 
 
 CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev)

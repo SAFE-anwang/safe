@@ -15,6 +15,8 @@ static const int PROTOCOL_VERSION = 70210;
 
 static const int SPOS_VERSION = 1;
 
+static const int SPOS_DETERMINISTICMN_VERSION = 2;
+
 //! initial proto version, to be increased after version/verack negotiation
 static const int INIT_PROTO_VERSION = 209;
 

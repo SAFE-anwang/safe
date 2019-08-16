@@ -50,6 +50,9 @@ using namespace std;
 extern int g_nStartSPOSHeight;
 extern int g_nForbidOldVersionHeight;
 extern vector<string> g_versionVec;
+extern int g_nForbidOldVersionHeightV2;
+extern vector<string> g_versionVecV2;
+
 
 int64_t nTimeBestReceived = 0; // Used only to inform the wallet of when we last received a block
 
@@ -330,8 +333,8 @@ void ProcessBlockAvailability(NodeId nodeid) {
             {
                 if (IsStartSPosHeight(state->pindexBestKnownBlock->nHeight))
                 {
-                    if (itOld->second->nActiveTime > 0 && CompareBestChainActiveTime(itOld->second, state->pindexBestKnownBlock, true))
-                        state->pindexBestKnownBlock = itOld->second;   
+                    if (itOld->second->nHeight >= state->pindexBestKnownBlock->nHeight)
+                        state->pindexBestKnownBlock = itOld->second;
                 }
                 else
                 {
@@ -361,7 +364,7 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
         {
             if (IsStartSPosHeight(state->pindexBestKnownBlock->nHeight))
             {
-                if (it->second->nActiveTime > 0 && CompareBestChainActiveTime(it->second, state->pindexBestKnownBlock, true))
+                if (it->second->nHeight >= state->pindexBestKnownBlock->nHeight)
                     state->pindexBestKnownBlock = it->second;
             }
             else
@@ -433,7 +436,7 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
     {
         if (IsStartSPosHeight(state->pindexBestKnownBlock->nHeight))
         {
-            if (CompareBestChainActiveTime(chainActive.Tip(), state->pindexBestKnownBlock))
+            if (state->pindexBestKnownBlock->nHeight < chainActive.Tip()->nHeight)
                 return;
         }
         else
@@ -1220,11 +1223,11 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             vRecv >> LIMITED_STRING(strSubVer, MAX_SUBVERSION_LENGTH);
         }
 
-        if(chainActive.Height()>=g_nForbidOldVersionHeight)
+        if (chainActive.Height() >= g_nForbidOldVersionHeightV2)
         {
-            for(unsigned int i=0;i<g_versionVec.size();i++)
+            for (unsigned int i=0; i< g_versionVecV2.size(); i++)
             {
-                if(strSubVer.find(g_versionVec[i])!=string::npos)
+                if (strSubVer.find(g_versionVecV2[i])!=string::npos)
                 {
                     // disconnect from peers older
                     LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
@@ -1232,6 +1235,24 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
                                        strprintf("Sub version(%s) must be %s or greater",strSubVer, FormatFullVersion()));
                     pfrom->fDisconnect = true;
                     return false;
+                }
+            }
+        }
+        else
+        {
+            if(chainActive.Height()>=g_nForbidOldVersionHeight && chainActive.Height() < g_nForbidOldVersionHeightV2)
+            {
+                for(unsigned int i=0;i<g_versionVec.size();i++)
+                {
+                    if(strSubVer.find(g_versionVec[i])!=string::npos)
+                    {
+                        // disconnect from peers older
+                        LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
+                        connman.PushMessageWithVersion(pfrom, INIT_PROTO_VERSION, NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
+                                           strprintf("Sub version(%s) must be %s or greater",strSubVer, FormatFullVersion()));
+                        pfrom->fDisconnect = true;
+                        return false;
+                    }
                 }
             }
         }
@@ -1969,7 +1990,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         {
              if (IsStartSPosHeight(pindexLast->nHeight))
             {
-                if (CompareBestChainActiveTime(pindexLast, chainActive.Tip(), true))
+                if (chainActive.Tip()->nHeight <= pindexLast->nHeight)
                     bNewEffectiveBlock = true;
             }
             else

@@ -39,7 +39,7 @@ static const int SPORK_105_TX_CLASS_MAX_VALUE                           = 10104;
 static const int64_t SPORK_2_INSTANTSEND_ENABLED_DEFAULT                = 0;            // ON
 static const int64_t SPORK_3_INSTANTSEND_BLOCK_FILTERING_DEFAULT        = 0;            // ON
 static const int64_t SPORK_5_INSTANTSEND_MAX_VALUE_DEFAULT              = 1000;         // 1000 SAFE
-static const int64_t SPORK_6_SPOS_ENABLEDE_DEFAULT                      = 4070908800ULL;// OFF
+static const int64_t SPORK_6_SPOS_ENABLEDE_DEFAULT                      = 0;            // OFF
 static const int64_t SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT     = 4070908800ULL;// OFF
 static const int64_t SPORK_9_SUPERBLOCKS_ENABLED_DEFAULT                = 4070908800ULL;// OFF
 static const int64_t SPORK_10_MASTERNODE_PAY_UPDATED_NODES_DEFAULT      = 4070908800ULL;// OFF
@@ -133,6 +133,8 @@ public:
     void SelectMasterNodeForSpork(int nSporkID, int64_t nValue);
 
     bool CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& nValue, std::string &strErrMessage);
+
+    bool IsSpork_6_SPOSActive(const int& nSporkID);
 };
 
 #endif

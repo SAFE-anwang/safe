@@ -11,3 +11,12 @@ message DeterminedMasternodeData {
     required bytes serialPubkeyId = 6;    // string
     required bytes signedMsg = 7;         // string
 }
+
+message DeterminedMNCoinbaseData{
+    required bytes pubkeyId = 1;          // string
+    required bytes officialMNNum = 2;     // uint16_t
+    required bytes generalMNNum = 3;      // uint16_t
+    required bytes randomNum = 4;         // uint32_t
+    required bytes firstBlock = 5;        // uint16_t
+    required bytes signMsg = 6;           // string
+}

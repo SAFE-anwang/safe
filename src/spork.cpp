@@ -22,6 +22,7 @@ extern int g_nSelectGlobalDefaultValue;
 extern int g_nPushForwardHeight;
 extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinCount;
+extern int g_nStorageSpork;
 
 void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv, CConnman& connman)
 {
@@ -85,13 +86,13 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
                 Misbehaving(pfrom->GetId(), 100);
                 return;
             }
-        }
 
-        std::string strErrMessage = "";
-        if (!CheckSPORK_6_SPOSValue(spork.nSporkID, spork.nValue, strErrMessage))
-        {
-            LogPrintf("SPOS_Warning: strErrMessage:%s, spork.nSporkID:%d, spork.nValue:%lld\n", strErrMessage, spork.nSporkID, spork.nValue);
-            return;
+            std::string strErrMessage = "";
+            if (!CheckSPORK_6_SPOSValue(spork.nSporkID, spork.nValue, strErrMessage))
+            {
+                LogPrintf("SPOS_Warning: strErrMessage:%s, spork.nSporkID:%d, spork.nValue:%lld\n", strErrMessage, spork.nSporkID, spork.nValue);
+                return;
+            }
         }
 
         mapSporks[hash] = spork;
@@ -120,7 +121,7 @@ void CSporkManager::ExecuteSpork(int nSporkID, int nValue)
     //correct fork via spork technology
     if(nSporkID == SPORK_12_RECONSIDER_BLOCKS && nValue > 0) {
         // allow to reprocess 24h of blocks max, which should be enough to resolve any issues
-        int64_t nMaxBlocks = 576;
+        int64_t nMaxBlocks = 2880;
         // this potentially can be a heavy operation, so only allow this to be executed once per 10 minutes
         int64_t nTimeout = 10 * 60;
 
@@ -170,7 +171,6 @@ bool CSporkManager::IsSporkActive(int nSporkID)
             case SPORK_2_INSTANTSEND_ENABLED:               r = SPORK_2_INSTANTSEND_ENABLED_DEFAULT; break;
             case SPORK_3_INSTANTSEND_BLOCK_FILTERING:       r = SPORK_3_INSTANTSEND_BLOCK_FILTERING_DEFAULT; break;
             case SPORK_5_INSTANTSEND_MAX_VALUE:             r = SPORK_5_INSTANTSEND_MAX_VALUE_DEFAULT; break;
-            case SPORK_6_SPOS_ENABLED:                      r = SPORK_6_SPOS_ENABLEDE_DEFAULT; break;
             case SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT:    r = SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT; break;
             case SPORK_9_SUPERBLOCKS_ENABLED:               r = SPORK_9_SUPERBLOCKS_ENABLED_DEFAULT; break;
             case SPORK_10_MASTERNODE_PAY_UPDATED_NODES:     r = SPORK_10_MASTERNODE_PAY_UPDATED_NODES_DEFAULT; break;
@@ -285,7 +285,7 @@ bool CSporkManager::SetPrivKey(std::string strPrivKey)
 
 void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
 {
-    if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED))
+    if (nSporkID == SPORK_6_SPOS_ENABLED && IsSpork_6_SPOSActive(SPORK_6_SPOS_ENABLED))
     {
         std::string strSporkValue = boost::lexical_cast<std::string>(nValue);
         std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
@@ -297,6 +297,14 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
 
         if (chainActive.Height() == nHeight)
         {
+            CSporkInfo_IndexValue tempSporkInfo;
+            tempSporkInfo.nHeight = nHeight;
+            tempSporkInfo.nOfficialNum = nOfficialMasterNodeCount;
+            tempSporkInfo.nGeneralNum = g_nMasternodeSPosCount - nOfficialMasterNodeCount;
+            tempSporkInfo.nStorageSpork = g_nStorageSpork;
+
+            StorageSporkInfo(tempSporkInfo);
+        
             std::vector<CMasternode> vecMasternodes;
             bool bClearVec=false;
             int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
@@ -353,13 +361,28 @@ bool CSporkManager::CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& n
 
             const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
 
-            if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > vtempOutPointData.size())
+            if (nOfficialMasterNodeCount < 0 || nOfficialMasterNodeCount > vtempOutPointData.size())
             {
                 strErrMessage = "value less than or equal to 0 or greater than the total number of official master nodes";
                 return false;
             }            
         }
     }
+
+    return true;
+}
+
+bool CSporkManager::IsSpork_6_SPOSActive(const int& nSporkID)
+{
+    int64_t nValue = 0;
+    if (nSporkID == SPORK_6_SPOS_ENABLED)
+    {
+        if(mapSporksActive.count(nSporkID))
+            nValue = mapSporksActive[nSporkID].nValue;
+    }
+
+    if (nValue == 0)
+        return false;
 
     return true;
 }

@@ -33,6 +33,7 @@
 #include "main.h"
 #include "activemasternode.h"
 #include "messagesigner.h"
+#include "spos/spos.h"
 
 #include <boost/thread.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -76,6 +77,13 @@ extern int g_nPushForwardTime;
 extern bool g_fReceiveBlock;
 uint32_t nSposSleeptime = 50;
 
+extern int g_nLastSelectMasterNodeSuccessHeight;
+
+extern int g_nStorageSpork;
+extern CSporkInfo_IndexValue g_SporkInfo;
+extern CCriticalSection cs_spork;
+extern CCriticalSection cs_selectinfo;
+extern uint32_t g_nScoreTime;
 
 
 
@@ -462,6 +470,57 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,cons
     return true;
 }
 
+/*
+ * SPOS Coinbase add version,serailze KeyID,OfficialMasternodecount,GeneralMasternodecount,random number,
+   Is it the first block and the sign of the collateral address
+*/
+bool CoinBaseAddSPosExtraDataV2(CBlock* pblock, const CBlockIndex* pindexPrev,const CMasternode& mn)
+{
+    unsigned int nHeight = pindexPrev->nHeight+1;
+    CMutableTransaction txCoinbase(pblock->vtx[0]);
+    txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(0)) + COINBASE_FLAGS;
+    assert(txCoinbase.vin[0].scriptSig.size() <= 100);
+
+    CSporkInfo_IndexValue tempSporkInfo;
+    {
+        LOCK(cs_spork);
+        tempSporkInfo = g_SporkInfo;
+    }
+
+    int nLastSelectMasterNodeSuccessHeight = 0;
+    CDeterminedMNCoinbaseData tempdeterminedMNCoinbaseData;
+    tempdeterminedMNCoinbaseData.nOfficialMNNum = tempSporkInfo.nOfficialNum;
+    tempdeterminedMNCoinbaseData.nGeneralMNNum = tempSporkInfo.nGeneralNum;
+    {
+        LOCK(cs_selectinfo);
+        tempdeterminedMNCoinbaseData.nRandomNum = g_nScoreTime;
+        nLastSelectMasterNodeSuccessHeight = g_nLastSelectMasterNodeSuccessHeight;
+    }
+    tempdeterminedMNCoinbaseData.keyMasternode = activeMasternode.keyMasternode;
+    tempdeterminedMNCoinbaseData.pubKeyMasternode = mn.pubKeyMasternode;
+    tempdeterminedMNCoinbaseData.keyIDMasternode = mn.pubKeyMasternode.GetID();
+    if (pindexPrev->nHeight == nLastSelectMasterNodeSuccessHeight)
+        tempdeterminedMNCoinbaseData.nFirstBlock = 1;
+    else
+        tempdeterminedMNCoinbaseData.nFirstBlock = 0;
+         
+    CSposHeader header;
+    header.nVersion = 2;
+    bool fRet = true;
+
+    txCoinbase.vout[0].vReserve = FillDeterminedMNCoinbaseData(header, tempdeterminedMNCoinbaseData, fRet);
+    if (fRet)
+    {
+        LogPrintf("SPOS_ERROR FillDeterminedMNCoinbaseData() fail\n");
+        return false;
+    }
+
+    pblock->vtx[0] = txCoinbase;
+    pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
+
+    return true;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // Internal miner
@@ -730,7 +789,11 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     string masterIP = mn.addr.ToStringIP();
     string localIP = activeMasternode.service.ToStringIP();
     unsigned int nHeight = pindexPrev->nHeight+1;
-    pblock->nNonce = mn.getCanbeSelectTime(nHeight);
+
+    if (IsStartDeterministicMNHeight(nNewBlockHeight))
+        pblock->nNonce = 0;
+    else
+        pblock->nNonce = mn.getCanbeSelectTime(nHeight);
 
     if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
     {
@@ -764,15 +827,23 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
     SetThreadPriority(THREAD_PRIORITY_NORMAL);
 
     //coin base add extra data
-    if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
-        return;
-
-    if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
+    if (IsStartDeterministicMNHeight(pindexPrev->nHeight + 1))
     {
-        LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the master node "
-                  "can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n",
-                  pblock->nNonce, g_nMasternodeCanBeSelectedTime);
-        return;
+        if (!CoinBaseAddSPosExtraDataV2(pblock,pindexPrev,mn))
+            return;
+    }
+    else
+    {
+        if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
+            return;
+
+        if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
+        {
+            LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the master node "
+                      "can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n",
+                      pblock->nNonce, g_nMasternodeCanBeSelectedTime);
+            return;
+        }
     }
 
     if(pindexPrev != chainActive.Tip())
@@ -1123,35 +1194,31 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             bool fOverTimeoutLimit = g_nTimeoutCount >= g_nMaxTimeoutCount;
             bool fReselect = true;
             SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
-            if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED) && !fOverTimeoutLimit)
-            {
-                int64_t ntempSporkValue = sporkManager.GetSporkValue(SPORK_6_SPOS_ENABLED);
-                std::string strSporkValue = boost::lexical_cast<std::string>(ntempSporkValue);
-                std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
-                std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
-                int nHeight = boost::lexical_cast<int>(strHeight);
-                int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
-                LogPrintf("SPOS_Message: ThreadSPOSAutoReselect() strHeight:%s---strOfficialMasterNodeCount:%s---nHeight:%d--nOfficialMasterNodeCount:%d--nNewBlockHeight:%d\n",
-                          strHeight, strOfficialMasterNodeCount, nHeight, nOfficialMasterNodeCount, nCurrBlockHeight);
 
-                if (nCurrBlockHeight + 1 >= nHeight)
+            CSporkInfo_IndexValue tempSporkInfo;
+            {
+                LOCK(cs_spork);
+                tempSporkInfo = g_SporkInfo;
+            }
+
+            if (tempSporkInfo.nOfficialNum != 0 && !fOverTimeoutLimit)
+            {
+                LogPrintf("SPOS_Message: ThreadSPOSAutoReselect() nHeight:%d--nOfficialMasterNodeCount:%d--nNewBlockHeight:%d\n",
+                          tempSporkInfo.nHeight, tempSporkInfo.nOfficialNum, nCurrBlockHeight);
+
+                if (nCurrBlockHeight + 1 >= tempSporkInfo.nHeight)
                 {
                     fReselect = false;
-                    if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
-                    {
-                        LogPrintf("SPOS_Warning: ThreadSPOSAutoReselect() nOfficialMasterNodeCount is error,nNewBlockHeight:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nCurrBlockHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
-                        MilliSleep(nSposSleeptime);
-                        continue;
-                    }
 
                     nSporkSelectLoop = SPORK_SELECT_LOOP_1;
                     SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,true,true,tmpVecResultMasternodes,bClearVec,
-                                nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, nOfficialMasterNodeCount, nSporkSelectLoop, false);
+                                nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, tempSporkInfo.nOfficialNum, nSporkSelectLoop, false);
 
                     nSporkSelectLoop = SPORK_SELECT_LOOP_2;
-                    if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
+                    if (g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum > 0 && nSelectMasterNodeRet > 0)
                         SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,false,true,tmpVecResultMasternodes,bClearVec,
-                                                nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
+                                                nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum, nSporkSelectLoop, true);
+
                 }
             }
 

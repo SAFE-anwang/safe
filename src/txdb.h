@@ -163,6 +163,11 @@ public:
 
     bool Write_LocalStartSavePayeeHeight_Index(const int& nHeight);
     bool Read_LocalStartSavePayeeHeight_Index(int& nHeight);
+
+    bool Write_SporkInfo_Index(const int& nStorageSpork, const CSporkInfo_IndexValue& value);
+    bool Erase_SporkInfo_Index(const int& nStorageSpork);
+    bool Read_SporkInfo_Index(const int& nStorageSpork, CSporkInfo_IndexValue& value);
+    bool Is_Exists_SporkInfo_Key(const int& nStorageSpork);
 };
 
 #endif // BITCOIN_TXDB_H

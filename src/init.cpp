@@ -116,6 +116,10 @@ extern int g_nMinerBlockTimeout;
 extern int g_nAdjustMiningRewardHeight;
 extern int g_nForbidOldVersionHeight;
 extern vector<string> g_versionVec;
+extern int g_nStartDeterministicMNHeight;
+extern int g_nForbidOldVersionHeightV2;
+extern vector<string> g_versionVecV2;
+
 
 
 std::unique_ptr<CConnman> g_connman;
@@ -966,6 +970,18 @@ void initVersionVec()
     }
 }
 
+void initVersionVecV2()
+{
+    if(g_versionVecV2.empty())
+    {
+        g_versionVecV2.push_back("Safe Core:2.5.0");
+        g_versionVecV2.push_back("Safe Core:2.5.1");
+        g_versionVecV2.push_back("Safe Core:2.6.0");
+        g_versionVecV2.push_back("Safe Core:2.6.1");
+    }
+}
+
+
 /** Initialize Safe Core.
  *  @pre Parameters should be parsed and config file should be read.
  */
@@ -997,6 +1013,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 #endif
 
     initVersionVec();
+
+    initVersionVecV2();
 
     if (!SetupNetworking())
         return InitError("Initializing networking failed");
@@ -1570,6 +1588,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nMinerBlockTimeout = GetArg("-spos_miner_block_timeout",g_nMinerBlockTimeout);
     g_nAdjustMiningRewardHeight = GetArg("-spos_adjust_mining_reward_height", g_nAdjustMiningRewardHeight);
     g_nForbidOldVersionHeight = GetArg("-spos_forbid_old_version_height", g_nForbidOldVersionHeight);
+    g_nStartDeterministicMNHeight = GetArg("-spos_start_deterministic_masternode_height", g_nStartDeterministicMNHeight);
+    g_nForbidOldVersionHeightV2 = GetArg("-spos_forbid_old_version_height_V2", g_nForbidOldVersionHeightV2);
 #else
 #error unsupported <safe chain name>
 #endif
@@ -1594,6 +1614,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
                 pcoinsdbview = new CCoinsViewDB(nCoinDBCache, false, fReindex || fReindexChainState);
                 pcoinscatcher = new CCoinsViewErrorCatcher(pcoinsdbview);
                 pcoinsTip = new CCoinsViewCache(pcoinscatcher);
+
+                if (!LoadSporkInfo())
+                {
+                    strLoadError = _("Error loading spork info");
+                    break;
+                }
 
                 if (fReindex) {
                     pblocktree->WriteReindexing(true);

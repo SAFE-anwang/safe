@@ -771,6 +771,46 @@ struct CMasternodePayee_IndexValue
     }
 };
 
+struct CSporkInfo_IndexValue
+{
+    int nStorageSpork;
+    int nHeight;
+    int nOfficialNum;
+    int nGeneralNum;
+    CSporkInfo_IndexValue(const int& nStorageSporkIn = 0, const int& nHeightIn = 0, const int& nOfficialNumIn = 0, const int& nGeneralNumIn = 0):
+                                nStorageSpork(nStorageSporkIn), nHeight(nHeightIn), nOfficialNum(nOfficialNumIn), nGeneralNum(nGeneralNumIn)
+    {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nStorageSpork);
+        READWRITE(nHeight);
+        READWRITE(nOfficialNum);
+        READWRITE(nGeneralNum);
+    }
+    
+};
+
+struct CIterator_SporkInfo_IndexValue
+{
+    int nStorageSpork;
+
+    CIterator_SporkInfo_IndexValue(const int& nStorageSporkIn = 0) : nStorageSpork(nStorageSporkIn) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nStorageSpork);
+    }
+};
+
 struct CHeight_IndexKey
 {
     int nHeight;
@@ -1402,6 +1442,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW = true);
 bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 bool CheckSPOSBlock(const CBlock& block, CValidationState& state, const int& nHeight,bool fCheckPOW = true);
+bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& nHeight,const std::vector<unsigned char>& vReserve, bool fCheckPOW = true);
+bool DealDeterministicMNCoinBaseReserve(const CBlock& block, CBlockIndex* pindex, bool fCheckFail);
+bool DealMemAndDBSpork(CBlockIndex* pindex);
+bool LoadSporkInfo();
+bool StorageSporkInfo(const CSporkInfo_IndexValue& sporkInfoValue);
+
 
 /** Context-dependent validity checks */
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex *pindexPrev);
@@ -1578,14 +1624,27 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
 
 void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
                                 ,int64_t nStartNewLoopTime);
+
+void UpdateReSelectMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes, bool bClearVec, int selectMasterNodeRet);
+
 void UpdateGlobalTimeoutCount(int nTimeoutCount);
 void UpdateGlobalReceiveBlock(bool fReceiveBlock);
 void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScoreTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
                              ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect,
                              const unsigned int& nMasternodeSPosCount, SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode = false);
 
+void ReselectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nScoreTime, const bool bSpork, std::vector<CMasternode>& tmpVecResultMasternodes,
+                                      bool& bClearVec,int& nSelectMasterNodeRet,const unsigned int& nMasternodeSPosCount, 
+                                      SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode = false);
+
+
 bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals = false);
 void updateForwardHeightAndScoreHeight(int nCurrBlockHeight,int& nForwardHeight,int& nScoreHeight);
+
+
+bool GetSporkInfo(const int& nStorageSpork, CSporkInfo_IndexValue& value);
+bool EraseSporkInfo(const int& nStorageSpork);
+bool WriteSporkInfo(const int& nStorageSpork, const CSporkInfo_IndexValue& value);
 
 
 #endif // BITCOIN_VALIDATION_H

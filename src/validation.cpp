@@ -45,6 +45,8 @@
 #include "masternode-sync.h"
 #include "messagesigner.h"
 #include "validation.h"
+#include "spos/spos.h"
+
 
 
 #ifdef ENABLE_WALLET
@@ -80,6 +82,12 @@ using namespace std;
 
 CCriticalSection cs_main;
 CCriticalSection cs_spos;
+CCriticalSection cs_spork;
+CCriticalSection cs_selectinfo;
+CCriticalSection cs_reselect;
+
+
+
 
 BlockMap mapBlockIndex;
 CChain chainActive;
@@ -145,6 +153,10 @@ int g_nAdjustMiningRewardHeight = 1109103;
 int g_nForbidOldVersionHeight =  1101183;
 vector<string> g_versionVec;
 
+//SQTODO
+vector<string> g_versionVecV2;
+int g_nStorageSpork = 1;
+CSporkInfo_IndexValue g_SporkInfo;
 
 
 unsigned int nKeyIdSize = 20;
@@ -165,6 +177,12 @@ extern int g_nSelectMasterNodeSucc;
 extern int g_nSelectMasterNodeReset;
 extern int g_nSelectMasterNodeFail;
 extern bool g_fReceiveBlock;
+
+extern int g_nStartDeterministicMNHeight;
+extern int g_nForbidOldVersionHeightV2;
+int g_nLastSelectMasterNodeSuccessHeight = 0;
+uint32_t g_nScoreTime = 0;
+
 
 std::mutex g_mutexAllPayeeInfo;
 std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
@@ -230,9 +248,9 @@ namespace {
         bool operator()(CBlockIndex *pa, CBlockIndex *pb) const {
             if(IsStartSPosHeight(pa->nHeight)||IsStartSPosHeight(pb->nHeight))
             {
-                if (pa->nHeight > pb->nHeight && pa->nActiveTime > pb->nActiveTime)
+                if (pa->nHeight > pb->nHeight)
                     return false;
-                if (pa->nHeight < pb->nHeight && pa->nActiveTime < pb->nActiveTime)
+                if (pa->nHeight < pb->nHeight)
                     return true;
             }
             // First sort by most total work, ...
@@ -3230,7 +3248,7 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
 
     if (IsStartSPosHeight(pindexNew->nHeight))
     {
-        if (!pindexBestInvalid || CompareBestChainActiveTime (pindexNew, pindexBestInvalid))
+        if (!pindexBestInvalid || pindexNew->nHeight > pindexBestInvalid->nHeight)
             pindexBestInvalid = pindexNew;
     }
     else
@@ -4760,6 +4778,24 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
     }
 
+
+    if (IsStartSPosHeight(pindex->nHeight))
+    {
+        bool fCheckFail = false;
+        if (!DealDeterministicMNCoinBaseReserve(block, pindex, fCheckFail))
+        {
+            if (fCheckFail)
+                return state.DoS(0, error("SPOS ConnectBlock(): OfficialMasternodecount error"), REJECT_INVALID, "bad-cb-officialmasternodecount");
+            else
+                return AbortNode(state, "SPOS DealDeterministicMNCoinBaseReserve fail");
+        }
+
+        if (!DealMemAndDBSpork(pindex))
+        {
+            return AbortNode(state, "SPOS DealMemAndDBSpork fail");
+        }
+    }
+
     // END SAFE
 
     if (!control.Wait())
@@ -5237,36 +5273,27 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
 
         bool fseselectNewLoop = true;
         SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
-        if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
+
+        CSporkInfo_IndexValue tempSporkInfo;
         {
-            int64_t ntempSporkValue = sporkManager.GetSporkValue(SPORK_6_SPOS_ENABLED);
-            std::string strSporkValue = boost::lexical_cast<std::string>(ntempSporkValue);
-            std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
-            std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
-            int nHeight = boost::lexical_cast<int>(strHeight);
-            int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
-            /*LogPrintf("SPOS_Message: ConnectTip() strHeight:%s---strOfficialMasterNodeCount:%s---nHeight:%d--nOfficialMasterNodeCount:%d--pindexNew->nHeight:%d\n",
-                      strHeight, strOfficialMasterNodeCount, nHeight, nOfficialMasterNodeCount, pindexNew->nHeight);
-            */
-            
-            if (pindexNew->nHeight + 1 >= nHeight)
+            LOCK(cs_spork);
+            tempSporkInfo = g_SporkInfo;
+        }
+
+        if (tempSporkInfo.nOfficialNum != 0)
+        {
+            if (pindexNew->nHeight + 1 >= tempSporkInfo.nHeight)
             {
                 fseselectNewLoop = false;
-
-                if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
-                {
-                    LogPrintf("SPOS_Warning: ConnectTip() nOfficialMasterNodeCount is error,pindexNew->nHeight:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",pindexNew->nHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
-                    return true;
-                }
-
+                
                 nSporkSelectLoop = SPORK_SELECT_LOOP_1;
                 SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, true, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
-                                        nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, nSporkSelectLoop, false);
+                                        nSposGeneratedIndex,nStartNewLoopTime, false, tempSporkInfo.nOfficialNum, nSporkSelectLoop, false);
 
                 nSporkSelectLoop = SPORK_SELECT_LOOP_2;
-                if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
+                if (g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum > 0 && nSelectMasterNodeRet > 0)
                     SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, false, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
-                                            nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
+                                            nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum, nSporkSelectLoop, true);
             }
         }
 
@@ -5382,7 +5409,7 @@ static CBlockIndex* FindMostWorkChain() {
                 // Candidate chain is not usable (either invalid or missing data)
                 if (IsStartSPosHeight(pindexNew->nHeight))
                 {
-                    if (fFailedChain && (pindexBestInvalid == NULL || (pindexNew->nHeight > pindexBestInvalid->nHeight && CompareBestChainActiveTime(pindexNew, pindexBestInvalid))))
+                    if (fFailedChain && (pindexBestInvalid == NULL || pindexNew->nHeight > pindexBestInvalid->nHeight))
                         pindexBestInvalid = pindexNew;
                 }
                 else
@@ -5446,6 +5473,14 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
         fBlocksDisconnected = true;
     }
 
+    //SQTODO
+    if (fBlocksDisconnected)
+    {
+        LOCK(cs_reselect);
+        g_vecReSelectResultMasternodes.clear();
+        std::vector<CMasternode>().swap(g_vecReSelectResultMasternodes);
+   }
+
     // Build list of new blocks to connect.
     std::vector<CBlockIndex*> vpindexToConnect;
     bool fContinue = true;
@@ -5485,7 +5520,7 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
                 PruneBlockIndexCandidates();
                 if (IsStartSPosHeight(chainActive.Tip()->nHeight))
                 {
-                    if (!pindexOldTip || CompareBestChainActiveTime (chainActive.Tip(), pindexOldTip)) {
+                    if (!pindexOldTip || chainActive.Tip()->nHeight > pindexOldTip->nHeight) {
                         // We're in a better position than we were. Return temporarily to release the lock.
                         fContinue = false;
                         break;
@@ -5700,7 +5735,8 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
 
     if (IsStartSPosHeight(pindexNew->nHeight))
     {
-        pindexNew->nActiveTime = (pindexNew->pprev ? pindexNew->pprev->nActiveTime: 0) + block.nNonce;
+        if (!IsStartDeterministicMNHeight(pindexNew->nHeight))
+            pindexNew->nActiveTime = (pindexNew->pprev ? pindexNew->pprev->nActiveTime: 0) + block.nNonce;
     }
     else
     {
@@ -5710,7 +5746,7 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
     if (IsStartSPosHeight(pindexNew->nHeight))
     {
-        if (pindexBestHeader == NULL || CompareBestChainActiveTime(pindexNew, pindexBestHeader))
+        if (pindexBestHeader == NULL || pindexBestHeader->nHeight < pindexNew->nHeight)
             pindexBestHeader = pindexNew;
     }else if (pindexBestHeader == NULL || pindexBestHeader->nChainWork < pindexNew->nChainWork)
         pindexBestHeader = pindexNew;
@@ -6003,6 +6039,323 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     return true;
 }
 
+bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& nHeight,const std::vector<unsigned char>& vReserve, bool fCheckPOW )
+{
+    if (block.nBits != 0)
+        return state.DoS(100, error("SPOS_Warning CheckSPOSBlockV2(): block.nBits  not equal to 0,this block may receive from pow chain,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
+
+    int64_t nLockTime = GetTime();
+    //Synchronization of old blocks will result in a large difference between block time and local time, and cannot be compared using absolute values.
+    int64_t nBlockTime = block.GetBlockTime();
+    if (nBlockTime - nLockTime > g_nAllowableErrorTime)
+    {
+        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
+        string strLockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nLockTime);
+        return state.DoS(100, error("SPOS_Warning CheckSPOSBlockV2():Block time(block.nTime:%lld,%s) minus local time(now:%lld,%s) exceeds allowable time error range(allowableErrorTime:%d),height:%d",
+                                    nBlockTime,strBlockTime, nLockTime,strLockTime,g_nAllowableErrorTime,nHeight), REJECT_INVALID, "bad-nTime", true);
+    }
+
+    CDeterminedMNCoinbaseData determinedMNCoinbaseData;
+    if (!ParseDeterminedMNCoinbaseData(vReserve, determinedMNCoinbaseData))
+    {
+        LogPrintf("SPOS_Warning: CheckSPOSBlockV2() ParseDeterminedMNCoinbaseData failed height:%d\n", nHeight);
+        return false;
+    }
+
+    CSporkInfo_IndexValue tempSporkInfo;
+    {
+        LOCK(cs_spork);
+        tempSporkInfo = g_SporkInfo;
+    }
+
+    if (determinedMNCoinbaseData.nFirstBlock == 1)
+    {
+        std::vector<CMasternode> tmpVecResultMasternodes;
+        bool bClearVec = false;
+        int nSelectMasterNodeRet = g_nSelectGlobalDefaultValue;
+
+        bool fseselectNewLoop = true;
+        SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
+
+        if (tempSporkInfo.nOfficialNum != 0)
+        {
+            fseselectNewLoop = false;
+            nSporkSelectLoop = SPORK_SELECT_LOOP_1;
+            ReselectMasterNodeByPayee(nHeight, determinedMNCoinbaseData.nRandomNum, true, tmpVecResultMasternodes, bClearVec, nSelectMasterNodeRet,
+                                      determinedMNCoinbaseData.nOfficialMNNum, nSporkSelectLoop, false);
+
+            nSporkSelectLoop = SPORK_SELECT_LOOP_2;
+            if (g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum > 0 && nSelectMasterNodeRet > 0)
+                ReselectMasterNodeByPayee(nHeight, determinedMNCoinbaseData.nRandomNum, false, tmpVecResultMasternodes, bClearVec,nSelectMasterNodeRet,
+                                          g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum, nSporkSelectLoop, true);
+        }
+
+        if (fseselectNewLoop)
+        {
+            ReselectMasterNodeByPayee(nHeight, determinedMNCoinbaseData.nRandomNum, false, tmpVecResultMasternodes, bClearVec, nSelectMasterNodeRet,
+                                      g_nMasternodeSPosCount, nSporkSelectLoop, false);
+        }
+
+        UpdateReSelectMasternodeGlobalData(tmpVecResultMasternodes, bClearVec, nSelectMasterNodeRet);
+
+        int32_t mnSize = 0;
+        CMasternode mnTemp;
+        int32_t nIndex = 0;
+        CBlockIndex* pPreblockIndex = chainActive[nHeight - 1];
+        if (pPreblockIndex == NULL)
+        {
+            LogPrintf("SPOS_Warning:CheckSPOSBlockV2 pPreblockIndex is NULL,height:%d, nFirstBlock:%d\n",nHeight, determinedMNCoinbaseData.nFirstBlock);
+            return false;
+        }
+
+        uint32_t nTimeDifference = block.GetBlockTime() - pPreblockIndex->nTime;
+        int32_t interval = nTimeDifference / Params().GetConsensus().nSPOSTargetSpacing - 1;
+
+        {
+            LOCK(cs_reselect);
+            mnSize = g_vecReSelectResultMasternodes.size();
+
+            if (mnSize == 0)
+            {
+                LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecResultMasternodes is empty,height:%d\n", nHeight);
+                return false;
+            }
+
+            if (mnSize < g_nMasternodeMinCount)
+            {
+                LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes less than g_nMasternodeMinCount,height:%d, mnSize:%d, g_nMasternodeMinCount:%d\n", nHeight, mnSize, g_nMasternodeMinCount);
+                return false;
+            }
+
+            nIndex = interval % mnSize;
+            if (nIndex < 0)
+            {
+                LogPrintf("SPOS_Error CheckSPOSBlockV2():incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
+                return false;
+            }
+
+            mnTemp = g_vecReSelectResultMasternodes[nIndex];
+        }
+
+        CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
+        if (mnkeyID != determinedMNCoinbaseData.pubKeyMasternode.GetID())
+        {
+            LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
+                      "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s\n", nHeight, determinedMNCoinbaseData.pubKeyMasternode.GetID().ToString(),
+                       mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP());
+            return false;
+        }
+    }
+    else
+    {
+        if (determinedMNCoinbaseData.nOfficialMNNum != tempSporkInfo.nOfficialNum ||  determinedMNCoinbaseData.nGeneralMNNum != tempSporkInfo.nGeneralNum)
+        {
+            LogPrintf("SPOS_Warning:nOfficialMNNum or nGeneralMNNum error, determinedMNCoinbaseData.nOfficialMNNum:%d(tempSporkInfo.nOfficialNum%d), "
+                      "determinedMNCoinbaseData.nGeneralMNNum:%d(tempSporkInfo.nGeneralNum:%d)\n", determinedMNCoinbaseData.nOfficialMNNum,
+                      tempSporkInfo.nOfficialNum, determinedMNCoinbaseData.nGeneralMNNum, tempSporkInfo.nGeneralNum);
+            return false;
+        }
+
+        int ntempHeight = nHeight - 1;
+        CBlock firstBlock;
+        CDeterminedMNCoinbaseData firstCoinbaseData;
+        int nCycles = 0;
+        bool fFindFirstBlock = false;
+        while (true)
+        {
+            if (nCycles >= g_nMasternodeSPosCount * 2)
+            {
+                break;
+            }
+            
+            CBlockIndex* pPreblockIndex = chainActive[ntempHeight];
+            if (pPreblockIndex == NULL)
+            {
+                LogPrintf("SPOS_Warning:CheckSPOSBlockV2 pPreblockIndex is NULL,height:%d, nFirstBlock:%d\n",ntempHeight, determinedMNCoinbaseData.nFirstBlock);
+                return false;
+            }
+
+            CBlock tempblock;
+            if (!ReadBlockFromDisk(tempblock, pPreblockIndex, Params().GetConsensus()))
+            {
+                LogPrintf("SPOS_Warning:CheckSPOSBlockV2() ReadBlockFromDisk fail, height:%d\n", ntempHeight);
+                return false;
+            }
+
+            CTransaction tempTransaction  = tempblock.vtx[0];
+            const CTxOut &out = tempTransaction.vout[0];
+            CSposHeader header;
+            vector<unsigned char> vData;
+            if (!ParseSposReserve(out.vReserve, header, vData))
+            {
+                LogPrintf("SPOS_Warning:ParseSposReserve() failed height:%d\n", nHeight);
+                return false;    
+            }
+
+            if (header.nVersion != 2)
+            {
+                return state.DoS(100, error("SPOS_Error CheckSPOSBlockV2(): analysis CTxOut vReserve fail, height:%d, header.nVersion:%d",ntempHeight,header.nVersion), REJECT_INVALID, "bad-vReserve", true);
+            }
+
+            CDeterminedMNCoinbaseData tempdeterminedMNCoinbaseData;
+            if (!ParseDeterminedMNCoinbaseData(vData, tempdeterminedMNCoinbaseData))
+            {
+                LogPrintf("SPOS_Warning: CheckSPOSBlockV2() ParseDeterminedMNCoinbaseData failed height:%d\n", nHeight);
+                return false;
+            }
+
+            if (tempdeterminedMNCoinbaseData.nFirstBlock == 1)
+            {
+                firstBlock = tempblock;
+                firstCoinbaseData = tempdeterminedMNCoinbaseData;
+                fFindFirstBlock = true;
+                break;
+            }
+            
+            ntempHeight--;
+            nCycles++;
+        }
+
+        if (!fFindFirstBlock)
+        {
+            LogPrintf("SPOS_Warning: CheckSPOSBlockV2() did not find the first block in this round, height:%d\n", nHeight);
+            return false;
+        }
+
+        int32_t mnSize = 0;
+        std::vector<CMasternode> tempvecReSelectResult;
+
+        {
+            LOCK(cs_reselect);
+            mnSize = g_vecReSelectResultMasternodes.size();
+            if (mnSize != 0)
+            {
+                for(auto& mn:g_vecReSelectResultMasternodes)
+                    tempvecReSelectResult.push_back(mn);               
+            }
+        }
+
+        if (mnSize == 0)
+        {
+            std::vector<CMasternode> tmpVecResultMasternodes;
+            bool bClearVec = false;
+            int nSelectMasterNodeRet = g_nSelectGlobalDefaultValue;
+
+            bool fseselectNewLoop = true;
+            SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
+
+            if (firstCoinbaseData.nOfficialMNNum != 0)
+            {
+                fseselectNewLoop = false;
+                nSporkSelectLoop = SPORK_SELECT_LOOP_1;
+                
+                ReselectMasterNodeByPayee(ntempHeight, firstCoinbaseData.nRandomNum, true, tmpVecResultMasternodes, bClearVec, nSelectMasterNodeRet,
+                                          firstCoinbaseData.nOfficialMNNum, nSporkSelectLoop, false);
+
+                nSporkSelectLoop = SPORK_SELECT_LOOP_2;
+                if (g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum > 0 && nSelectMasterNodeRet > 0)
+                    ReselectMasterNodeByPayee(nHeight, firstCoinbaseData.nRandomNum, false, tmpVecResultMasternodes, bClearVec,nSelectMasterNodeRet,
+                                              g_nMasternodeSPosCount - firstCoinbaseData.nOfficialMNNum, nSporkSelectLoop, true);
+            }
+
+            if (fseselectNewLoop)
+            {
+                ReselectMasterNodeByPayee(ntempHeight, firstCoinbaseData.nRandomNum, false, tmpVecResultMasternodes, bClearVec, nSelectMasterNodeRet,
+                                          g_nMasternodeSPosCount, nSporkSelectLoop, false);
+            }
+
+            UpdateReSelectMasternodeGlobalData(tmpVecResultMasternodes, bClearVec, nSelectMasterNodeRet);
+
+            int32_t nIndex = 0;
+            CMasternode mnTemp;
+            int32_t tempmnSize = 0;
+
+            uint32_t nTimeDifferenceOfFirst = block.GetBlockTime() - firstBlock.GetBlockTime();
+            int32_t interval = nTimeDifferenceOfFirst / Params().GetConsensus().nSPOSTargetSpacing;
+
+            {
+                LOCK(cs_reselect);
+                tempmnSize = g_vecReSelectResultMasternodes.size();
+                if (tempmnSize == 0)
+                {
+                    LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecResultMasternodes is empty,height:%d\n", nHeight);
+                    return false;
+                }
+
+                if (tempmnSize < g_nMasternodeMinCount)
+                {
+                    LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes Less than g_nMasternodeMinCount,height:%d, mnSize:%d, g_nMasternodeMinCount:%d\n", nHeight, mnSize, g_nMasternodeMinCount);
+                    return false;
+                }
+
+                
+                nIndex = interval % tempmnSize;
+                if (nIndex < 0)
+                {
+                    LogPrintf("SPOS_Error CheckSPOSBlockV2():incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
+                    return false;
+                }
+
+                mnTemp = g_vecReSelectResultMasternodes[nIndex];
+
+            }
+
+            CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
+            if (mnkeyID != determinedMNCoinbaseData.pubKeyMasternode.GetID())
+            {
+                LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
+                          "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s\n", nHeight, determinedMNCoinbaseData.pubKeyMasternode.GetID().ToString(),
+                           mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP());
+                return false;
+            }
+        }
+        else
+        {
+            if (mnSize < g_nMasternodeMinCount)
+            {
+                LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes Less than g_nMasternodeMinCount,height:%d, mnSize:%d, g_nMasternodeMinCount:%d\n", nHeight, mnSize, g_nMasternodeMinCount);
+                return false;
+            }
+            else
+            {
+                int32_t nIndex = 0;
+                CMasternode mnTemp;
+            
+                uint32_t nTimeDifferenceOfFirst = block.GetBlockTime() - firstBlock.GetBlockTime();
+                int32_t interval = nTimeDifferenceOfFirst / Params().GetConsensus().nSPOSTargetSpacing;
+                nIndex = interval % mnSize;
+                if (nIndex < 0)
+                {
+                    LogPrintf("SPOS_Error CheckSPOSBlockV2():incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
+                    return false;
+                }
+
+                mnTemp = tempvecReSelectResult[nIndex];
+
+                CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
+                if (mnkeyID != determinedMNCoinbaseData.pubKeyMasternode.GetID())
+                {
+                    LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
+                              "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s\n", nHeight, determinedMNCoinbaseData.pubKeyMasternode.GetID().ToString(),
+                               mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP());
+                    return false;
+                }
+            }
+        }
+    }
+
+    if (fCheckPOW)
+    {
+        int64_t nBlockTime = block.GetBlockTime();
+        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
+        LogPrintf("SPOS_Message:CheckSPOSBlockV2() check spos block succ,height:%d,blockTime:%lld(%s), nScoreTime:%d,strKeyID:%s\n",
+                  nHeight,nBlockTime,strBlockTime, determinedMNCoinbaseData.nRandomNum, determinedMNCoinbaseData.pubKeyMasternode.GetID().ToString());
+    }
+
+    return true;
+}
+
+
 bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot)
 {
     // These are checks that are independent of context.
@@ -6027,8 +6380,27 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (nHeight >= g_nStartSPOSHeight)
     {
         LOCK(cs_spos);
-        if (!CheckSPOSBlock(block, state,nHeight,fCheckPOW))
-            return false;
+
+        CTransaction tempTransaction  = block.vtx[0];
+        const CTxOut &out = tempTransaction.vout[0];
+        CSposHeader header;
+        vector<unsigned char> vData;
+        if (!ParseSposReserve(out.vReserve, header, vData))
+        {
+            LogPrintf("SPOS_Warning:ParseSposReserve() failed height:%d\n", nHeight);
+            return false;    
+        }
+
+        if (header.nVersion == 2)
+        {
+            if (!CheckSPOSBlockV2(block, state, nHeight, vData, fCheckPOW))
+                return false;
+        }
+        else if (header.nVersion == 1)
+        {
+            if (!CheckSPOSBlock(block, state,nHeight,fCheckPOW))
+                return false;
+        }
     }
 
     // Check the merkle root.
@@ -6330,7 +6702,7 @@ static bool AcceptBlock(const CBlock& block, CValidationState& state, const CCha
     {
         if (IsStartSPosHeight(pindex->nHeight))
         {
-            if (CompareBestChainActiveTime (pindex, chainActive.Tip()))
+            if (pindex->nHeight > chainActive.Tip()->nHeight)
                 fHasMoreWork = true;
         }
         else
@@ -6658,7 +7030,8 @@ bool static LoadBlockIndexDB()
         CBlockIndex* pindex = item.second;
         if (IsStartSPosHeight(pindex->nHeight))
         {
-            pindex->nActiveTime = (pindex->pprev ? pindex->pprev->nActiveTime : 0) + pindex->nNonce;
+            if (!IsStartDeterministicMNHeight(pindex->nHeight))
+                pindex->nActiveTime = (pindex->pprev ? pindex->pprev->nActiveTime : 0) + pindex->nNonce;
         }
         else
         {
@@ -6683,7 +7056,7 @@ bool static LoadBlockIndexDB()
 
         if (IsStartSPosHeight(pindex->nHeight))
         {
-            if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || CompareBestChainActiveTime(pindex, pindexBestInvalid)))
+            if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nHeight > pindexBestInvalid->nHeight))
                 pindexBestInvalid = pindex;
         }
         else
@@ -7144,7 +7517,9 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
         assert((pindexFirstNotTransactionsValid != NULL) == (pindex->nChainTx == 0));
         assert(pindex->nHeight == nHeight); // nHeight must be consistent.
         if (IsStartSPosHeight(pindex->nHeight))
-            assert(pindex->pprev == NULL || CompareBestChainActiveTime(pindex, pindex->pprev, true));
+        {
+                assert(pindex->pprev == NULL || pindex->nHeight >= pindex->pprev->nHeight);
+        }
         else
             assert(pindex->pprev == NULL || pindex->nChainWork >= pindex->pprev->nChainWork); // For every block except the genesis block, the chainwork must be larger than the parent's.
         assert(nHeight < 2 || (pindex->pskip && (pindex->pskip->nHeight < nHeight))); // The pskip pointer must point back for all but the first 2 blocks.
@@ -9635,6 +10010,22 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
         g_nStartNewLoopTimeMS = nStartNewLoopTime;
 }
 
+void UpdateReSelectMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes, bool bClearVec, int selectMasterNodeRet)
+{
+    LOCK(cs_reselect);
+    if (bClearVec||!tmpVecMasternodes.empty())
+    {
+        g_vecReSelectResultMasternodes.clear();
+        std::vector<CMasternode>().swap(g_vecReSelectResultMasternodes);
+        for(auto& mn:tmpVecMasternodes)
+            g_vecReSelectResultMasternodes.push_back(mn);
+    }
+
+    if(selectMasterNodeRet != g_nReSelectGlobalDefaultValue)
+        g_nReSelectMasterNodeFail = selectMasterNodeRet;
+}
+
+
 void UpdateGlobalTimeoutCount(int nTimeoutCount)
 {
     LOCK(cs_spos);
@@ -9808,6 +10199,12 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
             }
         }
 
+        {
+            LOCK(cs_selectinfo);
+            g_nLastSelectMasterNodeSuccessHeight = nCurrBlockHeight;
+            g_nScoreTime = nScoreTime;
+        }
+
         return;
     }
 
@@ -9899,6 +10296,12 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
 
     if (!bProcessSpork)
         g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
+
+    {
+        LOCK(cs_selectinfo);
+        g_nLastSelectMasterNodeSuccessHeight = nCurrBlockHeight;
+        g_nScoreTime = nScoreTime;
+    }
 
     string localIpPortInfo = activeMasternode.service.ToString();
     uint32_t size = tmpVecResultMasternodes.size();
@@ -10051,4 +10454,409 @@ int ConvertSuperblockCycle(const int& nHeight)
     }
 
     return nTempSuperBlockCycle;
+}
+
+bool GetSporkInfo(const int& nStorageSpork, CSporkInfo_IndexValue& value)
+{
+    LogPrint("spork", "Spork:: SPOS GetSporkInfo nSporkDealType: %d\n", nStorageSpork);
+    if (pblocktree->Is_Exists_SporkInfo_Key(nStorageSpork))
+    {
+        if (!pblocktree->Read_SporkInfo_Index(nStorageSpork, value))
+            return false;
+    }
+
+    LogPrint("spork", "Spork:: SPOS GetSporkInfo nStorageSpork: %d, height:%d, nOfficialNum:%d, nGeneralNum:%d\n", nStorageSpork,
+             value.nHeight, value.nOfficialNum, value.nGeneralNum);
+    return true;
+}
+
+bool EraseSporkInfo(const int& nStorageSpork)
+{
+    LogPrint("spork", "Spork:: SPOS EraseSporkInfo nStorageSpork: %d\n", nStorageSpork);
+    if (pblocktree->Is_Exists_SporkInfo_Key(nStorageSpork))
+    {
+        if (!pblocktree->Erase_SporkInfo_Index(nStorageSpork))
+            return false;
+    }
+
+    return true;
+}
+
+bool WriteSporkInfo(const int& nStorageSpork, const CSporkInfo_IndexValue& value)
+{
+    LogPrint("spork", "Spork:: SPOS WriteSporkInfo nStorageSpork: %d, height:%d, nOfficialNum:%d, nGeneralNum:%d\n", nStorageSpork,
+             value.nHeight, value.nOfficialNum, value.nGeneralNum);
+    if (!pblocktree->Write_SporkInfo_Index(nStorageSpork, value))
+        return false;
+
+    return true;
+}
+
+void ReselectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nScoreTime, const bool bSpork, std::vector<CMasternode>& tmpVecResultMasternodes,
+                                      bool& bClearVec, int& nSelectMasterNodeRet, const unsigned int& nMasternodeSPosCount, SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode)
+{
+    std::map<COutPoint, CMasternode> mapMeetedMasternodes;
+    bool fFilterSpent = true;
+    std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
+    int nFullMasternodeSize = mnodeman.size();
+    GetAllPayeeInfoMap(mapAllPayeeInfo);
+    if (bSpork)
+    {
+        LogPrintf("SPOS_Message:Spork message select official master node\n");
+        std::map<COutPoint, CMasternode> fullmapMasternodes;
+        mnodeman.GetFullMasternodeData(fullmapMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight, true);
+
+        const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
+        std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
+        for (;it != vtempOutPointData.end(); it++)
+        {
+            COutPointData tempcoutpointdata = *it;
+            COutPoint tempcoutpoint;
+            tempcoutpoint.hash = tempcoutpointdata.hash;
+            tempcoutpoint.n = tempcoutpointdata.n;
+             std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
+            if (tempit != fullmapMasternodes.end())
+                mapMeetedMasternodes[tempcoutpoint] = tempit->second;
+        }
+    }
+    else
+    {
+        mnodeman.GetFullMasternodeData(mapMeetedMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight, false);
+        if (fRemoveOfficialMasternode)
+        {
+            const std::vector<COutPointData> &vectempOutPointData = Params().COutPointDataS();
+            std::vector<COutPointData>::const_iterator it = vectempOutPointData.begin();
+            for (;it != vectempOutPointData.end(); it++)
+            {
+                COutPointData tempcoutpointdata = *it;
+                COutPoint tempcoutpoint;
+                tempcoutpoint.hash = tempcoutpointdata.hash;
+                tempcoutpoint.n = tempcoutpointdata.n;
+                 std::map<COutPoint, CMasternode>::iterator tempit = mapMeetedMasternodes.find(tempcoutpoint);
+                if (tempit != mapMeetedMasternodes.end())
+                    mapMeetedMasternodes.erase(tempit);
+            }
+        }
+    }
+
+    if(!g_vecResultMasternodes.empty()){
+        bClearVec = true;
+    }
+
+    nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
+
+    if(mapMeetedMasternodes.empty())
+    {
+        LogPrintf("SPOS_Error:meeted mapMasternodes is empty,actual masternode map size:%d\n",mnodeman.GetFullMasternodeMap().size());
+        nSelectMasterNodeRet = g_nSelectMasterNodeFail;
+        return;
+    }
+
+    if (nSporkSelectLoop==SPORK_SELECT_LOOP_1||nSporkSelectLoop==SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT)
+    {
+        std::vector<CMasternode> vecResultAllOfficialMasternodes;
+        SortMasternodeByScore(mapMeetedMasternodes, vecResultAllOfficialMasternodes, nScoreTime, "Official", mapAllPayeeInfo);
+        
+        uint32_t nAllOfficialMasternodecount = vecResultAllOfficialMasternodes.size();
+        for (uint32_t i = 0; i < nAllOfficialMasternodecount; ++i)
+        {
+            if (i == nMasternodeSPosCount)
+                break;
+
+            tmpVecResultMasternodes.push_back(vecResultAllOfficialMasternodes[i]);
+            const CMasternode& mn = vecResultAllOfficialMasternodes[i];
+
+            std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(mn.pubKeyCollateralAddress.GetID().ToString());
+            if (tempit == mapAllPayeeInfo.end())
+            {
+                LogPrintf("SPOS_Error:Official masterNodeIP[%d] not fount payeeinfo:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,currHeight:%d\n",
+                          i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nCurrBlockHeight);
+            }else
+            {
+                LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,currHeight:%d,nPayeeBlockTime:%d,"
+                          "nPayeeTimes:%d,lastHeight:%d\n", i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,
+                          mn.sigTime,nCurrBlockHeight,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight);
+            }
+        }
+
+        if (nMasternodeSPosCount == g_nMasternodeSPosCount)
+        {
+            unsigned int tmpSize = tmpVecResultMasternodes.size();
+            if (tmpSize < g_nMasternodeMinCount)
+            {
+                LogPrintf("SPOS_Error: tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d\n",
+                         tmpSize, g_nMasternodeMinCount);
+
+                nSelectMasterNodeRet = g_nSelectMasterNodeFail;
+            }
+        }
+
+        return;
+    }
+
+    unsigned int nMeetedMasternodeSize = mapMeetedMasternodes.size();
+    unsigned int intervalHeight = nMeetedMasternodeSize / 2;
+
+    std::map<COutPoint, CMasternode> mapMasternodesL1,mapMasternodesL2,mapMasternodesL3;
+
+    std::map<COutPoint, CMasternode>::iterator it = mapMeetedMasternodes.begin();
+    for (; it != mapMeetedMasternodes.end(); it++)
+    {
+        const CMasternode& mn = it->second;
+        std::string strPubKeyCollateralAddress = mn.pubKeyCollateralAddress.GetID().ToString();
+        std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(strPubKeyCollateralAddress);
+        if (tempit == mapAllPayeeInfo.end())
+        {
+            LogPrintf("SPOS_Error:payee not found,GetFullMasternodeData have already checked the payee,ip:%s,strPubKeyCollateralAddress:%s\n",
+                      mn.addr.ToStringIP(),strPubKeyCollateralAddress);
+        }else
+        {
+            uint32_t nIntervalHeight = nCurrBlockHeight - tempit->second.nHeight;
+            if (nIntervalHeight <= intervalHeight)
+                mapMasternodesL1[it->first] = it->second;
+            else if (nIntervalHeight > intervalHeight && nIntervalHeight <=  2 *intervalHeight)
+                mapMasternodesL2[it->first] = it->second;
+            else
+                mapMasternodesL3[it->first] = it->second;
+        }
+    }
+
+    std::vector<CMasternode> vecResultMasternodesL1,vecResultMasternodesL2,vecResultMasternodesL3;
+    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nScoreTime, "L1", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nScoreTime, "L2", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nScoreTime, "L3", mapAllPayeeInfo);
+
+    //5
+    unsigned int vec1Size = vecResultMasternodesL1.size();
+    unsigned int vec2Size = vecResultMasternodesL2.size();
+    unsigned int vec3Size = vecResultMasternodesL3.size();
+    unsigned int nP1 = ((double)vec1Size / nMeetedMasternodeSize) * nMasternodeSPosCount;
+    unsigned int nP2 = ((double)vec2Size / nMeetedMasternodeSize) * nMasternodeSPosCount;
+    unsigned int nP3 = ((double)vec3Size / nMeetedMasternodeSize) * nMasternodeSPosCount;
+
+    unsigned int nMnSize = vec1Size + vec2Size + vec3Size;
+    unsigned int nSporkLoop1Size = 0;
+    if(nSporkSelectLoop==SPORK_SELECT_LOOP_2)
+        nSporkLoop1Size = tmpVecResultMasternodes.size();
+
+    if (nMnSize + nSporkLoop1Size < g_nMasternodeMinCount)
+    {
+        LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,nSporkLoop1Size:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,"
+                  "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
+                  nMnSize,nSporkLoop1Size,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),nP1,nP2,nP3,
+                  mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
+
+        nSelectMasterNodeRet = g_nSelectMasterNodeFail;
+        return;
+    }
+
+    unsigned int nSelectTotal = nP1 + nP2 + nP3;
+    int nRemainNum = nMasternodeSPosCount - nSelectTotal;
+    int nP1Increase = 0,nP2Increase = 0,nP3Increase = 0;
+    CalculateIncreaseMasternode(nRemainNum,nP1Increase,vec1Size,nP1);
+    CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
+    CalculateIncreaseMasternode(nRemainNum,nP3Increase,vec3Size,nP3);
+
+    unsigned int nP1Total = nP1+nP1Increase;
+    if(nP1Total>vec1Size)
+        LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP1,nP1Increase,nP1Total);
+    for (unsigned int i = 0; i < nP1Total && i < vec1Size; i++)
+        tmpVecResultMasternodes.push_back(vecResultMasternodesL1[i]);
+
+    unsigned int nP2Total = nP2+nP2Increase;
+    if(nP2Total>vec2Size)
+        LogPrintf("SPOS_Error:nP2:%d,nP2Increase:%d,vec2Size:%d\n",nP2,nP2Increase,nP2Total);
+    for (unsigned int j = 0; j < nP2Total && j < vec2Size; j++)
+        tmpVecResultMasternodes.push_back(vecResultMasternodesL2[j]);
+
+    unsigned int nP3Total = nP3 + nP3Increase;
+    if(nP3Total>vec3Size)
+        LogPrintf("SPOS_Error:nP2:%d,nP2Increase:%d,vec2Size:%d\n",nP3,nP3Increase,nP3Total);
+    for (unsigned int k = 0; k < nP3Total && k < vec3Size; k++)
+        tmpVecResultMasternodes.push_back(vecResultMasternodesL3[k]);
+
+    string localIpPortInfo = activeMasternode.service.ToString();
+    uint32_t size = tmpVecResultMasternodes.size();
+
+    LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,,select %d masternode,min online masternode count:%d,"
+              "nRemainNum:%d,intervalHeight:%d,",localIpPortInfo,nCurrBlockHeight,size,
+              g_nMasternodeMinCount,nRemainNum,intervalHeight);
+
+    LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
+              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d,g_nPushForwardTime:%d\n"
+              ,nMnSize,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),mapMasternodesL1.size()
+              ,mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,nP1Increase,nP2,nP2Increase,nP3,nP3Increase,g_nTimeoutCount,g_nPushForwardTime);
+    for( uint32_t i = 0; i < size; ++i )
+    {
+        string nPStr = "P3";
+        if(i<nP1Total)
+            nPStr = "P1";
+        else if(i< (nP1Total + nP2Total))
+            nPStr = "P2";
+        const CMasternode& mn = tmpVecResultMasternodes[i];
+        if(i>=nSporkLoop1Size)
+        {
+            std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(mn.pubKeyCollateralAddress.GetID().ToString());
+            if (tempit == mapAllPayeeInfo.end())
+            {
+                LogPrintf("SPOS_Error:General masterNodeIP[%d] not fount payeeinfo:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s,currHeight:%d\n",
+                          i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nPStr,nCurrBlockHeight);
+            }else
+            {
+                LogPrintf("SPOS_Message:General masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s,currHeight:%d,"
+                          "nPayeeBlockTime:%d,nPayeeTimes:%d,lastHeight:%d\n", i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),
+                          mn.lastPing.sigTime,mn.sigTime,nPStr,nCurrBlockHeight,tempit->second.blockTime,tempit->second.nPayeeTimes,
+                          tempit->second.nHeight);
+            }
+        }
+    }
+}
+
+bool StorageSporkInfo(const CSporkInfo_IndexValue& sporkInfoValue)
+{
+    CSporkInfo_IndexValue tempDBSporkInfo;
+    if (!GetSporkInfo(g_nStorageSpork, tempDBSporkInfo))
+    {
+        LogPrintf("SPOS_ERROR:StorageSporkInfo() GetSporkInfo fail\n");
+        return false;
+    }
+
+    if (tempDBSporkInfo.nOfficialNum == 0 && tempDBSporkInfo.nGeneralNum == 0)
+    {
+        {
+            LOCK(cs_spork);
+            g_SporkInfo = sporkInfoValue;
+        }
+
+        if (!WriteSporkInfo(g_nStorageSpork, sporkInfoValue))
+        {
+            LogPrintf("SPOS_ERROR:StorageSporkInfo() WriteSporkInfo fail\n");
+            return false;
+        }
+
+        return true;
+    }
+
+    if (sporkInfoValue.nOfficialNum != tempDBSporkInfo.nOfficialNum && sporkInfoValue.nGeneralNum != tempDBSporkInfo.nGeneralNum)
+    {
+        {
+            LOCK(cs_spork);
+            g_SporkInfo = sporkInfoValue;
+        }
+    
+        if (!EraseSporkInfo(g_nStorageSpork))
+        {
+            LogPrintf("SPOS_ERROR:StorageSporkInfo() EraseSporkInfo fail\n");
+            return false;
+        }
+
+        if (!WriteSporkInfo(g_nStorageSpork, sporkInfoValue))
+        {
+            LogPrintf("SPOS_ERROR:StorageSporkInfo() WriteSporkInfo fail\n");
+            return false;
+        }
+
+        return true;
+    }
+
+    return true;
+}
+
+bool DealDeterministicMNCoinBaseReserve(const CBlock& block, CBlockIndex* pindex, bool fCheckFail)
+{
+    CTransaction tempTransaction  = block.vtx[0];
+    const CTxOut &out = tempTransaction.vout[0];
+
+    CSposHeader header;
+    vector<unsigned char> vData;
+    if (!ParseSposReserve(out.vReserve, header, vData))
+    {
+        LogPrintf("SPOS_Warning:ParseSposReserve() failed height:%d\n", pindex->nHeight);
+        fCheckFail = true;
+        return false;    
+    }
+
+    if (header.nVersion == 2)
+    {
+        CDeterminedMNCoinbaseData determinedMNCoinbaseData;
+        if (!ParseDeterminedMNCoinbaseData(vData, determinedMNCoinbaseData))
+        {
+            LogPrintf("SPOS_Warning:ParseDeterminedMNCoinbaseData() failed height:%d\n", pindex->nHeight);
+            fCheckFail = true;
+            return false;
+        }
+
+        if (determinedMNCoinbaseData.nFirstBlock == 1)
+        {
+            CSporkInfo_IndexValue tempSporkInfo;
+            tempSporkInfo.nHeight = pindex->nHeight;
+            tempSporkInfo.nOfficialNum = determinedMNCoinbaseData.nOfficialMNNum;
+            tempSporkInfo.nGeneralNum = determinedMNCoinbaseData.nGeneralMNNum;
+            tempSporkInfo.nStorageSpork = g_nStorageSpork;
+
+            if (tempSporkInfo.nOfficialNum < 0 || tempSporkInfo.nOfficialNum > g_nMasternodeSPosCount)
+            {
+                LogPrintf("SPOS_ERROR:check nOfficialMasternodecount fail, nOfficialMasternodecount:%d\n", tempSporkInfo.nOfficialNum);
+                fCheckFail = true;
+                return false;
+            }
+
+            if (!StorageSporkInfo(tempSporkInfo))
+            {
+                LogPrintf("SPOS_ERROR:DealDeterministicMNCoinBaseReserve() fail\n");
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool DealMemAndDBSpork(CBlockIndex* pindex)
+{
+    if (sporkManager.IsSpork_6_SPOSActive(SPORK_6_SPOS_ENABLED))
+    {
+        int64_t ntempSporkValue = sporkManager.GetSporkValue(SPORK_6_SPOS_ENABLED);
+        std::string strSporkValue = boost::lexical_cast<std::string>(ntempSporkValue);
+        std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
+        std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
+        int nHeight = boost::lexical_cast<int>(strHeight);
+        int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
+
+        if (pindex->nHeight >= nHeight && pindex->nHeight % g_nMasternodeSPosCount == 0 && nOfficialMasterNodeCount >= 0 && nOfficialMasterNodeCount <= g_nMasternodeSPosCount)
+        {
+            CSporkInfo_IndexValue tempSporkInfo;
+            tempSporkInfo.nHeight = nHeight;
+            tempSporkInfo.nOfficialNum = nOfficialMasterNodeCount;
+            tempSporkInfo.nGeneralNum = g_nMasternodeSPosCount - nOfficialMasterNodeCount;
+            tempSporkInfo.nStorageSpork = g_nStorageSpork;
+
+            if (!StorageSporkInfo(tempSporkInfo))
+            {
+                LogPrintf("SPOS_ERROR:DealMemAndDBSpork() fail\n");
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    return true;
+}
+
+bool LoadSporkInfo()
+{
+    CSporkInfo_IndexValue tempSporkInfo;
+    if (!GetSporkInfo(g_nStorageSpork, tempSporkInfo))
+    {
+        LogPrintf("SPOS:ERROE LoadSporkInfo faile\n");
+        return false;
+    }
+
+    {
+        LOCK(cs_spork);
+        g_SporkInfo = tempSporkInfo;
+    }
+
+    return true;
 }

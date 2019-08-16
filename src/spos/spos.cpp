@@ -9,6 +9,7 @@
 #include "init.h"
 #include "masternode-sync.h"
 #include "utilmoneystr.h"
+#include "streams.h"
 
 bool CheckDeterminedMasternode(CDeterminedMasternodeData &dmn, std::string &strMessage, std::string &strError)
 {
@@ -187,6 +188,8 @@ bool BuildDeterminedMasternode(CDeterminedMasternodeData &dmn, const std::string
     return CheckDeterminedMasternode(dmn,strMessage,strError);
 }
 
+//SQTODO
+/*
 bool RegisterDeterminedMasternodes(std::vector<CDeterminedMasternodeData> &dmnVec, std::string &strError)
 {
     if (!pwalletMain)
@@ -232,6 +235,7 @@ bool RegisterDeterminedMasternodes(std::vector<CDeterminedMasternodeData> &dmnVe
 
     return true;
 }
+*/
 
 void FillSPOSHeader(const CSposHeader& header, std::vector<unsigned char>& vHeader)
 {
@@ -287,6 +291,77 @@ std::vector<unsigned char> FillDeterminedMasternode(const CSposHeader& header, c
     return vData;
 }
 
+std::vector<unsigned char> FillDeterminedMNCoinbaseData(const CSposHeader& header,const CDeterminedMNCoinbaseData& determinedMNCoinbaseData, bool& bRet)
+{
+    std::vector<unsigned char> vData;
+    FillSPOSHeader(header, vData);
+
+    Spos::DeterminedMNCoinbaseData data;
+
+    CDataStream ssKey(SER_DISK, CLIENT_VERSION);
+    ssKey.reserve(1000);
+    ssKey << determinedMNCoinbaseData.keyIDMasternode;
+    std::string strSerialPubKeyId = ssKey.str();
+    data.set_pubkeyid(strSerialPubKeyId);
+    
+    data.set_officialmnnum((const unsigned char*)&determinedMNCoinbaseData.nOfficialMNNum,sizeof(determinedMNCoinbaseData.nOfficialMNNum));
+    data.set_generalmnnum((const unsigned char*)&determinedMNCoinbaseData.nGeneralMNNum,sizeof(determinedMNCoinbaseData.nGeneralMNNum));
+    data.set_randomnum((const unsigned char*)&determinedMNCoinbaseData.nRandomNum,sizeof(determinedMNCoinbaseData.nRandomNum));
+    data.set_firstblock((const unsigned char*)&determinedMNCoinbaseData.nFirstBlock,sizeof(determinedMNCoinbaseData.nFirstBlock));
+
+    //--------add sign--------
+    std::string strSignMessage= "";
+    const unsigned char* pOfficialMNNum = (const unsigned char*)&determinedMNCoinbaseData.nOfficialMNNum;
+    strSignMessage.push_back(pOfficialMNNum[0]);
+    strSignMessage.push_back(pOfficialMNNum[1]);
+
+    const unsigned char* pGeneralMNNum = (const unsigned char*)&determinedMNCoinbaseData.nGeneralMNNum;
+    strSignMessage.push_back(pGeneralMNNum[0]);
+    strSignMessage.push_back(pGeneralMNNum[1]);
+
+    const unsigned char* pRandomNum = (const unsigned char*)&determinedMNCoinbaseData.nRandomNum;
+    strSignMessage.push_back(pRandomNum[0]);
+    strSignMessage.push_back(pRandomNum[1]);
+    strSignMessage.push_back(pRandomNum[2]);
+    strSignMessage.push_back(pRandomNum[3]);
+
+    const unsigned char* pnFirstBlock = (const unsigned char*)&determinedMNCoinbaseData.nFirstBlock;
+    strSignMessage.push_back(pnFirstBlock[0]);
+    strSignMessage.push_back(pnFirstBlock[1]);
+
+    //Signature and verification signature
+    std::vector<unsigned char> vchSig;
+    if (!CMessageSigner::SignMessage(strSignMessage, vchSig, determinedMNCoinbaseData.keyMasternode))
+    {
+        bRet = false;
+        LogPrintf("SPOS_Error:SignDeterminedMasternodeMessage() failed\n");
+        return vData;
+    }
+
+    std::string strError;
+    if(!CMessageSigner::VerifyMessage(determinedMNCoinbaseData.pubKeyMasternode, vchSig, strSignMessage, strError))
+    {
+        bRet = false;
+        LogPrintf("SPOS_Error:VerifyDeterminedMasternodeMessage() failed, error: %s\n", strError);
+        return vData;
+    }
+
+    std::string strSignedMsg = "";
+    for(unsigned int i=0;i<vchSig.size();i++)
+        strSignedMsg.push_back(vchSig[i]);
+
+    data.set_signmsg(strSignedMsg);
+
+    std::string strData;
+    data.SerializeToString(&strData);
+
+    unsigned int nSize = data.ByteSize();
+    const unsigned char* pData = (const unsigned char*)strData.data();
+    for(unsigned int i = 0; i < nSize; i++)
+        vData.push_back(pData[i]);
+
+    return vData;
+}
 bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData)
 {
     if(vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t))
@@ -321,5 +396,60 @@ bool ParseDeterminedMasternode(const std::vector<unsigned char> &vDMNData, CDete
     dmn.nOutputIndex = *(uint16_t*)data.outputindex().data();
     dmn.strSerialPubKeyId = data.serialpubkeyid();
     dmn.strSignedMsg = data.signedmsg();
+    return true;
+}
+
+bool ParseDeterminedMNCoinbaseData(const std::vector<unsigned char>& vData, CDeterminedMNCoinbaseData& determinedMNCoinbaseData)
+{
+    Spos::DeterminedMNCoinbaseData data;
+    if(!data.ParseFromArray(&vData[0], vData.size()))
+        return false;
+
+    std::string strkeyID = data.pubkeyid();
+    std::vector<unsigned char> vchKeyId;
+    for (unsigned int i = 0; i < strkeyID.length(); i++)
+        vchKeyId.push_back(strkeyID[i]);
+   
+    CKeyID keyID;
+    CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
+    ssKey >> keyID;
+    determinedMNCoinbaseData.keyIDMasternode = keyID;
+    determinedMNCoinbaseData.nOfficialMNNum = *(uint16_t*)data.officialmnnum().data();
+    determinedMNCoinbaseData.nGeneralMNNum = *(uint16_t*)data.generalmnnum().data();
+    determinedMNCoinbaseData.nRandomNum = *(uint32_t*)data.randomnum().data();
+    determinedMNCoinbaseData.nFirstBlock = *(uint16_t*)data.firstblock().data();
+
+    std::string strSignedMsg = "";
+    strSignedMsg = data.signmsg();
+    std::vector<unsigned char> vchSignMsg;
+    for (unsigned int j = 0; j < strSignedMsg.length(); j++)
+        vchSignMsg.push_back(strSignedMsg[j]);
+
+    std::string strSignMessage= "";
+    const unsigned char* pOfficialMNNum = (const unsigned char*)&determinedMNCoinbaseData.nOfficialMNNum;
+    strSignMessage.push_back(pOfficialMNNum[0]);
+    strSignMessage.push_back(pOfficialMNNum[1]);
+
+    const unsigned char* pGeneralMNNum = (const unsigned char*)&determinedMNCoinbaseData.nGeneralMNNum;
+    strSignMessage.push_back(pGeneralMNNum[0]);
+    strSignMessage.push_back(pGeneralMNNum[1]);
+
+    const unsigned char* pRandomNum = (const unsigned char*)&determinedMNCoinbaseData.nRandomNum;
+    strSignMessage.push_back(pRandomNum[0]);
+    strSignMessage.push_back(pRandomNum[1]);
+    strSignMessage.push_back(pRandomNum[2]);
+    strSignMessage.push_back(pRandomNum[3]);
+
+    const unsigned char* pnFirstBlock = (const unsigned char*)&determinedMNCoinbaseData.nFirstBlock;
+    strSignMessage.push_back(pnFirstBlock[0]);
+    strSignMessage.push_back(pnFirstBlock[1]);
+
+    std::string strError;
+    if (!CMessageSigner::VerifyMessage(keyID, vchSignMsg, strSignMessage, strError))
+    {
+        LogPrintf("SPOS_Error:VerifyDeterminedMasternodeMessage() failed, error: %s\n", strError);
+        return false;
+    }
+
     return true;
 }

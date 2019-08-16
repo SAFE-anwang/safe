@@ -23,6 +23,7 @@
 
 #define MIN_MN_LOCKED_MONTH     6
 
+
 class CBlock;
 class CBlockHeader;
 class CBlockIndex;
@@ -51,11 +52,22 @@ extern int g_nSelectMasterNodeRet;
 extern int64_t g_nFirstSelectMasterNodeTime;
 extern int64_t g_nAllowMasterNodeSyncErrorTime;
 
+extern int g_nStartDeterministicMNHeight;
+extern int g_nForbidOldVersionHeightV2;
+extern std::vector<CMasternode> g_vecReSelectResultMasternodes;
+extern int g_nReSelectMasterNodeFail;
+extern int g_nReSelectGlobalDefaultValue;
+
+
+
+
 
 
 inline bool IsCriticalHeight(int nHeight) { return nHeight == g_nCriticalHeight; }
 
 inline bool IsStartSPosHeight(int nHeight) { return nHeight >= g_nStartSPOSHeight; }
+
+inline bool IsStartDeterministicMNHeight(int nHeight) {return nHeight >= g_nStartDeterministicMNHeight;}
 
 inline bool IsLockedMonthRange(int nMonth) { return (nMonth >= 1 && nMonth <= 120); }
 

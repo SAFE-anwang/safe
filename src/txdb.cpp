@@ -49,6 +49,7 @@ static const string DB_CANDYHEIGHT_INDEX = "candyheight";
 static const string DB_GETCANDYCOUNT_INDEX = "getcandycount";
 static const string DB_MASTERNODE_PAYEE_INDEX ="masternode_payee";
 static const string DB_LOCAL_START_SAVE_PAYEE_HEIGHT_INDEX ="localstartsavepayee_height";
+static const string DB_SPORK_INFO_INDEX = "sprokinfo";
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {
@@ -1365,6 +1366,49 @@ bool CBlockTreeDB::Read_LocalStartSavePayeeHeight_Index(int &nHeight)
         else
         {
             return error("failed to get local start save payee height index value");
+        }
+    }
+
+    return ret;
+}
+
+bool CBlockTreeDB::Write_SporkInfo_Index(const int& nStorageSpork, const CSporkInfo_IndexValue& value)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Write(make_pair(DB_SPORK_INFO_INDEX, nStorageSpork), value);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_SporkInfo_Index(const int& nStorageSpork)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Erase(make_pair(DB_SPORK_INFO_INDEX, nStorageSpork));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_SporkInfo_Index(const int& nStorageSpork, CSporkInfo_IndexValue& value)
+{
+    return Read(make_pair(DB_SPORK_INFO_INDEX, nStorageSpork), value);
+}
+
+bool CBlockTreeDB::Is_Exists_SporkInfo_Key(const int& nStorageSpork)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(make_pair(DB_SPORK_INFO_INDEX, nStorageSpork));
+
+    bool ret = false;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, int> key;
+        if (pcursor->GetKey(key) && key.first == DB_SPORK_INFO_INDEX && key.second == nStorageSpork)
+        {
+            ret = true;
+            break;
+        }
+        else
+        {
+            break;
         }
     }
 
