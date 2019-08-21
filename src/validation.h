@@ -22,6 +22,7 @@
 #include "spentindex.h"
 #include "app/app.h"
 #include "masternode.h"
+#include "spos/spos.h"
 
 
 #include <algorithm>
@@ -683,6 +684,54 @@ struct CGetCandyCount_IndexValue
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
     {
         READWRITE(nGetCandyCount);
+    }
+};
+
+struct CIterator_DeterministicMasternodeKey
+{
+    COutPoint out;
+
+    CIterator_DeterministicMasternodeKey(const COutPoint& out=COutPoint()) : out(out) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(out);
+    }
+};
+
+struct CDeterministicMasternode_IndexValue
+{
+    std::string strIP;
+    uint16_t    nPort;
+    std::string strCollateralAddress;
+    std::string strSerialPubKeyId;
+    int         nHeight;
+    bool        fOfficial;
+    COutPoint   currTxOut;
+    COutPoint   lastTxOut;
+    CDeterministicMasternode_IndexValue(const std::string& strIP="",const uint16_t& nPort=0,const std::string& strCollateralAddress="",const std::string& strSerialPubKeyId="",
+                                        const int& nHeight=0,const bool& fOfficial=false,const COutPoint& currTxOut=COutPoint(),const COutPoint& lastTxOut=COutPoint())
+                                        :strIP(strIP),nPort(nPort),strCollateralAddress(strCollateralAddress),strSerialPubKeyId(strSerialPubKeyId),
+                                         nHeight(nHeight),fOfficial(fOfficial),currTxOut(currTxOut),lastTxOut(lastTxOut){
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(strIP);
+        READWRITE(nPort);
+        READWRITE(strCollateralAddress);
+        READWRITE(strSerialPubKeyId);
+        READWRITE(nHeight);
+        READWRITE(fOfficial);
+        READWRITE(lastTxOut);
+        READWRITE(currTxOut);
     }
 };
 
@@ -1594,6 +1643,7 @@ bool GetGetCandyTotalAmount(const uint256& assetId, const COutPoint& out, CAmoun
 bool GetAssetListInfo(std::vector<uint256> &vAssetId, const bool fWithMempool = true);
 bool GetIssueAssetInfo(std::map<uint256, CAssetData> &mapissueassetinfo);
 CAmount GetAddedAmountByAssetId(const uint256& assetId, const bool fWithMempool = true);
+bool GetDeterministicMasternodeByCOutPoint(const COutPoint& out,CDeterministicMasternode_IndexValue& dmn,const bool fWithMempool = true);
 
 void ThreadGetAllCandyInfo();
 void ThreadWriteChangeInfo();

@@ -34,6 +34,7 @@ struct CGetCandy_IndexKey;
 struct CGetCandy_IndexValue;
 struct CGetCandyCount_IndexKey;
 struct CGetCandyCount_IndexValue;
+struct CDeterministicMasternode_IndexValue;
 
 inline double AllowFreeThreshold()
 {
@@ -298,6 +299,11 @@ struct CGetCandyCount_IndexKeyCompare
     bool operator()(const CGetCandyCount_IndexKey& a, const CGetCandyCount_IndexKey& b) const;
 };
 
+struct CDeterministicMasternode_IndexKeyCompare
+{
+    bool operator()(const COutPoint& a, const COutPoint& b) const;
+};
+
 class CBlockPolicyEstimator;
 
 /** An inpoint - a combination of a transaction and an index n into its vin */
@@ -521,6 +527,11 @@ private:
     typedef std::map<uint256, std::vector<std::pair<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> > > mapGetCandyCount_IndexInserted;
     mapGetCandyCount_IndexInserted mapGetCandyCount_Inserted;
 
+    typedef std::map<COutPoint,CDeterministicMasternode_IndexValue, CDeterministicMasternode_IndexKeyCompare> mapDeterministicMasternode_Index;
+    mapDeterministicMasternode_Index mapDeterministicMasternode;
+    typedef std::map<uint256, std::vector<std::pair<COutPoint,CDeterministicMasternode_IndexValue> > > mapDeterministicMasternode_IndexInserted;
+    mapDeterministicMasternode_IndexInserted mapDeterministicMasternode_Inserted;
+
     void UpdateParent(txiter entry, txiter parent, bool add);
     void UpdateChild(txiter entry, txiter child, bool add);
 
@@ -597,6 +608,10 @@ public:
     void add_GetCandyCount_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
     bool get_GetCandyCount_Index(const uint256& assetId, const COutPoint& out,CGetCandyCount_IndexValue& value);
     bool remove_GetCandyCount_Index(const uint256& txhash);
+
+    void add_DeterministicMasternode_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view);
+    bool get_DeterministicMasternode_Index(const COutPoint& out,CDeterministicMasternode_IndexValue& value);
+    bool remove_DeterministicMasternode_Index(const uint256& txhash);
 
     int get_PutCandy_count(const uint256& assetId);
 

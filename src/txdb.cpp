@@ -50,6 +50,8 @@ static const string DB_GETCANDYCOUNT_INDEX = "getcandycount";
 static const string DB_MASTERNODE_PAYEE_INDEX ="masternode_payee";
 static const string DB_LOCAL_START_SAVE_PAYEE_HEIGHT_INDEX ="localstartsavepayee_height";
 static const string DB_SPORK_INFO_INDEX = "sprokinfo";
+static const string DB_DETERMINISTIC_MASTERNODE_INDEX = "deterministic_masternode";
+static const string DB_DETERMINISTIC_MASTERNODE_TX_INDEX = "deterministic_masternode_tx";
 
 CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {
@@ -1413,4 +1415,96 @@ bool CBlockTreeDB::Is_Exists_SporkInfo_Key(const int& nStorageSpork)
     }
 
     return ret;
+}
+bool CBlockTreeDB::Write_DeterministicMasternode_Index(const COutPoint& out, const CDeterministicMasternode_IndexValue &value)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Write(make_pair(DB_DETERMINISTIC_MASTERNODE_INDEX, out), value);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_DeterministicMasternode_Index(const COutPoint& out)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Erase(make_pair(DB_DETERMINISTIC_MASTERNODE_INDEX, out));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_DeterministicMasternode_Index(const COutPoint &out, CDeterministicMasternode_IndexValue &value)
+{
+    return Read(make_pair(DB_DETERMINISTIC_MASTERNODE_INDEX, out), value);
+}
+
+bool CBlockTreeDB::Read_DeterministicMasternode_Index(std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapDeterministicMasternode)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(make_pair(DB_DETERMINISTIC_MASTERNODE_INDEX, CIterator_DeterministicMasternodeKey()));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, COutPoint> key;
+        if (pcursor->GetKey(key) && key.first == DB_DETERMINISTIC_MASTERNODE_INDEX)
+        {
+            CDeterministicMasternode_IndexValue value;
+            if(pcursor->GetValue(value))
+            {
+                mapDeterministicMasternode[key.second] = value;
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get masternode payee index value");
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return mapDeterministicMasternode.size();
+}
+
+bool CBlockTreeDB::Is_Exists_DeterministicMasternode_Index(const COutPoint &out)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(make_pair(DB_DETERMINISTIC_MASTERNODE_INDEX, out));
+
+    bool ret = false;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, COutPoint> key;
+        if (pcursor->GetKey(key) && key.second == out)
+        {
+            ret = true;
+            break;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return ret;
+}
+
+bool CBlockTreeDB::Write_DeterministicMasternodeTx_Index(const COutPoint &out, const CDeterministicMasternode_IndexValue &value)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Write(make_pair(DB_DETERMINISTIC_MASTERNODE_TX_INDEX, out), value);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Erase_DeterministicMasternodeTx_Index(const COutPoint &out)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Erase(make_pair(DB_DETERMINISTIC_MASTERNODE_TX_INDEX, out));
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Read_DeterministicMasternodeTx_Index(const COutPoint &out, CDeterministicMasternode_IndexValue &value)
+{
+    return Read(make_pair(DB_DETERMINISTIC_MASTERNODE_TX_INDEX, out), value);
 }

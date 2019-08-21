@@ -168,6 +168,15 @@ public:
     bool Erase_SporkInfo_Index(const int& nStorageSpork);
     bool Read_SporkInfo_Index(const int& nStorageSpork, CSporkInfo_IndexValue& value);
     bool Is_Exists_SporkInfo_Key(const int& nStorageSpork);
+    bool Write_DeterministicMasternode_Index(const COutPoint& out,const CDeterministicMasternode_IndexValue& value);
+    bool Erase_DeterministicMasternode_Index(const COutPoint& out);
+    bool Read_DeterministicMasternode_Index(const COutPoint& out,CDeterministicMasternode_IndexValue& value);
+    bool Read_DeterministicMasternode_Index(std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapDeterministicMasternode);
+    bool Is_Exists_DeterministicMasternode_Index(const COutPoint& out);
+
+    bool Write_DeterministicMasternodeTx_Index(const COutPoint& out,const CDeterministicMasternode_IndexValue& value);
+    bool Erase_DeterministicMasternodeTx_Index(const COutPoint& out);
+    bool Read_DeterministicMasternodeTx_Index(const COutPoint& out,CDeterministicMasternode_IndexValue& value);
 };
 
 #endif // BITCOIN_TXDB_H

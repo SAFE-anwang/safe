@@ -36,6 +36,7 @@
 
 #include "main.h"
 #include "app/app.h"
+#include "spos/spos.h"
 
 #include <assert.h>
 
@@ -4190,8 +4191,9 @@ bool CWallet::ConvertList(std::vector<CTxIn> vecTxIn, std::vector<CAmount>& vecA
     return true;
 }
 
-bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
-                                int& nChangePosRet, std::string& strFailReason, const CCoinControl* coinControl, bool sign, AvailableCoinsType nCoinType, bool fUseInstantSend)
+bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,int& nChangePosRet,
+                                std::string& strFailReason, const CCoinControl* coinControl,bool sign, AvailableCoinsType nCoinType,
+                                bool fUseInstantSend,const std::vector<CDeterministicMasternodeData>* vecDMN)
 {
     if(!masternodeSync.IsBlockchainSynced())
     {
@@ -4286,6 +4288,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     nValueToSelect += nFeeRet;
                 double dPriority = 0;
                 // vouts to the payees
+                unsigned int index = 0;
                 BOOST_FOREACH (const CRecipient& recipient, vecSend)
                 {
                     int64_t ntempUnlockedHeightIn = 0;
@@ -4297,7 +4300,18 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                     LogPrintf("CWallet::CreateTransaction -- g_nChainHeight:%d----g_nStartSPOSHeight:%d----ntempUnlockedHeightIn%d\n", g_nChainHeight, g_nStartSPOSHeight, ntempUnlockedHeightIn);
 
-                    if(!recipient.strMemo.empty())
+                    if(vecDMN != NULL)
+                    {
+                        if(vecDMN->size()!=vecSend.size())
+                        {
+                            strFailReason = _("Build deterministic masternode transaction fail,recipient size is not equal to deterministic masternode size.");
+                            return false;
+                        }
+
+                        const CDeterministicMasternodeData& dmn = vecDMN->at(index);
+                        //fill deterministic masternode
+                        txout.vReserve = FillDeterministicMasternode(CSposHeader(SPOS_VERSION_REGIST_MASTERNODE),dmn);
+                    }if(!recipient.strMemo.empty())
                         txout.vReserve = FillTransferSafeData(CAppHeader(g_nAppHeaderVersion, uint256S(g_strSafePayId), TRANSFER_SAFE_CMD), CTransferSafeData(recipient.strMemo));
 
                     if (recipient.fSubtractFeeFromAmount)
@@ -4325,6 +4339,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         return false;
                     }
                     txNew.vout.push_back(txout);
+                    index++;
                 }
 
                 // Choose coins to use

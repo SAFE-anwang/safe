@@ -283,6 +283,11 @@ bool CSporkManager::SetPrivKey(std::string strPrivKey)
     }
 }
 
+std::string CSporkManager::GetPrivKey()
+{
+    return strMasterPrivKey;
+}
+
 void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
 {
     if (nSporkID == SPORK_6_SPOS_ENABLED && IsSpork_6_SPOSActive(SPORK_6_SPOS_ENABLED))

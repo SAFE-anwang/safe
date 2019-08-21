@@ -824,8 +824,6 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
               "blockTime:%lld,g_nSposIndex:%d,nTimeInerval:%d,g_nPushForwardTime:%d\n",index,localIP,nNewBlockHeight,nActualTimeMillisInterval,
               mn.pubKeyMasternode.GetID().ToString(),nCurrTime,nStartNewLoopTime,pblock->nTime,nSposGeneratedIndex,nTimeInerval,g_nPushForwardTime);
 
-    SetThreadPriority(THREAD_PRIORITY_NORMAL);
-
     //coin base add extra data
     if (IsStartDeterministicMNHeight(pindexPrev->nHeight + 1))
     {
@@ -866,42 +864,12 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         }
         ProcessBlockFound(pblock, chainparams);
 
-        SetThreadPriority(THREAD_PRIORITY_LOWEST);
         coinbaseScript->KeepScript();
 
         if(masternodeSPosCount==1)//XJTODO
             nSleepMS = Params().GetConsensus().nSPOSTargetSpacing*1000;
         else
             nSleepMS = nIntervalMS;
-    }
-
-    // In regression test mode, stop mining after a block is found. This
-    // allows developers to controllably generate a block on demand.
-
-    if (chainparams.MineBlocksOnDemand())
-    {
-        LogPrintf("SPOS_Warning:MineBlocksOnDemand\n");
-        throw boost::thread_interrupted();
-    }
-
-    // Check for stop or if block needs to be rebuilt
-    boost::this_thread::interruption_point();
-    // Regtest mode doesn't require peers
-    if (connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0 && chainparams.MiningRequiresPeers())
-    {
-        LogPrintf("SPOS_Warning:GetNodeCount fail\n");
-        return;
-    }
-//    if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast /*&& GetTime() - nCurrTime > 60*/)
-//    {
-//        LogPrintf("SPOS_Warning:mempool fail,mempool.GetTransactionsUpdated():%d,nTransactionsUpdatedLast:%d\n"
-//                  ,mempool.GetTransactionsUpdated(),nTransactionsUpdatedLast);
-//        return;
-//    }
-    if (pindexPrev != chainActive.Tip())
-    {
-        //LogPrintf("SPOS_Warning:tip not equal\n");
-        return;
     }
 
     // Update nTime every few seconds
@@ -913,7 +881,6 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
 void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 {
     LogPrintf("SPOS_Message:SafeSposMiner is -- started\n");
-    SetThreadPriority(THREAD_PRIORITY_LOWEST);
     RenameThread("safe-spos-miner");
 
     unsigned int nExtraNonce = 0;
@@ -921,21 +888,24 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
     boost::shared_ptr<CReserveScript> coinbaseScript;
     GetMainSignals().ScriptForMining(coinbaseScript);
 
-    try {
-        // Throw an error if no script was provided.  This can happen
-        // due to some internal error but also if the keypool is empty.
-        // In the latter case, already the pointer is NULL.
-        if (!coinbaseScript || coinbaseScript->reserveScript.empty())
-            throw std::runtime_error("No coinbase script available (mining requires a wallet)");
 
-        g_nStartNewLoopTimeMS = 0;
+    // Throw an error if no script was provided.  This can happen
+    // due to some internal error but also if the keypool is empty.
+    // In the latter case, already the pointer is NULL.
+    if (!coinbaseScript || coinbaseScript->reserveScript.empty())
+        throw std::runtime_error("No coinbase script available (mining requires a wallet)");
+
+    g_nStartNewLoopTimeMS = 0;
+    {
+        LOCK(cs_spos);
+        g_nStartNewLoopTimeMS = GetTime()*1000;
+    }
+    unsigned int nWaitBlockHeight = 0,nEmptySposCntHeight = 0,nAbnormalSposCntHeight = 0;
+    int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0,nNextLogAllowTime = 0;
+    while (true)
+    {
+        try
         {
-            LOCK(cs_spos);
-            g_nStartNewLoopTimeMS = GetTime()*1000;
-        }
-        unsigned int nWaitBlockHeight = 0,nEmptySposCntHeight = 0,nAbnormalSposCntHeight = 0;
-        int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0,nNextLogAllowTime = 0;
-        while (true) {
             if (chainparams.MiningRequiresPeers()) {
                 // Busy-wait for the network to come online so we don't waste time mining
                 // on an obsolete chain. In regtest mode we expect to fly solo.
@@ -993,8 +963,8 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 CBlock *pblock = &pblocktemplate->block;
                 IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
 
-//                LogPrintf("SPOS_Message:Running miner with %u transactions in block (%u bytes),currHeight:%d\n",pblock->vtx.size(),
-//                          ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION),pindexPrev->nHeight);
+    //                LogPrintf("SPOS_Message:Running miner with %u transactions in block (%u bytes),currHeight:%d\n",pblock->vtx.size(),
+    //                          ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION),pindexPrev->nHeight);
 
                 std::vector<CMasternode> tmpVecResultMasternodes;
                 int nSposGeneratedIndex=0,masternodeSPosCount=0;
@@ -1024,18 +994,17 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 MilliSleep(nSleepMS);
             else
                 MilliSleep(nSposSleeptime);
+        }catch (const boost::thread_interrupted&)
+        {
+            LogPrintf("SPOS_Warning:SafeMiner -- catch thread_interrupted\n");
+            throw;
+        }
+        catch (const std::runtime_error &e)
+        {
+            LogPrintf("SPOS_Warning:SafeMiner -- runtime error: %s\n", e.what());
         }
     }
-    catch (const boost::thread_interrupted&)
-    {
-        LogPrintf("SPOS_Warning:SafeMiner -- terminated\n");
-        throw;
-    }
-    catch (const std::runtime_error &e)
-    {
-        LogPrintf("SPOS_Warning:SafeMiner -- runtime error: %s\n", e.what());
-        return;
-    }
+
     LogPrintf("SPOS_Warning:spos miner thread is exit\n");
 }
 
@@ -1110,13 +1079,14 @@ void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& ch
 void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
 {
     LogPrintf("SPOS_Message:SPOSAutoReselectThread is -- started\n");
-    SetThreadPriority(THREAD_PRIORITY_LOWEST);
     RenameThread("spos-autoreselect");
 
-    try {
-        int nTmpTimeoutCount = -1;
-        int nLastTimeoutHeight = 0;
-        while (true)
+
+    int nTmpTimeoutCount = -1;
+    int nLastTimeoutHeight = 0;
+    while (true)
+    {
+        try
         {
             boost::this_thread::interruption_point();
             if (chainparams.MiningRequiresPeers())
@@ -1232,17 +1202,16 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
 
             MilliSleep(nSposSleeptime);
+        }catch (const boost::thread_interrupted&)
+        {
+            LogPrintf("SPOS_Warning:SPOSAutoReselect -- thread_interrupted\n");
+            throw;
+        }
+        catch (const std::runtime_error &e)
+        {
+            LogPrintf("SPOS_Warning:SPOSAutoReselect -- runtime error: %s\n", e.what());
         }
     }
-    catch (const boost::thread_interrupted&)
-    {
-        LogPrintf("SPOS_Warning:SPOSAutoReselect -- terminated\n");
-        throw;
-    }
-    catch (const std::runtime_error &e)
-    {
-        LogPrintf("SPOS_Warning:SPOSAutoReselect -- runtime error: %s\n", e.what());
-        return;
-    }
+
     LogPrintf("SPOS_Warning:spos auto reselect thread is exit\n");
 }

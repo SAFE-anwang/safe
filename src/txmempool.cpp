@@ -1248,6 +1248,11 @@ bool CGetCandyCount_IndexKeyCompare::operator ()(const CGetCandyCount_IndexKey& 
     return a.assetId < b.assetId;
 }
 
+bool CDeterministicMasternode_IndexKeyCompare::operator ()(const COutPoint& a, const COutPoint& b) const
+{
+    return a < b;
+}
+
 void CTxMemPool::add_GetCandy_Index(const CTxMemPoolEntry& entry, const CCoinsViewCache& view)
 {
     LOCK(cs);
@@ -1422,6 +1427,98 @@ bool CTxMemPool::remove_GetCandyCount_Index(const uint256& txhash)
     return true;
 }
 
+void CTxMemPool::add_DeterministicMasternode_Index(const CTxMemPoolEntry &entry, const CCoinsViewCache &view)
+{
+    LOCK(cs);
+    const CTransaction& tx = entry.GetTx();
+    std::vector<std::pair<COutPoint,CDeterministicMasternode_IndexValue> > deterministicMasternode_inserted;
+
+    uint256 txhash = tx.GetHash();
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CSposHeader header;
+        std::vector<unsigned char> vData;
+        if(ParseSposReserve(txout.vReserve, header, vData))
+        {
+            CTxDestination dest;
+            if(!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+            if(header.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
+            {
+                CDeterministicMasternodeData dmn;
+                if(ParseDeterministicMasternode(vData, dmn))
+                {
+                    uint256 hash = uint256S(dmn.strDMNTxid);
+                    COutPoint out(hash,dmn.nDMNOutputIndex);
+                    CDeterministicMasternode_IndexValue& value = mapDeterministicMasternode[out];
+                    value.strIP = dmn.strIP;
+                    value.nPort = dmn.nPort;
+                    value.strCollateralAddress = dmn.strCollateralAddress;
+                    value.strSerialPubKeyId = dmn.strSerialPubKeyId;
+                    value.currTxOut = COutPoint(txhash,i);
+                    value.nHeight = g_nChainHeight;
+                    value.fOfficial = !dmn.strOfficialSignedMsg.empty();
+                    deterministicMasternode_inserted.push_back(std::make_pair(out,value));
+                    LogPrintf("SPOS_Message:mempool add deterministic masternode:ip:%s,strCollateralAddress:%s,fOfficial:%s,%s\n",dmn.strIP,
+                              dmn.strCollateralAddress,value.fOfficial?"true":"false",out.ToString());
+                }
+            }
+        }
+    }
+    if (deterministicMasternode_inserted.size())
+        mapDeterministicMasternode_Inserted.insert(make_pair(txhash, deterministicMasternode_inserted));
+}
+
+bool CTxMemPool::get_DeterministicMasternode_Index(const COutPoint &out, CDeterministicMasternode_IndexValue &value)
+{
+    LOCK(cs);
+    for(mapDeterministicMasternode_Index::const_iterator it = mapDeterministicMasternode.begin(); it != mapDeterministicMasternode.end(); it++)
+    {
+        if(it->first == out)
+        {
+            const CDeterministicMasternode_IndexValue& poolValue = it->second;
+            value.strIP = poolValue.strIP;
+            value.nPort = poolValue.nPort;
+            value.strCollateralAddress = poolValue.strCollateralAddress;
+            value.strSerialPubKeyId = poolValue.strSerialPubKeyId;
+            value.nHeight = poolValue.nHeight;
+            value.fOfficial = poolValue.fOfficial;
+            value.currTxOut = poolValue.currTxOut;
+            value.lastTxOut = poolValue.lastTxOut;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool CTxMemPool::remove_DeterministicMasternode_Index(const uint256& txhash)
+{
+    LOCK(cs);
+    mapDeterministicMasternode_IndexInserted::iterator it = mapDeterministicMasternode_Inserted.find(txhash);
+
+    if(it != mapDeterministicMasternode_Inserted.end())
+    {
+        std::vector<std::pair<COutPoint,CDeterministicMasternode_IndexValue> > keys = (*it).second;
+        for(std::vector<std::pair<COutPoint,CDeterministicMasternode_IndexValue> >::iterator mit = keys.begin(); mit != keys.end(); mit++)
+        {
+            const COutPoint& out = mit->first;
+            if(mapDeterministicMasternode.find(out) != mapDeterministicMasternode.end())
+            {
+                CDeterministicMasternode_IndexValue& value = mapDeterministicMasternode[out];
+                LogPrintf("SPOS_Message:mempool remove deterministic masternode:ip:%s,strCollateralAddress:%s,fOfficial:%s,%s\n",
+                          value.strIP,value.strCollateralAddress,value.fOfficial?"true":"false",out.ToString());
+                mapDeterministicMasternode.erase(out);
+            }
+        }
+        mapDeterministicMasternode_Inserted.erase(it);
+    }
+
+    return true;
+}
+
 void CTxMemPool::removeUnchecked(txiter it)
 {
     const uint256 hash = it->GetTx().GetHash();
@@ -1444,6 +1541,7 @@ void CTxMemPool::removeUnchecked(txiter it)
     remove_AssetTx_Index(hash);
     remove_GetCandy_Index(hash);
     remove_GetCandyCount_Index(hash);
+    remove_DeterministicMasternode_Index(hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////

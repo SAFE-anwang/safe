@@ -121,6 +121,7 @@ std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
 int64_t g_nAllowableErrorTime = 60;
+bool fOfficialMasternodeSign = false;
 #if SCN_CURRENT == SCN__main
 CAmount nMiningIncentives = 310662692;
 CAmount nSPOSAdjustMiningIncentives = 345180768;
@@ -186,6 +187,9 @@ uint32_t g_nScoreTime = 0;
 
 std::mutex g_mutexAllPayeeInfo;
 std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
+
+std::mutex g_mutexAllDeterministicMasternode;
+std::map<COutPoint,CDeterministicMasternode_IndexValue> gAllDeterministicMasternodeMap;
 
 const static int M = 2000; //Maximum number of digits
 int numA[M];
@@ -847,6 +851,135 @@ bool CheckAssetTxInputAndOutput(const CTransaction& tx, CValidationState &state,
 
     if (fvinHasAsset && !fvoutHasAssset)
        return state.DoS(50, false, REJECT_INVALID, "bad tx");
+
+    return true;
+}
+
+bool CheckSposTransaction(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view, const bool &fWithMempool)
+{
+    if(chainActive.Height()<=330957)//XJTODO
+        return true;
+
+    if(tx.IsCoinBase())
+        return true;
+
+    // check vout
+    vector<COutPoint> vOutPoint;
+    vector<string> vCollateralAddr;
+    vector<string> vSerialPubKeyId;
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+        CSposHeader header;
+        vector<unsigned char> vData;
+        if(!ParseSposReserve(txout.vReserve, header, vData))
+            continue;
+
+        if(header.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
+        {
+            if(!txout.IsSafeOnly()) // non-simple-safe txout
+                return state.DoS(10, false, REJECT_INVALID, "register_dmn: tx can contain register txout and simple safe txout only, " + txout.ToString());
+
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "register_dmn: conflict with locked txout");
+
+            if(txout.nValue != SPOS_REGIST_MASTERNODE_OUT_VALUE)
+                return state.DoS(50, false, REJECT_INVALID, "register_dmn: invalid txout value");
+
+            CDeterministicMasternodeData dmn;
+            if(!ParseDeterministicMasternode(vData, dmn))
+                return state.DoS(50, false, REJECT_INVALID, "register_dmn: parse dmn txout reserve failed");
+
+            string strAddress = "";
+            if(!GetTxOutAddress(txout, &strAddress))
+                return state.DoS(10, false, REJECT_INVALID, "register_dmn:invalid txout address, " + txout.ToString());
+
+            if(strAddress != dmn.strCollateralAddress)
+                return state.DoS(50, false, REJECT_INVALID, "register_dmn: txout address is different from collateral address, " + strAddress + " != " + dmn.strCollateralAddress);
+
+            std::string strMsg = "";
+            std::string strError = "";
+            bool fExist = false;
+            if(!CheckDeterministicMasternode(dmn,strMsg,fExist,strError,fWithMempool))
+                return state.DoS(10, false, REJECT_INVALID, "register_dmn:" + strError);
+
+            //------------------------------------
+            uint256 dmnTxId = uint256S(dmn.strDMNTxid);
+            if(dmnTxId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "register_dmn: dmn tx id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+
+            COutPoint outpoint(dmnTxId,dmn.nDMNOutputIndex);
+            if (find(vOutPoint.begin(), vOutPoint.end(), outpoint) == vOutPoint.end())
+                vOutPoint.push_back(outpoint);
+            else
+                return state.DoS(50, false, REJECT_INVALID, "register_dmn: the outpoint already exists.ip:" + dmn.strIP);
+
+            if (find(vCollateralAddr.begin(), vCollateralAddr.end(), dmn.strCollateralAddress) == vCollateralAddr.end())
+                vCollateralAddr.push_back(dmn.strCollateralAddress);
+            else
+               return state.DoS(50, false, REJECT_INVALID, "register_dmn: the colleteral address already exists.ip:" + dmn.strIP);
+
+            if (find(vSerialPubKeyId.begin(), vSerialPubKeyId.end(), dmn.strSerialPubKeyId) == vSerialPubKeyId.end())
+                vSerialPubKeyId.push_back(dmn.strSerialPubKeyId);
+            else
+               return state.DoS(50, false, REJECT_INVALID, "register_dmn: the serial pubkey id already exists.ip:" + dmn.strIP);
+        }
+    }
+
+    unsigned int dmnCOutPointCount = vOutPoint.size();
+    if(dmnCOutPointCount == 0) // safe tx(without safe-dmn tx)
+        return true;
+
+    if(dmnCOutPointCount > SPOS_REGIST_MASTERNODE_MAX)
+        return state.DoS(50, false, REJECT_INVALID, strprintf("register_dmn: the dmn txid count(%u) is bigger than %u",dmnCOutPointCount,SPOS_REGIST_MASTERNODE_MAX));
+
+    // check fees
+    CAmount nFees = view.GetValueIn(tx) - tx.GetValueOut();
+    unsigned int nBytes = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+    CAmount nMinRelayFee = ::minRelayTxFee.GetFee(nBytes);
+    if(nFees == 0 && nBytes > MAX_FREE_TRANSACTION_CREATE_SIZE)
+        return state.DoS(50, false, REJECT_INVALID, "register_dmn: must have fees in the tx");
+
+    if(nFees > 0)
+    {
+        CAmount nAdditionalFee = GetTxAdditionalFee(tx);
+        if(nFees < nMinRelayFee + nAdditionalFee)
+            return state.DoS(50, false, REJECT_INVALID, strprintf("register_dmn: invalid tx(size: %u) fee, need additional fee, %ld < %ld + %ld", nBytes, nFees, nMinRelayFee, nAdditionalFee));
+    }
+
+    // check additional fees
+    CAmount nAdditionalFee = GetTxAdditionalFee(tx);
+    if(nFees < nMinRelayFee + nAdditionalFee)
+        return state.DoS(50, false, REJECT_INVALID, strprintf("register_dmn: invalid tx(size: %u) fee, need additional fee, %ld < %ld + %ld", nBytes, nFees, nMinRelayFee, nAdditionalFee));
+
+    // check vin
+    for(unsigned int i = 0; i < tx.vin.size(); i++)
+    {
+        const CTxIn& txin = tx.vin[i];
+        const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+        if(!coins || !coins->IsAvailable(txin.prevout.n))
+            return state.Invalid(false, REJECT_DUPLICATE, "register_dmn:3-bad-txns-inputs-spent");
+        const CTxOut& txout = coins->vout[txin.prevout.n];
+
+        if(txout.IsAsset())
+            return state.DoS(50, false, REJECT_INVALID, "register_dmn: txin cannot be asset txout, " + txin.ToString());
+
+        CSposHeader header;
+        vector<unsigned char> vData;
+        if(!ParseSposReserve(txout.vReserve, header, vData))
+            continue;
+
+        if(header.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
+        {
+            CDeterministicMasternodeData dmn;
+            if(!ParseDeterministicMasternode(vData, dmn))
+                return state.DoS(50, false, REJECT_INVALID, "register_dmn: parse dmn txin reserve failed");
+
+            uint256 dmnTxId = uint256S(dmn.strDMNTxid);
+            if(dmnTxId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "register_dmn: txin dmn txid is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+        }
+    }
 
     return true;
 }
@@ -2496,6 +2629,9 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         if(!CheckAppTransaction(tx, state, view, mapAssetGetCandy, true))
             return false;
 
+        if(!CheckSposTransaction(tx,state,view,true))
+            return false;
+
         CTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, chainActive.Height(), pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOps, lp);
         unsigned int nSize = entry.GetTxSize();
 
@@ -2763,6 +2899,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         pool.add_AssetTx_Index(entry, view);
         pool.add_GetCandy_Index(entry, view);
         pool.add_GetCandyCount_Index(entry,view);
+        pool.add_DeterministicMasternode_Index(entry,view);
 
         // trim mempool and check if tx was trimmed
         if (!fOverrideMempoolLimit) {
@@ -3690,6 +3827,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> getCandyCount_index;
     std::string strPubKeyCollateralAddress = "";
     CMasternodePayee_IndexValue masternodePayment_IndexValue;
+    std::map<COutPoint,CDeterministicMasternode_IndexValue> deterministicMasternode_index;
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
@@ -3860,6 +3998,9 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         for(unsigned int m = tx.vout.size(); m-- > 0;)
         {
             const CTxOut& txout = tx.vout[m];
+
+            CSposHeader sposHeader;
+            std::vector<unsigned char> vSposData;
 
             CAppHeader header;
             std::vector<unsigned char> vData;
@@ -4098,6 +4239,54 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                      masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
         }
     }
+
+    //remove deterministic masternode
+    std::map<COutPoint, CDeterministicMasternode_IndexValue>::iterator iter = deterministicMasternode_index.begin();
+    while(iter != deterministicMasternode_index.end())
+    {
+        const COutPoint& out = iter->first;
+        if(pblocktree->Is_Exists_DeterministicMasternode_Index(out))
+        {
+            //read curr dmn,then erase curr dmn
+            CDeterministicMasternode_IndexValue currDMNValue;
+            if(!pblocktree->Read_DeterministicMasternode_Index(out,currDMNValue))
+                return AbortNode(state, "SPOS_Error:Failed to read deterministic masternode index when disconnect block");
+            if(!pblocktree->Erase_DeterministicMasternode_Index(out))
+                return AbortNode(state, "SPOS_Error:Failed to erase deterministic masternode index when disconnect block");
+
+            //read curr dmntx,then erase curr dmn tx
+            CDeterministicMasternode_IndexValue currDMNTxValue;
+            if(!pblocktree->Read_DeterministicMasternodeTx_Index(currDMNValue.currTxOut,currDMNTxValue))
+                return AbortNode(state, "SPOS_Error:Failed to read deterministic masternode tx when disconnect block");
+            if(!pblocktree->Erase_DeterministicMasternodeTx_Index(currDMNValue.currTxOut))
+                return AbortNode(state, "SPOS_Error:Failed to erase deterministic masternode tx when disconnect block");
+
+            //read last dmn,write last dmn,lastTxOut may be 0
+            CDeterministicMasternode_IndexValue lastDMNValue;
+            if(!currDMNTxValue.lastTxOut.IsNull())//XJTODO test it
+            {
+                if(!pblocktree->Read_DeterministicMasternodeTx_Index(currDMNValue.lastTxOut,lastDMNValue))
+                    return AbortNode(state, "SPOS_Error:Failed to read deterministic masternode tx index when disconnect block");
+                if(!pblocktree->Write_DeterministicMasternode_Index(currDMNValue.lastTxOut,lastDMNValue))
+                    return AbortNode(state, "SPOS_Error:Failed to write deterministic masternode index when disconnect block");
+
+                {
+                    std::lock_guard<std::mutex> lock(g_mutexAllDeterministicMasternode);
+                    gAllDeterministicMasternodeMap[out] = lastDMNValue;
+                }
+            }else
+            {
+                gAllDeterministicMasternodeMap.erase(out);
+            }
+
+            //XJTODO test undo
+            LogPrintf("SPOS_Message:remove deterministic masternode:ip:%s,strCollateralAddress:%s,fOfficial:%s,tx %s,add last deterministic"
+                      " masternode:ip:%s,fOfficial:%s,tx %s\n",currDMNValue.strIP,currDMNValue.strCollateralAddress,
+                      currDMNTxValue.fOfficial?"true":"false",lastDMNValue.currTxOut.ToString(),lastDMNValue.strIP,
+                      lastDMNValue.fOfficial?"true":"false",currDMNValue.currTxOut.ToString());
+        }
+    }
+
     return fClean;
 }
 
@@ -4370,6 +4559,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> getCandyCount_index;
     std::string strPubKeyCollateralAddress = "";
     CMasternodePayee_IndexValue masternodePayment_IndexValue;
+    std::map<COutPoint,CDeterministicMasternode_IndexValue> deterministicMasternode_index;
 
     map<string, CAmount> mapAddressAmount;
 
@@ -4386,6 +4576,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
         if(!fJustCheck && !CheckAppTransaction(tx, state, view, mapAssetGetCandy, false))
             return error("ConnectBlock(): CheckAppTransaction on %s failed with %s", txhash.ToString(), FormatStateMessage(state));
+
+        if(!fJustCheck && !CheckSposTransaction(tx,state,view,false))
+            return error("ConnectBlock(): CheckSposTransaction on %s failed with %s", txhash.ToString(), FormatStateMessage(state));
 
         nInputs += tx.vin.size();
         nSigOps += GetLegacySigOpCount(tx);
@@ -4552,8 +4745,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         {
             const CTxOut& txout = tx.vout[m];
 
+            CSposHeader sposHeader;
+            std::vector<unsigned char> vSposData;
+
             CAppHeader header;
             std::vector<unsigned char> vData;
+
             if(ParseReserve(txout.vReserve, header, vData))
             {
                 CTxDestination dest;
@@ -4705,6 +4902,17 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                         value.nGetCandyCount += candyData.nAmount;
                         getCandy_index.push_back(make_pair(CGetCandy_IndexKey(candyData.assetId, tx.vin.back().prevout, strAddress), CGetCandy_IndexValue(candyData.nAmount, pindex->nHeight, blockHash, i)));
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, GET_CANDY_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+                    }
+                }
+            }else if(ParseSposReserve(txout.vReserve, sposHeader, vSposData))
+            {
+                if(sposHeader.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
+                {
+                    CDeterministicMasternodeData dmn;
+                    if(ParseDeterministicMasternode(vSposData, dmn))
+                    {
+                        deterministicMasternode_index[COutPoint(uint256S(dmn.strDMNTxid),dmn.nDMNOutputIndex)] = CDeterministicMasternode_IndexValue(dmn.strIP,dmn.nPort,
+                                                   dmn.strCollateralAddress,dmn.strSerialPubKeyId,pindex->nHeight,!dmn.strOfficialSignedMsg.empty(),COutPoint(txhash,m));
                     }
                 }
             }
@@ -4933,6 +5141,39 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
         LogPrintf("SPOS_Info:add masternode payee,strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
                  masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
+    }
+
+    //add deterministic masternode
+    std::map<COutPoint, CDeterministicMasternode_IndexValue>::iterator iter = deterministicMasternode_index.begin();
+    while(iter != deterministicMasternode_index.end())
+    {
+        const COutPoint& out = iter->first;
+        CDeterministicMasternode_IndexValue& currDMNValue = iter->second;
+        CDeterministicMasternode_IndexValue lastDMNValue;
+        bool fAdd = true;
+        if(pblocktree->Is_Exists_DeterministicMasternode_Index(out))
+        {
+            if(!pblocktree->Read_DeterministicMasternode_Index(out,lastDMNValue))
+                return AbortNode(state, "Failed to get deterministic masternode index when write");
+            if(!pblocktree->Erase_DeterministicMasternode_Index(out))
+                return AbortNode(state, "Failed to erase deterministic masternode index");
+            currDMNValue.lastTxOut = lastDMNValue.currTxOut;
+            fAdd = false;
+        }
+        if(!pblocktree->Write_DeterministicMasternode_Index(out,currDMNValue))
+            return AbortNode(state, "Failed to write deterministic masternode index");
+
+        if(!pblocktree->Write_DeterministicMasternodeTx_Index(currDMNValue.currTxOut,currDMNValue))
+            return AbortNode(state, "Failed to write deterministic masternode tx index");
+
+        {
+            std::lock_guard<std::mutex> lock(g_mutexAllDeterministicMasternode);
+            gAllDeterministicMasternodeMap[out] = currDMNValue;
+        }
+        ++iter;
+        LogPrintf("SPOS_Message:%s deterministic masternode:ip:%s,strCollateralAddress:%s,fOfficial:%s,tx %s,dmnCount:%d\n",fAdd?"add":"update",
+                  currDMNValue.strIP,currDMNValue.strCollateralAddress,currDMNValue.fOfficial?"true":"false",currDMNValue.currTxOut.ToString(),
+                  gAllDeterministicMasternodeMap.size());
     }
 
     while(GetChangeInfoListSize() >= g_nListChangeInfoLimited)
@@ -8214,6 +8455,17 @@ bool GetCOutPointList(const uint256& assetId, const std::string& strAddress, std
     return pblocktree->Read_GetCandy_Index(assetId, strAddress, vcoutpoint);
 }
 
+bool GetDeterministicMasternodeByCOutPoint(const COutPoint &out, CDeterministicMasternode_IndexValue &dmn_IndexValue, const bool fWithMempool)
+{
+    if(out.IsNull())
+        return false;
+
+    if(pblocktree->Read_DeterministicMasternode_Index(out, dmn_IndexValue))
+        return true;
+
+    return fWithMempool && mempool.get_DeterministicMasternode_Index(out, dmn_IndexValue);
+}
+
 bool GetIssueAssetInfo(std::map<uint256, CAssetData>& mapissueassetinfo)
 {
     if (!pwalletMain)
@@ -9897,6 +10149,20 @@ void GetAllPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue>& mapAl
     for (auto& Payeepair : gAllPayeeInfoMap)
     {
         mapAllPayeeInfo[Payeepair.first] = Payeepair.second;
+    }
+}
+
+void GetAllDeterministicMasternodeMap(std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapOfficialDeterministicMasternode,
+                                      std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapCommonDeterministicMasternode)
+{
+    std::lock_guard<std::mutex> lock(g_mutexAllDeterministicMasternode);
+
+    for (auto& Dmnpair : gAllDeterministicMasternodeMap)
+    {
+        if(Dmnpair.second.fOfficial)
+            mapOfficialDeterministicMasternode[Dmnpair.first] = Dmnpair.second;
+        else
+            mapCommonDeterministicMasternode[Dmnpair.first] = Dmnpair.second;
     }
 }
 

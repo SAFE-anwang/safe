@@ -1,12 +1,18 @@
 #ifndef SPOS_H
 #define SPOS_H
 
-#define SPOS_VERSION_REGIST_MASTERNODE 100
-#define SPOS_REGIST_MASTERNODE_MAX 50
-
 #include <vector>
 #include <string>
+#include "amount.h"
+#include "primitives/transaction.h"
+#include "pubkey.h"
 #include "key.h"
+
+#define SPOS_VERSION_REGIST_MASTERNODE 100
+#define SPOS_REGIST_MASTERNODE_MAX 50
+#define SPOS_REGIST_MASTERNODE_OUT_VALUE 0.0001 * COIN
+
+struct CDeterministicMasternode_IndexValue;
 
 class CSposHeader
 {
@@ -37,35 +43,37 @@ public:
     }
 };
 
-class CDeterminedMasternodeData
+class CDeterministicMasternodeData
 {
 public:
     std::string strIP;
     uint16_t    nPort;
     std::string strCollateralAddress;
-    std::string strTxid;
-    uint16_t    nOutputIndex;
+    std::string strDMNTxid;
+    uint16_t    nDMNOutputIndex;
     std::string strSerialPubKeyId;
     std::string strSignedMsg;
+    std::string strOfficialSignedMsg;
 
-    CDeterminedMasternodeData()
+    CDeterministicMasternodeData()
     {
         SetNull();
     }
 
-    void initPubkeyIdAndSign(const std::string &strSerialPubKeyId,const std::string &strSignedMsg)
+    void initPubkeyIdAndSign(const std::string &strSerialPubKeyId,const std::string &strSignedMsg,const std::string &strOfficialSignedMsg)
     {
         this->strSerialPubKeyId = strSerialPubKeyId;
         this->strSignedMsg = strSignedMsg;
+        this->strOfficialSignedMsg = strOfficialSignedMsg;
     }
 
-    CDeterminedMasternodeData(const std::string& strIP,const uint16_t& nPort,const std::string& strCollateralAddress,const std::string& strTxid,
-                              const uint16_t& nOutputIndex,const std::string& strSerialPubKeyId,const std::string& strSignedMsg)
-        : strIP(strIP), nPort(nPort), strCollateralAddress(strCollateralAddress), strTxid(strTxid),nOutputIndex(nOutputIndex),
-          strSerialPubKeyId(strSerialPubKeyId),strSignedMsg(strSignedMsg){
+    CDeterministicMasternodeData(const std::string& strIP,const uint16_t& nPort,const std::string& strCollateralAddress,const std::string& strTxid,const uint16_t& nOutputIndex,
+                                const std::string& strSerialPubKeyId,const std::string& strSignedMsg,const std::string& strOfficialSignedMsg)
+                    : strIP(strIP), nPort(nPort), strCollateralAddress(strCollateralAddress), strDMNTxid(strTxid),nDMNOutputIndex(nOutputIndex),
+                      strSerialPubKeyId(strSerialPubKeyId),strSignedMsg(strSignedMsg),strOfficialSignedMsg(strOfficialSignedMsg){
     }
 
-    CDeterminedMasternodeData& operator=(const CDeterminedMasternodeData& data)
+    CDeterministicMasternodeData& operator=(const CDeterministicMasternodeData& data)
     {
         if(this == &data)
             return *this;
@@ -73,10 +81,11 @@ public:
         strIP = data.strIP;
         nPort = data.nPort;
         strCollateralAddress = data.strCollateralAddress;
-        strTxid = data.strTxid;
-        nOutputIndex = data.nOutputIndex;
+        strDMNTxid = data.strDMNTxid;
+        nDMNOutputIndex = data.nDMNOutputIndex;
         strSerialPubKeyId = data.strSerialPubKeyId;
         strSignedMsg = data.strSignedMsg;
+        strOfficialSignedMsg = data.strOfficialSignedMsg;
         return *this;
     }
 
@@ -85,10 +94,11 @@ public:
         strIP.clear();
         nPort = 0;
         strCollateralAddress.clear();
-        strTxid.clear();
-        nOutputIndex = 0;
+        strDMNTxid.clear();
+        nDMNOutputIndex = 0;
         strSerialPubKeyId.clear();
         strSignedMsg.clear();
+        strOfficialSignedMsg.clear();
     }
 };
 
@@ -140,15 +150,18 @@ public:
         nFirstBlock = 0;
     }
 };
-bool CheckDeterminedMasternode(CDeterminedMasternodeData& dmn,std::string& strMessage,std::string& strError);
+bool CheckDeterministicMasternode(CDeterministicMasternodeData& dmn,std::string& strMsg,bool& fExist,std::string& strError,const bool& fWithMempool);
 
-bool BuildDeterminedMasternode(CDeterminedMasternodeData& dmn,const std::string& strPrivKey,std::string& strError);
-//SQTODO
-//bool RegisterDeterminedMasternodes(std::vector<CDeterminedMasternodeData>& dmnVec,std::string& strError);
-
-std::vector<unsigned char> FillDeterminedMasternode(const CSposHeader& header,const CDeterminedMasternodeData& dmn);
-std::vector<unsigned char> FillDeterminedMNCoinbaseData(const CSposHeader& header, const CDeterminedMNCoinbaseData& determinedMNCoinbaseData, bool& bRet);
-bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData);
-bool ParseDeterminedMasternode(const std::vector<unsigned char>& vDMNData, CDeterminedMasternodeData& dmn);
+bool BuildDeterministicMasternode(CDeterministicMasternodeData& dmn,const std::string& strPrivKey,bool& fExist,std::string& strError);
+bool RegisterDeterministicMasternodes(std::vector<CDeterministicMasternodeData>& dmnVec,std::string& strError);
+std::vector<unsigned char> FillDeterminedMNCoinbaseData(const CSposHeader& header,const CDeterminedMNCoinbaseData& determinedMNCoinbaseData, bool& bRet);
 bool ParseDeterminedMNCoinbaseData(const std::vector<unsigned char>& vData, CDeterminedMNCoinbaseData& determinedMNCoinbaseData);
+
+std::vector<unsigned char> FillDeterministicMasternode(const CSposHeader& header,const CDeterministicMasternodeData& dmn);
+
+bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData);
+bool ParseDeterministicMasternode(const std::vector<unsigned char>& vDMNData, CDeterministicMasternodeData& dmn);
+
+bool ExistDeterministicMasternode(const COutPoint& out, CDeterministicMasternode_IndexValue& dmn_IndexValue, const bool fWithMempool = true);
+
 #endif // SPOS_H

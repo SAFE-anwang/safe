@@ -108,6 +108,8 @@ extern unsigned int g_nMasternodeCanBeSelectedTime;
 extern unsigned int g_nMasternodeMinCount;
 extern std::mutex g_mutexAllPayeeInfo;
 extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
+extern std::mutex g_mutexAllDeterministicMasternode;
+extern std::map<COutPoint,CDeterministicMasternode_IndexValue> gAllDeterministicMasternodeMap;
 extern int64_t g_nAllowMasterNodeSyncErrorTime;
 extern int g_nLogMaxCnt;
 extern int g_nLocalStartSavePayeeHeight;
@@ -115,6 +117,8 @@ extern int g_nCanSelectMasternodeHeight;
 extern int g_nMinerBlockTimeout;
 extern int g_nAdjustMiningRewardHeight;
 extern int g_nForbidOldVersionHeight;
+extern bool fOfficialMasternodeSign;
+
 extern vector<string> g_versionVec;
 extern int g_nStartDeterministicMNHeight;
 extern int g_nForbidOldVersionHeightV2;
@@ -1574,6 +1578,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     LogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
 
     g_nAllowMasterNodeSyncErrorTime = GetArg("-spos_allow_masternode_sync_error_time", g_nAllowMasterNodeSyncErrorTime);
+    fOfficialMasternodeSign = GetBoolArg("-officialmasternodesign", false);
 #if SCN_CURRENT == SCN__main
                         //do nothing
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
@@ -2152,6 +2157,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         }else
         {
             LogPrintf("SPOS_Message:read local start save payee height(%d) succ\n",g_nLocalStartSavePayeeHeight);
+        }
+
+        std::lock_guard<std::mutex> lockDMN(g_mutexAllDeterministicMasternode);
+        if(!pblocktree->Read_DeterministicMasternode_Index(gAllDeterministicMasternodeMap))
+        {
+            LogPrintf("SPOS_Warning:init read deterministic masternode fail\n");
         }
     }
 

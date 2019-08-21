@@ -86,6 +86,7 @@ class CScript;
 class CTxMemPool;
 class CWalletTx;
 class CAppHeader;
+class CDeterministicMasternodeData;
 
 /** (client) version numbers for particular wallet features */
 enum WalletFeature
@@ -924,7 +925,8 @@ public:
      * selected by SelectCoins(); Also create the change output, when needed
      */
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,
-                           std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend=false);
+                           std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true,AvailableCoinsType nCoinType=ALL_COINS,
+                           bool fUseInstantSend=false,const std::vector<CDeterministicMasternodeData>* vecDMN=NULL);
     bool CreateAppTransaction(const CAppHeader* pHeader, const void* pBody, const std::vector<CRecipient>& vecSend, const CBitcoinAddress* pSafeAddress, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,
                            std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true, AvailableCoinsType nCoinType=ALL_COINS, bool fUseInstantSend=false);
     bool CreateAssetTransaction(const CAppHeader* pHeader, const void* pBody, const std::vector<CRecipient>& vecSend, const CBitcoinAddress* pSafeAddress, const CBitcoinAddress* pAssetAddress, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,

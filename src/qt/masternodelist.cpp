@@ -11,6 +11,7 @@
 #include "sync.h"
 #include "wallet/wallet.h"
 #include "walletmodel.h"
+#include "spos/spos.h"
 
 #include <QTimer>
 #include <QMessageBox>
@@ -115,6 +116,26 @@ void MasternodeList::StartAlias(std::string strAlias)
             bool fSuccess = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
 
             if(fSuccess) {
+                CDeterministicMasternodeData dmn(mnb.addr.ToStringIP(),mnb.addr.GetPort(),CBitcoinAddress(mnb.pubKeyCollateralAddress.GetID()).ToString(),
+                                              mne.getTxHash(),mnb.vin.prevout.n,"","","");
+                std::vector<CDeterministicMasternodeData> dmnVec;
+                std::string strError = "";
+                bool fExist = false;
+                if(!BuildDeterministicMasternode(dmn,mne.getPrivKey(),fExist,strError)&&!fExist)
+                {
+                    QMessageBox::warning(this, tr("masternodes"),QString::fromStdString(strError),tr("Ok"));
+                    return;
+                }
+                if(!fExist)
+                {
+                    dmnVec.push_back(dmn);
+                    if(!RegisterDeterministicMasternodes(dmnVec,strError))
+                    {
+                        QMessageBox::warning(this, tr("masternodes"),QString::fromStdString(strError),tr("Ok"));
+                        return;
+                    }
+                }
+                //deterministic masternode can broadcast run time data multi times
                 strStatusHtml = strStatusHtml + "<br>"+tr("Successfully started masternode.");
                 mnodeman.UpdateMasternodeList(mnb, *g_connman);
                 mnb.Relay(*g_connman);
@@ -140,6 +161,10 @@ void MasternodeList::StartAll(std::string strCommand)
     int nCountFailed = 0;
     QString strFailedHtml;
 
+    std::vector<CDeterministicMasternodeData> dmnVec;
+    std::vector<CMasternodeBroadcast> mnbVec;
+    std::string strError = "";
+
     BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
         std::string strError;
         CMasternodeBroadcast mnb;
@@ -156,14 +181,66 @@ void MasternodeList::StartAll(std::string strCommand)
         bool fSuccess = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
 
         if(fSuccess) {
-            nCountSuccessful++;
-            mnodeman.UpdateMasternodeList(mnb, *g_connman);
-            mnb.Relay(*g_connman);
-            mnodeman.NotifyMasternodeUpdates(*g_connman);
+            CDeterministicMasternodeData dmn(mnb.addr.ToStringIP(),mnb.addr.GetPort(),CBitcoinAddress(mnb.pubKeyCollateralAddress.GetID()).ToString(),
+                                          mne.getTxHash(),mnb.vin.prevout.n,"","","");
+            strError = "";
+            bool fExist = false;
+            if(!BuildDeterministicMasternode(dmn,mne.getPrivKey(),fExist,strError)&&!fExist)
+            {
+                QMessageBox::warning(this, tr("masternodes"),QString::fromStdString(strError),tr("Ok"));
+                dmnVec.clear();
+                mnbVec.clear();
+                break;
+            }
+            //masternode broadcast can broadcast exist masternode
+            mnbVec.push_back(mnb);
+            if(!fExist)
+            {
+                dmnVec.push_back(dmn);
+                if(dmnVec.size()>=SPOS_REGIST_MASTERNODE_MAX)
+                {
+                    if(!RegisterDeterministicMasternodes(dmnVec,strError))
+                    {
+                        QMessageBox::warning(this, tr("masternodes"),QString::fromStdString(strError),tr("Ok"));
+                        dmnVec.clear();
+                        mnbVec.clear();
+                        break;
+                    }
+                    BOOST_FOREACH(CMasternodeBroadcast& mnbTmp,mnbVec)
+                    {
+                        nCountSuccessful++;
+                        mnodeman.UpdateMasternodeList(mnbTmp, *g_connman);
+                        mnbTmp.Relay(*g_connman);
+                        mnodeman.NotifyMasternodeUpdates(*g_connman);
+                    }
+                    dmnVec.clear();
+                    mnbVec.clear();
+                }
+            }
         } else {
             nCountFailed++;
             strFailedHtml += "\nFailed to start " + QString::fromStdString(mne.getAlias()) + ". Error: " + QString::fromStdString(strError);
         }
+    }
+
+    if(!dmnVec.empty())
+    {
+        strError = "";
+        if(!RegisterDeterministicMasternodes(dmnVec,strError))
+        {
+            QMessageBox::warning(this, tr("masternodes"),QString::fromStdString(strError),tr("Ok"));
+        }else
+        {
+            BOOST_FOREACH(CMasternodeBroadcast& mnbTmp,mnbVec)
+            {
+                nCountSuccessful++;
+                mnodeman.UpdateMasternodeList(mnbTmp, *g_connman);
+                mnbTmp.Relay(*g_connman);
+                mnodeman.NotifyMasternodeUpdates(*g_connman);
+            }
+        }
+        dmnVec.clear();
+        mnbVec.clear();
     }
     pwalletMain->Lock();
 

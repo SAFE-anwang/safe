@@ -2,7 +2,7 @@ package Spos;
 option java_package = "org.safe.Spos";
 option java_outer_classname = "Spos";
 
-message DeterminedMasternodeData {
+message DeterministicMasternodeData {
     required bytes ip = 1;                // string
     required bytes port  = 2;             // uint16_t
     required bytes collateralAddress = 3; // string
@@ -10,6 +10,7 @@ message DeterminedMasternodeData {
     required bytes outputIndex = 5;       // uint16_t
     required bytes serialPubkeyId = 6;    // string
     required bytes signedMsg = 7;         // string
+    required bytes officialSignedMsg = 8; // string
 }
 
 message DeterminedMNCoinbaseData{
