@@ -122,6 +122,7 @@ extern bool fOfficialMasternodeSign;
 extern vector<string> g_versionVec;
 extern int g_nStartDeterministicMNHeight;
 extern int g_nForbidOldVersionHeightV2;
+extern int g_nDeterministicMNTxMinConfirmNum;
 extern vector<string> g_versionVecV2;
 
 
@@ -976,7 +977,7 @@ void initVersionVec()
 
 void initVersionVecV2()
 {
-    if(g_versionVecV2.empty())
+    if (g_versionVecV2.empty())
     {
         g_versionVecV2.push_back("Safe Core:2.5.0");
         g_versionVecV2.push_back("Safe Core:2.5.1");
@@ -1595,6 +1596,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nForbidOldVersionHeight = GetArg("-spos_forbid_old_version_height", g_nForbidOldVersionHeight);
     g_nStartDeterministicMNHeight = GetArg("-spos_start_deterministic_masternode_height", g_nStartDeterministicMNHeight);
     g_nForbidOldVersionHeightV2 = GetArg("-spos_forbid_old_version_height_V2", g_nForbidOldVersionHeightV2);
+    g_nDeterministicMNTxMinConfirmNum = GetArg("-spos_deterministicmn_tx_min_confirm_num", g_nDeterministicMNTxMinConfirmNum);
 #else
 #error unsupported <safe chain name>
 #endif

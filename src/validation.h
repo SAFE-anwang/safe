@@ -1491,7 +1491,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW = true);
 bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 bool CheckSPOSBlock(const CBlock& block, CValidationState& state, const int& nHeight,bool fCheckPOW = true);
-bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& nHeight,const std::vector<unsigned char>& vReserve, bool fCheckPOW = true);
+bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& nHeight, const std::vector<unsigned char>& vData, bool fCheckPOW = true);
 bool DealDeterministicMNCoinBaseReserve(const CBlock& block, CBlockIndex* pindex, bool fCheckFail);
 bool DealMemAndDBSpork(CBlockIndex* pindex);
 bool LoadSporkInfo();
@@ -1675,7 +1675,6 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
 void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
                                 ,int64_t nStartNewLoopTime);
 
-void UpdateReSelectMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes, bool bClearVec, int selectMasterNodeRet);
 
 void UpdateGlobalTimeoutCount(int nTimeoutCount);
 void UpdateGlobalReceiveBlock(bool fReceiveBlock);
@@ -1683,14 +1682,22 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
                              ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect,
                              const unsigned int& nMasternodeSPosCount, SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode = false);
 
-void ReselectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nScoreTime, const bool bSpork, std::vector<CMasternode>& tmpVecResultMasternodes,
-                                      bool& bClearVec,int& nSelectMasterNodeRet,const unsigned int& nMasternodeSPosCount, 
-                                      SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode = false);
-
+void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, const uint32_t& nScoreTime, const bool& bProcessSpork, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes,
+                                 bool& bClearVec, int& nSelectMasterNodeRet, int& nSposGeneratedIndex, int64_t& nStartNewLoopTime, bool fTimeoutReselect, const unsigned int& nOfficialCount);
+void GetEffectiveGeneralMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue>& mapAllEffectiveMasterNode, const std::map<std::string, CMasternodePayee_IndexValue>& mapAllEffectivePayeeInfo,
+                                       std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveGeneralMNs);
+void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue>& mapAllMasterNode, const int& nHeight, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveMasternode);
+void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexValue>& mapAllPayeeInfo, const int& nHeight, std::map<std::string, CMasternodePayee_IndexValue>& mapAllEffectivePayeeInfo);
+void GetEffectiveOfficialMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapAllOfficialMNs, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveOfficialMNs);
+void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapMasternodes, std::vector<CDeterministicMasternode_IndexValue>& vecResultMasternodes, uint32_t nScoreTime, std::string strArrName);
+void UpdateReSelectMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes, bool bClearVec);
+void UpdateDeterministicMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,
+                                              int nSposGeneratedIndex, int64_t nStartNewLoopTime);
+void ReSelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nScoreTime, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes, bool& bClearVec, const unsigned int& nOfficialCount);
+bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreTime, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes, const unsigned int& nOfficialCount, int& nSelectMasterNodeRet);
 
 bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals = false);
 void updateForwardHeightAndScoreHeight(int nCurrBlockHeight,int& nForwardHeight,int& nScoreHeight);
-
 
 bool GetSporkInfo(const int& nStorageSpork, CSporkInfo_IndexValue& value);
 bool EraseSporkInfo(const int& nStorageSpork);

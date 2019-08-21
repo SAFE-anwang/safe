@@ -8,6 +8,9 @@
 #include "messagesigner.h"
 #include "net_processing.h"
 #include "spork.h"
+#include "spos/spos.h"
+#include "main.h"
+
 
 
 #include <boost/lexical_cast.hpp>
@@ -311,6 +314,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
             StorageSporkInfo(tempSporkInfo);
         
             std::vector<CMasternode> vecMasternodes;
+            std::vector<CDeterministicMasternode_IndexValue> vecDeterministicMN;
             bool bClearVec=false;
             int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
             int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
@@ -336,16 +340,26 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
                 LogPrintf("SPOS_Warning: SelectMasterNodeForSpork() nOfficialMasterNodeCount is error,height:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
                 return;
             }
-            nSporkSelectLoop = SPORK_SELECT_LOOP_1;
-            SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,scoreIndex->nTime, true, true,vecMasternodes, bClearVec
-                                        ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, nSporkSelectLoop, false);
 
-            nSporkSelectLoop = SPORK_SELECT_LOOP_2;
-            if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
-                SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,scoreIndex->nTime, false, true,vecMasternodes,bClearVec
-                                    ,nSelectMasterNodeRet,nSposGeneratedIndex,nGeneralStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
+            if (IsStartDeterministicMNHeight(chainActive.Height() + 1))
+            {
+                SelectDeterministicMN(chainActive.Height(), forwardIndex->nTime, scoreIndex->nTime, true, vecDeterministicMN, bClearVec,
+                                      nSelectMasterNodeRet, nSposGeneratedIndex, nStartNewLoopTime, false, nOfficialMasterNodeCount);
+                UpdateDeterministicMNGlobalData(vecDeterministicMN, bClearVec, nSelectMasterNodeRet, nSposGeneratedIndex, nStartNewLoopTime);
+            }
+            else
+            {
+                nSporkSelectLoop = SPORK_SELECT_LOOP_1;
+                SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,scoreIndex->nTime, true, true,vecMasternodes, bClearVec
+                                            ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, nSporkSelectLoop, false);
 
-            UpdateMasternodeGlobalData(vecMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+                nSporkSelectLoop = SPORK_SELECT_LOOP_2;
+                if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
+                    SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,scoreIndex->nTime, false, true,vecMasternodes,bClearVec
+                                        ,nSelectMasterNodeRet,nSposGeneratedIndex,nGeneralStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
+
+                UpdateMasternodeGlobalData(vecMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+            }
         }
     }
 }

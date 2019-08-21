@@ -102,38 +102,37 @@ public:
     }
 };
 
-class CDeterminedMNCoinbaseData
+class CDeterministicMNCoinbaseData
 {
 public:
     CKey        keyMasternode{};
     CKeyID      keyIDMasternode{};
-    CPubKey     pubKeyMasternode{};
     uint16_t    nOfficialMNNum;
     uint16_t    nGeneralMNNum;
     uint32_t    nRandomNum;
     uint16_t    nFirstBlock;
     
 
-    CDeterminedMNCoinbaseData()
+    CDeterministicMNCoinbaseData()
     {
         SetNull();
     }
 
-    CDeterminedMNCoinbaseData(const CKey& keyMasternodeIn,const CKeyID&keyIDMasternodeIn, const CPubKey& pubKeyMasternodeIn, const uint16_t& nOfficialMNNumIn,
-                                     const uint16_t& nGeneralMNNumIn, const uint32_t& nRandomNumIn,const uint16_t& nFirstBlockIn)
-                                     :keyMasternode(keyMasternodeIn),keyIDMasternode(keyIDMasternodeIn), pubKeyMasternode(pubKeyMasternodeIn), nOfficialMNNum(nOfficialMNNumIn),
-                                     nGeneralMNNum(nGeneralMNNumIn),nRandomNum(nRandomNumIn), nFirstBlock(nFirstBlockIn)
+    CDeterministicMNCoinbaseData(const CKey& keyMasternodeIn, const CKeyID& keyIDMasternodeIn, const uint16_t& nOfficialMNNumIn,
+                                        const uint16_t& nGeneralMNNumIn, const uint32_t& nRandomNumIn, const uint16_t& nFirstBlockIn)
+                                        :keyMasternode(keyMasternodeIn), keyIDMasternode(keyIDMasternodeIn), nOfficialMNNum(nOfficialMNNumIn),
+                                        nGeneralMNNum(nGeneralMNNumIn), nRandomNum(nRandomNumIn), nFirstBlock(nFirstBlockIn)
     {
 
     }
 
-    CDeterminedMNCoinbaseData& operator=(const CDeterminedMNCoinbaseData& data)
+    CDeterministicMNCoinbaseData& operator=(const CDeterministicMNCoinbaseData& data)
     {
         if(this == &data)
             return *this;
 
         keyMasternode = data.keyMasternode;
-        pubKeyMasternode = data.pubKeyMasternode;
+        keyIDMasternode = data.keyIDMasternode;
         nOfficialMNNum = data.nOfficialMNNum;
         nGeneralMNNum = data.nGeneralMNNum;
         nRandomNum = data.nRandomNum;
@@ -154,8 +153,8 @@ bool CheckDeterministicMasternode(CDeterministicMasternodeData& dmn,std::string&
 
 bool BuildDeterministicMasternode(CDeterministicMasternodeData& dmn,const std::string& strPrivKey,bool& fExist,std::string& strError);
 bool RegisterDeterministicMasternodes(std::vector<CDeterministicMasternodeData>& dmnVec,std::string& strError);
-std::vector<unsigned char> FillDeterminedMNCoinbaseData(const CSposHeader& header,const CDeterminedMNCoinbaseData& determinedMNCoinbaseData, bool& bRet);
-bool ParseDeterminedMNCoinbaseData(const std::vector<unsigned char>& vData, CDeterminedMNCoinbaseData& determinedMNCoinbaseData);
+std::vector<unsigned char> FillDeterministicCoinbaseData(const CSposHeader& header, const CDeterministicMNCoinbaseData& deterministicMNCoinbaseData, bool& bRet);
+bool ParseDeterministicMNCoinbaseData(const std::vector<unsigned char>& vData, CDeterministicMNCoinbaseData& deterministicMNCoinbaseData);
 
 std::vector<unsigned char> FillDeterministicMasternode(const CSposHeader& header,const CDeterministicMasternodeData& dmn);
 

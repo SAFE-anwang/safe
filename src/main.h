@@ -3,6 +3,8 @@
 
 #include <vector>
 #include "amount.h"
+#include "spos/spos.h"
+
 
 // generate blocks per day = 24 * 60 * 60 / 150
 #define BLOCKS_PER_DAY      576
@@ -54,9 +56,9 @@ extern int64_t g_nAllowMasterNodeSyncErrorTime;
 
 extern int g_nStartDeterministicMNHeight;
 extern int g_nForbidOldVersionHeightV2;
-extern std::vector<CMasternode> g_vecReSelectResultMasternodes;
-extern int g_nReSelectMasterNodeFail;
-extern int g_nReSelectGlobalDefaultValue;
+extern std::vector<CDeterministicMasternode_IndexValue> g_vecResultDeterministicMN;
+extern std::vector<CDeterministicMasternode_IndexValue> g_vecReSelectResultMasternodes;
+extern int g_nDeterministicMNTxMinConfirmNum;
 
 
 

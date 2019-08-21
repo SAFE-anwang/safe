@@ -82,8 +82,10 @@ extern int g_nLastSelectMasterNodeSuccessHeight;
 extern int g_nStorageSpork;
 extern CSporkInfo_IndexValue g_SporkInfo;
 extern CCriticalSection cs_spork;
-extern CCriticalSection cs_selectinfo;
+extern CCriticalSection cs_sposcoinbase;
+
 extern uint32_t g_nScoreTime;
+extern std::vector<CDeterministicMasternode_IndexValue> g_vecResultDeterministicMN;
 
 
 
@@ -474,9 +476,9 @@ bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,cons
  * SPOS Coinbase add version,serailze KeyID,OfficialMasternodecount,GeneralMasternodecount,random number,
    Is it the first block and the sign of the collateral address
 */
-bool CoinBaseAddSPosExtraDataV2(CBlock* pblock, const CBlockIndex* pindexPrev,const CMasternode& mn)
+bool CoinBaseAddSPosExtraDataV2(CBlock* pblock, const CBlockIndex* pindexPrev, const CKeyID& keyid)
 {
-    unsigned int nHeight = pindexPrev->nHeight+1;
+    unsigned int nHeight = pindexPrev->nHeight + 1;
     CMutableTransaction txCoinbase(pblock->vtx[0]);
     txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(0)) + COINBASE_FLAGS;
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
@@ -488,30 +490,30 @@ bool CoinBaseAddSPosExtraDataV2(CBlock* pblock, const CBlockIndex* pindexPrev,co
     }
 
     int nLastSelectMasterNodeSuccessHeight = 0;
-    CDeterminedMNCoinbaseData tempdeterminedMNCoinbaseData;
-    tempdeterminedMNCoinbaseData.nOfficialMNNum = tempSporkInfo.nOfficialNum;
-    tempdeterminedMNCoinbaseData.nGeneralMNNum = tempSporkInfo.nGeneralNum;
+    CDeterministicMNCoinbaseData tempdeterministicMNCoinbaseData;
+    tempdeterministicMNCoinbaseData.nOfficialMNNum = tempSporkInfo.nOfficialNum;
+    tempdeterministicMNCoinbaseData.nGeneralMNNum = tempSporkInfo.nGeneralNum;
+
     {
-        LOCK(cs_selectinfo);
-        tempdeterminedMNCoinbaseData.nRandomNum = g_nScoreTime;
+        LOCK(cs_sposcoinbase);
+        tempdeterministicMNCoinbaseData.nRandomNum = g_nScoreTime;
         nLastSelectMasterNodeSuccessHeight = g_nLastSelectMasterNodeSuccessHeight;
     }
-    tempdeterminedMNCoinbaseData.keyMasternode = activeMasternode.keyMasternode;
-    tempdeterminedMNCoinbaseData.pubKeyMasternode = mn.pubKeyMasternode;
-    tempdeterminedMNCoinbaseData.keyIDMasternode = mn.pubKeyMasternode.GetID();
+
+    tempdeterministicMNCoinbaseData.keyMasternode = activeMasternode.keyMasternode;
+    tempdeterministicMNCoinbaseData.keyIDMasternode = keyid;
     if (pindexPrev->nHeight == nLastSelectMasterNodeSuccessHeight)
-        tempdeterminedMNCoinbaseData.nFirstBlock = 1;
+        tempdeterministicMNCoinbaseData.nFirstBlock = 1;
     else
-        tempdeterminedMNCoinbaseData.nFirstBlock = 0;
+        tempdeterministicMNCoinbaseData.nFirstBlock = 0;
          
     CSposHeader header;
     header.nVersion = 2;
     bool fRet = true;
-
-    txCoinbase.vout[0].vReserve = FillDeterminedMNCoinbaseData(header, tempdeterminedMNCoinbaseData, fRet);
-    if (fRet)
+    txCoinbase.vout[0].vReserve = FillDeterministicCoinbaseData(header, tempdeterministicMNCoinbaseData, fRet);
+    if (!fRet)
     {
-        LogPrintf("SPOS_ERROR FillDeterminedMNCoinbaseData() fail\n");
+        LogPrintf("SPOS_ERROR FillDeterministicCoinbaseData() fail\n");
         return false;
     }
 
@@ -734,10 +736,15 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
                              ,unsigned int nTransactionsUpdatedLast,int64_t& nNextTime,unsigned int& nSleepMS
                              ,int64_t& nNextLogTime,int64_t& nNextLogAllowTime,unsigned int& nWaitBlockHeight
                              ,std::vector<CMasternode>& tmpVecResultMasternodes,int nSposGeneratedIndex
-                             ,int64_t& nStartNewLoopTime,unsigned int& nEmptySposCntHeight,unsigned int& nAbnormalSposCntHeight)
+                             ,int64_t& nStartNewLoopTime,unsigned int& nEmptySposCntHeight,unsigned int& nAbnormalSposCntHeight,
+                             std::vector<CDeterministicMasternode_IndexValue> tmpVecResultDeterministicMN)
 {
     int index = 0;
-    unsigned int masternodeSPosCount = tmpVecResultMasternodes.size();
+    unsigned int masternodeSPosCount = 0;
+    if (IsStartDeterministicMNHeight(pindexPrev->nHeight+1))
+        masternodeSPosCount = tmpVecResultDeterministicMN.size();
+    else
+        masternodeSPosCount = tmpVecResultMasternodes.size();
     int64_t nIntervalMS = 500;
     if(masternodeSPosCount == 0 && nEmptySposCntHeight!=nNewBlockHeight)
     {
@@ -785,19 +792,58 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         return;
     }
 
-    CMasternode& mn = tmpVecResultMasternodes[index];
-    string masterIP = mn.addr.ToStringIP();
     string localIP = activeMasternode.service.ToStringIP();
     unsigned int nHeight = pindexPrev->nHeight+1;
 
-    if (IsStartDeterministicMNHeight(nNewBlockHeight))
-        pblock->nNonce = 0;
-    else
-        pblock->nNonce = mn.getCanbeSelectTime(nHeight);
-
-    if(activeMasternode.pubKeyMasternode != mn.GetInfo().pubKeyMasternode)
+    CMasternode mn;
+    CDeterministicMasternode_IndexValue tempDeterministicMN;
+    CKeyID keyID;
+    string masterIP = "";
+    if (IsStartDeterministicMNHeight(nHeight))
     {
-        if(nNewBlockHeight != nWaitBlockHeight && pblock->nTime != nNextLogTime)
+        tempDeterministicMN = tmpVecResultDeterministicMN[index];
+        std::string strkeyID = tempDeterministicMN.strSerialPubKeyId;
+        std::vector<unsigned char> vchKeyId;
+        for (unsigned int i = 0; i < strkeyID.length(); i++)
+            vchKeyId.push_back(strkeyID[i]);
+
+        CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
+        ssKey >> keyID;
+        masterIP = tempDeterministicMN.strIP;
+
+        //coin base add extra data
+        pblock->nNonce = 0;
+        if (!CoinBaseAddSPosExtraDataV2(pblock, pindexPrev, keyID))
+            return;
+    }
+    else
+    {
+        mn = tmpVecResultMasternodes[index];
+        masterIP = mn.addr.ToStringIP();
+        keyID = mn.GetInfo().pubKeyMasternode.GetID();
+
+        //coin base add extra data
+        pblock->nNonce = mn.getCanbeSelectTime(nHeight);
+        if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
+            return;
+
+        if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
+        {
+            LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the master node "
+                      "can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n",
+                      pblock->nNonce, g_nMasternodeCanBeSelectedTime);
+            return;
+        }
+    }
+
+    CValidationState state;
+    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+    }
+
+    if (activeMasternode.pubKeyMasternode.GetID() != keyID)
+    {
+        if (nNewBlockHeight != nWaitBlockHeight && pblock->nTime != nNextLogTime)
         {
             LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.blockTime:%lld,g_nStartNewLoopTime:%lld,"
                       "local collateral address:%s,masternode collateral address:%s,nTimeInerval:%d\n",index
@@ -805,6 +851,7 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
                       ,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
                       ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString(),nTimeInerval);
         }
+ 
         nNextLogTime = pblock->nTime;
         nWaitBlockHeight = nNewBlockHeight;
         return;
@@ -824,25 +871,6 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
               "blockTime:%lld,g_nSposIndex:%d,nTimeInerval:%d,g_nPushForwardTime:%d\n",index,localIP,nNewBlockHeight,nActualTimeMillisInterval,
               mn.pubKeyMasternode.GetID().ToString(),nCurrTime,nStartNewLoopTime,pblock->nTime,nSposGeneratedIndex,nTimeInerval,g_nPushForwardTime);
 
-    //coin base add extra data
-    if (IsStartDeterministicMNHeight(pindexPrev->nHeight + 1))
-    {
-        if (!CoinBaseAddSPosExtraDataV2(pblock,pindexPrev,mn))
-            return;
-    }
-    else
-    {
-        if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
-            return;
-
-        if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
-        {
-            LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the master node "
-                      "can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n",
-                      pblock->nNonce, g_nMasternodeCanBeSelectedTime);
-            return;
-        }
-    }
 
     if(pindexPrev != chainActive.Tip())
     {
@@ -850,14 +878,9 @@ static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,C
         return;
     }
 
-    CValidationState state;
-    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-    }
-
     {
-        LOCK(cs_main);
-        LogPrintf("SPOS_Message:test self block validate success\n");       
+        LogPrintf("SPOS_Message:test self block validate success\n"); 
+
         {
             LOCK(cs_spos);
             g_nSposGeneratedIndex = index;
@@ -882,8 +905,6 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 {
     LogPrintf("SPOS_Message:SafeSposMiner is -- started\n");
     RenameThread("safe-spos-miner");
-
-    unsigned int nExtraNonce = 0;
 
     boost::shared_ptr<CReserveScript> coinbaseScript;
     GetMainSignals().ScriptForMining(coinbaseScript);
@@ -961,14 +982,24 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                 }
 
                 CBlock *pblock = &pblocktemplate->block;
-                IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
-
-    //                LogPrintf("SPOS_Message:Running miner with %u transactions in block (%u bytes),currHeight:%d\n",pblock->vtx.size(),
-    //                          ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION),pindexPrev->nHeight);
 
                 std::vector<CMasternode> tmpVecResultMasternodes;
+                std::vector<CDeterministicMasternode_IndexValue> tmpVecResultDeterministicMN;
                 int nSposGeneratedIndex=0,masternodeSPosCount=0;
                 int64_t nStartNewLoopTime=0;
+
+                if (IsStartDeterministicMNHeight(nNewBlockHeight))
+                {
+                    LOCK(cs_spos);
+                    for (auto& mn:g_vecResultDeterministicMN)
+                    {
+                        tmpVecResultDeterministicMN.push_back(mn);
+                        masternodeSPosCount++;
+                    }
+                    nStartNewLoopTime = g_nStartNewLoopTimeMS;
+                    nSposGeneratedIndex = g_nSposGeneratedIndex;
+                }
+                else
                 {
                     LOCK(cs_spos);
                     for(auto& mn:g_vecResultMasternodes)
@@ -979,12 +1010,14 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
                     nStartNewLoopTime = g_nStartNewLoopTimeMS;
                     nSposGeneratedIndex = g_nSposGeneratedIndex;
                 }
-                if(masternodeSPosCount != 0)
+
+                if (masternodeSPosCount != 0)
                 {
                     ConsensusUseSPos(chainparams,connman,pindexPrev,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime,
                                      nSleepMS,nNextLogTime,nNextLogAllowTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,
-                                     nStartNewLoopTime,nEmptySposCntHeight,nAbnormalSposCntHeight);
-                }else if(nLastMasternodeCount != 0)
+                                     nStartNewLoopTime,nEmptySposCntHeight,nAbnormalSposCntHeight, tmpVecResultDeterministicMN);
+                }
+                else if (nLastMasternodeCount != 0)
                 {
                     LogPrintf("SPOS_Error:vec_masternodes is empty,nLastMasternodeCount:%d\n",nLastMasternodeCount);
                 }
@@ -1158,6 +1191,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                 continue;
             }
             std::vector<CMasternode> tmpVecResultMasternodes;
+            std::vector<CDeterministicMasternode_IndexValue> tmpVecDeterministicMNs;
             bool bClearVec=false;
             int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
             int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
@@ -1178,28 +1212,52 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
 
                 if (nCurrBlockHeight + 1 >= tempSporkInfo.nHeight)
                 {
-                    fReselect = false;
+                    if (IsStartDeterministicMNHeight(nCurrBlockHeight + 1))
+                    {
+                        fReselect = false;
+                        SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs, bClearVec,
+                                              nSelectMasterNodeRet, nSposGeneratedIndex, nStartNewLoopTime, true, tempSporkInfo.nOfficialNum);
+                    }
+                    else
+                    {
+                        fReselect = false;
 
-                    nSporkSelectLoop = SPORK_SELECT_LOOP_1;
-                    SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,true,true,tmpVecResultMasternodes,bClearVec,
-                                nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, tempSporkInfo.nOfficialNum, nSporkSelectLoop, false);
+                        nSporkSelectLoop = SPORK_SELECT_LOOP_1;
+                        SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,true,true,tmpVecResultMasternodes,bClearVec,
+                                    nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, tempSporkInfo.nOfficialNum, nSporkSelectLoop, false);
 
-                    nSporkSelectLoop = SPORK_SELECT_LOOP_2;
-                    if (g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum > 0 && nSelectMasterNodeRet > 0)
-                        SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,false,true,tmpVecResultMasternodes,bClearVec,
-                                                nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum, nSporkSelectLoop, true);
-
+                        nSporkSelectLoop = SPORK_SELECT_LOOP_2;
+                        if (g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum > 0 && nSelectMasterNodeRet > 0)
+                            SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,false,true,tmpVecResultMasternodes,bClearVec,
+                                                    nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum, nSporkSelectLoop, true);
+                    }
                 }
             }
 
-            if(fReselect)
+            if (fReselect)
             {
-                if(fOverTimeoutLimit)
-                    nSporkSelectLoop = SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT;
-                SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,fOverTimeoutLimit,true,tmpVecResultMasternodes,bClearVec,
-                                        nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount, nSporkSelectLoop, false);
+                if (IsStartDeterministicMNHeight(nCurrBlockHeight + 1))
+                {
+                    int nOfficialNum = 0;
+                    if (fOverTimeoutLimit)
+                        nOfficialNum = g_nMasternodeSPosCount;
+
+                    SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs, bClearVec,
+                                          nSelectMasterNodeRet, nSposGeneratedIndex, nStartNewLoopTime, true, nOfficialNum);
+                }
+                else
+                {
+                    if(fOverTimeoutLimit)
+                        nSporkSelectLoop = SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT;
+                    SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,fOverTimeoutLimit,true,tmpVecResultMasternodes,bClearVec,
+                                        nSelectMasterNodeRet,nSposGeneratedIndex, nStartNewLoopTime,true, g_nMasternodeSPosCount, nSporkSelectLoop, false);
+                }
             }
-            UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+
+            if (IsStartDeterministicMNHeight(nCurrBlockHeight + 1))
+                UpdateDeterministicMNGlobalData(tmpVecDeterministicMNs, bClearVec, nSelectMasterNodeRet, nSposGeneratedIndex, nStartNewLoopTime);
+            else
+                UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
 
             MilliSleep(nSposSleeptime);
         }catch (const boost::thread_interrupted&)

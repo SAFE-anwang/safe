@@ -13,7 +13,7 @@ message DeterministicMasternodeData {
     required bytes officialSignedMsg = 8; // string
 }
 
-message DeterminedMNCoinbaseData{
+message DeterministicCoinbaseData{
     required bytes pubkeyId = 1;          // string
     required bytes officialMNNum = 2;     // uint16_t
     required bytes generalMNNum = 3;      // uint16_t

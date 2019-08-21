@@ -1225,11 +1225,10 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
         if (chainActive.Height() >= g_nForbidOldVersionHeightV2)
         {
-            for (unsigned int i=0; i< g_versionVecV2.size(); i++)
+            for (unsigned int i = 0; i < g_versionVecV2.size(); i++)
             {
-                if (strSubVer.find(g_versionVecV2[i])!=string::npos)
+                if (strSubVer.find(g_versionVecV2[i]) != string::npos)
                 {
-                    // disconnect from peers older
                     LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
                     connman.PushMessageWithVersion(pfrom, INIT_PROTO_VERSION, NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
                                        strprintf("Sub version(%s) must be %s or greater",strSubVer, FormatFullVersion()));
@@ -1240,7 +1239,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         }
         else
         {
-            if(chainActive.Height()>=g_nForbidOldVersionHeight && chainActive.Height() < g_nForbidOldVersionHeightV2)
+            if(chainActive.Height() >= g_nForbidOldVersionHeight && chainActive.Height() < g_nForbidOldVersionHeightV2)
             {
                 for(unsigned int i=0;i<g_versionVec.size();i++)
                 {
