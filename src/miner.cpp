@@ -828,9 +828,9 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	else
 	{
 		const CMasternode &mn = vtResultMasternodes[nNextIndex];
+		pblock->nNonce = mn.getCanbeSelectTime(nNextBlockHeight);
 
 		//coin base add extra data
-		pblock->nNonce = mn.getCanbeSelectTime(nNextBlockHeight);
 		if (!CoinBaseAddSPosExtraData(pblock, pindexPrev, mn))
 			return;
 
@@ -859,6 +859,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	// whether to meet the broadcast block requirements 
 	while (nActualTimeMillisInterval > 500)
 	{
+		boost::this_thread::interruption_point();
 		MilliSleep(50);
 		nCurTime = GetTime();
 		nActualTimeMillisInterval = std::abs(nNextBlockTime - nCurTime);
@@ -922,6 +923,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 	{
 		try
 		{
+			boost::this_thread::interruption_point();
 			if (chainparams.MiningRequiresPeers()) {
 				// Busy-wait for the network to come online so we don't waste time mining
 				// on an obsolete chain. In regtest mode we expect to fly solo.
