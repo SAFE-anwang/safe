@@ -75,7 +75,6 @@ extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeMinCount;
 extern int g_nPushForwardTime;
 extern bool g_fReceiveBlock;
-uint32_t nSposSleeptime = 50;
 
 extern int g_nLastSelectMasterNodeSuccessHeight;
 
@@ -731,314 +730,315 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 /*
     Consensus Use Safe Pos
 */
-static void ConsensusUseSPos(const CChainParams& chainparams,CConnman& connman,CBlockIndex* pindexPrev
-                             ,unsigned int nNewBlockHeight,CBlock *pblock,boost::shared_ptr<CReserveScript>& coinbaseScript
-                             ,unsigned int nTransactionsUpdatedLast,int64_t& nNextTime,unsigned int& nSleepMS
-                             ,int64_t& nNextLogTime,int64_t& nNextLogAllowTime,unsigned int& nWaitBlockHeight
-                             ,std::vector<CMasternode>& tmpVecResultMasternodes,int nSposGeneratedIndex
-                             ,int64_t& nStartNewLoopTime,unsigned int& nEmptySposCntHeight,unsigned int& nAbnormalSposCntHeight,
-                             std::vector<CDeterministicMasternode_IndexValue> tmpVecResultDeterministicMN)
+static void ConsensusUseSPos(const CChainParams &chainparams, 
+	CBlockIndex *pindexPrev,
+	uint64_t nStartNewLoopTime,
+	int nPushForwardTime,
+	const std::vector<CMasternode> &vtResultMasternodes,
+	const std::vector<CDeterministicMasternode_IndexValue> &vtResultDeterministicMN)
 {
-    int index = 0;
-    unsigned int masternodeSPosCount = 0;
-    if (IsStartDeterministicMNHeight(pindexPrev->nHeight+1))
-        masternodeSPosCount = tmpVecResultDeterministicMN.size();
-    else
-        masternodeSPosCount = tmpVecResultMasternodes.size();
-    int64_t nIntervalMS = 500;
-    if(masternodeSPosCount == 0 && nEmptySposCntHeight!=nNewBlockHeight)
-    {
-        LogPrintf("SPOS_Error:vecMasternodes is empty,please checkout masternodelist full or config\n");
-        nEmptySposCntHeight = nNewBlockHeight;
-        return;
-    }
+	unsigned int masternodeSPosCount = 0;
+	if (IsStartDeterministicMNHeight(pindexPrev->nHeight + 1))
+	{
+		masternodeSPosCount = vtResultDeterministicMN.size();
+	}
+	else
+	{
+		masternodeSPosCount = vtResultMasternodes.size();
+	}
 
-    //if masternodeSPosCount less than g_nMasternodeSPosCount,still continue,just % actual masternodeSPosCount
-    if(masternodeSPosCount != g_nMasternodeSPosCount && nAbnormalSposCntHeight != nNewBlockHeight)
-    {
-        LogPrintf("SPOS_Warning:system g_nMasternodeSPosCount:%d,curr vecMasternodes size:%d\n",g_nMasternodeSPosCount,masternodeSPosCount);
-        nAbnormalSposCntHeight = nNewBlockHeight;
-    }
+	// calc miner
+	int64_t nCurTime = GetTime();
+	int64_t nTimeInterval = 0;
+	int64_t nSPosTargetSpacing = chainparams.GetConsensus().nSPOSTargetSpacing;
+	
+	nTimeInterval = nCurTime - nPushForwardTime - nStartNewLoopTime / 1000;
+	if (nTimeInterval < 0)
+	{
+		LogPrintf("SPOS_Warning:error local time, please intall NTP, localTime: %lld", nCurTime);
+		return ;
+	}
 
-    //1.3
-    pblock->nTime = GetTime();
-    int64_t nCurrTime = GetTimeMillis();
-    if(nCurrTime/1000 + g_nAllowableErrorTime < (int64_t)pindexPrev->nTime)
-    {
-        if(nCurrTime-nNextLogAllowTime>10*1000)
-        {
-            string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime/1000);
-            string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexPrev->nTime);
-            LogPrintf("SPOS_Warning:current time(%lld,%s) add allowable err time %d less than new block time(%lld,%s)\n",nCurrTime/1000,strCurrTime,g_nAllowableErrorTime,
-                      pindexPrev->nTime,strBlockTime);
-            nNextLogAllowTime = nCurrTime;
-        }
-        return;
-    }
+	int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
+	int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing) % masternodeSPosCount;
+	nNextIndex--;
+	if (nNextIndex < 0)
+	{
+		LogPrintf("SPOS_Warning:error calc index, unknow reason, nIndex: %d", nNextIndex);
+		return;
+	}
 
-    int64_t interval = Params().GetConsensus().nSPOSTargetSpacing;
-    int64_t nTimeInerval = pblock->nTime - g_nPushForwardTime + interval - nStartNewLoopTime/ 1000;
-    int64_t nTimeIntervalCnt = (nTimeInerval / interval - 2);
-    //to avoid nTimeIntervalCnt=masternodeSPosCount,first time nTimeIntervalCnt:-1,index:-1
-    if(nTimeIntervalCnt<0)
-        return;
+	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime * 1000 + (nTimeIntervalCount + 1) * nSPosTargetSpacing * 1000;
 
-    index = nTimeIntervalCnt % masternodeSPosCount;
-    nNextTime = nStartNewLoopTime + g_nPushForwardTime*1000 + (nTimeIntervalCnt+1)*interval*1000;
+	CKeyID keyID;
+	unsigned int nNextBlockHeight = pindexPrev->nHeight + 1;
+	if (IsStartDeterministicMNHeight(nNextBlockHeight))
+	{
+		std::string strkeyID = vtResultDeterministicMN[nNextIndex].strSerialPubKeyId;
+		std::vector<unsigned char> vchKeyId;
+		for (unsigned int i = 0; i < strkeyID.length(); i++)
+			vchKeyId.push_back(strkeyID[i]);
 
-    if(index<0||index>=(int)masternodeSPosCount)
-    {
-        LogPrintf("SPOS_Error:invalid index:%d,nTimeInterval:%d\n",index,nTimeInerval);
-        return;
-    }
+		CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
+		ssKey >> keyID;
+	}
+	else
+	{
+		std::vector<CMasternode> &vtTempResult = (std::vector<CMasternode> &)vtResultMasternodes;
+		keyID = vtTempResult[nNextIndex].GetInfo().pubKeyMasternode.GetID();
+	}
 
-    string localIP = activeMasternode.service.ToStringIP();
-    unsigned int nHeight = pindexPrev->nHeight+1;
+	// whether self will create block
+	if (activeMasternode.pubKeyMasternode.GetID() != keyID)
+	{
+		// not self, or maybe not arrive special time 
+		return;
+	}
+	else
+	{
+		// whether continuous create block
+		if ((nCurTime - pindexPrev->GetBlockTime() / 1000) < (nSPosTargetSpacing - 3))
+		{
+			return ;
+		}
+	}
 
-    CMasternode mn;
-    CDeterministicMasternode_IndexValue tempDeterministicMN;
-    CKeyID keyID;
-    string masterIP = "";
-    if (IsStartDeterministicMNHeight(nHeight))
-    {
-        tempDeterministicMN = tmpVecResultDeterministicMN[index];
-        std::string strkeyID = tempDeterministicMN.strSerialPubKeyId;
-        std::vector<unsigned char> vchKeyId;
-        for (unsigned int i = 0; i < strkeyID.length(); i++)
-            vchKeyId.push_back(strkeyID[i]);
+	std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, CScript()));
+	if (!pblocktemplate.get())
+	{
+		LogPrintf("SafeSposMiner -- Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
+		return;
+	}
 
-        CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
-        ssKey >> keyID;
-        masterIP = tempDeterministicMN.strIP;
+	CBlock *pblock = &pblocktemplate->block;
 
-        //coin base add extra data
-        pblock->nNonce = 0;
-        if (!CoinBaseAddSPosExtraDataV2(pblock, pindexPrev, keyID))
-            return;
-    }
-    else
-    {
-        mn = tmpVecResultMasternodes[index];
-        masterIP = mn.addr.ToStringIP();
-        keyID = mn.GetInfo().pubKeyMasternode.GetID();
+	pblock->nTime = nNextBlockTime;
+	if (IsStartDeterministicMNHeight(nNextBlockHeight))
+	{
+		//coin base add extra data
+		pblock->nNonce = 0;
+		if (!CoinBaseAddSPosExtraDataV2(pblock, pindexPrev, keyID))
+			return;
+	}
+	else
+	{
+		const CMasternode &mn = vtResultMasternodes[nNextIndex];
 
-        //coin base add extra data
-        pblock->nNonce = mn.getCanbeSelectTime(nHeight);
-        if(!CoinBaseAddSPosExtraData(pblock,pindexPrev,mn))
-            return;
+		//coin base add extra data
+		pblock->nNonce = mn.getCanbeSelectTime(nNextBlockHeight);
+		if (!CoinBaseAddSPosExtraData(pblock, pindexPrev, mn))
+			return;
 
-        if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
-        {
-            LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the master node "
-                      "can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n",
-                      pblock->nNonce, g_nMasternodeCanBeSelectedTime);
-            return;
-        }
-    }
+		if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
+		{
+			LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the master node "
+				"can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n",
+				pblock->nNonce, g_nMasternodeCanBeSelectedTime);
+			return;
+		}
+	}
 
-    CValidationState state;
-    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-    }
+	{
+		LOCK(cs_main);
+		CValidationState state;
+		if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false))
+		{
+			throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+		}
+	}
+	
+	
+	nCurTime = GetTime();
+	int64_t nActualTimeMillisInterval = std::abs(nNextBlockTime - nCurTime);
 
-    if (activeMasternode.pubKeyMasternode.GetID() != keyID)
-    {
-        if (nNewBlockHeight != nWaitBlockHeight && pblock->nTime != nNextLogTime)
-        {
-            LogPrintf("SPOS_Message:Wait MastnodeIP[%d]:%s to generate pos block,current block:%d.blockTime:%lld,g_nStartNewLoopTime:%lld,"
-                      "local collateral address:%s,masternode collateral address:%s,nTimeInerval:%d\n",index
-                      ,masterIP,pindexPrev->nHeight,pblock->nTime,nStartNewLoopTime
-                      ,CBitcoinAddress(activeMasternode.pubKeyMasternode.GetID()).ToString()
-                      ,CBitcoinAddress(mn.pubKeyMasternode.GetID()).ToString(),nTimeInerval);
-        }
- 
-        nNextLogTime = pblock->nTime;
-        nWaitBlockHeight = nNewBlockHeight;
-        return;
-    }
+	// whether to meet the broadcast block requirements 
+	while (nActualTimeMillisInterval > 500)
+	{
+		MilliSleep(50);
+		nCurTime = GetTime();
+		nActualTimeMillisInterval = std::abs(nNextBlockTime - nCurTime);
+	}
+	
+	string localIP = activeMasternode.service.ToStringIP();
 
-    int64_t nActualTimeMillisInterval = std::abs(nNextTime - nCurrTime);
-    if(nActualTimeMillisInterval > nIntervalMS && nNextTime!=0 && nSposGeneratedIndex != -2)
-    {
-        if(index != nSposGeneratedIndex)
-            LogPrintf("SPOS_Warning:nActualTimeMillisInterval(%d) big than nIntervalMS(%d),currblock:%d,sposIndex:%d\n"
-                      ,nActualTimeMillisInterval,nIntervalMS,pindexPrev->nHeight,nSposGeneratedIndex);
-        return;
-    }
+	// broadcast block
+	if (ProcessBlockFound(pblock, chainparams))
+	{
+		// Update nTime every few seconds
+		UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
 
-    //it's turn to generate block
-    LogPrintf("SPOS_Info:Self mastnodeIP[%d]:%s generate pos block:%d.nActualTimeMillisInterval:%d,keyid:%s,nCurrTime:%lld,g_nStartNewLoopTime:%lld,"
-              "blockTime:%lld,g_nSposIndex:%d,nTimeInerval:%d,g_nPushForwardTime:%d\n",index,localIP,nNewBlockHeight,nActualTimeMillisInterval,
-              mn.pubKeyMasternode.GetID().ToString(),nCurrTime,nStartNewLoopTime,pblock->nTime,nSposGeneratedIndex,nTimeInerval,g_nPushForwardTime);
-
-
-    if(pindexPrev != chainActive.Tip())
-    {
-        LogPrintf("SPOS_Error:self generate block %d is received,not generate.pindexPrev:%d\n",chainActive.Height(),pindexPrev->nHeight);
-        return;
-    }
-
-    {
-        LogPrintf("SPOS_Message:test self block validate success\n"); 
-
-        {
-            LOCK(cs_spos);
-            g_nSposGeneratedIndex = index;
-        }
-        ProcessBlockFound(pblock, chainparams);
-
-        coinbaseScript->KeepScript();
-
-        if(masternodeSPosCount==1)//XJTODO
-            nSleepMS = Params().GetConsensus().nSPOSTargetSpacing*1000;
-        else
-            nSleepMS = nIntervalMS;
-    }
-
-    // Update nTime every few seconds
-    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-    LogPrintf("SPOS_Message:generate block finished\n");
+		LogPrintf("SPOS_Info: successfuly create block, mastnodeIP:%s generate pos block:%d,nActualTimeMillisInterval:%d,keyid:%s,nCurTime:%lld,g_nStartNewLoopTime:%lld,"
+			"blockTime:%lld,nCurIndex:%d,nTimeInerval:%d,g_nPushForwardTime:%d,minerMNCount:%d\n",
+			localIP,
+			nNextBlockHeight,
+			nActualTimeMillisInterval,
+			keyID.ToString(),
+			nCurTime,
+			nStartNewLoopTime,
+			pblock->nTime,
+			nNextIndex,
+			nTimeInterval,
+			nPushForwardTime,
+			masternodeSPosCount);
+	}
+	else
+	{
+		LogPrintf("SPOS_Info: failed create block, mastnodeIP:%s generate pos block:%d,nActualTimeMillisInterval:%d,keyid:%s,nCurTime:%lld,g_nStartNewLoopTime:%lld,"
+			"blockTime:%lld,nCurIndex:%d,nTimeInerval:%d,g_nPushForwardTime:%d,minerMNCount:%d\n",
+			localIP,
+			nNextBlockHeight,
+			nActualTimeMillisInterval,
+			keyID.ToString(),
+			nCurTime,
+			nStartNewLoopTime,
+			pblock->nTime,
+			nNextIndex,
+			nTimeInterval,
+			nPushForwardTime,
+			masternodeSPosCount);
+	}
 }
+
 
 // ***TODO*** that part changed in bitcoin, we are using a mix with old one here for now
 void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 {
-    LogPrintf("SPOS_Message:SafeSposMiner is -- started\n");
-    RenameThread("safe-spos-miner");
-
-    boost::shared_ptr<CReserveScript> coinbaseScript;
-    GetMainSignals().ScriptForMining(coinbaseScript);
+	LogPrintf("SPOS_Message:SafeSposMiner is -- started\n");
+	RenameThread("safe-spos-miner");
 
 
-    // Throw an error if no script was provided.  This can happen
-    // due to some internal error but also if the keypool is empty.
-    // In the latter case, already the pointer is NULL.
-    if (!coinbaseScript || coinbaseScript->reserveScript.empty())
-        throw std::runtime_error("No coinbase script available (mining requires a wallet)");
+	{
+		LOCK(cs_spos);
+		g_nStartNewLoopTimeMS = GetTime() * 1000;
+	}
 
-    g_nStartNewLoopTimeMS = 0;
-    {
-        LOCK(cs_spos);
-        g_nStartNewLoopTimeMS = GetTime()*1000;
-    }
-    unsigned int nWaitBlockHeight = 0,nEmptySposCntHeight = 0,nAbnormalSposCntHeight = 0;
-    int64_t nNextBlockTime = 0,nNextLogTime = 0,nLogOutput = 0,nLastMasternodeCount = 0,nNextLogAllowTime = 0;
-    while (true)
-    {
-        try
-        {
-            if (chainparams.MiningRequiresPeers()) {
-                // Busy-wait for the network to come online so we don't waste time mining
-                // on an obsolete chain. In regtest mode we expect to fly solo.
-                do {
-                    bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
-                    if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
-                        break;
-                    MilliSleep(50);
-                } while (true);
-            }
+	int64_t nLogOutput = 0, nLastMasternodeCount = 0, nNextLogAllowTime = 0;
+	while (true)
+	{
+		try
+		{
+			if (chainparams.MiningRequiresPeers()) {
+				// Busy-wait for the network to come online so we don't waste time mining
+				// on an obsolete chain. In regtest mode we expect to fly solo.
+				do {
+					bool fvNodesEmpty = connman.GetNodeCount(CConnman::CONNECTIONS_ALL) == 0;
+					if (!fvNodesEmpty && !IsInitialBlockDownload() && masternodeSync.IsSynced())
+						break;
+					MilliSleep(50);
+				} while (true);
+			}
 
-            unsigned int nSleepMS = 0;
-            CBlockIndex* pindexPrev = chainActive.Tip();
-            if(!pindexPrev)
-            {
-                LogPrintf("SPOS_Warning:SposMiner pindexPrev is NULL,size:%d\n",chainActive.Height());
-                break;
-            }
-            unsigned int nNewBlockHeight = chainActive.Height() + 1;
-            if(IsStartSPosHeight(nNewBlockHeight))
-            {
-                // Create new block
-                unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
-                if(activeMasternode.outpoint.IsNull())
-                {
-                    if(nLogOutput==0)
-                    {
-                        LogPrintf("SPOS_Warning:self masternode outpoint is empty,if self is masternode maybe need to wait sync or reindex or start alias\n");
-                        nLogOutput = 1;
-                    }
-                    MilliSleep(nSposSleeptime);
-                    continue;
-                }
+			unsigned int nNewBlockHeight = chainActive.Height() + 1;
+			if (!IsStartSPosHeight(nNewBlockHeight))
+			{
+				MilliSleep(50);
+				continue;
+			}
 
-                if(nLogOutput==1)
-                {
-                    nLogOutput = 0;
-                    LogPrintf("SPOS_Warning:self masternode empty outpoint is normal,start miner\n");
-                }
+			if (activeMasternode.outpoint.IsNull())
+			{
+				if (nLogOutput == 0)
+				{
+					LogPrintf("SPOS_Warning:self masternode outpoint is empty,if self is masternode maybe need to wait sync or reindex or start alias\n");
+					nLogOutput = 1;
+				}
+				MilliSleep(50);
+				continue;
+			}
 
-                std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, coinbaseScript->reserveScript));
-                if (!pblocktemplate.get())
-                {
-                    LogPrintf("SafeSposMiner -- Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
-                    return;
-                }
+			if (nLogOutput == 1)
+			{
+				nLogOutput = 0;
+				LogPrintf("SPOS_Warning:self masternode empty outpoint is normal,start miner\n");
+			}
 
-                if(pindexPrev != chainActive.Tip())
-                {
-                    LogPrintf("SPOS_Message:create new block(%d) fail,already recived the block:%d\n",nNewBlockHeight,chainActive.Height());
-                    MilliSleep(nSposSleeptime);
-                    continue;
-                }
+			CBlockIndex* pTopBlock = NULL;
+			{
+				LOCK(cs_main);
+				pTopBlock = chainActive.Tip();
+			}
+			 
+			if (!pTopBlock)
+			{
+				LogPrintf("SPOS_Warning:SposMiner pindexPrev is NULL,size:%d\n", chainActive.Height());
+				break;
+			}
 
-                CBlock *pblock = &pblocktemplate->block;
+			// check local time
+			int64_t nCurrTime = GetTimeMillis();
+			if (nCurrTime / 1000  < (int64_t)pTopBlock->nTime)
+			{
+				if (nCurrTime - nNextLogAllowTime > 10 * 1000)
+				{
+					string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime / 1000);
+					string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pTopBlock->nTime);
+					LogPrintf("SPOS_Warning:current time(%lld,%s) add allowable err time %d less than new block time(%lld,%s)\n",
+						nCurrTime / 1000,
+						strCurrTime,
+						g_nAllowableErrorTime,
+						pTopBlock->nTime,
+						strBlockTime);
+					nNextLogAllowTime = nCurrTime;
+				}
+				return;
+			}	
+			std::vector<CMasternode> tmpVecResultMasternodes;
+			std::vector<CDeterministicMasternode_IndexValue> tmpVecResultDeterministicMN;
+			int nSposGeneratedIndex = 0, masternodeSPosCount = 0;
+			int64_t nStartNewLoopTime = 0;
+			int nPushForwardTime = 0;
 
-                std::vector<CMasternode> tmpVecResultMasternodes;
-                std::vector<CDeterministicMasternode_IndexValue> tmpVecResultDeterministicMN;
-                int nSposGeneratedIndex=0,masternodeSPosCount=0;
-                int64_t nStartNewLoopTime=0;
+			if (IsStartDeterministicMNHeight(nNewBlockHeight))
+			{
+				LOCK(cs_spos);
+				for (auto& mn : g_vecResultDeterministicMN)
+				{
+					tmpVecResultDeterministicMN.push_back(mn);
+					masternodeSPosCount++;
+				}
 
-                if (IsStartDeterministicMNHeight(nNewBlockHeight))
-                {
-                    LOCK(cs_spos);
-                    for (auto& mn:g_vecResultDeterministicMN)
-                    {
-                        tmpVecResultDeterministicMN.push_back(mn);
-                        masternodeSPosCount++;
-                    }
-                    nStartNewLoopTime = g_nStartNewLoopTimeMS;
-                    nSposGeneratedIndex = g_nSposGeneratedIndex;
-                }
-                else
-                {
-                    LOCK(cs_spos);
-                    for(auto& mn:g_vecResultMasternodes)
-                    {
-                        tmpVecResultMasternodes.push_back(mn);
-                        masternodeSPosCount++;
-                    }
-                    nStartNewLoopTime = g_nStartNewLoopTimeMS;
-                    nSposGeneratedIndex = g_nSposGeneratedIndex;
-                }
+				nPushForwardTime = g_nPushForwardTime;
+				nStartNewLoopTime = g_nStartNewLoopTimeMS;
+				//nSposGeneratedIndex = g_nSposGeneratedIndex;
+			}
+			else
+			{
+				LOCK(cs_spos);
+				for (auto& mn : g_vecResultMasternodes)
+				{
+					tmpVecResultMasternodes.push_back(mn);
+					masternodeSPosCount++;
+				}
 
-                if (masternodeSPosCount != 0)
-                {
-                    ConsensusUseSPos(chainparams,connman,pindexPrev,nNewBlockHeight,pblock,coinbaseScript,nTransactionsUpdatedLast,nNextBlockTime,
-                                     nSleepMS,nNextLogTime,nNextLogAllowTime,nWaitBlockHeight,tmpVecResultMasternodes,nSposGeneratedIndex,
-                                     nStartNewLoopTime,nEmptySposCntHeight,nAbnormalSposCntHeight, tmpVecResultDeterministicMN);
-                }
-                else if (nLastMasternodeCount != 0)
-                {
-                    LogPrintf("SPOS_Error:vec_masternodes is empty,nLastMasternodeCount:%d\n",nLastMasternodeCount);
-                }
-                nLastMasternodeCount = masternodeSPosCount;
-            }
-            if(nSleepMS>0)
-                MilliSleep(nSleepMS);
-            else
-                MilliSleep(nSposSleeptime);
-        }catch (const boost::thread_interrupted&)
-        {
-            LogPrintf("SPOS_Warning:SafeMiner -- catch thread_interrupted\n");
-            throw;
-        }
-        catch (const std::runtime_error &e)
-        {
-            LogPrintf("SPOS_Warning:SafeMiner -- runtime error: %s\n", e.what());
-        }
-    }
+				nPushForwardTime = g_nPushForwardTime;
+				nStartNewLoopTime = g_nStartNewLoopTimeMS;
+				//nSposGeneratedIndex = g_nSposGeneratedIndex;
+			}
 
-    LogPrintf("SPOS_Warning:spos miner thread is exit\n");
+			if (masternodeSPosCount > 0)
+			{
+				ConsensusUseSPos(chainparams, pTopBlock, nStartNewLoopTime, nPushForwardTime, tmpVecResultMasternodes, tmpVecResultDeterministicMN);
+			}
+			else if (nLastMasternodeCount != 0)
+			{
+				LogPrintf("SPOS_Error:vec_masternodes is empty,nLastMasternodeCount:%d\n", nLastMasternodeCount);
+			}
+
+			nLastMasternodeCount = masternodeSPosCount;
+			MilliSleep(50);
+		}
+		catch (const boost::thread_interrupted&)
+		{
+			LogPrintf("SPOS_Warning:SafeMiner -- catch thread_interrupted\n");
+			throw;
+		}
+		catch (const std::runtime_error &e)
+		{
+			LogPrintf("SPOS_Warning:SafeMiner -- runtime error: %s\n", e.what());
+		}
+	}
+
+	LogPrintf("SPOS_Warning:spos miner thread is exit\n");
 }
 
 void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman)
@@ -1139,13 +1139,13 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             if(!pindexPrev)
             {
                 LogPrintf("SPOS_Warning:ThreadSPOSAutoReselect pindexPrev is NULL,size:%d\n",chainActive.Height());
-                MilliSleep(nSposSleeptime);
+                MilliSleep(50);
                 continue;
             }
             int nCurrBlockHeight = chainActive.Height();
             if(!IsStartSPosHeight(nCurrBlockHeight))
             {
-                MilliSleep(nSposSleeptime);
+                MilliSleep(50);
                 continue;
             }
 
@@ -1155,7 +1155,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             if(nTimeoutRet <= nTimeout)
             {
                 UpdateGlobalTimeoutCount(0);
-                MilliSleep(nSposSleeptime);
+                MilliSleep(50);
                 continue;
             }
             int nTimeoutCount = nTimeoutRet/g_nMinerBlockTimeout;
@@ -1167,7 +1167,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                               nTimeoutRet,nTimeoutCount,g_nTimeoutCount);
                 }
                 nTmpTimeoutCount = nTimeoutCount;
-                MilliSleep(nSposSleeptime);
+                MilliSleep(50);
                 continue;
             }
             nLastTimeoutHeight = nCurrBlockHeight;
@@ -1180,16 +1180,17 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             if(scoreIndex==NULL)
             {
                 LogPrintf("SPOS_Warning:scoreIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",nScoreHeight,chainActive.Height());
-                MilliSleep(nSposSleeptime);
+                MilliSleep(50);
                 continue;
             }
             CBlockIndex* forwardIndex = chainActive[nForwardHeight];
             if(forwardIndex==NULL)
             {
                 LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,chainActive size:%d,reselect loop fail\n",nForwardHeight,chainActive.Height());
-                MilliSleep(nSposSleeptime);
+                MilliSleep(50);
                 continue;
             }
+
             std::vector<CMasternode> tmpVecResultMasternodes;
             std::vector<CDeterministicMasternode_IndexValue> tmpVecDeterministicMNs;
             bool bClearVec=false;
@@ -1259,11 +1260,11 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             else
                 UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
 
-            MilliSleep(nSposSleeptime);
-        }catch (const boost::thread_interrupted&)
+            MilliSleep(50);
+        }
+		catch (const boost::thread_interrupted&)
         {
             LogPrintf("SPOS_Warning:SPOSAutoReselect -- thread_interrupted\n");
-            throw;
         }
         catch (const std::runtime_error &e)
         {
