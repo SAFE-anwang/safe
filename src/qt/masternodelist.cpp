@@ -223,25 +223,28 @@ void MasternodeList::StartAll(std::string strCommand)
         }
     }
 
+    bool fSucc = true;
     if(!dmnVec.empty())
     {
         strError = "";
-        if(!RegisterDeterministicMasternodes(dmnVec,strError))
+        fSucc = RegisterDeterministicMasternodes(dmnVec,strError);
+        if(!fSucc)
         {
             QMessageBox::warning(this, tr("masternodes"),QString::fromStdString(strError),tr("Ok"));
-        }else
-        {
-            BOOST_FOREACH(CMasternodeBroadcast& mnbTmp,mnbVec)
-            {
-                nCountSuccessful++;
-                mnodeman.UpdateMasternodeList(mnbTmp, *g_connman);
-                mnbTmp.Relay(*g_connman);
-                mnodeman.NotifyMasternodeUpdates(*g_connman);
-            }
         }
         dmnVec.clear();
-        mnbVec.clear();
     }
+    if(fSucc)
+    {
+        BOOST_FOREACH(CMasternodeBroadcast& mnbTmp,mnbVec)
+        {
+            nCountSuccessful++;
+            mnodeman.UpdateMasternodeList(mnbTmp, *g_connman);
+            mnbTmp.Relay(*g_connman);
+            mnodeman.NotifyMasternodeUpdates(*g_connman);
+        }
+    }
+    mnbVec.clear();
     pwalletMain->Lock();
 
     QString returnObj = tr("Successfully started %1 masternodes, failed to start %2, total %3").arg(nCountSuccessful).arg(nCountFailed).arg(nCountFailed + nCountSuccessful);

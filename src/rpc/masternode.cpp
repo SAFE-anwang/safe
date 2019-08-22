@@ -273,15 +273,38 @@ UniValue masternode(const UniValue& params, bool fHelp)
                 CMasternodeBroadcast mnb;
 
                 bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
+                if(fResult)
+                {
+                    CDeterministicMasternodeData dmn(mnb.addr.ToStringIP(),mnb.addr.GetPort(),CBitcoinAddress(mnb.pubKeyCollateralAddress.GetID()).ToString(),
+                                                  mne.getTxHash(),mnb.vin.prevout.n,"","","");
+                    std::vector<CDeterministicMasternodeData> dmnVec;
+                    std::string strError = "";
+                    bool fExist = false;
+                    if(!BuildDeterministicMasternode(dmn,mne.getPrivKey(),fExist,strError)&&!fExist)
+                    {
+                        statusObj.push_back(Pair("result", "failed"));
+                        statusObj.push_back(Pair("errorMessage", strError));
+                        break;
+                    }
 
-                statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
-                if(fResult) {
+                    if(!fExist)
+                    {
+                        dmnVec.push_back(dmn);
+                        if(!RegisterDeterministicMasternodes(dmnVec,strError))
+                        {
+                            statusObj.push_back(Pair("result", "failed"));
+                            statusObj.push_back(Pair("errorMessage", strError));
+                            break;
+                        }
+                    }
+
+                    statusObj.push_back(Pair("result", "successful"));
                     mnodeman.UpdateMasternodeList(mnb, *g_connman);
                     mnb.Relay(*g_connman);
+                    mnodeman.NotifyMasternodeUpdates(*g_connman);
                 } else {
                     statusObj.push_back(Pair("errorMessage", strError));
                 }
-                mnodeman.NotifyMasternodeUpdates(*g_connman);
                 break;
             }
         }
@@ -308,12 +331,13 @@ UniValue masternode(const UniValue& params, bool fHelp)
 
         int nSuccessful = 0;
         int nFailed = 0;
+        std::vector<CDeterministicMasternodeData> dmnVec;
+        std::vector<std::pair<std::string,CMasternodeBroadcast> > aliasMnbVec;
 
+        bool fSucc = true;
         UniValue resultsObj(UniValue::VOBJ);
-
+        std::string strError;
         BOOST_FOREACH(CMasternodeConfig::CMasternodeEntry mne, masternodeConfig.getEntries()) {
-            std::string strError;
-
             COutPoint outpoint = COutPoint(uint256S(mne.getTxHash()), uint32_t(atoi(mne.getOutputIndex().c_str())));
             CMasternode mn;
             bool fFound = mnodeman.Get(outpoint, mn);
@@ -325,21 +349,90 @@ UniValue masternode(const UniValue& params, bool fHelp)
             bool fResult = CMasternodeBroadcast::Create(mne.getIp(), mne.getPrivKey(), mne.getTxHash(), mne.getOutputIndex(), strError, mnb);
 
             UniValue statusObj(UniValue::VOBJ);
-            statusObj.push_back(Pair("alias", mne.getAlias()));
-            statusObj.push_back(Pair("result", fResult ? "successful" : "failed"));
 
-            if (fResult) {
-                nSuccessful++;
-                mnodeman.UpdateMasternodeList(mnb, *g_connman);
-                mnb.Relay(*g_connman);
+            if (fResult)
+            {
+                CDeterministicMasternodeData dmn(mnb.addr.ToStringIP(),mnb.addr.GetPort(),CBitcoinAddress(mnb.pubKeyCollateralAddress.GetID()).ToString(),
+                                              mne.getTxHash(),mnb.vin.prevout.n,"","","");
+                strError = "";
+                bool fExist = false;
+                if(!BuildDeterministicMasternode(dmn,mne.getPrivKey(),fExist,strError)&&!fExist)
+                {
+                    statusObj.push_back(Pair("alias", mne.getAlias()));
+                    statusObj.push_back(Pair("result","failed,"+strError));
+                    dmnVec.clear();
+                    aliasMnbVec.clear();
+                    break;
+                }
+
+                //masternode broadcast can broadcast exist masternode
+                aliasMnbVec.push_back(std::make_pair(mne.getAlias(),mnb));
+                if(!fExist)
+                {
+                    dmnVec.push_back(dmn);
+                    if(dmnVec.size()>=SPOS_REGIST_MASTERNODE_MAX)
+                    {
+                        fSucc = RegisterDeterministicMasternodes(dmnVec,strError);
+                        for(unsigned int i=0;i<aliasMnbVec.size();i++)
+                        {
+                            pair<std::string,CMasternodeBroadcast>& aliasMnbTmp = aliasMnbVec[i];
+                            UniValue statusObj(UniValue::VOBJ);
+                            statusObj.push_back(Pair("alias", aliasMnbTmp.first));
+                            if(fSucc)
+                            {
+                                nSuccessful++;
+                                mnodeman.UpdateMasternodeList(aliasMnbTmp.second, *g_connman);
+                                aliasMnbTmp.second.Relay(*g_connman);
+                                mnodeman.NotifyMasternodeUpdates(*g_connman);
+                                statusObj.push_back(Pair("result", "successful"));
+                            }else
+                            {
+                                statusObj.push_back(Pair("result","failed,"+strError));
+                                nFailed++;
+                            }
+                            resultsObj.push_back(Pair("status", statusObj));
+                        }
+                        dmnVec.clear();
+                        aliasMnbVec.clear();
+                    }
+                }
             } else {
                 nFailed++;
                 statusObj.push_back(Pair("errorMessage", strError));
+                resultsObj.push_back(Pair("status", statusObj));
             }
-
-            resultsObj.push_back(Pair("status", statusObj));
         }
-        mnodeman.NotifyMasternodeUpdates(*g_connman);
+
+        fSucc = true;
+        if(!dmnVec.empty())
+        {
+            strError = "";
+            fSucc = RegisterDeterministicMasternodes(dmnVec,strError);
+            dmnVec.clear();
+        }
+        if(fSucc)
+        {
+            for(unsigned int i=0;i<aliasMnbVec.size();i++)
+            {
+                pair<std::string,CMasternodeBroadcast>& aliasMnbTmp = aliasMnbVec[i];
+                UniValue statusObj(UniValue::VOBJ);
+                statusObj.push_back(Pair("alias", aliasMnbTmp.first));
+                if(fSucc)
+                {
+                    nSuccessful++;
+                    mnodeman.UpdateMasternodeList(aliasMnbTmp.second, *g_connman);
+                    aliasMnbTmp.second.Relay(*g_connman);
+                    mnodeman.NotifyMasternodeUpdates(*g_connman);
+                    statusObj.push_back(Pair("result", "successful"));
+                }else
+                {
+                    nFailed++;
+                    statusObj.push_back(Pair("result","failed,"+strError));
+                }
+                resultsObj.push_back(Pair("status", statusObj));
+            }
+            aliasMnbVec.clear();
+        }
 
         UniValue returnObj(UniValue::VOBJ);
         returnObj.push_back(Pair("overall", strprintf("Successfully started %d masternodes, failed to start %d, total %d", nSuccessful, nFailed, nSuccessful + nFailed)));

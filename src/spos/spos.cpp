@@ -377,7 +377,7 @@ std::vector<unsigned char> FillDeterministicCoinbaseData(const CSposHeader& head
     ssKey << deterministicMNCoinbaseData.keyIDMasternode;
     std::string strSerialPubKeyId = ssKey.str();
     data.set_pubkeyid(strSerialPubKeyId);
-    
+
     data.set_officialmnnum((const unsigned char*)&deterministicMNCoinbaseData.nOfficialMNNum,sizeof(deterministicMNCoinbaseData.nOfficialMNNum));
     data.set_generalmnnum((const unsigned char*)&deterministicMNCoinbaseData.nGeneralMNNum,sizeof(deterministicMNCoinbaseData.nGeneralMNNum));
     data.set_randomnum((const unsigned char*)&deterministicMNCoinbaseData.nRandomNum,sizeof(deterministicMNCoinbaseData.nRandomNum));
@@ -489,7 +489,7 @@ bool ParseDeterministicMNCoinbaseData(const std::vector<unsigned char>& vData, C
     std::vector<unsigned char> vchKeyId;
     for (unsigned int i = 0; i < strkeyID.length(); i++)
         vchKeyId.push_back(strkeyID[i]);
-   
+
     CKeyID keyID;
     CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
     ssKey >> keyID;
