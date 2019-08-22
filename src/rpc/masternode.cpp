@@ -951,3 +951,126 @@ UniValue sentinelping(const UniValue& params, bool fHelp)
     activeMasternode.UpdateSentinelPing(StringVersionToInt(params[0].get_str()));
     return true;
 }
+
+UniValue listdmn(const UniValue &params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw std::runtime_error(
+            "listdmn\n"
+            "Returns deterministic masternodes.\n");
+
+    std::map<COutPoint,CDeterministicMasternode_IndexValue> mapOfficialDeterministicMasternode;
+    std::map<COutPoint,CDeterministicMasternode_IndexValue> mapCommonDeterministicMasternode;
+    bool fSaveCommon = true;
+    GetAllDeterministicMasternodeMap(mapOfficialDeterministicMasternode,mapCommonDeterministicMasternode,fSaveCommon);
+
+    UniValue obj(UniValue::VOBJ);
+    auto addDMN = [](const std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapDMNValue,UniValue& obj)
+    {
+        std::map<COutPoint,CDeterministicMasternode_IndexValue>::const_iterator iter = mapDMNValue.begin();
+        while(iter!=mapDMNValue.end())
+        {
+            std::string strOutpoint = iter->first.ToStringShort();
+            const CDeterministicMasternode_IndexValue& dmnValue = iter->second;
+            std::string strLastTxOut = dmnValue.lastTxOut.IsNull() ? "null" : dmnValue.lastTxOut.ToStringShort();
+            std::ostringstream streamFull;
+            streamFull << " " <<
+                           dmnValue.strIP << " " <<
+                           dmnValue.strCollateralAddress << " " <<
+                           dmnValue.nHeight << " " <<
+                           dmnValue.fOfficial << " " <<
+                           dmnValue.currTxOut.ToStringShort() << " " <<
+                           strLastTxOut;
+            std::string strFull = streamFull.str();
+            obj.push_back(Pair(strOutpoint, strFull));
+            ++iter;
+        }
+    };
+
+    addDMN(mapOfficialDeterministicMasternode,obj);
+    addDMN(mapCommonDeterministicMasternode,obj);
+
+    return obj;
+}
+
+UniValue getdmndetails(const UniValue &params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "getdmndetails \"txId\"\n"
+            "\nReturns transaction details by specified transaction id.\n"
+            "\nArguments:\n"
+            "1. \"txId\"            (string, required) The transaction id\n"
+            "\nResult:\n"
+            "{\n"
+            "    \"txData\":\n"
+            "    [\n"
+            "       {\n"
+            "           \"outpoint\": \"xxxxx\"\n"
+            "           \"ip\": \"xxxxx\"\n"
+            "           \"port\": \"xxxxx\"\n"
+            "           \"collateralAddress\": xxxxx\n"
+            "           \"height\": \"xxxxx\"\n"
+            "           \"official\": \"xxxxx\"\n"
+            "           \"currTxOut\": xxxxx\n"
+            "           \"lastTxOut\": \"xxxxx\"\n"
+            "       }\n"
+            "    ]\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getdmndetails", "\"55d08c689ceb5b67e8104690f7651dbf0bd592a59e958f31043a9a66a4fd7a23\"")
+            + HelpExampleRpc("getdmndetails", "\"55d08c689ceb5b67e8104690f7651dbf0bd592a59e958f31043a9a66a4fd7a23\"")
+        );
+
+    LOCK(cs_main);
+
+    uint256 txId = uint256S(TrimString(params[0].get_str()));
+    CTransaction tx;
+    uint256 hashBlock;
+    if(!GetTransaction(txId, tx, Params().GetConsensus(), hashBlock, true))
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "No information available about transaction");
+
+    UniValue ret(UniValue::VOBJ);
+    UniValue txData(UniValue::VARR);
+
+    for(unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+
+        CSposHeader header;
+        vector<unsigned char> vData;
+        if(ParseSposReserve(txout.vReserve, header, vData))
+        {
+            CTxDestination dest;
+            if(!ExtractDestination(txout.scriptPubKey, dest))
+                continue;
+
+            if(header.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
+            {
+                CDeterministicMasternodeData dmn;
+                if(ParseDeterministicMasternode(vData, dmn))
+                {
+                    COutPoint outpoint(uint256S(dmn.strDMNTxid),dmn.nDMNOutputIndex);
+                    CDeterministicMasternode_IndexValue dmnValue;
+                    if(outpoint.IsNull() || !GetDeterministicMasternodeByCOutPoint(outpoint, dmnValue))
+                        continue;
+
+                    UniValue dmnData(UniValue::VOBJ);
+                    dmnData.push_back(Pair("outpoint", outpoint.ToStringShort()));
+                    dmnData.push_back(Pair("ip", dmnValue.strIP));
+                    dmnData.push_back(Pair("port", dmnValue.nPort));
+                    dmnData.push_back(Pair("collateralAddress", dmnValue.strCollateralAddress));
+                    dmnData.push_back(Pair("height", dmnValue.nHeight));
+                    dmnData.push_back(Pair("official", dmnValue.fOfficial));
+                    dmnData.push_back(Pair("currTxOut", dmnValue.currTxOut.ToStringShort()));
+                    dmnData.push_back(Pair("lastTxOut", dmnValue.lastTxOut.IsNull()?"null":dmnValue.lastTxOut.ToStringShort()));
+                    txData.push_back(dmnData);
+                }
+            }
+        }
+    }
+
+    ret.push_back(Pair("txData", txData));
+
+    return ret;
+}

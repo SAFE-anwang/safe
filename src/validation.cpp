@@ -10156,7 +10156,7 @@ void GetAllPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue>& mapAl
 }
 
 void GetAllDeterministicMasternodeMap(std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapOfficialDeterministicMasternode,
-                                               std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapAllDeterministicMasternode)
+                          std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapAllDeterministicMasternode,bool fSaveCommon)
 {
     std::lock_guard<std::mutex> lock(g_mutexAllDeterministicMasternode);
 
@@ -10165,7 +10165,10 @@ void GetAllDeterministicMasternodeMap(std::map<COutPoint,CDeterministicMasternod
         if (Dmnpair.second.fOfficial)
             mapOfficialDeterministicMasternode[Dmnpair.first] = Dmnpair.second;
 
-        mapAllDeterministicMasternode[Dmnpair.first] = Dmnpair.second;
+        if(fSaveCommon && !Dmnpair.second.fOfficial)
+            mapAllDeterministicMasternode[Dmnpair.first] = Dmnpair.second;
+        else if(!fSaveCommon)
+            mapAllDeterministicMasternode[Dmnpair.first] = Dmnpair.second;
     }
 }
 

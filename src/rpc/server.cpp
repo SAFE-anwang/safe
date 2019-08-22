@@ -425,6 +425,8 @@ static const CRPCCommand vRPCCommands[] =
     { "safe",               "spork",                  &spork,                       true  },
     { "safe",               "getpoolinfo",            &getpoolinfo,                 true  },
     { "safe",               "sentinelping",           &sentinelping,                true  },
+    { "safe",               "listdmn",                &listdmn,                     true  },
+    { "safe",               "getdmndetails",          &getdmndetails,               true  },
 #ifdef ENABLE_WALLET
     { "safe",               "privatesend",            &privatesend,                 false },
 
