@@ -755,7 +755,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	nTimeInterval = nCurTime - nPushForwardTime - nStartNewLoopTime / 1000;
 	if (nTimeInterval < 0)
 	{
-		LogPrintf("SPOS_Warning:error local time, please intall NTP, localTime: %lld", nCurTime);
+		LogPrintf("SPOS_Warning:error local time, please intall NTP, localTime: %lld\n", nCurTime);
 		return ;
 	}
 
@@ -764,7 +764,12 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	nNextIndex--;
 	if (nNextIndex < 0)
 	{
-		LogPrintf("SPOS_Warning:error calc index, unknow reason, nIndex: %d", nNextIndex);
+		LogPrintf("SPOS_Warning:error calc index, unknow reason, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, masternodeSPosCount: %d\n",
+			nNextIndex,
+			nCurTime,
+			nStartNewLoopTime,
+			nPushForwardTime,
+			masternodeSPosCount);
 		return;
 	}
 
@@ -987,27 +992,31 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 			int nSposGeneratedIndex = 0, masternodeSPosCount = 0;
 			int64_t nStartNewLoopTime = 0;
 			int nPushForwardTime = 0;
+			bool bDeterministic = false;
 
 			if (IsStartDeterministicMNHeight(nNewBlockHeight))
 			{
-				LOCK(cs_spos);
-				for (auto& mn : g_vecResultDeterministicMN)
-				{
-					tmpVecResultDeterministicMN.push_back(mn);
-					masternodeSPosCount++;
-				}
-
-				nPushForwardTime = g_nPushForwardTime;
-				nStartNewLoopTime = g_nStartNewLoopTimeMS;
-				//nSposGeneratedIndex = g_nSposGeneratedIndex;
+				bDeterministic = true;
 			}
-			else
+
 			{
 				LOCK(cs_spos);
-				for (auto& mn : g_vecResultMasternodes)
+
+				if (bDeterministic)
 				{
-					tmpVecResultMasternodes.push_back(mn);
-					masternodeSPosCount++;
+					for (auto& mn : g_vecResultDeterministicMN)
+					{
+						tmpVecResultDeterministicMN.push_back(mn);
+						masternodeSPosCount++;
+					}
+				}
+				else
+				{
+					for (auto& mn : g_vecResultMasternodes)
+					{
+						tmpVecResultMasternodes.push_back(mn);
+						masternodeSPosCount++;
+					}
 				}
 
 				nPushForwardTime = g_nPushForwardTime;
