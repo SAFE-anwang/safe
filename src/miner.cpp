@@ -773,7 +773,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		return;
 	}
 
-	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime * 1000 + (nTimeIntervalCount + 1) * nSPosTargetSpacing * 1000;
+	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
 
 	CKeyID keyID;
 	unsigned int nNextBlockHeight = pindexPrev->nHeight + 1;
