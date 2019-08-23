@@ -11179,77 +11179,79 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
         return false;
     }
 
-    if (nOfficialCount > 0 && mapAllOfficialMNs.empty())
-    {
-        LogPrintf("SPOS_Error:GetDeterministicMNList() mapAllOfficialMNs is empty, nCurrBlockHeight:%d\n", nCurrBlockHeight);
-        nSelectMasterNodeRet = g_nSelectMasterNodeFail;
-        return false;
-    }
+    LogPrintf("SPOS_INFO:GetDeterministicMNList nOfficialCount:%d, nCurrBlockHeight:%d\n", nOfficialCount, nCurrBlockHeight);
 
     std::map<COutPoint, CDeterministicMasternode_IndexValue> mapAllEffectiveMasterNode;
     GetEffectiveDeterministicMNData(mapAllMasterNode, nCurrBlockHeight, mapAllEffectiveMasterNode);
     LogPrintf("SPOS_INFO:GetDeterministicMNList() mapAllEffectiveMasterNode size:%d, nCurrBlockHeight:%d\n", mapAllEffectiveMasterNode.size(), nCurrBlockHeight);
-
-    if (mapAllEffectiveMasterNode.empty())
+    int nTotalEffectiveMN = mapAllEffectiveMasterNode.size();
+    
+    if (nTotalEffectiveMN == 0)
     {
         LogPrintf("SPOS_Error:mapAllEffectiveMasterNode is empty, mapAllMasterNode size is %d, nCurrBlockHeight:%d\n", mapAllMasterNode.size(), nCurrBlockHeight);
         nSelectMasterNodeRet = g_nSelectMasterNodeFail;
         return false;
     }
 
-    std::map<COutPoint, CDeterministicMasternode_IndexValue> maptempEffectiveOfficialMNs;;
-    GetEffectiveDeterministicMNData(mapAllOfficialMNs, nCurrBlockHeight, maptempEffectiveOfficialMNs);
-    LogPrintf("SPOS_INFO:GetDeterministicMNList() maptempEffectiveOfficialMNs size:%d, nCurrBlockHeight%d\n", maptempEffectiveOfficialMNs.size(), nCurrBlockHeight);
-
-    if (nOfficialCount > 0 && maptempEffectiveOfficialMNs.empty())
-    {
-        LogPrintf("SPOS_Error:maptempEffectiveOfficialMNs is empty, mapAllOfficialMNs size is %d, nCurrBlockHeight:%d\n", mapAllOfficialMNs.size(), nCurrBlockHeight);
-        nSelectMasterNodeRet = g_nSelectMasterNodeFail;
-        return false;
-    }
-
-    int nTotalEffectiveMN = mapAllEffectiveMasterNode.size();
-
     if (nOfficialCount > 0)
     {
-        GetEffectiveOfficialMNData(maptempEffectiveOfficialMNs, mapEffectiveOfficialMNs);
-        LogPrintf("SPOS_INFO:GetDeterministicMNList() mapEffectiveOfficialMNs size:%d, nCurrBlockHeight%d\n", mapEffectiveOfficialMNs.size(), nCurrBlockHeight);
-    }
-
-    if (nOfficialCount > 0 && mapEffectiveOfficialMNs.empty())
-    {
-        LogPrintf("SPOS_Error:mapEffectiveOfficialMNs is empty, maptempEffectiveOfficialMNs size is %d, nCurrBlockHeight:%d\n", maptempEffectiveOfficialMNs.size(), nCurrBlockHeight);
-        nSelectMasterNodeRet = g_nSelectMasterNodeFail;
-        return false;
-    }
-
-    std::vector<CDeterministicMasternode_IndexValue> vecResultAllOfficialMNs;
-    SortDeterministicMNs(mapEffectiveOfficialMNs, vecResultAllOfficialMNs, nScoreTime, "Official");
-    
-    uint32_t nAllOfficialMNcount = vecResultAllOfficialMNs.size();
-    for (uint32_t i = 0; i < nAllOfficialMNcount; ++i)
-    {
-        if (i == nOfficialCount)
-            break;
-
-        tmpVecResultMasternodes.push_back(vecResultAllOfficialMNs[i]);
-
-        LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select),keyid:%s, currHeight:%d\n", 
-                  i, vecResultAllOfficialMNs[i].strIP, vecResultAllOfficialMNs[i].strSerialPubKeyId, nCurrBlockHeight);
-    }
-
-    if (nOfficialCount == g_nMasternodeSPosCount)
-    {
-        unsigned int tmpSize = tmpVecResultMasternodes.size();
-        if (tmpSize < g_nMasternodeMinCount)
+        if (mapAllOfficialMNs.empty())
         {
-            LogPrintf("SPOS_Error: tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d, g_nMasternodeMinCount:%d\n",
-                      tmpSize, g_nMasternodeMinCount);
+            LogPrintf("SPOS_Error:GetDeterministicMNList() mapAllOfficialMNs is empty, nCurrBlockHeight:%d\n", nCurrBlockHeight);
             nSelectMasterNodeRet = g_nSelectMasterNodeFail;
             return false;
         }
 
-        return true;
+        std::map<COutPoint, CDeterministicMasternode_IndexValue> maptempEffectiveOfficialMNs;;
+        GetEffectiveDeterministicMNData(mapAllOfficialMNs, nCurrBlockHeight, maptempEffectiveOfficialMNs);
+        LogPrintf("SPOS_INFO:GetDeterministicMNList() maptempEffectiveOfficialMNs size:%d, nCurrBlockHeight%d\n", maptempEffectiveOfficialMNs.size(), nCurrBlockHeight);
+
+        if (maptempEffectiveOfficialMNs.empty())
+        {
+            LogPrintf("SPOS_Error:maptempEffectiveOfficialMNs is empty, mapAllOfficialMNs size is %d, nCurrBlockHeight:%d\n", mapAllOfficialMNs.size(), nCurrBlockHeight);
+            nSelectMasterNodeRet = g_nSelectMasterNodeFail;
+            return false;
+        }
+
+        GetEffectiveOfficialMNData(maptempEffectiveOfficialMNs, mapEffectiveOfficialMNs);
+        LogPrintf("SPOS_INFO:GetDeterministicMNList() mapEffectiveOfficialMNs size:%d, nCurrBlockHeight%d\n", mapEffectiveOfficialMNs.size(), nCurrBlockHeight);
+
+        if (mapEffectiveOfficialMNs.empty())
+        {
+            LogPrintf("SPOS_Error:mapEffectiveOfficialMNs is empty, maptempEffectiveOfficialMNs size is %d, nCurrBlockHeight:%d\n", maptempEffectiveOfficialMNs.size(), nCurrBlockHeight);
+            nSelectMasterNodeRet = g_nSelectMasterNodeFail;
+            return false;
+        }
+
+        std::vector<CDeterministicMasternode_IndexValue> vecResultAllOfficialMNs;
+        SortDeterministicMNs(mapEffectiveOfficialMNs, vecResultAllOfficialMNs, nScoreTime, "Official");
+        LogPrintf("SPOS_INFO:GetDeterministicMNList() vecResultAllOfficialMNs size:%d, nCurrBlockHeight:%d\n", vecResultAllOfficialMNs.size(), nCurrBlockHeight);
+        
+        uint32_t nAllOfficialMNcount = vecResultAllOfficialMNs.size();
+        for (uint32_t i = 0; i < nAllOfficialMNcount; i++)
+        {
+            if (i == nOfficialCount)
+                break;
+
+            tmpVecResultMasternodes.push_back(vecResultAllOfficialMNs[i]);
+
+            LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select),keyid:%s, currHeight:%d\n", 
+                      i, vecResultAllOfficialMNs[i].strIP, vecResultAllOfficialMNs[i].strSerialPubKeyId, nCurrBlockHeight);
+        }
+
+        if (nOfficialCount == g_nMasternodeSPosCount)
+        {
+            unsigned int tmpSize = tmpVecResultMasternodes.size();
+            if (tmpSize < g_nMasternodeMinCount)
+            {
+                LogPrintf("SPOS_Error: tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d, g_nMasternodeMinCount:%d\n",
+                          tmpSize, g_nMasternodeMinCount);
+                nSelectMasterNodeRet = g_nSelectMasterNodeFail;
+                return false;
+            }
+
+            return true;
+        }
     }
 
     unsigned int nGeneralMNNum = g_nMasternodeSPosCount - nOfficialCount;
