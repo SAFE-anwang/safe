@@ -11235,8 +11235,8 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
 
             tmpVecResultMasternodes.push_back(vecResultAllOfficialMNs[i]);
 
-            LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select),keyid:%s, currHeight:%d\n", 
-                      i, vecResultAllOfficialMNs[i].strIP, vecResultAllOfficialMNs[i].strSerialPubKeyId, nCurrBlockHeight);
+            LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select), CollateralAddress:%s, currHeight:%d\n", 
+                      i, vecResultAllOfficialMNs[i].strIP, vecResultAllOfficialMNs[i].strCollateralAddress, nCurrBlockHeight);
         }
 
         if (nOfficialCount == g_nMasternodeSPosCount)
