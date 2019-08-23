@@ -843,11 +843,6 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	{
 		const CMasternode &mn = vtResultMasternodes[nNextIndex];
 		pblock->nNonce = mn.getCanbeSelectTime(nNextBlockHeight);
-
-		//coin base add extra data
-		if (!CoinBaseAddSPosExtraData(pblock, pindexPrev, mn))
-			return;
-
 		if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
 		{
 			LogPrintf("SPOS_Warning: the activation time of the selected master node is less than or equal to the master node "
@@ -855,6 +850,10 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 				pblock->nNonce, g_nMasternodeCanBeSelectedTime);
 			return;
 		}
+
+		//coin base add extra data
+		if (!CoinBaseAddSPosExtraData(pblock, pindexPrev, mn))
+			return;
 	}
 
 	{
@@ -882,11 +881,11 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	// broadcast block
 	if (ProcessBlockFound(pblock, chainparams))
 	{
-		LogPrintf("SPOS_Info: successfuly, ");
+		LogPrintf("SPOS_Info: successfuly found block, ");
 	}
 	else
 	{
-		LogPrintf("SPOS_Info: failed, ");
+		LogPrintf("SPOS_Info: failed found block, ");
 	}
 
 	CBitcoinAddress addr(keyID);
