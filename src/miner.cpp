@@ -1130,9 +1130,9 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
     int nLastTimeoutHeight = 0;
     while (true)
     {
+        boost::this_thread::interruption_point();
         try
         {
-            boost::this_thread::interruption_point();
             if (chainparams.MiningRequiresPeers())
             {
                 // Busy-wait for the network to come online so we don't waste time mining
@@ -1272,10 +1272,6 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                 UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
 
             MilliSleep(50);
-        }
-		catch (const boost::thread_interrupted&)
-        {
-            LogPrintf("SPOS_Warning:SPOSAutoReselect -- thread_interrupted\n");
         }
         catch (const std::runtime_error &e)
         {
