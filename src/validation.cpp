@@ -11306,7 +11306,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
             if (tempit == mapAllEffectivePayeeInfo.end())
             {
                 LogPrintf("SPOS_Error:payee not found,ip:%s,strPubKeyCollateralAddress:%s\n",
-                          mn.strIP, strid);
+                          mn.strIP, mn.strCollateralAddress);
             }
             else
             {
@@ -11403,13 +11403,13 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
                 std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllEffectivePayeeInfo.find(strid);
                 if (tempit == mapAllEffectivePayeeInfo.end())
                 {
-                    LogPrintf("SPOS_Error:General masterNodeIP[%d] not fount payeeinfo:%s(spos_select),keyid:%s,location:%s,currHeight:%d\n",
-                              i, mn.strIP, mn.strSerialPubKeyId, nPStr,nCurrBlockHeight);
+                    LogPrintf("SPOS_Error:General masterNodeIP[%d] not fount payeeinfo:%s(spos_select),strCollateralAddress:%s,location:%s,currHeight:%d\n",
+                              i, mn.strIP, mn.strCollateralAddress, nPStr,nCurrBlockHeight);
                 }
                 else
                 {
-                    LogPrintf("SPOS_Message:General masterNodeIP[%d]:%s(spos_select),keyid:%s,location:%s,currHeight:%d,"
-                              "nPayeeBlockTime:%d,nPayeeTimes:%d,lastHeight:%d\n", i, mn.strIP, mn.strSerialPubKeyId,
+                    LogPrintf("SPOS_Message:General masterNodeIP[%d]:%s(spos_select), strCollateralAddress:%s,location:%s,currHeight:%d,"
+                              "nPayeeBlockTime:%d,nPayeeTimes:%d,lastHeight:%d\n", i, mn.strIP, mn.strCollateralAddress,
                               nPStr, nCurrBlockHeight, tempit->second.blockTime, tempit->second.nPayeeTimes,
                               tempit->second.nHeight);
                 }
