@@ -773,10 +773,10 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	{
 		bTimeIntervalLog = false;
 	}
-
-	int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
-	int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing) % nRealyMinerCount;
+	
+	int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing);	
 	nNextIndex--;
+	nNextIndex = nNextIndex % nRealyMinerCount;
 	if (nNextIndex < 0)
 	{	
 		if (!bErrorIndexLog)
@@ -837,6 +837,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		return;
 	}
 
+	int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
 	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
 	CBlock *pblock = &pblocktemplate->block;
 	pblock->nTime = nNextBlockTime;
@@ -875,7 +876,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	}
 	
 	nNextBlockTime = nNextBlockTime * 1000;
-	nCurTime = GetTime() * 1000;
+	nCurTime = GetTimeMillis();
 	int64_t nActualTimeMillisInterval = std::abs(nNextBlockTime - nCurTime);
 
 	// whether to meet the broadcast block requirements 
@@ -883,7 +884,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	{
 		boost::this_thread::interruption_point();
 		MilliSleep(50);
-		nCurTime = GetTime() * 1000;
+		nCurTime = GetTimeMillis();
 		nActualTimeMillisInterval = std::abs(nNextBlockTime - nCurTime);
 	}
 
