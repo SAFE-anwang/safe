@@ -11225,7 +11225,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
 
         std::vector<CDeterministicMasternode_IndexValue> vecResultAllOfficialMNs;
         SortDeterministicMNs(mapEffectiveOfficialMNs, vecResultAllOfficialMNs, nScoreTime, "Official");
-        LogPrintf("SPOS_INFO:GetDeterministicMNList() vecResultAllOfficialMNs size:%d, nCurrBlockHeight:%d\n", vecResultAllOfficialMNs.size(), nCurrBlockHeight)
+        LogPrintf("SPOS_INFO:GetDeterministicMNList() vecResultAllOfficialMNs size:%d, nCurrBlockHeight:%d\n", vecResultAllOfficialMNs.size(), nCurrBlockHeight);
         
         uint32_t nAllOfficialMNcount = vecResultAllOfficialMNs.size();
         for (uint32_t i = 0; i < nAllOfficialMNcount; i++)
