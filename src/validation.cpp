@@ -11071,8 +11071,9 @@ void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValu
 void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, const uint32_t& nScoreTime, const bool& bProcessSpork, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes,
                                  bool& bClearVec, int& nSelectMasterNodeRet, int& nSposGeneratedIndex, int64_t& nStartNewLoopTime, bool fTimeoutReselect, const unsigned int& nOfficialCount)
 {
-    if (!masternodeSync.IsSynced() && g_vecResultDeterministicMN.empty())
-        return;
+    //SQTODO
+    //if (!masternodeSync.IsSynced() && g_vecResultDeterministicMN.empty())
+        //return;
 
     if (!bProcessSpork)
     {
@@ -11202,7 +11203,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
             return false;
         }
 
-        std::map<COutPoint, CDeterministicMasternode_IndexValue> maptempEffectiveOfficialMNs;;
+        std::map<COutPoint, CDeterministicMasternode_IndexValue> maptempEffectiveOfficialMNs;
         GetEffectiveDeterministicMNData(mapAllOfficialMNs, nCurrBlockHeight, maptempEffectiveOfficialMNs);
         LogPrintf("SPOS_INFO:GetDeterministicMNList() maptempEffectiveOfficialMNs size:%d, nCurrBlockHeight%d\n", maptempEffectiveOfficialMNs.size(), nCurrBlockHeight);
 
@@ -11296,12 +11297,16 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
         for (; it != mapEffectiveGeneralMNs.end(); it++)
         {
             const CDeterministicMasternode_IndexValue& mn = it->second;
-            std::string strPubKeyCollateralAddress = mn.strCollateralAddress;
-            std::map<std::string, CMasternodePayee_IndexValue>::iterator tempit = mapAllEffectivePayeeInfo.find(strPubKeyCollateralAddress);
+            CBitcoinAddress addr(mn.strCollateralAddress);
+            CKeyID id;
+            addr.GetKeyID(id);
+            std::string strid = id.ToString();
+            
+            std::map<std::string, CMasternodePayee_IndexValue>::iterator tempit = mapAllEffectivePayeeInfo.find(strid);
             if (tempit == mapAllEffectivePayeeInfo.end())
             {
                 LogPrintf("SPOS_Error:payee not found,ip:%s,strPubKeyCollateralAddress:%s\n",
-                          mn.strIP, strPubKeyCollateralAddress);
+                          mn.strIP, strid);
             }
             else
             {
@@ -11390,7 +11395,12 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
             const CDeterministicMasternode_IndexValue& mn = tmpVecResultMasternodes[i];
             if (i >= nAllEffectiveOfficialMNNum)
             {
-                std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllEffectivePayeeInfo.find(mn.strCollateralAddress);
+                CBitcoinAddress addr(mn.strCollateralAddress);
+                CKeyID id;
+                addr.GetKeyID(id);
+                std::string strid = id.ToString();
+            
+                std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllEffectivePayeeInfo.find(strid);
                 if (tempit == mapAllEffectivePayeeInfo.end())
                 {
                     LogPrintf("SPOS_Error:General masterNodeIP[%d] not fount payeeinfo:%s(spos_select),keyid:%s,location:%s,currHeight:%d\n",
