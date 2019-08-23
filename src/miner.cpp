@@ -85,7 +85,7 @@ extern CCriticalSection cs_sposcoinbase;
 extern uint32_t g_nScoreTime;
 extern std::vector<CDeterministicMasternode_IndexValue> g_vecResultDeterministicMN;
 
-
+static int g_nLocalTimeOffset = 2;  // allow local time and last block time offset range
 
 class ScoreCompare
 {
@@ -327,19 +327,12 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         CAmount blockReward = 0;
         if (nHeight >= g_nStartSPOSHeight)
         {
-            masternode_info_t mnInfoRet;
-            if(!mnodeman.GetMasternodeInfo(activeMasternode.outpoint,mnInfoRet))
-            {
-                LogPrintf("SPOS_Warning:create block not find the outpoint(%s),maybe need to start alias or check the masternode list\n",activeMasternode.outpoint.ToString());
-                return NULL;
-            }
-
-            CScript sposMinerPayee = GetScriptForDestination(mnInfoRet.pubKeyCollateralAddress.GetID());
-            txNew.vout[0].scriptPubKey = sposMinerPayee;
             blockReward = nFees + GetSPOSBlockSubsidy(pindexPrev->nHeight, Params().GetConsensus());
         }
         else
+		{
             blockReward = nFees + GetBlockSubsidy(pindexPrev->nBits, pindexPrev->nHeight, Params().GetConsensus());
+		}
 
         // Compute regular coinbase transaction.
         txNew.vout[0].nValue = blockReward;
@@ -375,10 +368,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         if(!IsStartSPosHeight(nHeight))
         {
             CValidationState state;
-            if(pindexPrev != chainActive.Tip())
-            {
-                LogPrintf("SPOS_Message:create new block %d is received,not generate.pindexPrev:%d\n",chainActive.Height(),pindexPrev->nHeight);
-            }else if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+			if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
                 throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
             }
         }
@@ -757,7 +747,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	int64_t nSPosTargetSpacing = chainparams.GetConsensus().nSPOSTargetSpacing;
 	
 	nTimeInterval = nCurTime - nPushForwardTime - nStartNewLoopTime;
-	if (nTimeInterval < 0)
+	if (nTimeInterval < -g_nLocalTimeOffset)
 	{
 		if (!bTimeIntervalLog)
 		{
@@ -830,7 +820,8 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		//}
 	}
 
-	std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, CScript()));
+	CScript sposMinerPayee = GetScriptForDestination(keyID);
+	std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, sposMinerPayee));
 	if (!pblocktemplate.get())
 	{
 		LogPrintf("SafeSposMiner -- Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
@@ -960,7 +951,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 
 			// check local time
 			int64_t nCurTime = GetTime();
-			if (nCurTime < (int64_t)pTopBlock->nTime)
+			if (nCurTime + g_nLocalTimeOffset < (int64_t)pTopBlock->nTime)
 			{
 				if (!bTimeLog)
 				{
