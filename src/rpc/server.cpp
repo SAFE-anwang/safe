@@ -367,16 +367,16 @@ static const CRPCCommand vRPCCommands[] =
     { "blockchain",         "getspentinfo",           &getspentinfo,                false },
 
     /* Mining */
-    { "mining",             "getblocktemplate",       &getblocktemplate,            true  },
-    { "mining",             "getmininginfo",          &getmininginfo,               true  },
-    { "mining",             "getnetworkhashps",       &getnetworkhashps,            true  },
+ //   { "mining",             "getblocktemplate",       &getblocktemplate,            true  },
+ //   { "mining",             "getmininginfo",          &getmininginfo,               true  },
+ //   { "mining",             "getnetworkhashps",       &getnetworkhashps,            true  },
     { "mining",             "prioritisetransaction",  &prioritisetransaction,       true  },
-    { "mining",             "submitblock",            &submitblock,                 true  },
+ //   { "mining",             "submitblock",            &submitblock,                 true  },
 
     /* Coin generation */
-    { "generating",         "getgenerate",            &getgenerate,                 true  },
-    { "generating",         "setgenerate",            &setgenerate,                 true  },
-    { "generating",         "generate",               &generate,                    true  },
+//    { "generating",         "getgenerate",            &getgenerate,                 true  },
+//    { "generating",         "setgenerate",            &setgenerate,                 true  },
+//    { "generating",         "generate",               &generate,                    true  },
 
     /* Raw transactions */
     { "rawtransactions",    "createrawtransaction",   &createrawtransaction,        true  },

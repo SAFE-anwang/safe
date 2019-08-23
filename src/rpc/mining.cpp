@@ -236,7 +236,7 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
 
     mapArgs["-gen"] = (fGenerate ? "1" : "0");
     mapArgs ["-genproclimit"] = itostr(nGenProcLimit);
-    GenerateBitcoins(fGenerate, nGenProcLimit, Params(), *g_connman);
+    //GenerateBitcoins(fGenerate, nGenProcLimit, Params(), *g_connman);
 
     return NullUniValue;
 }
@@ -310,9 +310,6 @@ UniValue prioritisetransaction(const UniValue& params, bool fHelp)
         );
 
     LOCK(cs_main);
-
-    if (chainActive.Height() >= g_nStartSPOSHeight)
-        throw JSONRPCError(RPC_MINGING_NOT_SUPPORT_FOR_SPOS, "SPOS does not support mining");
 
     uint256 hash = ParseHashStr(params[0].get_str(), "txid");
     CAmount nAmount = params[2].get_int64();

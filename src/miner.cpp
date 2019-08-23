@@ -582,6 +582,7 @@ static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainpar
     return true;
 }
 
+/*
 void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 {
     LogPrintf("SafeMiner -- started\n");
@@ -725,6 +726,7 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
         return;
     }
 }
+*/
 
 /*
     Consensus Use Safe Pos
@@ -1039,6 +1041,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 	LogPrintf("SPOS_Warning:spos miner thread is exit\n");
 }
 
+/*
 void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman)
 {
 #if SCN_CURRENT == SCN__main
@@ -1069,6 +1072,7 @@ void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainpar
     for (int i = 0; i < nThreads; i++)
         minerThreads->create_thread(boost::bind(&BitcoinMiner, boost::cref(chainparams), boost::ref(connman)));
 }
+*/
 
 void GenerateBitcoinsBySPOS(bool fGenerate, int nThreads, const CChainParams& chainparams, CConnman& connman)
 {
