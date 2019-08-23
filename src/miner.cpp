@@ -59,7 +59,6 @@ uint64_t nLastBlockSize = 0;
 extern int g_nStartSPOSHeight;
 extern CMasternodeMan mnodeman;
 extern CActiveMasternode activeMasternode;
-extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
 extern int64_t g_nStartNewLoopTimeMS;
 extern std::vector<CMasternode> g_vecResultMasternodes;
@@ -418,7 +417,7 @@ void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned
 /*
  * SPOS Coinbase add version,serailze KeyID and the sign of the collateral address
 */
-bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev,const CMasternode& mn)
+bool CoinBaseAddSPosExtraData(CBlock* pblock, const CBlockIndex* pindexPrev, const CMasternode& mn)
 {
     unsigned int nHeight = pindexPrev->nHeight+1;
     CMutableTransaction txCoinbase(pblock->vtx[0]);
@@ -737,14 +736,17 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	const std::vector<CMasternode> &vtResultMasternodes,
 	const std::vector<CDeterministicMasternode_IndexValue> &vtResultDeterministicMN)
 {
-	unsigned int masternodeSPosCount = 0;
+	static bool bTimeIntervalLog = false;
+	static bool bErrorIndexLog = false;
+
+	int nRealyMinerCount = 0;
 	if (IsStartDeterministicMNHeight(pindexPrev->nHeight + 1))
 	{
-		masternodeSPosCount = vtResultDeterministicMN.size();
+		nRealyMinerCount = vtResultDeterministicMN.size();
 	}
 	else
 	{
-		masternodeSPosCount = vtResultMasternodes.size();
+		nRealyMinerCount = vtResultMasternodes.size();
 	}
 
 	// calc miner
@@ -752,28 +754,46 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	int64_t nTimeInterval = 0;
 	int64_t nSPosTargetSpacing = chainparams.GetConsensus().nSPOSTargetSpacing;
 	
-	nTimeInterval = nCurTime - nPushForwardTime - nStartNewLoopTime / 1000;
+	nTimeInterval = nCurTime - nPushForwardTime - nStartNewLoopTime;
 	if (nTimeInterval < 0)
 	{
-		LogPrintf("SPOS_Warning:error local time, please intall NTP, localTime: %lld\n", nCurTime);
+		if (!bTimeIntervalLog)
+		{
+			bTimeIntervalLog = true;
+			LogPrintf("SPOS_Error: error local time, please intall NTP, localTime: %lld, nStartNewLoopTime: %lld, nPushForwardTime: %d\n",
+				nCurTime,
+				nStartNewLoopTime,
+				nPushForwardTime);
+		}
 		return ;
+	}
+	else
+	{
+		bTimeIntervalLog = false;
 	}
 
 	int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
-	int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing) % masternodeSPosCount;
+	int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing) % nRealyMinerCount;
 	nNextIndex--;
 	if (nNextIndex < 0)
-	{
-		LogPrintf("SPOS_Warning:error calc index, unknow reason, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, masternodeSPosCount: %d\n",
-			nNextIndex,
-			nCurTime,
-			nStartNewLoopTime,
-			nPushForwardTime,
-			masternodeSPosCount);
+	{	
+		if (!bErrorIndexLog)
+		{
+			bErrorIndexLog = true;
+			LogPrintf("SPOS_Error: error index, unknow reason, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+				nNextIndex,
+				nCurTime,
+				nStartNewLoopTime,
+				nPushForwardTime,
+				nRealyMinerCount);
+		}
+
 		return;
 	}
-
-	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
+	else
+	{
+		bErrorIndexLog = false;
+	}
 
 	CKeyID keyID;
 	unsigned int nNextBlockHeight = pindexPrev->nHeight + 1;
@@ -802,10 +822,10 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	else
 	{
 		// whether continuous create block
-		if ((nCurTime - pindexPrev->GetBlockTime() / 1000) < (nSPosTargetSpacing - 3))
-		{
-			return ;
-		}
+		//if ((nCurTime - pindexPrev->GetBlockTime() / 1000) < (nSPosTargetSpacing - 3))
+		//{
+		//	return ;
+		//}
 	}
 
 	std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, CScript()));
@@ -815,8 +835,8 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		return;
 	}
 
+	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
 	CBlock *pblock = &pblocktemplate->block;
-
 	pblock->nTime = nNextBlockTime;
 	if (IsStartDeterministicMNHeight(nNextBlockHeight))
 	{
@@ -836,7 +856,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 
 		if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
 		{
-			LogPrintf("SPOS_Warning:the activation time of the selected master node is less than or equal to the master node "
+			LogPrintf("SPOS_Warning: the activation time of the selected master node is less than or equal to the master node "
 				"can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n",
 				pblock->nNonce, g_nMasternodeCanBeSelectedTime);
 			return;
@@ -852,8 +872,8 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		}
 	}
 	
-	
-	nCurTime = GetTime();
+	nNextBlockTime = nNextBlockTime * 1000;
+	nCurTime = GetTime() * 1000;
 	int64_t nActualTimeMillisInterval = std::abs(nNextBlockTime - nCurTime);
 
 	// whether to meet the broadcast block requirements 
@@ -861,48 +881,32 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	{
 		boost::this_thread::interruption_point();
 		MilliSleep(50);
-		nCurTime = GetTime();
+		nCurTime = GetTime() * 1000;
 		nActualTimeMillisInterval = std::abs(nNextBlockTime - nCurTime);
 	}
-	
-	string localIP = activeMasternode.service.ToStringIP();
 
 	// broadcast block
 	if (ProcessBlockFound(pblock, chainparams))
 	{
-		// Update nTime every few seconds
-		UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-
-		LogPrintf("SPOS_Info: successfuly create block, mastnodeIP:%s generate pos block:%d,nActualTimeMillisInterval:%d,keyid:%s,nCurTime:%lld,g_nStartNewLoopTime:%lld,"
-			"blockTime:%lld,nCurIndex:%d,nTimeInerval:%d,g_nPushForwardTime:%d,minerMNCount:%d\n",
-			localIP,
-			nNextBlockHeight,
-			nActualTimeMillisInterval,
-			keyID.ToString(),
-			nCurTime,
-			nStartNewLoopTime,
-			pblock->nTime,
-			nNextIndex,
-			nTimeInterval,
-			nPushForwardTime,
-			masternodeSPosCount);
+		LogPrintf("SPOS_Info: successfuly, ");
 	}
 	else
 	{
-		LogPrintf("SPOS_Info: failed create block, mastnodeIP:%s generate pos block:%d,nActualTimeMillisInterval:%d,keyid:%s,nCurTime:%lld,g_nStartNewLoopTime:%lld,"
-			"blockTime:%lld,nCurIndex:%d,nTimeInerval:%d,g_nPushForwardTime:%d,minerMNCount:%d\n",
-			localIP,
-			nNextBlockHeight,
-			nActualTimeMillisInterval,
-			keyID.ToString(),
-			nCurTime,
-			nStartNewLoopTime,
-			pblock->nTime,
-			nNextIndex,
-			nTimeInterval,
-			nPushForwardTime,
-			masternodeSPosCount);
+		LogPrintf("SPOS_Info: failed, ");
 	}
+
+	CBitcoinAddress addr(keyID);
+	LogPrintf("miner:%s, blockHeight:%d, blockTime:%lld, nActualTimeMillisInterval:%d, nStartNewLoopTime:%lld, nPushForwardTime:%d, "
+		"nCurIndex:%d, nTimeInerval:%d, nRealyMinerCount:%d\n",
+		addr.ToString(),
+		nNextBlockHeight,
+		pblock->nTime,
+		nActualTimeMillisInterval,
+		nStartNewLoopTime,
+		nPushForwardTime,		
+		nNextIndex,
+		nTimeInterval,
+		nRealyMinerCount);
 }
 
 
@@ -912,18 +916,14 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 	LogPrintf("SPOS_Message:SafeSposMiner is -- started\n");
 	RenameThread("safe-spos-miner");
 
+	bool bTimeLog = false;
+	bool bMinerLog = false;
 
-	{
-		LOCK(cs_spos);
-		g_nStartNewLoopTimeMS = GetTime() * 1000;
-	}
-
-	int64_t nLogOutput = 0, nLastMasternodeCount = 0, nNextLogAllowTime = 0;
 	while (true)
 	{
+		boost::this_thread::interruption_point();
 		try
-		{
-			boost::this_thread::interruption_point();
+		{			
 			if (chainparams.MiningRequiresPeers()) {
 				// Busy-wait for the network to come online so we don't waste time mining
 				// on an obsolete chain. In regtest mode we expect to fly solo.
@@ -942,23 +942,6 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 				continue;
 			}
 
-			if (activeMasternode.outpoint.IsNull())
-			{
-				if (nLogOutput == 0)
-				{
-					LogPrintf("SPOS_Warning:self masternode outpoint is empty,if self is masternode maybe need to wait sync or reindex or start alias\n");
-					nLogOutput = 1;
-				}
-				MilliSleep(50);
-				continue;
-			}
-
-			if (nLogOutput == 1)
-			{
-				nLogOutput = 0;
-				LogPrintf("SPOS_Warning:self masternode empty outpoint is normal,start miner\n");
-			}
-
 			CBlockIndex* pTopBlock = NULL;
 			{
 				LOCK(cs_main);
@@ -967,28 +950,33 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 			 
 			if (!pTopBlock)
 			{
-				LogPrintf("SPOS_Warning:SposMiner pindexPrev is NULL,size:%d\n", chainActive.Height());
-				break;
+				LogPrintf("SPOS_Error: SposMiner pindexPrev is NULL,size:%d\n", chainActive.Height());
+				MilliSleep(50);
+				continue;
 			}
 
 			// check local time
-			int64_t nCurrTime = GetTimeMillis();
-			if (nCurrTime / 1000  < (int64_t)pTopBlock->nTime)
+			int64_t nCurTime = GetTime();
+			if (nCurTime < (int64_t)pTopBlock->nTime)
 			{
-				if (nCurrTime - nNextLogAllowTime > 10 * 1000)
+				if (!bTimeLog)
 				{
-					string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nCurrTime / 1000);
-					string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pTopBlock->nTime);
-					LogPrintf("SPOS_Warning:current time(%lld,%s) add allowable err time %d less than new block time(%lld,%s)\n",
-						nCurrTime / 1000,
-						strCurrTime,
-						g_nAllowableErrorTime,
-						pTopBlock->nTime,
-						strBlockTime);
-					nNextLogAllowTime = nCurrTime;
+					bTimeLog = true;
+					LogPrintf("SPOS_Error: error local time, please intall NTP, localTime : %lld, blockTime: %d\n", nCurTime, pTopBlock->nTime);
 				}
-				return;
-			}	
+
+				MilliSleep(50);
+				continue;
+			}
+			else
+			{
+				if (bTimeLog)
+				{
+					bTimeLog = false;
+					LogPrintf("SPOS_Info: local time recovery normal, localTime : %lld\n", nCurTime);
+				}
+			}
+
 			std::vector<CMasternode> tmpVecResultMasternodes;
 			std::vector<CDeterministicMasternode_IndexValue> tmpVecResultDeterministicMN;
 			int nSposGeneratedIndex = 0, masternodeSPosCount = 0;
@@ -1028,24 +1016,23 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 
 			if (masternodeSPosCount > 0)
 			{
+				bMinerLog = false;
 				ConsensusUseSPos(chainparams, pTopBlock, nStartNewLoopTime, nPushForwardTime, tmpVecResultMasternodes, tmpVecResultDeterministicMN);
 			}
-			else if (nLastMasternodeCount != 0)
+			else
 			{
-				LogPrintf("SPOS_Error:vec_masternodes is empty,nLastMasternodeCount:%d\n", nLastMasternodeCount);
+				if (!bMinerLog)
+				{
+					bMinerLog = true;
+					LogPrintf("SPOS_Error: miner is empty\n");
+				}
 			}
 
-			nLastMasternodeCount = masternodeSPosCount;
 			MilliSleep(50);
-		}
-		catch (const boost::thread_interrupted&)
-		{
-			LogPrintf("SPOS_Warning:SafeMiner -- catch thread_interrupted\n");
-			throw;
 		}
 		catch (const std::runtime_error &e)
 		{
-			LogPrintf("SPOS_Warning:SafeMiner -- runtime error: %s\n", e.what());
+			LogPrintf("SPOS_Warning: SafeMiner -- runtime error: %s\n", e.what());
 		}
 	}
 

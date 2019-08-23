@@ -6262,7 +6262,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         if(mnSize == 0)
             return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d,g_nSelectMasterNodeRet:%d"
                                         ,nHeight, keyID.ToString(), strSigMessage, vchSig.size(),g_nSelectMasterNodeRet), REJECT_INVALID, "bad-mnSize", true);
-        int32_t interval = (block.GetBlockTime() - nStartNewLoopTime / 1000 - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+        int32_t interval = (block.GetBlockTime() - nStartNewLoopTime - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
         nIndex = interval % mnSize;
         if(nIndex<0)
             return state.DoS(100,error("SPOS_Error CheckSPOSBlock():incorrect index value,height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
@@ -6291,9 +6291,9 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     {
         int64_t nBlockTime = block.GetBlockTime();
         string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
-        string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
+        string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime);
         LogPrintf("SPOS_Message:check spos block succ,height:%d,index:%d,ip:%s,blockTime:%lld(%s),nStartNewLoopTime:%lld(%s),mnSize:%d,nPushForwardTime:%d,"
-                  "strKeyID:%s\n",nHeight,nIndex,mnTemp.addr.ToStringIP(),nBlockTime,strBlockTime,nStartNewLoopTime/1000,strStartNewLoopTime,mnSize,
+                  "strKeyID:%s\n",nHeight,nIndex,mnTemp.addr.ToStringIP(),nBlockTime,strBlockTime,nStartNewLoopTime,strStartNewLoopTime,mnSize,
                   g_nPushForwardTime,keyID.ToString());
     }
     return true;
@@ -10338,7 +10338,7 @@ void UpdateGlobalReceiveBlock(bool fReceiveBlock)
 void UpdateGlobalPushforwardTime(int nCurrBlockHeight)
 {
     LOCK(cs_spos);
-    if(g_nPushForwardTime==0&&nCurrBlockHeight-g_nPushForwardHeight>g_nStartSPOSHeight){
+    if(nCurrBlockHeight-g_nPushForwardHeight>g_nStartSPOSHeight){
         g_nPushForwardTime = g_nPushForwardHeight * Params().GetConsensus().nSPOSTargetSpacing;
     }
 }
@@ -10441,10 +10441,10 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
     }
 
     //1.3.3
-    nStartNewLoopTime = (int64_t)nTime*1000;
+    nStartNewLoopTime = (int64_t)nTime;
     nSposGeneratedIndex = -2;
     nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
-    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime);
 
     UpdateGlobalPushforwardTime(nCurrBlockHeight);
 
@@ -10609,7 +10609,7 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
 
     //no \n,connect two log str
     LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),select %d masternode,min online masternode count:%d,"
-              "nRemainNum:%d,intervalHeight:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime/1000,strStartNewLoopTime,size,
+              "nRemainNum:%d,intervalHeight:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime,strStartNewLoopTime,size,
               g_nMasternodeMinCount,nRemainNum,intervalHeight);
 
     LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
@@ -11121,16 +11121,16 @@ void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, c
         bClearVec = true;
     }
 
-    nStartNewLoopTime = (int64_t)nTime * 1000;
+    nStartNewLoopTime = (int64_t)nTime;
     nSposGeneratedIndex = -2;
     nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
-    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime / 1000);
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime);
 
     UpdateGlobalPushforwardTime(nCurrBlockHeight);
 
     if (GetDeterministicMNList(nCurrBlockHeight, nScoreTime, tmpVecResultMasternodes, nOfficialCount, nSelectMasterNodeRet))
     {
-        LogPrintf("SPOS_Message:start new loop, currHeight:%d, startNewLoopTime:%lld(%s)\n", nCurrBlockHeight, nStartNewLoopTime / 1000, strStartNewLoopTime);
+        LogPrintf("SPOS_Message:start new loop, currHeight:%d, startNewLoopTime:%lld(%s)\n", nCurrBlockHeight, nStartNewLoopTime, strStartNewLoopTime);
     
         if (!bProcessSpork)
             g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
