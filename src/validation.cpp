@@ -10323,6 +10323,31 @@ void UpdateReSelectMNGlobalData(const std::vector<CDeterministicMasternode_Index
     }
 }
 
+void InitReSelectMNGlobalData()
+{
+    LOCK(cs_reselectmn);
+    g_vecReSelectResultMasternodes.clear();
+    std::vector<CDeterministicMasternode_IndexValue>().swap(g_vecReSelectResultMasternodes);
+}
+
+void InitDeterministicMNGlobalData()
+{
+    LOCK(cs_spos);
+    g_vecResultDeterministicMN.clear();
+    std::vector<CDeterministicMasternode_IndexValue>().swap(g_vecResultDeterministicMN);
+    g_nSelectMasterNodeRet = g_nSelectGlobalDefaultValue;
+    g_nStartNewLoopTimeMS = g_nSelectGlobalDefaultValue;
+}
+
+void InitMasternodeGlobalData()
+{
+    LOCK(cs_spos);
+    g_vecResultMasternodes.clear();
+    std::vector<CMasternode>().swap(g_vecResultMasternodes);
+    g_nSelectMasterNodeRet = g_nSelectGlobalDefaultValue;
+    g_nStartNewLoopTimeMS = g_nSelectGlobalDefaultValue;
+}
+
 void UpdateGlobalTimeoutCount(int nTimeoutCount)
 {
     LOCK(cs_spos);
@@ -10388,6 +10413,8 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
                   g_nLocalStartSavePayeeHeight,nCurrBlockHeight,g_nCanSelectMasternodeHeight,g_nSaveMasternodePayeeHeight);
         return;
     }
+
+    InitMasternodeGlobalData();
 
     LogPrintf("SPOS_Info:--------------------------------------------------------\n");
     LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d,fTimeoutReselect:%s,g_nTimeoutCount:%d.\n",nCurrBlockHeight,
@@ -11122,6 +11149,8 @@ void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, c
         bClearVec = true;
     }
 
+    InitDeterministicMNGlobalData();
+
     nStartNewLoopTime = (int64_t)nTime;
     nSposGeneratedIndex = -2;
     nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
@@ -11158,6 +11187,7 @@ void ReSelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nScore
         bClearVec = true;
     }
 
+    InitReSelectMNGlobalData();
     int nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
     GetDeterministicMNList(nCurrBlockHeight, nScoreTime, tmpVecResultMasternodes, nOfficialCount, nSelectMasterNodeRet);
 }

@@ -1693,6 +1693,11 @@ void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValu
 void UpdateReSelectMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes, bool bClearVec);
 void UpdateDeterministicMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,
                                               int nSposGeneratedIndex, int64_t nStartNewLoopTime);
+void InitReSelectMNGlobalData();
+void InitDeterministicMNGlobalData();
+void InitMasternodeGlobalData();
+
+
 void ReSelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nScoreTime, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes, bool& bClearVec, const unsigned int& nOfficialCount);
 bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreTime, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes, const unsigned int& nOfficialCount, int& nSelectMasterNodeRet);
 
