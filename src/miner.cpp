@@ -814,10 +814,10 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	else
 	{
 		// whether continuous create block
-		//if ((nCurTime - pindexPrev->GetBlockTime() / 1000) < (nSPosTargetSpacing - 3))
-		//{
-		//	return ;
-		//}
+		if ((nCurTime - pindexPrev->GetBlockTime()) < (nSPosTargetSpacing - 3))
+		{
+			return ;
+		}
 	}
 
 	CScript sposMinerPayee = GetScriptForDestination(keyID);
@@ -972,7 +972,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 
 			std::vector<CMasternode> tmpVecResultMasternodes;
 			std::vector<CDeterministicMasternode_IndexValue> tmpVecResultDeterministicMN;
-			int nSposGeneratedIndex = 0, masternodeSPosCount = 0;
+			int nMinerCount = 0;
 			int64_t nStartNewLoopTime = 0;
 			int nPushForwardTime = 0;
 			bool bDeterministic = false;
@@ -984,30 +984,22 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 
 			{
 				LOCK(cs_spos);
-
 				if (bDeterministic)
 				{
-					for (auto& mn : g_vecResultDeterministicMN)
-					{
-						tmpVecResultDeterministicMN.push_back(mn);
-						masternodeSPosCount++;
-					}
+					tmpVecResultDeterministicMN = g_vecResultDeterministicMN;
+					nMinerCount = tmpVecResultDeterministicMN.size();
 				}
 				else
 				{
-					for (auto& mn : g_vecResultMasternodes)
-					{
-						tmpVecResultMasternodes.push_back(mn);
-						masternodeSPosCount++;
-					}
+					tmpVecResultMasternodes = g_vecResultMasternodes;
+					nMinerCount = tmpVecResultMasternodes.size();
 				}
 
 				nPushForwardTime = g_nPushForwardTime;
 				nStartNewLoopTime = g_nStartNewLoopTimeMS;
-				//nSposGeneratedIndex = g_nSposGeneratedIndex;
 			}
 
-			if (masternodeSPosCount > 0)
+			if (nMinerCount > 0 && nStartNewLoopTime != g_nSelectGlobalDefaultValue && nPushForwardTime != g_nSelectGlobalDefaultValue)
 			{
 				bMinerLog = false;
 				ConsensusUseSPos(chainparams, pTopBlock, nStartNewLoopTime, nPushForwardTime, tmpVecResultMasternodes, tmpVecResultDeterministicMN);
@@ -1017,7 +1009,10 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 				if (!bMinerLog)
 				{
 					bMinerLog = true;
-					LogPrintf("SPOS_Error: miner is empty\n");
+					LogPrintf("SPOS_Error: miner is empty and data is error, nMinerCount:%d, nStartNewLoopTime:%lld, nPushForwardTime:%d\n",
+						nMinerCount,
+						nStartNewLoopTime,
+						nPushForwardTime);
 				}
 			}
 
