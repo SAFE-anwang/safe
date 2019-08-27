@@ -800,11 +800,14 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		if (!bErrCreateBlcokLog)
 		{
 			bErrCreateBlcokLog = true;
-			LogPrintf("SPOS_Error: index is valid, but it is not create block, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+			LogPrintf("SPOS_Warning: index is valid, but it is not create block, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, "
+				"nPushForwardTime: %d, nNextBlockTime:%lld, nFutureLocalTime:%lld, nRealyMinerCount: %d\n",
 				nNextIndex,
 				nCurTime,
 				nStartNewLoopTime,
 				nPushForwardTime,
+				nNextBlockTime,
+				nFutureLocalTime,
 				nRealyMinerCount);
 		}
 		return ;
@@ -1046,7 +1049,7 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 				if (!bMinerLog)
 				{
 					bMinerLog = true;
-					LogPrintf("SPOS_Error: miner is empty and data is error, nMinerCount:%d, nStartNewLoopTime:%lld, nPushForwardTime:%d\n",
+					LogPrintf("SPOS_Error: miner is empty or data is error, nMinerCount:%d, nStartNewLoopTime:%lld, nPushForwardTime:%d\n",
 						nMinerCount,
 						nStartNewLoopTime,
 						nPushForwardTime);
