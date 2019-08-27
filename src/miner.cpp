@@ -767,6 +767,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
 	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
 	int nNextIndex = (nNextBlockTime - nStartNewLoopTime - nPushForwardTime) / nSPosTargetSpacing;
+	nNextIndex--;
 	nNextIndex = nNextIndex % nRealyMinerCount;
 	
 	//int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing);	
