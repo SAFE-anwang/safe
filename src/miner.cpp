@@ -943,22 +943,22 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 				} while (true);
 			}
 
-			unsigned int nNewBlockHeight = chainActive.Height() + 1;
-			if (!IsStartSPosHeight(nNewBlockHeight))
-			{
-				MilliSleep(50);
-				continue;
-			}
-
 			CBlockIndex* pTopBlock = NULL;
 			{
 				LOCK(cs_main);
 				pTopBlock = chainActive.Tip();
 			}
-			 
+
 			if (!pTopBlock)
 			{
 				LogPrintf("SPOS_Error: SposMiner pindexPrev is NULL,size:%d\n", chainActive.Height());
+				MilliSleep(50);
+				continue;
+			}
+
+			int nNewBlockHeight = pTopBlock->nHeight + 1;
+			if (!IsStartSPosHeight(nNewBlockHeight))
+			{
 				MilliSleep(50);
 				continue;
 			}
@@ -1138,19 +1138,26 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                 } while (true);
             }
 
-            CBlockIndex* pindexPrev = chainActive.Tip();
-            if(!pindexPrev)
-            {
-                LogPrintf("SPOS_Warning:ThreadSPOSAutoReselect pindexPrev is NULL,size:%d\n",chainActive.Height());
-                MilliSleep(50);
-                continue;
-            }
-            int nCurrBlockHeight = chainActive.Height();
-            if(!IsStartSPosHeight(nCurrBlockHeight))
-            {
-                MilliSleep(50);
-                continue;
-            }
+			CBlockIndex* pindexPrev = NULL;
+
+			{
+				LOCK(cs_main);
+				pindexPrev = chainActive.Tip();
+			}
+
+			if (!pindexPrev)
+			{
+				LogPrintf("SPOS_Warning:ThreadSPOSAutoReselect pindexPrev is NULL,size:%d\n", chainActive.Height());
+				MilliSleep(50);
+				continue;
+			}
+
+			int nCurrBlockHeight = pindexPrev->nHeight;
+			if (!IsStartSPosHeight(nCurrBlockHeight))
+			{
+				MilliSleep(50);
+				continue;
+			}                    
 
             int nTimeout = g_nMinerBlockTimeout;
             uint32_t nCurrTime = GetTime();
