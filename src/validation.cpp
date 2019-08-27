@@ -11047,7 +11047,10 @@ void SortDeterministicMNs(const std::map<COutPoint, CDeterministicMasternode_Ind
     for (std::map<COutPoint, CDeterministicMasternode_IndexValue>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
     {
         const CDeterministicMasternode_IndexValue& mn = (*mnpair).second;
-        uint256 hash = uint256S(mn.strCollateralAddress);
+        CBitcoinAddress addr(mn.strCollateralAddress);
+        CKeyID id;
+        addr.GetKeyID(id);
+        uint256 hash = id.GetHex();
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << hash;
         ss << nScoreTime;
