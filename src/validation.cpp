@@ -11055,7 +11055,7 @@ void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValu
         scoreMasternodes[score] = mn;
     }
 
-    LogPrintf("SPOS_INFO:scoreMasternodes size:%d\n", scoreMasternodes.size());
+    LogPrintf("SPOS_INFO:%s scoreMasternodes size:%d\n", strArrName, scoreMasternodes.size());
     for (auto& mnpair : scoreMasternodes)
     {
         CDeterministicMasternode_IndexValue& mn = mnpair.second;
