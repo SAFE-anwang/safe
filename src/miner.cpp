@@ -763,10 +763,15 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	{
 		bTimeIntervalLog = false;
 	}
-	
-	int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing);	
-	nNextIndex--;
+
+	int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
+	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
+	int nNextIndex = (nNextBlockTime - nStartNewLoopTime - nPushForwardTime) / nSPosTargetSpacing;
 	nNextIndex = nNextIndex % nRealyMinerCount;
+	
+	//int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing);	
+	//nNextIndex--;
+	//nNextIndex = nNextIndex % nRealyMinerCount;
 	if (nNextIndex < 0)
 	{	
 		if (!bErrorIndexLog)
@@ -834,8 +839,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		return;
 	}
 
-	int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
-	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
+	
 	CBlock *pblock = &pblocktemplate->block;
 	pblock->nTime = nNextBlockTime;
 	if (IsStartDeterministicMNHeight(nNextBlockHeight))
@@ -978,13 +982,6 @@ void static SposMiner(const CChainParams& chainparams, CConnman& connman)
 				{
 					bTimeLog = false;
 					LogPrintf("SPOS_Info: local time recovery normal, localTime : %lld\n", nCurTime);
-				}
-
-				if ((nCurTime - (int64_t)pTopBlock->nTime) < (chainparams.GetConsensus().nSPOSTargetSpacing / 2))
-				{
-					// create block must in 15s-30s
-					MilliSleep(50);
-					continue;
 				}
 			}
 
