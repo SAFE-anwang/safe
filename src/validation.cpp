@@ -11040,7 +11040,7 @@ void GetEffectiveOfficialMNData(const std::map<COutPoint, CDeterministicMasterno
     }
 }
 
-void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapMasternodes, std::vector<CDeterministicMasternode_IndexValue>& vecResultMasternodes, uint32_t nScoreTime, std::string strArrName)
+void SortDeterministicMNs(const std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapMasternodes, std::vector<CDeterministicMasternode_IndexValue>& vecResultMasternodes, const uint32_t& nScoreTime, const std::string& strArrName)
 {
     //sort by score
     std::map<uint256, CDeterministicMasternode_IndexValue> scoreMasternodes;
@@ -11052,9 +11052,12 @@ void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValu
         ss << hash;
         ss << nScoreTime;
         uint256 score = ss.GetHash();
+        LogPrintf("SPOS_INFO:SortDeterministicMNs strCollateralAddress:%s, score:%s\n", mn.strCollateralAddress, score.ToString());
+        
         scoreMasternodes[score] = mn;
     }
 
+    LogPrintf("SPOS_INFO:%s mapMasternodes size:%d scoreMasternodes size:%d\n", strArrName, mapMasternodes.size(), scoreMasternodes.size());
     for (auto& mnpair : scoreMasternodes)
     {
         CDeterministicMasternode_IndexValue& mn = mnpair.second;
@@ -11077,6 +11080,8 @@ void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValu
         uint32_t j = i + k%jmax;
         std::swap(vecResultMasternodes[i], vecResultMasternodes[j]);
     }
+
+    LogPrintf("SPOS_INFO:vecResultMasternodes size():%d\n", vecResultMasternodes.size());
 }
 
 void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, const uint32_t& nScoreTime, const bool& bProcessSpork, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes,
@@ -11331,6 +11336,9 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
         unsigned int vec1Size = vecResultMasternodesL1.size();
         unsigned int vec2Size = vecResultMasternodesL2.size();
         unsigned int vec3Size = vecResultMasternodesL3.size();
+
+        LogPrintf("SPOS_INFO:vec1Size:%d, vec2Size:%d, vec3Size%d, nAllEffectiveGeneralMNNum:%d, nGeneralMNNum:%d\n",
+                  vec1Size, vec2Size, vec3Size, nAllEffectiveGeneralMNNum, nGeneralMNNum);
         unsigned int nP1 = ((double)vec1Size / nAllEffectiveGeneralMNNum) * nGeneralMNNum;
         unsigned int nP2 = ((double)vec2Size / nAllEffectiveGeneralMNNum) * nGeneralMNNum;
         unsigned int nP3 = ((double)vec3Size / nAllEffectiveGeneralMNNum) * nGeneralMNNum;

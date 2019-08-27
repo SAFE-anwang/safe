@@ -1688,7 +1688,7 @@ void GetEffectiveGeneralMNData(const std::map<COutPoint, CDeterministicMasternod
 void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue>& mapAllMasterNode, const int& nHeight, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveMasternode);
 void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexValue>& mapAllPayeeInfo, const int& nHeight, std::map<std::string, CMasternodePayee_IndexValue>& mapAllEffectivePayeeInfo);
 void GetEffectiveOfficialMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapAllOfficialMNs, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveOfficialMNs);
-void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapMasternodes, std::vector<CDeterministicMasternode_IndexValue>& vecResultMasternodes, uint32_t nScoreTime, std::string strArrName);
+void SortDeterministicMNs(const std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapMasternodes, std::vector<CDeterministicMasternode_IndexValue>& vecResultMasternodes, const uint32_t& nScoreTime, const std::string& strArrName);
 void UpdateReSelectMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes);
 void UpdateDeterministicMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes, const int& selectMasterNodeRet, const int64_t& nStartNewLoopTime);
 void InitReSelectMNGlobalData();
