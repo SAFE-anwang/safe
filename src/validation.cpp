@@ -10337,6 +10337,7 @@ void InitDeterministicMNGlobalData()
     std::vector<CDeterministicMasternode_IndexValue>().swap(g_vecResultDeterministicMN);
     g_nSelectMasterNodeRet = g_nSelectGlobalDefaultValue;
     g_nStartNewLoopTimeMS = g_nSelectGlobalDefaultValue;
+    g_nPushForwardTime = g_nSelectGlobalDefaultValue;
 }
 
 void InitMasternodeGlobalData()
@@ -10346,6 +10347,7 @@ void InitMasternodeGlobalData()
     std::vector<CMasternode>().swap(g_vecResultMasternodes);
     g_nSelectMasterNodeRet = g_nSelectGlobalDefaultValue;
     g_nStartNewLoopTimeMS = g_nSelectGlobalDefaultValue;
+    g_nPushForwardTime = g_nSelectGlobalDefaultValue;
 }
 
 void UpdateGlobalTimeoutCount(int nTimeoutCount)
@@ -10927,7 +10929,7 @@ bool DealMemAndDBSpork(CBlockIndex* pindex)
         int nHeight = boost::lexical_cast<int>(strHeight);
         int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
 
-        if (pindex->nHeight >= nHeight && pindex->nHeight % g_nMasternodeSPosCount == 0 && nOfficialMasterNodeCount >= 0 && nOfficialMasterNodeCount <= g_nMasternodeSPosCount)
+        if (pindex->nHeight + 1 >= nHeight && pindex->nHeight % g_nMasternodeSPosCount == 0 && nOfficialMasterNodeCount >= 0 && nOfficialMasterNodeCount <= g_nMasternodeSPosCount)
         {
             CSporkInfo_IndexValue tempSporkInfo;
             tempSporkInfo.nHeight = nHeight;
