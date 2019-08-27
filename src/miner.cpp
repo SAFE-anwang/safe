@@ -730,6 +730,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 {
 	static bool bTimeIntervalLog = false;
 	static bool bErrorIndexLog = false;
+	static bool bErrCreateBlcokLog = false;
 
 	int nRealyMinerCount = 0;
 	if (IsStartDeterministicMNHeight(pindexPrev->nHeight + 1))
@@ -791,6 +792,26 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	else
 	{
 		bErrorIndexLog = false;
+	}
+
+	int64_t nFutureLocalTime = nCurTime + (nNextIndex + 1) * nSPosTargetSpacing;
+	if (abs(nNextBlockTime - nFutureLocalTime) > g_nLocalTimeOffset)
+	{
+		if (!bErrCreateBlcokLog)
+		{
+			bErrCreateBlcokLog = true;
+			LogPrintf("SPOS_Error: index is valid, but it is not create block, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+				nNextIndex,
+				nCurTime,
+				nStartNewLoopTime,
+				nPushForwardTime,
+				nRealyMinerCount);
+		}
+		return ;
+	}
+	else
+	{
+		bErrCreateBlcokLog = false;
 	}
 
 	CKeyID keyID;
@@ -912,10 +933,10 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		nTimeInterval,
 		nRealyMinerCount);
 
-	if (nActualTimeMillisInterval > 0)
-	{
-		MilliSleep(nActualTimeMillisInterval + 500);
-	}
+	//if (nActualTimeMillisInterval > 0)
+	//{
+	//	MilliSleep(nActualTimeMillisInterval + 500);
+	//}
 }
 
 
