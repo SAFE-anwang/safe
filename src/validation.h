@@ -1672,18 +1672,17 @@ bool ExistForbidTxin(const int nHeight, const std::vector<int>& prevheights);
 bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ngetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
 bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ndbgetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
 
-void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
-                                ,int64_t nStartNewLoopTime);
+void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int64_t nStartNewLoopTime);
 
 
 void UpdateGlobalTimeoutCount(int nTimeoutCount);
 void UpdateGlobalReceiveBlock(bool fReceiveBlock);
 void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScoreTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
-                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect,
+                             ,bool& bClearVec,int& nSelectMasterNodeRet,int64_t& nStartNewLoopTime,bool fTimeoutReselect,
                              const unsigned int& nMasternodeSPosCount, SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode = false);
 
 void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, const uint32_t& nScoreTime, const bool& bProcessSpork, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes,
-                                 bool& bClearVec, int& nSelectMasterNodeRet, int& nSposGeneratedIndex, int64_t& nStartNewLoopTime, bool fTimeoutReselect, const unsigned int& nOfficialCount);
+                                 bool& bClearVec, int& nSelectMasterNodeRet, int64_t& nStartNewLoopTime, bool fTimeoutReselect, const unsigned int& nOfficialCount);
 void GetEffectiveGeneralMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue>& mapAllEffectiveMasterNode, const std::map<std::string, CMasternodePayee_IndexValue>& mapAllEffectivePayeeInfo,
                                        std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveGeneralMNs);
 void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue>& mapAllMasterNode, const int& nHeight, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveMasternode);
@@ -1691,8 +1690,7 @@ void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexVal
 void GetEffectiveOfficialMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapAllOfficialMNs, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveOfficialMNs);
 void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapMasternodes, std::vector<CDeterministicMasternode_IndexValue>& vecResultMasternodes, uint32_t nScoreTime, std::string strArrName);
 void UpdateReSelectMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes, bool bClearVec);
-void UpdateDeterministicMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,
-                                              int nSposGeneratedIndex, int64_t nStartNewLoopTime);
+void UpdateDeterministicMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int64_t nStartNewLoopTime);
 void InitReSelectMNGlobalData();
 void InitDeterministicMNGlobalData();
 void InitMasternodeGlobalData();

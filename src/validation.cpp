@@ -5494,7 +5494,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         std::vector<CMasternode> tmpVecResultMasternodes;
         std::vector<CDeterministicMasternode_IndexValue> tempvecDeterministicMN;
         bool bClearVec=false;
-        int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
+        int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue;
         int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
         int nForwardHeight = 0,nScoreHeight = 0;
         updateForwardHeightAndScoreHeight(pindexNew->nHeight,nForwardHeight,nScoreHeight);
@@ -5528,7 +5528,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                 {
                     fseselectNewLoop = false;
                     SelectDeterministicMN(pindexNew->nHeight, forwardIndex->nTime,scoreIndex->nTime, false, tempvecDeterministicMN, bClearVec,nSelectMasterNodeRet,
-                                          nSposGeneratedIndex, nStartNewLoopTime, false, tempSporkInfo.nOfficialNum);
+                                          nStartNewLoopTime, false, tempSporkInfo.nOfficialNum);
                 }
                 else
                 {
@@ -5536,12 +5536,12 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                 
                     nSporkSelectLoop = SPORK_SELECT_LOOP_1;
                     SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, true, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
-                                            nSposGeneratedIndex,nStartNewLoopTime, false, tempSporkInfo.nOfficialNum, nSporkSelectLoop, false);
+                                            nStartNewLoopTime, false, tempSporkInfo.nOfficialNum, nSporkSelectLoop, false);
 
                     nSporkSelectLoop = SPORK_SELECT_LOOP_2;
                     if (g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum > 0 && nSelectMasterNodeRet > 0)
                         SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, false, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
-                                                nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum, nSporkSelectLoop, true);
+                                                nStartNewLoopTime, false, g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum, nSporkSelectLoop, true);
                 }
             }
         }
@@ -5551,7 +5551,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
             if (IsStartDeterministicMNHeight(pindexNew->nHeight + 1))
             {
                 SelectDeterministicMN(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, false, tempvecDeterministicMN, bClearVec,nSelectMasterNodeRet,
-                                      nSposGeneratedIndex, nStartNewLoopTime, false, 0);
+                                      nStartNewLoopTime, false, 0);
             }
             else
             {
@@ -5567,13 +5567,13 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                 }
 
                 SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, false, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
-                                        nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount, nSporkSelectLoop, false);
+                                        nStartNewLoopTime, false, g_nMasternodeSPosCount, nSporkSelectLoop, false);
             }
         }
         if (IsStartDeterministicMNHeight(pindexNew->nHeight + 1))
-            UpdateDeterministicMNGlobalData(tempvecDeterministicMN, bClearVec, nSelectMasterNodeRet, nSposGeneratedIndex, nStartNewLoopTime);
+            UpdateDeterministicMNGlobalData(tempvecDeterministicMN, bClearVec, nSelectMasterNodeRet, nStartNewLoopTime);
         else
-            UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+            UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nStartNewLoopTime);
     }
 
     // Tell wallet about transactions that went from mempool
@@ -10263,8 +10263,7 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
     }
 }
 
-void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
-                          ,int64_t nStartNewLoopTime)
+void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int64_t nStartNewLoopTime)
 {
     LOCK(cs_spos);
     if (bClearVec||!tmpVecMasternodes.empty())
@@ -10277,16 +10276,13 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
         for(auto& mn:tmpVecMasternodes)
             g_vecResultMasternodes.push_back(mn);
     }
-    if(selectMasterNodeRet!=g_nSelectGlobalDefaultValue)
-        g_nSelectMasterNodeRet = selectMasterNodeRet;
-    //if(nSposGeneratedIndex!=g_nSelectGlobalDefaultValue)
-    //    g_nSposGeneratedIndex = nSposGeneratedIndex;
-    if(nStartNewLoopTime!=g_nSelectGlobalDefaultValue)
-        g_nStartNewLoopTimeMS = nStartNewLoopTime;
+
+    g_nSelectMasterNodeRet = selectMasterNodeRet;
+	g_nStartNewLoopTimeMS = nStartNewLoopTime;
 }
 
 void UpdateDeterministicMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes, bool bClearVec, 
-                                              int selectMasterNodeRet,int nSposGeneratedIndex, int64_t nStartNewLoopTime)
+                                              int selectMasterNodeRet,int64_t nStartNewLoopTime)
 {
     LOCK(cs_spos);
     if (bClearVec||!tmpVecMasternodes.empty())
@@ -10298,14 +10294,10 @@ void UpdateDeterministicMNGlobalData(const std::vector<CDeterministicMasternode_
 
         for (auto& mn:tmpVecMasternodes)
             g_vecResultDeterministicMN.push_back(mn);
-    }
+	}
 
-    if (selectMasterNodeRet != g_nSelectGlobalDefaultValue)
-        g_nSelectMasterNodeRet = selectMasterNodeRet;
-    //if (nSposGeneratedIndex != g_nSelectGlobalDefaultValue)
-    //    g_nSposGeneratedIndex = nSposGeneratedIndex;
-    if (nStartNewLoopTime != g_nSelectGlobalDefaultValue)
-        g_nStartNewLoopTimeMS = nStartNewLoopTime;
+	g_nSelectMasterNodeRet = selectMasterNodeRet;
+	g_nStartNewLoopTimeMS = nStartNewLoopTime;
 }
 
 void UpdateReSelectMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes, bool bClearVec)
@@ -10371,7 +10363,7 @@ void UpdateGlobalPushforwardTime(int nCurrBlockHeight)
 }
 
 void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScoreTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
-                                   ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect,const unsigned int& nMasternodeSPosCount, 
+                                   ,bool& bClearVec,int& nSelectMasterNodeRet,int64_t& nStartNewLoopTime,bool fTimeoutReselect,const unsigned int& nMasternodeSPosCount, 
                                    SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode)
 {
     if(!masternodeSync.IsSynced()&&g_vecResultMasternodes.empty())
@@ -10471,7 +10463,6 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
 
     //1.3.3
     nStartNewLoopTime = (int64_t)nTime;
-    nSposGeneratedIndex = -2;
     nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime);
 
@@ -11098,7 +11089,7 @@ void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValu
 }
 
 void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, const uint32_t& nScoreTime, const bool& bProcessSpork, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes,
-                                 bool& bClearVec, int& nSelectMasterNodeRet, int& nSposGeneratedIndex, int64_t& nStartNewLoopTime, bool fTimeoutReselect, const unsigned int& nOfficialCount)
+                                 bool& bClearVec, int& nSelectMasterNodeRet, int64_t& nStartNewLoopTime, bool fTimeoutReselect, const unsigned int& nOfficialCount)
 {
     //SQTODO
     //if (!masternodeSync.IsSynced() && g_vecResultDeterministicMN.empty())
@@ -11154,7 +11145,6 @@ void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, c
     InitDeterministicMNGlobalData();
 
     nStartNewLoopTime = (int64_t)nTime;
-    nSposGeneratedIndex = -2;
     nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime);
 

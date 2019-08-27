@@ -1182,7 +1182,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
             std::vector<CMasternode> tmpVecResultMasternodes;
             std::vector<CDeterministicMasternode_IndexValue> tmpVecDeterministicMNs;
             bool bClearVec=false;
-            int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
+            int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue;
             int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
             bool fOverTimeoutLimit = g_nTimeoutCount >= g_nMaxTimeoutCount;
             bool fReselect = true;
@@ -1205,7 +1205,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                     {
                         fReselect = false;
                         SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs, bClearVec,
-                                              nSelectMasterNodeRet, nSposGeneratedIndex, nStartNewLoopTime, true, tempSporkInfo.nOfficialNum);
+                                              nSelectMasterNodeRet, nStartNewLoopTime, true, tempSporkInfo.nOfficialNum);
                     }
                     else
                     {
@@ -1213,12 +1213,12 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
 
                         nSporkSelectLoop = SPORK_SELECT_LOOP_1;
                         SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,true,true,tmpVecResultMasternodes,bClearVec,
-                                    nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, tempSporkInfo.nOfficialNum, nSporkSelectLoop, false);
+                                    nSelectMasterNodeRet,nStartNewLoopTime,true, tempSporkInfo.nOfficialNum, nSporkSelectLoop, false);
 
                         nSporkSelectLoop = SPORK_SELECT_LOOP_2;
                         if (g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum > 0 && nSelectMasterNodeRet > 0)
                             SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,false,true,tmpVecResultMasternodes,bClearVec,
-                                                    nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime,true, g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum, nSporkSelectLoop, true);
+                                                    nSelectMasterNodeRet,nStartNewLoopTime,true, g_nMasternodeSPosCount - tempSporkInfo.nOfficialNum, nSporkSelectLoop, true);
                     }
                 }
             }
@@ -1232,21 +1232,21 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                         nOfficialNum = g_nMasternodeSPosCount;
 
                     SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs, bClearVec,
-                                          nSelectMasterNodeRet, nSposGeneratedIndex, nStartNewLoopTime, true, nOfficialNum);
+                                          nSelectMasterNodeRet, nStartNewLoopTime, true, nOfficialNum);
                 }
                 else
                 {
                     if(fOverTimeoutLimit)
                         nSporkSelectLoop = SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT;
                     SelectMasterNodeByPayee(nCurrBlockHeight,forwardIndex->nTime,scoreIndex->nTime,fOverTimeoutLimit,true,tmpVecResultMasternodes,bClearVec,
-                                        nSelectMasterNodeRet,nSposGeneratedIndex, nStartNewLoopTime,true, g_nMasternodeSPosCount, nSporkSelectLoop, false);
+                                        nSelectMasterNodeRet, nStartNewLoopTime,true, g_nMasternodeSPosCount, nSporkSelectLoop, false);
                 }
             }
 
             if (IsStartDeterministicMNHeight(nCurrBlockHeight + 1))
-                UpdateDeterministicMNGlobalData(tmpVecDeterministicMNs, bClearVec, nSelectMasterNodeRet, nSposGeneratedIndex, nStartNewLoopTime);
+                UpdateDeterministicMNGlobalData(tmpVecDeterministicMNs, bClearVec, nSelectMasterNodeRet, nStartNewLoopTime);
             else
-                UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+                UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nStartNewLoopTime);
 
             MilliSleep(50);
         }
