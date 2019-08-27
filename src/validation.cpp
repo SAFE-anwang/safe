@@ -11040,7 +11040,7 @@ void GetEffectiveOfficialMNData(const std::map<COutPoint, CDeterministicMasterno
     }
 }
 
-void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapMasternodes, std::vector<CDeterministicMasternode_IndexValue>& vecResultMasternodes, uint32_t nScoreTime, std::string strArrName)
+void SortDeterministicMNs(const std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapMasternodes, std::vector<CDeterministicMasternode_IndexValue>& vecResultMasternodes, const uint32_t& nScoreTime, const std::string& strArrName)
 {
     //sort by score
     std::map<uint256, CDeterministicMasternode_IndexValue> scoreMasternodes;
@@ -11052,10 +11052,12 @@ void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValu
         ss << hash;
         ss << nScoreTime;
         uint256 score = ss.GetHash();
+        LogPrintf("SPOS_INFO:SortDeterministicMNs strCollateralAddress:%s, score:%s\n", mn.strCollateralAddress, score.ToString());
+        
         scoreMasternodes[score] = mn;
     }
 
-    LogPrintf("SPOS_INFO:%s scoreMasternodes size:%d\n", strArrName, scoreMasternodes.size());
+    LogPrintf("SPOS_INFO:%s mapMasternodes size:%d scoreMasternodes size:%d\n", strArrName, mapMasternodes.size(), scoreMasternodes.size());
     for (auto& mnpair : scoreMasternodes)
     {
         CDeterministicMasternode_IndexValue& mn = mnpair.second;
