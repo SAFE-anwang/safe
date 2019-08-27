@@ -795,7 +795,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	}
 
 	int64_t nFutureLocalTime = nCurTime + (nNextIndex + 1) * nSPosTargetSpacing;
-	if (abs(nNextBlockTime - nFutureLocalTime) > g_nLocalTimeOffset)
+	if (abs(nNextBlockTime - nFutureLocalTime) > nSPosTargetSpacing)
 	{
 		if (!bErrCreateBlcokLog)
 		{
