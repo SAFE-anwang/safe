@@ -343,9 +343,8 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
 
             if (IsStartDeterministicMNHeight(chainActive.Height() + 1))
             {
-                SelectDeterministicMN(chainActive.Height(), forwardIndex->nTime, scoreIndex->nTime, true, vecDeterministicMN, bClearVec,
+                SelectDeterministicMN(chainActive.Height(), forwardIndex->nTime, scoreIndex->nTime, true, vecDeterministicMN,
                                       nSelectMasterNodeRet, nStartNewLoopTime, false, nOfficialMasterNodeCount);
-                UpdateDeterministicMNGlobalData(vecDeterministicMN, bClearVec, nSelectMasterNodeRet, nStartNewLoopTime);
             }
             else
             {

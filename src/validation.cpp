@@ -5527,7 +5527,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                 if (IsStartDeterministicMNHeight(pindexNew->nHeight + 1))
                 {
                     fseselectNewLoop = false;
-                    SelectDeterministicMN(pindexNew->nHeight, forwardIndex->nTime,scoreIndex->nTime, false, tempvecDeterministicMN, bClearVec,nSelectMasterNodeRet,
+                    SelectDeterministicMN(pindexNew->nHeight, forwardIndex->nTime,scoreIndex->nTime, false, tempvecDeterministicMN, nSelectMasterNodeRet,
                                           nStartNewLoopTime, false, tempSporkInfo.nOfficialNum);
                 }
                 else
@@ -5550,7 +5550,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         {
             if (IsStartDeterministicMNHeight(pindexNew->nHeight + 1))
             {
-                SelectDeterministicMN(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, false, tempvecDeterministicMN, bClearVec,nSelectMasterNodeRet,
+                SelectDeterministicMN(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, false, tempvecDeterministicMN, nSelectMasterNodeRet,
                                       nStartNewLoopTime, false, 0);
             }
             else
@@ -5570,9 +5570,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
                                         nStartNewLoopTime, false, g_nMasternodeSPosCount, nSporkSelectLoop, false);
             }
         }
-        if (IsStartDeterministicMNHeight(pindexNew->nHeight + 1))
-            UpdateDeterministicMNGlobalData(tempvecDeterministicMN, bClearVec, nSelectMasterNodeRet, nStartNewLoopTime);
-        else
+        if (!IsStartDeterministicMNHeight(pindexNew->nHeight + 1))
             UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nStartNewLoopTime);
     }
 
@@ -6331,14 +6329,11 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
     if (deterministicMNCoinbaseData.nFirstBlock == 1)
     {
         std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
-        bool bClearVec = false;
 
         if (tempSporkInfo.nOfficialNum != 0)
-            ReSelectDeterministicMN(nHeight, deterministicMNCoinbaseData.nRandomNum, tmpVecResultMasternodes, bClearVec, tempSporkInfo.nOfficialNum);
+            ReSelectDeterministicMN(nHeight, deterministicMNCoinbaseData.nRandomNum, tempSporkInfo.nOfficialNum, tmpVecResultMasternodes);
         else
-            ReSelectDeterministicMN(nHeight, deterministicMNCoinbaseData.nRandomNum, tmpVecResultMasternodes, bClearVec, 0);
-
-        UpdateReSelectMNGlobalData(tmpVecResultMasternodes, bClearVec);
+            ReSelectDeterministicMN(nHeight, deterministicMNCoinbaseData.nRandomNum, 0, tmpVecResultMasternodes);
 
         int32_t mnSize = 0;
         CDeterministicMasternode_IndexValue mnTemp;
@@ -6490,14 +6485,11 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         if (mnSize == 0)
         {
             std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
-            bool bClearVec = false;
 
             if (firstCoinbaseData.nOfficialMNNum != 0)
-                ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, tmpVecResultMasternodes, bClearVec, firstCoinbaseData.nOfficialMNNum);
+                ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, firstCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
             else
-                ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, tmpVecResultMasternodes, bClearVec, 0);
-
-            UpdateReSelectMNGlobalData(tmpVecResultMasternodes, bClearVec);
+                ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, 0, tmpVecResultMasternodes);
 
             int32_t nIndex = 0;
             CDeterministicMasternode_IndexValue mnTemp;
@@ -10277,42 +10269,41 @@ void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternode
             g_vecResultMasternodes.push_back(mn);
     }
 
-    g_nSelectMasterNodeRet = selectMasterNodeRet;
-	g_nStartNewLoopTimeMS = nStartNewLoopTime;
+    if (selectMasterNodeRet != g_nSelectGlobalDefaultValue)
+        g_nSelectMasterNodeRet = selectMasterNodeRet;
+
+    if (nStartNewLoopTime != g_nSelectGlobalDefaultValue)
+	    g_nStartNewLoopTimeMS = nStartNewLoopTime;
 }
 
-void UpdateDeterministicMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes, bool bClearVec, 
-                                              int selectMasterNodeRet,int64_t nStartNewLoopTime)
+void UpdateDeterministicMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes, 
+                                              const int& selectMasterNodeRet, const int64_t& nStartNewLoopTime)
 {
     LOCK(cs_spos);
-    if (bClearVec||!tmpVecMasternodes.empty())
-    {
-        {
-            g_vecResultDeterministicMN.clear();
-            std::vector<CDeterministicMasternode_IndexValue>().swap(g_vecResultDeterministicMN);
-        }
 
-        for (auto& mn:tmpVecMasternodes)
-            g_vecResultDeterministicMN.push_back(mn);
-	}
+    {
+        g_vecResultDeterministicMN.clear();
+        std::vector<CDeterministicMasternode_IndexValue>().swap(g_vecResultDeterministicMN);
+    }
+
+    for (auto& mn : tmpVecMasternodes)
+        g_vecResultDeterministicMN.push_back(mn);
 
 	g_nSelectMasterNodeRet = selectMasterNodeRet;
 	g_nStartNewLoopTimeMS = nStartNewLoopTime;
 }
 
-void UpdateReSelectMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes, bool bClearVec)
+void UpdateReSelectMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes)
 {
     LOCK(cs_reselectmn);
-    if (bClearVec||!tmpVecMasternodes.empty())
-    {
-        {
-            g_vecReSelectResultMasternodes.clear();
-            std::vector<CDeterministicMasternode_IndexValue>().swap(g_vecReSelectResultMasternodes);
-        }
 
-        for(auto& mn:tmpVecMasternodes)
-            g_vecReSelectResultMasternodes.push_back(mn);
+    {
+        g_vecReSelectResultMasternodes.clear();
+        std::vector<CDeterministicMasternode_IndexValue>().swap(g_vecReSelectResultMasternodes);
     }
+
+    for(auto& mn:tmpVecMasternodes)
+        g_vecReSelectResultMasternodes.push_back(mn);
 }
 
 void InitReSelectMNGlobalData()
@@ -10357,7 +10348,7 @@ void UpdateGlobalReceiveBlock(bool fReceiveBlock)
 void UpdateGlobalPushforwardTime(int nCurrBlockHeight)
 {
     LOCK(cs_spos);
-    if(nCurrBlockHeight-g_nPushForwardHeight>g_nStartSPOSHeight){
+    if (nCurrBlockHeight - g_nPushForwardHeight > g_nStartSPOSHeight){
         g_nPushForwardTime = g_nPushForwardHeight * Params().GetConsensus().nSPOSTargetSpacing;
     }
 }
@@ -11089,66 +11080,49 @@ void SortDeterministicMNs(std::map<COutPoint, CDeterministicMasternode_IndexValu
 }
 
 void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, const uint32_t& nScoreTime, const bool& bProcessSpork, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes,
-                                 bool& bClearVec, int& nSelectMasterNodeRet, int64_t& nStartNewLoopTime, bool fTimeoutReselect, const unsigned int& nOfficialCount)
+                                 int& nSelectMasterNodeRet, int64_t& nStartNewLoopTime, bool fTimeoutReselect, const unsigned int& nOfficialCount)
 {
     //SQTODO
     //if (!masternodeSync.IsSynced() && g_vecResultDeterministicMN.empty())
         //return;
 
+   if (!masternodeSync.IsSynced())
+   {
+       LogPrintf("SPOS_Warning: SelectDeterministicMN() masternode is syncing,reset g_nSelectMasterNodeRet,wait next loop to select masternode\n");
+       return;
+   }
+
+   if (nCurrBlockHeight - g_nLocalStartSavePayeeHeight < g_nCanSelectMasternodeHeight && g_nLocalStartSavePayeeHeight != g_nSaveMasternodePayeeHeight)
+   {
+       LogPrintf("SPOS_Warning:SelectDeterministicMN() local start save masternode height(%d) minus curr height(%d) less than masternode can be select height(%d),default save masternode payee height:%d\n",
+                 g_nLocalStartSavePayeeHeight,nCurrBlockHeight,g_nCanSelectMasternodeHeight,g_nSaveMasternodePayeeHeight);
+       return;
+   }
+
     if (!bProcessSpork)
     {
         if (g_nLastSelectMasterNodeHeight == nCurrBlockHeight)
         {
-            LogPrintf("SPOS_Message:g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d, not SelectDeterministicMN\n",nCurrBlockHeight);
+            LogPrintf("SPOS_Message:SelectDeterministicMN() g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d, not SelectDeterministicMN\n",nCurrBlockHeight);
             return;
         }
 
         int ret = nCurrBlockHeight % g_nMasternodeSPosCount;
         if (ret != 0 && nCurrBlockHeight != g_nStartDeterministicMNHeight)
         {
-            if((nCurrBlockHeight + 1) == g_nStartSPOSHeight)
-                LogPrintf("SPOS_Warning:error g_nStartSPOSHeight config,please check config\n");
             return;
         }
-
-        if (masternodeSync.IsSynced() && g_nAllowMasterNodeSyncErrorTime != 0 && g_nFirstSelectMasterNodeTime == 0)
-        {
-            g_nFirstSelectMasterNodeTime = GetTime();
-            return;
-        }
-
     }
 
-    if (!masternodeSync.IsSynced())
-    {
-        bClearVec = true;
-        nSelectMasterNodeRet = g_nSelectMasterNodeReset;//reset ret
-        LogPrintf("SPOS_Warning:masternode is syncing,reset g_nSelectMasterNodeRet,wait next loop to select masternode\n");
-        return;
-    }
-
-    if (nCurrBlockHeight - g_nLocalStartSavePayeeHeight < g_nCanSelectMasternodeHeight && g_nLocalStartSavePayeeHeight != g_nSaveMasternodePayeeHeight)
-    {
-        LogPrintf("SPOS_Warning:local start save masternode height(%d) minus curr height(%d) less than masternode can be select height(%d),default save masternode payee height:%d\n",
-                  g_nLocalStartSavePayeeHeight,nCurrBlockHeight,g_nCanSelectMasternodeHeight,g_nSaveMasternodePayeeHeight);
-        return;
-    }
-
-    LogPrintf("SPOS_Info:--------------------------------------------------------\n");
-    LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d, fTimeoutReselect:%s, g_nTimeoutCount:%d.\n", nCurrBlockHeight,
+    LogPrintf("SPOS_Info:SelectDeterministicMN--------------------------------------------------------\n");
+    LogPrintf("SPOS_Message:start select deterministic masternode, nCurrHeight:%d, fTimeoutReselect:%s, g_nTimeoutCount:%d.\n", nCurrBlockHeight,
               fTimeoutReselect?"true":"false", g_nTimeoutCount);
-
-    if (!g_vecResultDeterministicMN.empty()){
-        bClearVec = true;
-    }
 
     InitDeterministicMNGlobalData();
 
     nStartNewLoopTime = (int64_t)nTime;
     nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime);
-
-    UpdateGlobalPushforwardTime(nCurrBlockHeight);
 
     if (GetDeterministicMNList(nCurrBlockHeight, nScoreTime, tmpVecResultMasternodes, nOfficialCount, nSelectMasterNodeRet))
     {
@@ -11162,10 +11136,16 @@ void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, c
             g_nLastSelectMasterNodeSuccessHeight = nCurrBlockHeight;
             g_nScoreTime = nScoreTime;
         }
+
+        UpdateGlobalPushforwardTime(nCurrBlockHeight);
+
+        UpdateDeterministicMNGlobalData(tmpVecResultMasternodes, nSelectMasterNodeRet, nStartNewLoopTime);
     }
+    else
+        LogPrintf("SPOS_ERROR:SelectDeterministicMN() fail, nCurrBlockHeight:%d, nTime:%d, nScoreTime:%d, nOfficialCount:%d\n", nCurrBlockHeight, nTime, nScoreTime, nOfficialCount);
 }
 
-void ReSelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nScoreTime, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes, bool& bClearVec, const unsigned int& nOfficialCount)
+void ReSelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nScoreTime, const unsigned int& nOfficialCount, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes)
 {
     if (nCurrBlockHeight - g_nLocalStartSavePayeeHeight < g_nCanSelectMasternodeHeight && g_nLocalStartSavePayeeHeight != g_nSaveMasternodePayeeHeight)
     {
@@ -11174,14 +11154,13 @@ void ReSelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nScore
         return;
     }
 
-    if (!g_vecReSelectResultMasternodes.empty())
-    {
-        bClearVec = true;
-    }
-
     InitReSelectMNGlobalData();
     int nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
-    GetDeterministicMNList(nCurrBlockHeight, nScoreTime, tmpVecResultMasternodes, nOfficialCount, nSelectMasterNodeRet);
+
+    if (GetDeterministicMNList(nCurrBlockHeight, nScoreTime, tmpVecResultMasternodes, nOfficialCount, nSelectMasterNodeRet))
+        UpdateReSelectMNGlobalData(tmpVecResultMasternodes);
+    else
+        LogPrintf("SPOS_ERROR:ReSelectDeterministicMN() fail, nCurrBlockHeight:%d, nScoreTime:%d, nOfficialCount:%d\n", nCurrBlockHeight, nScoreTime, nOfficialCount);
 }
 
 bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreTime, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes, const unsigned int& nOfficialCount, int& nSelectMasterNodeRet)

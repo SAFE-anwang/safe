@@ -1215,7 +1215,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                     if (IsStartDeterministicMNHeight(nCurrBlockHeight + 1))
                     {
                         fReselect = false;
-                        SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs, bClearVec,
+                        SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs,
                                               nSelectMasterNodeRet, nStartNewLoopTime, true, tempSporkInfo.nOfficialNum);
                     }
                     else
@@ -1242,7 +1242,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                     if (fOverTimeoutLimit)
                         nOfficialNum = g_nMasternodeSPosCount;
 
-                    SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs, bClearVec,
+                    SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs,
                                           nSelectMasterNodeRet, nStartNewLoopTime, true, nOfficialNum);
                 }
                 else
@@ -1254,9 +1254,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                 }
             }
 
-            if (IsStartDeterministicMNHeight(nCurrBlockHeight + 1))
-                UpdateDeterministicMNGlobalData(tmpVecDeterministicMNs, bClearVec, nSelectMasterNodeRet, nStartNewLoopTime);
-            else
+            if (!IsStartDeterministicMNHeight(nCurrBlockHeight + 1))
                 UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nStartNewLoopTime);
 
             MilliSleep(50);

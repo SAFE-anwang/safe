@@ -34,7 +34,7 @@ int g_nSaveMasternodePayeeHeight = 1088804;
 
 unsigned int g_nMasternodeSPosCount = 9;
 unsigned int g_nMasternodeCanBeSelectedTime = 86400*3;
-int64_t g_nStartNewLoopTimeMS = 0;
+int64_t g_nStartNewLoopTimeMS = -999;
 int g_nSposGeneratedIndex = -2;
 unsigned int g_nMasternodeMinCount = 3;
 int64_t g_nLastSelectMasterNodeHeight = 0;
@@ -43,7 +43,7 @@ int g_nSelectGlobalDefaultValue = -999;
 int g_nSelectMasterNodeSucc = 1;
 int g_nSelectMasterNodeReset = 0;
 int g_nSelectMasterNodeFail = -1;
-int g_nSelectMasterNodeRet = 0;//first time or reset:-0,select fail:-1,select succ:1
+int g_nSelectMasterNodeRet = -999;//first time or reset:-0,select fail:-1,select succ:1
 int64_t g_nMasternodeResetTime = GetTime();
 int g_nMasternodeResetInterval = 150;
 int g_nPushForwardHeight = 18;
@@ -52,7 +52,7 @@ int g_nMinerBlockTimeout = 600;
 int g_nLogMaxCnt = 9;
 int g_nTimeoutCount = 0;
 int g_nMaxTimeoutCount = 3;
-int g_nPushForwardTime = 0;
+int g_nPushForwardTime = -999;
 bool g_fReceiveBlock = false;
 
 int64_t g_nFirstSelectMasterNodeTime = 0;
