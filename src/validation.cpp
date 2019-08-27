@@ -6395,14 +6395,6 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
     }
     else
     {
-        if (deterministicMNCoinbaseData.nOfficialMNNum != tempSporkInfo.nOfficialNum || deterministicMNCoinbaseData.nGeneralMNNum != tempSporkInfo.nGeneralNum)
-        {
-            LogPrintf("SPOS_Warning:nOfficialMNNum or nGeneralMNNum error, deterministicMNCoinbaseData.nOfficialMNNum:%d(tempSporkInfo.nOfficialNum%d), "
-                      "deterministicMNCoinbaseData.nGeneralMNNum:%d(tempSporkInfo.nGeneralNum:%d)\n", deterministicMNCoinbaseData.nOfficialMNNum,
-                      tempSporkInfo.nOfficialNum, deterministicMNCoinbaseData.nGeneralMNNum, tempSporkInfo.nGeneralNum);
-            return false;
-        }
-
         int ntempHeight = nHeight - 1;
         CBlock firstBlock;
         CDeterministicMNCoinbaseData firstCoinbaseData;
@@ -6469,6 +6461,14 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             return false;
         }
 
+        if (deterministicMNCoinbaseData.nOfficialMNNum != firstCoinbaseData.nOfficialMNNum || deterministicMNCoinbaseData.nGeneralMNNum != firstCoinbaseData.nGeneralMNNum)
+        {
+            LogPrintf("SPOS_Warning:nOfficialMNNum or nGeneralMNNum error, deterministicMNCoinbaseData.nOfficialMNNum:%d(firstCoinbaseData.nOfficialMNNum:%d), "
+                      "deterministicMNCoinbaseData.nGeneralMNNum:%d(firstCoinbaseData.nGeneralMNNum:%d)\n", deterministicMNCoinbaseData.nOfficialMNNum,
+                      firstCoinbaseData.nOfficialMNNum, deterministicMNCoinbaseData.nGeneralMNNum, firstCoinbaseData.nGeneralMNNum);
+            return false;
+        }
+
         int32_t mnSize = 0;
         std::vector<CDeterministicMasternode_IndexValue> tempvecReSelectResult;
 
@@ -6504,7 +6504,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
                 if (tempmnSize == 0)
                 {
                     LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes is empty,height:%d, ntempHeight:%d, nOfficialMNNum:%d, GeneralMNNum:%d\n", 
-                              nHeight, ntempHeight, tempSporkInfo.nOfficialNum, tempSporkInfo.nGeneralNum);
+                              nHeight, ntempHeight, firstCoinbaseData.nOfficialMNNum, firstCoinbaseData.nGeneralMNNum);
                     return false;
                 }
 
@@ -11257,6 +11257,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
     }
 
     unsigned int nGeneralMNNum = g_nMasternodeSPosCount - nOfficialCount;
+    LogPrintf("SPOS_INFO:g_nMasternodeSPosCount:%d, nOfficialCount:%d, nGeneralMNNum:%d\n", g_nMasternodeSPosCount,nOfficialCount, nGeneralMNNum);
     if (nGeneralMNNum > 0)
     {
         std::map<std::string, CMasternodePayee_IndexValue> mapAllPayeeInfo;
