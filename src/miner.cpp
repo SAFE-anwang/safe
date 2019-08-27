@@ -814,16 +814,16 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	else
 	{
 		// whether continuous create block
-		if ((nCurTime - pindexPrev->GetBlockTime()) < (nSPosTargetSpacing - 3))
-		{
-			LogPrintf("SPOS_Warning: continuous crete block, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
-				nNextIndex,
-				nCurTime,
-				nStartNewLoopTime,
-				nPushForwardTime,
-				nRealyMinerCount);
-			return ;
-		}
+		//if ((nCurTime - pindexPrev->GetBlockTime()) < (nSPosTargetSpacing - 3))
+		//{
+		//	LogPrintf("SPOS_Warning: continuous crete block, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+		//		nNextIndex,
+		//		nCurTime,
+		//		nStartNewLoopTime,
+		//		nPushForwardTime,
+		//		nRealyMinerCount);
+		//	return ;
+		//}
 	}
 
 	CScript sposMinerPayee = GetScriptForDestination(keyID);
@@ -906,6 +906,11 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		nNextIndex,
 		nTimeInterval,
 		nRealyMinerCount);
+
+	if (nActualTimeMillisInterval > 0)
+	{
+		MilliSleep(nActualTimeMillisInterval);
+	}
 }
 
 
