@@ -938,11 +938,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		nBlockOffset,
 		nRealyMinerCount);
 
-	if (nActualTimeMillisInterval > 0)
-	{
-		nActualTimeMillisInterval += 500;	
-	}
-
+	nActualTimeMillisInterval += 500;
 	MilliSleep(nActualTimeMillisInterval);
 }
 
