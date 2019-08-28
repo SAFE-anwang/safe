@@ -810,20 +810,20 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		bErrorIndexLog = false;
 	}*/
 
-	int64_t nFutureLocalTime = nCurTime + (nNextIndex + 1) * nSPosTargetSpacing;
-	int64_t nBlockOffset = abs(nCurTime - nFutureLocalTime);
+	int64_t nNextBlockTime = nCurTime + (nNextIndex + 1) * nSPosTargetSpacing;
+	int64_t nBlockOffset = abs(nNextBlockTime - nCurTime);
 	if (nBlockOffset > nSPosTargetSpacing)
 	{
 		if (!bErrCreateBlcokLog)
 		{
 			bErrCreateBlcokLog = true;
-			LogPrintf("SPOS_Warning: index is valid, but it is not create block, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, "
-				"nPushForwardTime: %d, nFutureLocalTime:%lld, nRealyMinerCount: %d\n",
+			LogPrintf("SPOS_Warning: index is valid, but it is not create block, nIndex: %d, nCurTime:%lld, nNextBlockTime:%lld, "
+				"nStartNewLoopTime: %lld, nPushForwardTime: %d,  nRealyMinerCount: %d\n",
 				nNextIndex,
 				nCurTime,
+				nNextBlockTime,
 				nStartNewLoopTime,
 				nPushForwardTime,
-				nFutureLocalTime,
 				nRealyMinerCount);
 		}
 		return ;
@@ -880,8 +880,8 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		return;
 	}
 
-	int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
-	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
+	//int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
+	//int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
 	CBlock *pblock = &pblocktemplate->block;
 	pblock->nTime = nNextBlockTime;
 	if (IsStartDeterministicMNHeight(nNextBlockHeight))
