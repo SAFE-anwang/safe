@@ -892,11 +892,24 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 			return;
 	}
 
+	CBitcoinAddress addr(keyID);
+
 	{
 		LOCK(cs_main);
 		CValidationState state;
 		if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false))
 		{
+			LogPrintf("SPOS_Error: failed TestBlockValidity, miner:%s, blockHeight:%d, blockTime:%lld, nStartNewLoopTime:%lld, nPushForwardTime:%d, "
+				"nCurIndex:%d, nTimeInerval:%d, nBlockOffset:%lld, nRealyMinerCount:%d\n",
+				addr.ToString(),
+				nNextBlockHeight,
+				pblock->nTime,
+				nStartNewLoopTime,
+				nPushForwardTime,
+				nNextIndex,
+				nTimeInterval,
+				nBlockOffset,
+				nRealyMinerCount);
 			throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
 		}
 	}
@@ -924,7 +937,6 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		LogPrintf("SPOS_Info: failed found block, ");
 	}
 
-	CBitcoinAddress addr(keyID);
 	LogPrintf("miner:%s, blockHeight:%d, blockTime:%lld, nActualTimeMillisInterval:%d, nStartNewLoopTime:%lld, nPushForwardTime:%d, "
 		"nCurIndex:%d, nTimeInerval:%d, nBlockOffset:%lld, nRealyMinerCount:%d\n",
 		addr.ToString(),
