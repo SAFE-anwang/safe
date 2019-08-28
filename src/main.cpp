@@ -35,7 +35,6 @@ int g_nSaveMasternodePayeeHeight = 1088804;
 unsigned int g_nMasternodeSPosCount = 9;
 unsigned int g_nMasternodeCanBeSelectedTime = 86400*3;
 int64_t g_nStartNewLoopTimeMS = -999;
-int g_nSposGeneratedIndex = -2;
 unsigned int g_nMasternodeMinCount = 3;
 int64_t g_nLastSelectMasterNodeHeight = 0;
 std::vector<CMasternode> g_vecResultMasternodes;

@@ -774,7 +774,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	//int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing);	
 	//nNextIndex--;
 	//nNextIndex = nNextIndex % nRealyMinerCount;
-	if (nNextIndex < 0)
+	/*if (nNextIndex < 0)
 	{	
 		if (!bErrorIndexLog)
 		{
@@ -792,10 +792,11 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	else
 	{
 		bErrorIndexLog = false;
-	}
+	}*/
 
 	int64_t nFutureLocalTime = nCurTime + (nNextIndex + 1) * nSPosTargetSpacing;
-	if (abs(nNextBlockTime - nFutureLocalTime) > nSPosTargetSpacing)
+	int64_t nBlockOffset = abs(nNextBlockTime - nFutureLocalTime);
+	if (nBlockOffset > nSPosTargetSpacing)
 	{
 		if (!bErrCreateBlcokLog)
 		{
@@ -925,7 +926,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 
 	CBitcoinAddress addr(keyID);
 	LogPrintf("miner:%s, blockHeight:%d, blockTime:%lld, nActualTimeMillisInterval:%d, nStartNewLoopTime:%lld, nPushForwardTime:%d, "
-		"nCurIndex:%d, nTimeInerval:%d, nRealyMinerCount:%d\n",
+		"nCurIndex:%d, nTimeInerval:%d, nBlockOffset:%lld, nRealyMinerCount:%d\n",
 		addr.ToString(),
 		nNextBlockHeight,
 		pblock->nTime,
@@ -934,12 +935,15 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		nPushForwardTime,		
 		nNextIndex,
 		nTimeInterval,
+		nBlockOffset,
 		nRealyMinerCount);
 
-	//if (nActualTimeMillisInterval > 0)
-	//{
-	//	MilliSleep(nActualTimeMillisInterval + 500);
-	//}
+	if (nActualTimeMillisInterval > 0)
+	{
+		nActualTimeMillisInterval += 500;	
+	}
+
+	MilliSleep(nActualTimeMillisInterval);
 }
 
 
