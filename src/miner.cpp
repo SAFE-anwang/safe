@@ -76,11 +76,14 @@ extern int g_nPushForwardTime;
 extern bool g_fReceiveBlock;
 
 extern int g_nLastSelectMasterNodeSuccessHeight;
+extern bool g_fTimeoutThreetimes;
+
 
 extern int g_nStorageSpork;
 extern CSporkInfo_IndexValue g_SporkInfo;
 extern CCriticalSection cs_spork;
 extern CCriticalSection cs_sposcoinbase;
+extern CCriticalSection cs_timeout;
 
 extern uint32_t g_nScoreTime;
 extern std::vector<CDeterministicMasternode_IndexValue> g_vecResultDeterministicMN;
@@ -472,9 +475,24 @@ bool CoinBaseAddSPosExtraDataV2(CBlock* pblock, const CBlockIndex* pindexPrev, c
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
     CSporkInfo_IndexValue tempSporkInfo;
+    bool ftempTimeoutThreetime = false;
+
     {
-        LOCK(cs_spork);
-        tempSporkInfo = g_SporkInfo;
+         LOCK(cs_timeout);
+         ftempTimeoutThreetime = g_fTimeoutThreetimes;
+    }
+    
+    if (ftempTimeoutThreetime)
+    {
+         tempSporkInfo.nOfficialNum = g_nMasternodeSPosCount;
+         tempSporkInfo.nGeneralNum = 0;
+    }
+    else
+    {
+        {
+            LOCK(cs_spork);
+            tempSporkInfo = g_SporkInfo;
+        }
     }
 
     int nLastSelectMasterNodeSuccessHeight = 0;
@@ -1292,6 +1310,23 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
 
                     SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs,
                                           nSelectMasterNodeRet, nStartNewLoopTime, true, nOfficialNum);
+
+                    int nPushForwardTime = 0;
+                    int nDeterministicMNCount = 0;
+                    int64_t ntempStartNewLoopTime = 0;
+
+        			{
+        				LOCK(cs_spos);
+                        nPushForwardTime = g_nPushForwardTime;
+                        nDeterministicMNCount = g_vecResultDeterministicMN.size();
+                        ntempStartNewLoopTime = g_nStartNewLoopTimeMS;
+        			}
+
+                    if (fOverTimeoutLimit && nDeterministicMNCount > 0 && ntempStartNewLoopTime != g_nSelectGlobalDefaultValue && nPushForwardTime != g_nSelectGlobalDefaultValue)
+                    {
+                        LOCK(cs_timeout);
+                        g_fTimeoutThreetimes = true;
+                    }
                 }
                 else
                 {

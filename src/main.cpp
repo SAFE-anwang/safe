@@ -66,6 +66,7 @@ int g_nForbidOldVersionHeightV2 = 1290000;
 int g_nDeterministicMNTxMinConfirmNum = 200;
 std::vector<CDeterministicMasternode_IndexValue> g_vecResultDeterministicMN;
 std::vector<CDeterministicMasternode_IndexValue> g_vecReSelectResultMasternodes;
+bool g_fTimeoutThreetimes = false;
 
 
 

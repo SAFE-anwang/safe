@@ -6415,6 +6415,99 @@ http://www.anwang.com/</translation>
 <context>
     <name>safe-core</name>
     <message>
+        <source>Sync in progress. Must wait until sync is complete to start Masternode</source>
+        <translation>主節點正在同步.必須等同步完成才能啓動主節點</translation>
+    </message>
+    <message>
+        <source>Invalid masternode key %s</source>
+        <translation>無效的主節點私鈅</translation>
+    </message>
+    <message>
+        <source>Could not allocate outpoint %s:%s for masternode %s</source>
+        <translation>無法分配outpoint %s:%s 給主節點 %s</translation>
+    </message>
+    <message>
+        <source>Invalid address %s for masternode.</source>
+        <translation>無效的主節點ip:%s</translation>
+    </message>
+    <message>
+        <source>Invalid port %u for masternode %s, only %d is supported on mainnet.</source>
+        <translation>無效的主節點端口:%u,ip:%s,在主網只支持端口:%d.</translation>
+    </message>
+    <message>
+        <source>Invalid port %u for masternode %s, %d is the only supported on mainnet.</source>
+        <translation>無效的主節點端口:%u,ip:%s,在主網只支持端口:%d</translation>
+    </message>
+    <message>
+        <source>Failed to sign ping, masternode=%s</source>
+        <translation>ping簽名失敗,主節點:%s</translation>
+    </message>
+    <message>
+        <source>Invalid IP address, masternode=%s</source>
+        <translation>無效的IP地址,主節點:%s</translation>
+    </message>
+    <message>
+        <source>Failed to sign broadcast, masternode=%s</source>
+        <translation>广播簽名失敗,主節點:%s</translation>
+    </message>
+
+    <message>
+        <source>Invalid masternode key %s.ip:%s</source>
+        <translation>無效的主節點私鈅:%s.ip:%s</translation>
+    </message>
+    <message>
+        <source>Sign deterministic masternode fail.ip:%s</source>
+        <translation>簽名確定主節點失敗.ip:%s</translation>
+    </message>
+    <message>
+        <source>Invalid spork key %s</source>
+        <translation>無效的spork私鈅:%s</translation>
+    </message>
+    <message>
+        <source>Sign deterministic masternode with spork key fail.ip:%s</source>
+        <translation>使用spork私鈅簽名確定主節點失敗.ip:%s</translation>
+    </message>
+    <message>
+        <source>Invalid address %s for masternode when lookup.</source>
+        <translation>查詢失敗,無效的主節點ip:%s</translation>
+    </message>
+    <message>
+        <source>Invalid address %s for masternode.</source>
+        <translation>無效的主節點ip:%s</translation>
+    </message>
+    <message>
+        <source>Invalid txid,check collateral fail.ip:%s</source>
+        <translation>無效的交易id,檢查牴押失敗.ip:%s</translation>
+    </message>
+    <message>
+        <source>Invalid output index,get transaction fail.ip:%s</source>
+        <translation>無效的輸出下標,獲取交易失敗.ip:%s</translation>
+    </message>
+    <message>
+        <source>Invalid nOutputIndex,tx vout size:%u.ip:%s</source>
+        <translation>無效的主節點輸出下標,交易vout size:%u.ip:%s</translation>
+    </message>
+    <message>
+        <source>Invalid collateral address %s.ip:%s</source>
+        <translation>無效的牴押地址:%s.ip:%s</translation>
+    </message>
+    <message>
+        <source>Invalid collateral address %s,get key id fail.ip:%s</source>
+        <translation>無效的牴押地址:%s,獲取公鈅哈希失敗.ip:%s</translation>
+    </message>
+    <message>
+        <source>Collateral address is not meet txout.ip:%s</source>
+        <translation>牴押地址與交易輸出不匹配.ip:%s</translation>
+    </message>
+    <message>
+        <source>Verify deterministic masternode sign fail.ip:%s,dmnTxid:%s,nDMNOutputIndex:%d</source>
+        <translation>驗證確定主節點簽名失敗.ip:%s,dmnTxid:%s,nDMNOutputIndex:%d</translation>
+    </message>
+    <message>
+        <source>Verify deterministic masternode official sign fail.ip:%s,dmnTxid:%s,nDMNOutputIndex:%d</source>
+        <translation>驗證確定主節點官方簽名失敗.ip:%s,dmnTxid:%s,nDMNOutputIndex:%d</translation>
+    </message>
+    <message>
         <source>This feature is enabled when the block height is %d</source>
         <translation>該功能在區塊高度爲 %d 時啓用</translation>
     </message>

@@ -211,6 +211,7 @@ public:
 
     static CollateralStatus CheckCollateral(const COutPoint& outpoint);
     static CollateralStatus CheckCollateral(const COutPoint& outpoint, int& nHeightRet);
+    static CollateralStatus CheckCollateral(const COutPoint& outpoint, int& nHeightRet,CCoins& coins);
     void Check(bool fForce = false);
 
     bool IsBroadcastedWithin(int nSeconds) { return GetAdjustedTime() - sigTime < nSeconds; }
