@@ -1338,6 +1338,40 @@ struct CDiskTxPos : public CDiskBlockPos
     }
 };
 
+struct CFirstBlockInfo
+{
+    CDeterministicMNCoinbaseData deterministicMNCoinbaseData;
+    CBlock block;
+    int nHeight;
+
+    CFirstBlockInfo(const CDeterministicMNCoinbaseData& deterministicMNCoinbaseDataIn, const CBlock& blockIn, const int& nHeightIn)
+                       : deterministicMNCoinbaseData(deterministicMNCoinbaseDataIn), block(blockIn), nHeight(nHeightIn){
+    }
+
+    CFirstBlockInfo& operator=(const CFirstBlockInfo& data)
+    {
+        if(this == &data)
+            return *this;
+
+        deterministicMNCoinbaseData = data.deterministicMNCoinbaseData;
+        block = data.block;
+        nHeight = data.nHeightIn;
+
+        return *this;
+    }
+
+    CFirstBlockInfo()
+    {
+        SetNull();
+    }
+
+    void SetNull()
+    {
+        deterministicMNCoinbaseData.SetNull();
+        block.SetNull();
+        nHeight = 0;
+    }
+};
 
 /**
  * Count ECDSA signature operations the old-fashioned (pre-0.6) way
