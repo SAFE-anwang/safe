@@ -810,28 +810,6 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		bErrorIndexLog = false;
 	}*/
 
-	int64_t nNextBlockTime = nCurTime + (nNextIndex + 1) * nSPosTargetSpacing;
-	int64_t nBlockOffset = abs(nNextBlockTime - nCurTime);
-	if (nBlockOffset > nSPosTargetSpacing)
-	{
-		if (!bErrCreateBlcokLog)
-		{
-			bErrCreateBlcokLog = true;
-			LogPrintf("SPOS_Warning: index is valid, but it is not create block, nIndex: %d, nCurTime:%lld, nNextBlockTime:%lld, "
-				"nStartNewLoopTime: %lld, nPushForwardTime: %d,  nRealyMinerCount: %d\n",
-				nNextIndex,
-				nCurTime,
-				nNextBlockTime,
-				nStartNewLoopTime,
-				nPushForwardTime,
-				nRealyMinerCount);
-		}
-		return ;
-	}
-	else
-	{
-		bErrCreateBlcokLog = false;
-	}
 
 	CKeyID keyID;
 	unsigned int nNextBlockHeight = pindexPrev->nHeight + 1;
@@ -857,20 +835,42 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		// not self, or maybe not arrive special time 
 		return;
 	}
+
+	// whether continuous create block
+	//if (nCurTime - pindexPrev->GetBlockTime() < nSPosTargetSpacing / 2)
+	//{
+	//	LogPrintf("SPOS_Warning: continuous crete block, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+	//		nNextIndex,
+	//		nCurTime,
+	//		nStartNewLoopTime,
+	//		nPushForwardTime,
+	//		nRealyMinerCount);
+	//	return ;
+	//}
+
+	int64_t nNextBlockTime = nCurTime + (nNextIndex + 1) * nSPosTargetSpacing;
+	int64_t nBlockOffset = abs(nNextBlockTime - nCurTime);
+	if (nBlockOffset > nSPosTargetSpacing)
+	{
+		if (!bErrCreateBlcokLog)
+		{
+			bErrCreateBlcokLog = true;
+			LogPrintf("SPOS_Warning: index is valid, but it is not create block, nIndex: %d, nCurTime:%lld, nNextBlockTime:%lld, "
+				"nStartNewLoopTime: %lld, nPushForwardTime: %d,  nRealyMinerCount: %d\n",
+				nNextIndex,
+				nCurTime,
+				nNextBlockTime,
+				nStartNewLoopTime,
+				nPushForwardTime,
+				nRealyMinerCount);
+		}
+		return;
+	}
 	else
 	{
-		// whether continuous create block
-		//if (nCurTime - pindexPrev->GetBlockTime() < nSPosTargetSpacing / 2)
-		//{
-		//	LogPrintf("SPOS_Warning: continuous crete block, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
-		//		nNextIndex,
-		//		nCurTime,
-		//		nStartNewLoopTime,
-		//		nPushForwardTime,
-		//		nRealyMinerCount);
-		//	return ;
-		//}
+		bErrCreateBlcokLog = false;
 	}
+	
 
 	CScript sposMinerPayee = GetScriptForDestination(keyID);
 	std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, sposMinerPayee));
