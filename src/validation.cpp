@@ -6556,7 +6556,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             {
                 LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
                           "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s, indexAddress:%s, reserveAddress:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
-                           mnkeyID.ToString(),nIndex,mnTemp.strIP, indexAddress, reserveAddress);
+                           mnkeyID.ToString(),nIndex,mnTemp.strIP, indexAddress.ToString(), reserveAddress.ToString());
                 return false;
             }
         }
@@ -6601,7 +6601,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
                 {
                     LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
                               "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s, indexAddress:%s, reserveAddress:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
-                              mnkeyID.ToString(),nIndex,mnTemp.strIP, indexAddress, reserveAddress);
+                              mnkeyID.ToString(),nIndex,mnTemp.strIP, indexAddress.ToString(), reserveAddress.ToString());
                     return false;
                 }
             }
