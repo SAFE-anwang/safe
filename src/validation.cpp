@@ -6351,12 +6351,15 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         CBlockIndex* pPreblockIndex = chainActive[nHeight - 1];
         if (pPreblockIndex == NULL)
         {
-            LogPrintf("SPOS_Warning:CheckSPOSBlockV2 pPreblockIndex is NULL,height:%d, nFirstBlock:%d\n",nHeight, deterministicMNCoinbaseData.nFirstBlock);
+            LogPrintf("SPOS_Warning:CheckSPOSBlockV2 first block pPreblockIndex is NULL,height:%d, nFirstBlock:%d\n",nHeight, deterministicMNCoinbaseData.nFirstBlock);
             return false;
         }
 
         uint32_t nTimeDifference = block.GetBlockTime() - pPreblockIndex->nTime;
         int32_t interval = nTimeDifference / Params().GetConsensus().nSPOSTargetSpacing - 1;
+
+        LogPrintf("SPOS_INFO:first block nTimeDifference:%d, block.GetBlockTime:%d, pPreblockIndex->nTime:%d, interval:%d, nHeight:%d\n", 
+                  nTimeDifference, block.GetBlockTime(), pPreblockIndex->nTime, interval, nHeight);
 
         {
             LOCK(cs_reselectmn);
@@ -6364,14 +6367,14 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
 
             if (mnSize == 0)
             {
-                LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes is empty,height:%d, nOfficialMNNum:%d, GeneralMNNum:%d\n", 
+                LogPrintf("SPOS_Error: CheckSPOSBlockV2() first block g_vecReSelectResultMasternodes is empty,height:%d, nOfficialMNNum:%d, GeneralMNNum:%d\n", 
                           nHeight, deterministicMNCoinbaseData.nOfficialMNNum, deterministicMNCoinbaseData.nGeneralMNNum);
                 return false;
             }
 
             if (mnSize < g_nMasternodeMinCount)
             {
-                LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes less than g_nMasternodeMinCount,height:%d, mnSize:%d, g_nMasternodeMinCount:%d, nOfficialMNNum:%d, GeneralMNNum:%d\n", 
+                LogPrintf("SPOS_Error: CheckSPOSBlockV2() first block g_vecReSelectResultMasternodes less than g_nMasternodeMinCount,height:%d, mnSize:%d, g_nMasternodeMinCount:%d, nOfficialMNNum:%d, GeneralMNNum:%d\n", 
                           nHeight, mnSize, g_nMasternodeMinCount, deterministicMNCoinbaseData.nOfficialMNNum, deterministicMNCoinbaseData.nGeneralMNNum);
                 return false;
             }
@@ -6379,7 +6382,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             nIndex = interval % mnSize;
             if (nIndex < 0)
             {
-                LogPrintf("SPOS_Error CheckSPOSBlockV2():incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
+                LogPrintf("SPOS_Error: CheckSPOSBlockV2() first block incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
                 return false;
             }
 
@@ -6395,11 +6398,14 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
         ssKey >> mnkeyID;
 
+        CBitcoinAddress indexAddress(mnkeyID);
+        CBitcoinAddress reserveAddress(deterministicMNCoinbaseData.keyIDMasternode);
+
         if (mnkeyID != deterministicMNCoinbaseData.keyIDMasternode)
         {
             LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
-                      "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
-                       mnkeyID.ToString(), nIndex, mnTemp.strIP);
+                      "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s, indexAddress:%s, reserveAddress:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
+                       mnkeyID.ToString(), nIndex, mnTemp.strIP, indexAddress.ToString(), reserveAddress.ToString());
             return false;
         }
     }
@@ -6505,6 +6511,9 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             uint32_t nTimeDifferenceOfFirst = block.GetBlockTime() - firstBlock.GetBlockTime();
             int32_t interval = nTimeDifferenceOfFirst / Params().GetConsensus().nSPOSTargetSpacing;
 
+            LogPrintf("SPOS_INFO: nTimeDifferenceOfFirst:%d, block.GetBlockTime:%d, firstBlock.GetBlockTime():%d, interval:%d, nHeight:%d\n", 
+                      nTimeDifferenceOfFirst, block.GetBlockTime(), firstBlock.GetBlockTime(), interval, nHeight);
+
             {
                 LOCK(cs_reselectmn);
                 tempmnSize = g_vecReSelectResultMasternodes.size();
@@ -6540,11 +6549,14 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
             ssKey >> mnkeyID;
 
+            CBitcoinAddress indexAddress(mnkeyID);
+            CBitcoinAddress reserveAddress(deterministicMNCoinbaseData.keyIDMasternode);
+
             if (mnkeyID != deterministicMNCoinbaseData.keyIDMasternode)
             {
                 LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
-                          "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
-                           mnkeyID.ToString(),nIndex,mnTemp.strIP);
+                          "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s, indexAddress:%s, reserveAddress:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
+                           mnkeyID.ToString(),nIndex,mnTemp.strIP, indexAddress, reserveAddress);
                 return false;
             }
         }
@@ -6563,6 +6575,8 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
                 uint32_t nTimeDifferenceOfFirst = block.GetBlockTime() - firstBlock.GetBlockTime();
                 int32_t interval = nTimeDifferenceOfFirst / Params().GetConsensus().nSPOSTargetSpacing;
                 nIndex = interval % mnSize;
+                LogPrintf("SPOS_INFO: nTimeDifferenceOfFirst:%d, block.GetBlockTime:%d, firstBlock.GetBlockTime():%d, interval:%d, nHeight:%d, nIndex:%d\n", 
+                          nTimeDifferenceOfFirst, block.GetBlockTime(), firstBlock.GetBlockTime(), interval, nHeight, nIndex);
                 if (nIndex < 0)
                 {
                     LogPrintf("SPOS_Error CheckSPOSBlockV2():incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
@@ -6579,11 +6593,15 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
 
                 CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
                 ssKey >> mnkeyID;
+
+                CBitcoinAddress indexAddress(mnkeyID);
+                CBitcoinAddress reserveAddress(deterministicMNCoinbaseData.keyIDMasternode);
+
                 if (mnkeyID != deterministicMNCoinbaseData.keyIDMasternode)
                 {
                     LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
-                              "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
-                              mnkeyID.ToString(),nIndex,mnTemp.strIP);
+                              "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s, indexAddress:%s, reserveAddress:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
+                              mnkeyID.ToString(),nIndex,mnTemp.strIP, indexAddress, reserveAddress);
                     return false;
                 }
             }
@@ -11059,8 +11077,6 @@ void SortDeterministicMNs(const std::map<COutPoint, CDeterministicMasternode_Ind
         ss << mn.strCollateralAddress;
         ss << nScoreTime;
         uint256 score = ss.GetHash();
-        LogPrintf("SPOS_INFO:SortDeterministicMNs strCollateralAddress:%s, score:%s\n", mn.strCollateralAddress, score.ToString());
-        
         scoreMasternodes[score] = mn;
     }
 
@@ -11344,8 +11360,6 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
         unsigned int vec2Size = vecResultMasternodesL2.size();
         unsigned int vec3Size = vecResultMasternodesL3.size();
 
-        LogPrintf("SPOS_INFO:vec1Size:%d, vec2Size:%d, vec3Size%d, nAllEffectiveGeneralMNNum:%d, nGeneralMNNum:%d\n",
-                  vec1Size, vec2Size, vec3Size, nAllEffectiveGeneralMNNum, nGeneralMNNum);
         unsigned int nP1 = ((double)vec1Size / nAllEffectiveGeneralMNNum) * nGeneralMNNum;
         unsigned int nP2 = ((double)vec2Size / nAllEffectiveGeneralMNNum) * nGeneralMNNum;
         unsigned int nP3 = ((double)vec3Size / nAllEffectiveGeneralMNNum) * nGeneralMNNum;
