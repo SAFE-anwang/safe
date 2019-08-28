@@ -1355,7 +1355,7 @@ struct CFirstBlockInfo
 
         deterministicMNCoinbaseData = data.deterministicMNCoinbaseData;
         block = data.block;
-        nHeight = data.nHeightIn;
+        nHeight = data.nHeight;
 
         return *this;
     }
