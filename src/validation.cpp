@@ -11047,9 +11047,8 @@ void SortDeterministicMNs(const std::map<COutPoint, CDeterministicMasternode_Ind
     for (std::map<COutPoint, CDeterministicMasternode_IndexValue>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
     {
         const CDeterministicMasternode_IndexValue& mn = (*mnpair).second;
-        uint256 hash = uint256S(mn.strCollateralAddress);
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
-        ss << hash;
+        ss << mn.strCollateralAddress;
         ss << nScoreTime;
         uint256 score = ss.GetHash();
         LogPrintf("SPOS_INFO:SortDeterministicMNs strCollateralAddress:%s, score:%s\n", mn.strCollateralAddress, score.ToString());
