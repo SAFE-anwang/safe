@@ -6332,7 +6332,7 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     return true;
 }
 
-bool CheckBlockIndex(const std::vector<CDeterministicMasternode_IndexValue>& vecReSelectResultMasternodes, const int32_t& interval, const CDeterministicMNCoinbaseData& deterministicMNCoinbaseData, const int& nHeight)
+bool CheckDeterministicMNBlockIndex(const std::vector<CDeterministicMasternode_IndexValue>& vecReSelectResultMasternodes, const int32_t& interval, const CDeterministicMNCoinbaseData& deterministicMNCoinbaseData, const int& nHeight)
 {
     int32_t mnSize = 0;
     int32_t nIndex = 0;
@@ -6342,13 +6342,13 @@ bool CheckBlockIndex(const std::vector<CDeterministicMasternode_IndexValue>& vec
 
     if (mnSize == 0)
     {
-        LogPrintf("SPOS_Error: CheckBlockIndex() vecReSelectResultMasternodes is empty, nHeight:%d\n", nHeight); 
+        LogPrintf("SPOS_Error: CheckDeterministicMNBlockIndex() vecReSelectResultMasternodes is empty, nHeight:%d\n", nHeight); 
         return false;
     }
 
     if (mnSize < g_nMasternodeMinCount)
     {
-        LogPrintf("SPOS_Error: CheckBlockIndex() vecReSelectResultMasternodes size less than g_nMasternodeMinCount, mnSize:%d, g_nMasternodeMinCount:%d, nHeight:%d\n", 
+        LogPrintf("SPOS_Error: CheckDeterministicMNBlockIndex() vecReSelectResultMasternodes size less than g_nMasternodeMinCount, mnSize:%d, g_nMasternodeMinCount:%d, nHeight:%d\n", 
                   mnSize, g_nMasternodeMinCount, nHeight);
         return false;
     }
@@ -6356,7 +6356,7 @@ bool CheckBlockIndex(const std::vector<CDeterministicMasternode_IndexValue>& vec
     nIndex = interval % mnSize;
     if (nIndex < 0)
     {
-        LogPrintf("SPOS_Error: CheckBlockIndex() incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
+        LogPrintf("SPOS_Error: CheckDeterministicMNBlockIndex() incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
         return false;
     }
 
@@ -6376,7 +6376,7 @@ bool CheckBlockIndex(const std::vector<CDeterministicMasternode_IndexValue>& vec
 
     if (mnkeyID != deterministicMNCoinbaseData.keyIDMasternode)
     {
-        LogPrintf("SPOS_Warning: CheckBlockIndex() the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
+        LogPrintf("SPOS_Warning: CheckDeterministicMNBlockIndex() the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
                   "index keyID:%s, reserve keyID:%s, local nIndex:%d, ip:%s, indexAddress:%s, reserveAddress:%s\n", nHeight, mnkeyID.ToString(), 
                   deterministicMNCoinbaseData.keyIDMasternode.ToString(), nIndex, mnTemp.strIP, indexAddress.ToString(), reserveAddress.ToString());
         return false;
@@ -6432,7 +6432,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             tempvecSelectResultMN = g_vecReSelectResultMasternodes;
         }
 
-        if (!CheckBlockIndex(tempvecSelectResultMN, interval, deterministicMNCoinbaseData, nHeight))
+        if (!CheckDeterministicMNBlockIndex(tempvecSelectResultMN, interval, deterministicMNCoinbaseData, nHeight))
             return false;
 
         CFirstBlockInfo tempFirstBlockInfo;
@@ -6566,7 +6566,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
                 tempReSelectResultMN = g_vecReSelectResultMasternodes;
             }
 
-            if (!CheckBlockIndex(tempReSelectResultMN, interval, deterministicMNCoinbaseData, nHeight))
+            if (!CheckDeterministicMNBlockIndex(tempReSelectResultMN, interval, deterministicMNCoinbaseData, nHeight))
                 return false;
         }
         else
@@ -6581,7 +6581,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
                 uint32_t nTimeDifferenceOfFirst = block.GetBlockTime() - firstBlock.GetBlockTime();
                 int32_t interval = nTimeDifferenceOfFirst / Params().GetConsensus().nSPOSTargetSpacing;
 
-                if (!CheckBlockIndex(tempvecReSelectResult, interval, deterministicMNCoinbaseData, nHeight))
+                if (!CheckDeterministicMNBlockIndex(tempvecReSelectResult, interval, deterministicMNCoinbaseData, nHeight))
                     return false;
             }
         }
