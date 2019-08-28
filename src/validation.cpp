@@ -85,6 +85,8 @@ CCriticalSection cs_spos;
 CCriticalSection cs_spork;
 CCriticalSection cs_sposcoinbase;
 CCriticalSection cs_reselectmn;
+CCriticalSection cs_timeout;
+
 
 
 
@@ -4998,6 +5000,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     if (IsStartSPosHeight(pindex->nHeight))
     {
+        if (pindex->nHeight % g_nMasternodeSPosCount == 0)
+        {
+            LOCK(cs_timeout);
+            g_fTimeoutThreetimes = false;
+        }
+    
         bool fCheckFail = false;
         if (!DealDeterministicMNCoinBaseReserve(block, pindex, fCheckFail))
         {
@@ -6331,20 +6339,11 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         return false;
     }
 
-    CSporkInfo_IndexValue tempSporkInfo;
-    {
-        LOCK(cs_spork);
-        tempSporkInfo = g_SporkInfo;
-    }
-
     if (deterministicMNCoinbaseData.nFirstBlock == 1)
     {
         std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
 
-        if (tempSporkInfo.nOfficialNum != 0)
-            ReSelectDeterministicMN(nHeight, deterministicMNCoinbaseData.nRandomNum, tempSporkInfo.nOfficialNum, tmpVecResultMasternodes);
-        else
-            ReSelectDeterministicMN(nHeight, deterministicMNCoinbaseData.nRandomNum, 0, tmpVecResultMasternodes);
+        ReSelectDeterministicMN(nHeight, deterministicMNCoinbaseData.nRandomNum, deterministicMNCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
 
         int32_t mnSize = 0;
         CDeterministicMasternode_IndexValue mnTemp;
@@ -6366,14 +6365,14 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             if (mnSize == 0)
             {
                 LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes is empty,height:%d, nOfficialMNNum:%d, GeneralMNNum:%d\n", 
-                          nHeight, tempSporkInfo.nOfficialNum, tempSporkInfo.nGeneralNum);
+                          nHeight, deterministicMNCoinbaseData.nOfficialMNNum, deterministicMNCoinbaseData.nGeneralMNNum);
                 return false;
             }
 
             if (mnSize < g_nMasternodeMinCount)
             {
                 LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes less than g_nMasternodeMinCount,height:%d, mnSize:%d, g_nMasternodeMinCount:%d, nOfficialMNNum:%d, GeneralMNNum:%d\n", 
-                          nHeight, mnSize, g_nMasternodeMinCount, tempSporkInfo.nOfficialNum, tempSporkInfo.nGeneralNum);
+                          nHeight, mnSize, g_nMasternodeMinCount, deterministicMNCoinbaseData.nOfficialMNNum, deterministicMNCoinbaseData.nGeneralMNNum);
                 return false;
             }
 
@@ -6497,10 +6496,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         {
             std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
 
-            if (firstCoinbaseData.nOfficialMNNum != 0)
-                ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, firstCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
-            else
-                ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, 0, tmpVecResultMasternodes);
+            ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, firstCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
 
             int32_t nIndex = 0;
             CDeterministicMasternode_IndexValue mnTemp;
@@ -10976,15 +10972,13 @@ void GetEffectiveGeneralMNData(const std::map<COutPoint, CDeterministicMasternod
         addr.GetKeyID(id);
         std::string strid = id.ToString();
         mapAddressMasternodes[strid] = make_pair(mnpair.first,mnpair.second);
-
-        LogPrintf("SPOS_INFO:GetEffectiveGeneralMNData() strid:%s\n", strid);
     }
 
     for (auto& payeeInfo : mapAllEffectivePayeeInfo)
     {
         if (mapAddressMasternodes.count(payeeInfo.first) <= 0)
         {
-            LogPrintf("SPOS_Warning:GetEffectiveGeneralMNData() %s not find int mapAddressMasternodes\n", payeeInfo.first);
+            LogPrint("GetEffectiveGeneralMNData", "SPOS_Warning: %s not find int mapAddressMasternodes\n", payeeInfo.first);
             continue;
         }
 
@@ -11005,13 +10999,13 @@ void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMas
     {
         if (mn.second.nHeight > nHeight)
         {
-            LogPrintf("SPOS_Warning:%s mn.second.nHeight(%d) more than the  nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
+            LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:%s mn.second.nHeight(%d) more than the  nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
             continue;
         }
 
         if (mn.second.nHeight <= nHeight && nHeight - mn.second.nHeight < g_nDeterministicMNTxMinConfirmNum)
         {
-            LogPrintf("SPOS_Warning:The transaction confirmation number is less than 200, %s mn.second.nHeight(%d), nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
+            LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:The transaction confirmation number is less than 200, %s mn.second.nHeight(%d), nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
             continue;
         }
 
@@ -11025,13 +11019,13 @@ void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexVal
     {
         if (payeeInfo.second.nHeight > nHeight)
         {
-            LogPrintf("SPOS_Warning:%s payeeInfo.second.nHeight(%d) more than the  nHeight(%d)\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
+            LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s payeeInfo.second.nHeight(%d) more than the  nHeight(%d)\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
             continue;
         }
 
         if (payeeInfo.second.nHeight <= nHeight && nHeight - payeeInfo.second.nHeight >= g_nCanSelectMasternodeHeight)
         {
-            LogPrintf("SPOS_Warning:%s reward height is too old, payeeInfo.second.nHeight: %d, nHeight:%d\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
+            LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s reward height is too old, payeeInfo.second.nHeight: %d, nHeight:%d\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
             continue;              
         }
 
@@ -11190,7 +11184,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
     std::map<COutPoint, CDeterministicMasternode_IndexValue> mapAllMasterNode;
 
     GetAllDeterministicMasternodeMap(mapAllOfficialMNs, mapAllMasterNode);
-    LogPrintf("SPOS_INFO:GetDeterministicMNList() mapAllOfficialMNs size:%d, mapAllMasterNode size:%d, nCurrBlockHeight:%d\n", mapAllOfficialMNs.size(), mapAllMasterNode.size(), nCurrBlockHeight);
+    LogPrint("GetDeterministicMNList","SPOS_INFO: mapAllOfficialMNs size:%d, mapAllMasterNode size:%d, nCurrBlockHeight:%d\n", mapAllOfficialMNs.size(), mapAllMasterNode.size(), nCurrBlockHeight);
 
     if (mapAllMasterNode.empty())
     {
@@ -11199,11 +11193,11 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
         return false;
     }
 
-    LogPrintf("SPOS_INFO:GetDeterministicMNList nOfficialCount:%d, nCurrBlockHeight:%d\n", nOfficialCount, nCurrBlockHeight);
+    LogPrint("GetDeterministicMNList", "SPOS_INFO: nOfficialCount:%d, nCurrBlockHeight:%d\n", nOfficialCount, nCurrBlockHeight);
 
     std::map<COutPoint, CDeterministicMasternode_IndexValue> mapAllEffectiveMasterNode;
     GetEffectiveDeterministicMNData(mapAllMasterNode, nCurrBlockHeight, mapAllEffectiveMasterNode);
-    LogPrintf("SPOS_INFO:GetDeterministicMNList() mapAllEffectiveMasterNode size:%d, nCurrBlockHeight:%d\n", mapAllEffectiveMasterNode.size(), nCurrBlockHeight);
+    LogPrint("GetDeterministicMNList", "SPOS_INFO:mapAllEffectiveMasterNode size:%d, nCurrBlockHeight:%d\n", mapAllEffectiveMasterNode.size(), nCurrBlockHeight);
     int nTotalEffectiveMN = mapAllEffectiveMasterNode.size();
     
     if (nTotalEffectiveMN == 0)
@@ -11224,7 +11218,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
 
         std::map<COutPoint, CDeterministicMasternode_IndexValue> maptempEffectiveOfficialMNs;
         GetEffectiveDeterministicMNData(mapAllOfficialMNs, nCurrBlockHeight, maptempEffectiveOfficialMNs);
-        LogPrintf("SPOS_INFO:GetDeterministicMNList() maptempEffectiveOfficialMNs size:%d, nCurrBlockHeight%d\n", maptempEffectiveOfficialMNs.size(), nCurrBlockHeight);
+        LogPrint("GetDeterministicMNList","SPOS_INFO: maptempEffectiveOfficialMNs size:%d, nCurrBlockHeight%d\n", maptempEffectiveOfficialMNs.size(), nCurrBlockHeight);
 
         if (maptempEffectiveOfficialMNs.empty())
         {
@@ -11234,7 +11228,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
         }
 
         GetEffectiveOfficialMNData(maptempEffectiveOfficialMNs, mapEffectiveOfficialMNs);
-        LogPrintf("SPOS_INFO:GetDeterministicMNList() mapEffectiveOfficialMNs size:%d, nCurrBlockHeight%d\n", mapEffectiveOfficialMNs.size(), nCurrBlockHeight);
+        LogPrint("GetDeterministicMNList", "SPOS_INFO: mapEffectiveOfficialMNs size:%d, nCurrBlockHeight%d\n", mapEffectiveOfficialMNs.size(), nCurrBlockHeight);
 
         if (mapEffectiveOfficialMNs.empty())
         {
@@ -11245,7 +11239,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
 
         std::vector<CDeterministicMasternode_IndexValue> vecResultAllOfficialMNs;
         SortDeterministicMNs(mapEffectiveOfficialMNs, vecResultAllOfficialMNs, nScoreTime, "Official");
-        LogPrintf("SPOS_INFO:GetDeterministicMNList() vecResultAllOfficialMNs size:%d, nCurrBlockHeight:%d\n", vecResultAllOfficialMNs.size(), nCurrBlockHeight);
+        LogPrint("GetDeterministicMNList", "SPOS_INFO: vecResultAllOfficialMNs size:%d, nCurrBlockHeight:%d\n", vecResultAllOfficialMNs.size(), nCurrBlockHeight);
         
         uint32_t nAllOfficialMNcount = vecResultAllOfficialMNs.size();
         for (uint32_t i = 0; i < nAllOfficialMNcount; i++)
@@ -11275,19 +11269,19 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
     }
 
     unsigned int nGeneralMNNum = g_nMasternodeSPosCount - nOfficialCount;
-    LogPrintf("SPOS_INFO:g_nMasternodeSPosCount:%d, nOfficialCount:%d, nGeneralMNNum:%d\n", g_nMasternodeSPosCount,nOfficialCount, nGeneralMNNum);
+    LogPrintf("SPOS_INFO:g_nMasternodeSPosCount:%d, nOfficialCount:%d, nGeneralMNNum:%d\n", g_nMasternodeSPosCount, nOfficialCount, nGeneralMNNum);
     if (nGeneralMNNum > 0)
     {
         std::map<std::string, CMasternodePayee_IndexValue> mapAllPayeeInfo;
         GetAllPayeeInfoMap(mapAllPayeeInfo);
-        LogPrintf("SPOS_INFO:GetDeterministicMNList() mapAllPayeeInfo size:%d, nCurrBlockHeight:%d\n", mapAllPayeeInfo.size(), nCurrBlockHeight);
+        LogPrint("GetDeterministicMNList","SPOS_INFO: mapAllPayeeInfo size:%d, nCurrBlockHeight:%d\n", mapAllPayeeInfo.size(), nCurrBlockHeight);
 
         std::map<std::string, CMasternodePayee_IndexValue> mapAllEffectivePayeeInfo;
         GetEffectivePayeeData(mapAllPayeeInfo, nCurrBlockHeight, mapAllEffectivePayeeInfo);
-        LogPrintf("SPOS_INFO:GetDeterministicMNList() mapAllEffectivePayeeInfo size:%d, nCurrBlockHeight:%d\n", mapAllEffectivePayeeInfo.size(), nCurrBlockHeight);
+        LogPrint("GetDeterministicMNList","SPOS_INFO: mapAllEffectivePayeeInfo size:%d, nCurrBlockHeight:%d\n", mapAllEffectivePayeeInfo.size(), nCurrBlockHeight);
 
         GetEffectiveGeneralMNData(mapAllEffectiveMasterNode, mapAllEffectivePayeeInfo, mapEffectiveGeneralMNs);
-        LogPrintf("SPOS_INFO:GetDeterministicMNList() mapEffectiveGeneralMNs size:%d, nCurrBlockHeight:%d\n", mapEffectiveGeneralMNs.size(), nCurrBlockHeight);
+        LogPrint("GetDeterministicMNList","SPOS_INFO: mapEffectiveGeneralMNs size:%d, nCurrBlockHeight:%d\n", mapEffectiveGeneralMNs.size(), nCurrBlockHeight);
 
         if (nOfficialCount > 0)
         {
