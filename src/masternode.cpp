@@ -119,14 +119,20 @@ arith_uint256 CMasternode::CalculateScore(const uint256& blockHash)
 CMasternode::CollateralStatus CMasternode::CheckCollateral(const COutPoint& outpoint)
 {
     int nHeight;
-    return CheckCollateral(outpoint, nHeight);
+    CCoins coins;
+    return CheckCollateral(outpoint, nHeight,coins);
 }
 
 CMasternode::CollateralStatus CMasternode::CheckCollateral(const COutPoint& outpoint, int& nHeightRet)
 {
+    CCoins coins;
+    return CheckCollateral(outpoint,nHeightRet,coins);
+}
+
+CMasternode::CollateralStatus CMasternode::CheckCollateral(const COutPoint &outpoint, int &nHeightRet, CCoins &coins)
+{
     AssertLockHeld(cs_main);
 
-    CCoins coins;
     if(!GetUTXOCoins(outpoint, coins)) {
         return COLLATERAL_UTXO_NOT_FOUND;
     }
@@ -384,23 +390,24 @@ bool CMasternodeBroadcast::Create(const std::string& strService, const std::stri
 
     // Wait for sync to finish because mnb simply won't be relayed otherwise
     if (!fOffline && !masternodeSync.IsSynced())
-        return Log("Sync in progress. Must wait until sync is complete to start Masternode");
+        return Log(_("Sync in progress. Must wait until sync is complete to start Masternode"));
 
     if (!CMessageSigner::GetKeysFromSecret(strKeyMasternode, keyMasternodeNew, pubKeyMasternodeNew))
         return Log(strprintf("Invalid masternode key %s", strKeyMasternode));
 
     if (!pwalletMain->GetMasternodeOutpointAndKeys(outpoint, pubKeyCollateralAddressNew, keyCollateralAddressNew, strTxHash, strOutputIndex))
-        return Log(strprintf("Could not allocate outpoint %s:%s for masternode %s", strTxHash, strOutputIndex, strService));
+        return Log(strprintf(_("Could not allocate outpoint %s:%s for masternode %s"), strTxHash, strOutputIndex, strService));
 
     CService service;
     if (!Lookup(strService.c_str(), service, 0, false))
-        return Log(strprintf("Invalid address %s for masternode.", strService));
+        return Log(strprintf(_("Invalid address %s for masternode."), strService));
+
     int mainnetDefaultPort = Params(CBaseChainParams::MAIN).GetDefaultPort();
     if (Params().NetworkIDString() == CBaseChainParams::MAIN) {
         if (service.GetPort() != mainnetDefaultPort)
-            return Log(strprintf("Invalid port %u for masternode %s, only %d is supported on mainnet.", service.GetPort(), strService, mainnetDefaultPort));
+            return Log(strprintf(_("Invalid port %u for masternode %s, only %d is supported on mainnet."), service.GetPort(), strService, mainnetDefaultPort));
     } else if (service.GetPort() == mainnetDefaultPort)
-        return Log(strprintf("Invalid port %u for masternode %s, %d is the only supported on mainnet.", service.GetPort(), strService, mainnetDefaultPort));
+        return Log(strprintf(_("Invalid port %u for masternode %s, %d is the only supported on mainnet."), service.GetPort(), strService, mainnetDefaultPort));
 
     return Create(outpoint, service, keyCollateralAddressNew, pubKeyCollateralAddressNew, keyMasternodeNew, pubKeyMasternodeNew, strErrorRet, mnbRet);
 }
@@ -424,16 +431,16 @@ bool CMasternodeBroadcast::Create(const COutPoint& outpoint, const CService& ser
 
     CMasternodePing mnp(outpoint);
     if (!mnp.Sign(keyMasternodeNew, pubKeyMasternodeNew))
-        return Log(strprintf("Failed to sign ping, masternode=%s", outpoint.ToStringShort()));
+        return Log(strprintf(_("Failed to sign ping, masternode=%s"), outpoint.ToStringShort()));
 
     mnbRet = CMasternodeBroadcast(service, outpoint, pubKeyCollateralAddressNew, pubKeyMasternodeNew, PROTOCOL_VERSION);
 
     if (!mnbRet.IsValidNetAddr())
-        return Log(strprintf("Invalid IP address, masternode=%s", outpoint.ToStringShort()));
+        return Log(strprintf(_("Invalid IP address, masternode=%s"), outpoint.ToStringShort()));
 
     mnbRet.lastPing = mnp;
     if (!mnbRet.Sign(keyCollateralAddressNew))
-        return Log(strprintf("Failed to sign broadcast, masternode=%s", outpoint.ToStringShort()));
+        return Log(strprintf(_("Failed to sign broadcast, masternode=%s"), outpoint.ToStringShort()));
 
     return true;
 }

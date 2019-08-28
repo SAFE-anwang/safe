@@ -965,30 +965,35 @@ UniValue listdmn(const UniValue &params, bool fHelp)
     GetAllDeterministicMasternodeMap(mapOfficialDeterministicMasternode,mapCommonDeterministicMasternode,fSaveCommon);
 
     UniValue obj(UniValue::VOBJ);
-    auto addDMN = [](const std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapDMNValue,UniValue& obj)
+    auto addDMN = [&obj](const std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapDMNValue)
     {
         std::map<COutPoint,CDeterministicMasternode_IndexValue>::const_iterator iter = mapDMNValue.begin();
         while(iter!=mapDMNValue.end())
         {
-            std::string strOutpoint = iter->first.ToStringShort();
+            const COutPoint& outpoint = iter->first;
+            std::string strOutpoint = outpoint.ToStringShort();
             const CDeterministicMasternode_IndexValue& dmnValue = iter->second;
-            std::string strLastTxOut = dmnValue.lastTxOut.IsNull() ? "null" : dmnValue.lastTxOut.ToStringShort();
-            std::ostringstream streamFull;
-            streamFull << " " <<
-                           dmnValue.strIP << " " <<
-                           dmnValue.strCollateralAddress << " " <<
-                           dmnValue.nHeight << " " <<
-                           dmnValue.fOfficial << " " <<
-                           dmnValue.currTxOut.ToStringShort() << " " <<
-                           strLastTxOut;
-            std::string strFull = streamFull.str();
-            obj.push_back(Pair(strOutpoint, strFull));
+            CMasternode::CollateralStatus err = CMasternode::CheckCollateral(outpoint);
+            if (err == CMasternode::COLLATERAL_OK)
+            {
+                std::string strLastTxOut = dmnValue.lastTxOut.IsNull() ? "0" : dmnValue.lastTxOut.ToStringShort();
+                std::ostringstream streamFull;
+                streamFull << " " <<
+                               dmnValue.strIP << " " <<
+                               dmnValue.strCollateralAddress << " " <<
+                               dmnValue.nHeight << " " <<
+                               dmnValue.fOfficial << " " <<
+                               dmnValue.currTxOut.ToStringShort() << " " <<
+                               strLastTxOut;
+                std::string strFull = streamFull.str();
+                obj.push_back(Pair(strOutpoint, strFull));
+            }
             ++iter;
         }
     };
 
-    addDMN(mapOfficialDeterministicMasternode,obj);
-    addDMN(mapCommonDeterministicMasternode,obj);
+    addDMN(mapOfficialDeterministicMasternode);
+    addDMN(mapCommonDeterministicMasternode);
 
     return obj;
 }
@@ -1063,7 +1068,7 @@ UniValue getdmndetails(const UniValue &params, bool fHelp)
                     dmnData.push_back(Pair("height", dmnValue.nHeight));
                     dmnData.push_back(Pair("official", dmnValue.fOfficial));
                     dmnData.push_back(Pair("currTxOut", dmnValue.currTxOut.ToStringShort()));
-                    dmnData.push_back(Pair("lastTxOut", dmnValue.lastTxOut.IsNull()?"null":dmnValue.lastTxOut.ToStringShort()));
+                    dmnData.push_back(Pair("lastTxOut", dmnValue.lastTxOut.IsNull()?"0":dmnValue.lastTxOut.ToStringShort()));
                     txData.push_back(dmnData);
                 }
             }

@@ -46,19 +46,18 @@ bool CheckDeterministicMasternode(CDeterministicMasternodeData &dmn, std::string
     if(Params().NetworkIDString() == CBaseChainParams::MAIN){
         if (dmn.nPort != mainnetDefaultPort)
         {
-            strError = strprintf(_("Invalid port %u for masternode %s, only %u is supported on mainnet."), dmn.nPort,
+            strError = strprintf(_("Invalid port %u for masternode %s, only %d is supported on mainnet."), dmn.nPort,
                                  dmn.strIP,mainnetDefaultPort);
             return false;
         }
     }else if (service.GetPort() == mainnetDefaultPort)
     {
-        strError = strprintf(_("Invalid port %u for masternode %s, only %u is supported on mainnet."), dmn.nPort,
+        strError = strprintf(_("Invalid port %u for masternode %s, %d is the only supported on mainnet."), dmn.nPort,
                              dmn.strIP,mainnetDefaultPort);
         return false;
     }
 
     //3.check strTxid
-    CTransaction tx;
     uint256 hash = uint256S(dmn.strDMNTxid);
     COutPoint outpoint(hash,dmn.nDMNOutputIndex);
     CDeterministicMasternode_IndexValue dmn_IndexValue;
@@ -66,26 +65,23 @@ bool CheckDeterministicMasternode(CDeterministicMasternodeData &dmn, std::string
     {
         if(!IsNeedUpdateDMN(dmn_IndexValue,dmn))
         {
-            strError = strprintf(_("deterministic masternode is no need update,ip:%s,port:%d,out:%s\n"),dmn.strIP,dmn.nPort,outpoint.ToString());
+            strError = strprintf(_("deterministic masternode is no need update,ip:%s,port:%d,out:%s"),dmn.strIP,dmn.nPort,outpoint.ToString());
             LogPrintf("SPOS_Message:%s\n",strError);
             fExist = true;
             return false;
         }
     }
-    CMasternode::CollateralStatus err = CMasternode::CheckCollateral(outpoint);
+    int nHeightRet;
+    CCoins coins;
+    CMasternode::CollateralStatus err = CMasternode::CheckCollateral(outpoint,nHeightRet,coins);
     if (err != CMasternode::COLLATERAL_OK)
     {
         strError = strprintf(_("Invalid txid,check collateral fail.ip:%s"),dmn.strIP);
         return false;
     }
-    if(!GetTransaction(outpoint.hash, tx, Params().GetConsensus(), hash, true))
-    {
-        strError = strprintf(_("Invalid output index,get transaction fail.ip:%s"),dmn.strIP);
-        return false;
-    }
 
     //4.check nOutputIndex
-    uint16_t nOutSize = tx.vout.size();
+    uint16_t nOutSize = coins.vout.size();
     if(dmn.nDMNOutputIndex<0||dmn.nDMNOutputIndex>=nOutSize)
     {
         strError = strprintf(_("Invalid nOutputIndex,tx vout size:%u.ip:%s"),nOutSize,dmn.strIP);
@@ -106,7 +102,7 @@ bool CheckDeterministicMasternode(CDeterministicMasternodeData &dmn, std::string
         return false;
     }
     CScript payee = GetScriptForDestination(keyID);
-    if(payee != tx.vout[dmn.nDMNOutputIndex].scriptPubKey)
+    if(payee != coins.vout[dmn.nDMNOutputIndex].scriptPubKey)
     {
         strError = strprintf(_("Collateral address is not meet txout.ip:%s"),dmn.strIP);
         return false;
@@ -149,7 +145,7 @@ bool CheckDeterministicMasternode(CDeterministicMasternodeData &dmn, std::string
     }
     if(!CMessageSigner::VerifyMessage(pubKeyMasternodeID, vchSig, strMsg, strError))
     {
-        strError = strprintf(_("Verify deterministic masternode sign fail.ip:%s,dmnTxid:%s,index:%d"),dmn.strIP,dmn.strDMNTxid,dmn.nDMNOutputIndex);
+        strError = strprintf(_("Verify deterministic masternode sign fail.ip:%s,dmnTxid:%s,nDMNOutputIndex:%d"),dmn.strIP,dmn.strDMNTxid,dmn.nDMNOutputIndex);
         return false;
     }
 
@@ -167,7 +163,7 @@ bool CheckDeterministicMasternode(CDeterministicMasternodeData &dmn, std::string
         CPubKey pubkeySpork(ParseHex(Params().SporkPubKey()));
         if(!CMessageSigner::VerifyMessage(pubkeySpork, vchOfficialSig, strOfficialMsg, strError))
         {
-            strError = strprintf(_("Verify deterministic masternode official sign fail.ip:%s,dmnTxid:%s,index:%d"),dmn.strIP,dmn.strDMNTxid,dmn.nDMNOutputIndex);
+            strError = strprintf(_("Verify deterministic masternode official sign fail.ip:%s,dmnTxid:%s,nDMNOutputIndex:%d"),dmn.strIP,dmn.strDMNTxid,dmn.nDMNOutputIndex);
             return false;
         }
     }
@@ -232,7 +228,7 @@ bool BuildDeterministicMasternode(CDeterministicMasternodeData &dmn, const std::
         std::string strSignKey = sporkManager.GetPrivKey();
         if(!CMessageSigner::GetKeysFromSecret(strSignKey, keySpork, pubKeySpork))
         {
-            strError = strprintf(_("Invalid spork key %s\n"), strSignKey);
+            strError = strprintf(_("Invalid spork key %s"), strSignKey);
             return false;
         }
 

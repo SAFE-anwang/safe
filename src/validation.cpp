@@ -4115,6 +4115,17 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, GET_CANDY_TXOUT, COutPoint(hash, m)), -1));
                     }
                 }
+            }else if(ParseSposReserve(txout.vReserve, sposHeader, vSposData))
+            {
+                if(sposHeader.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
+                {
+                    CDeterministicMasternodeData dmn;
+                    if(ParseDeterministicMasternode(vSposData, dmn))
+                    {
+                        deterministicMasternode_index[COutPoint(uint256S(dmn.strDMNTxid),dmn.nDMNOutputIndex)] = CDeterministicMasternode_IndexValue(dmn.strIP,dmn.nPort,
+                                                   dmn.strCollateralAddress,dmn.strSerialPubKeyId,pindex->nHeight,!dmn.strOfficialSignedMsg.empty(),COutPoint(hash,m));
+                    }
+                }
             }
         }
     }
@@ -4261,11 +4272,11 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
 
             //read last dmn,write last dmn,lastTxOut may be 0
             CDeterministicMasternode_IndexValue lastDMNValue;
-            if(!currDMNTxValue.lastTxOut.IsNull())//XJTODO test it
+            if(!currDMNTxValue.lastTxOut.IsNull())
             {
                 if(!pblocktree->Read_DeterministicMasternodeTx_Index(currDMNValue.lastTxOut,lastDMNValue))
                     return AbortNode(state, "SPOS_Error:Failed to read deterministic masternode tx index when disconnect block");
-                if(!pblocktree->Write_DeterministicMasternode_Index(currDMNValue.lastTxOut,lastDMNValue))
+                if(!pblocktree->Write_DeterministicMasternode_Index(out,lastDMNValue))
                     return AbortNode(state, "SPOS_Error:Failed to write deterministic masternode index when disconnect block");
 
                 {
@@ -4277,12 +4288,12 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                 gAllDeterministicMasternodeMap.erase(out);
             }
 
-            //XJTODO test undo
             LogPrintf("SPOS_Message:remove deterministic masternode:ip:%s,strCollateralAddress:%s,fOfficial:%s,tx %s,add last deterministic"
-                      " masternode:ip:%s,fOfficial:%s,tx %s\n",currDMNValue.strIP,currDMNValue.strCollateralAddress,
+                      " masternode:ip:%s,fOfficial:%s,tx %s,height:%d\n",currDMNValue.strIP,currDMNValue.strCollateralAddress,
                       currDMNTxValue.fOfficial?"true":"false",lastDMNValue.currTxOut.ToString(),lastDMNValue.strIP,
-                      lastDMNValue.fOfficial?"true":"false",currDMNValue.currTxOut.ToString());
+                      lastDMNValue.fOfficial?"true":"false",currDMNValue.currTxOut.ToString(),pindex->nHeight);
         }
+        ++iter;
     }
 
     return fClean;
@@ -5169,9 +5180,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             gAllDeterministicMasternodeMap[out] = currDMNValue;
         }
         ++iter;
-        LogPrintf("SPOS_Message:%s deterministic masternode:ip:%s,strCollateralAddress:%s,fOfficial:%s,tx %s,dmnCount:%d\n",fAdd?"add":"update",
+        LogPrintf("SPOS_Message:%s deterministic masternode:ip:%s,strCollateralAddress:%s,fOfficial:%s,tx %s,dmnCount:%d,height:%d\n",fAdd?"add":"update",
                   currDMNValue.strIP,currDMNValue.strCollateralAddress,currDMNValue.fOfficial?"true":"false",currDMNValue.currTxOut.ToString(),
-                  gAllDeterministicMasternodeMap.size());
+                  gAllDeterministicMasternodeMap.size(),pindex->nHeight);
     }
 
     while(GetChangeInfoListSize() >= g_nListChangeInfoLimited)
@@ -8455,10 +8466,13 @@ bool GetDeterministicMasternodeByCOutPoint(const COutPoint &out, CDeterministicM
     if(out.IsNull())
         return false;
 
-    if(pblocktree->Read_DeterministicMasternode_Index(out, dmn_IndexValue))
+    if(!fWithMempool)
+        return pblocktree->Read_DeterministicMasternode_Index(out, dmn_IndexValue);
+
+    if(mempool.get_DeterministicMasternode_Index(out, dmn_IndexValue))
         return true;
 
-    return fWithMempool && mempool.get_DeterministicMasternode_Index(out, dmn_IndexValue);
+    return pblocktree->Read_DeterministicMasternode_Index(out, dmn_IndexValue);
 }
 
 bool GetIssueAssetInfo(std::map<uint256, CAssetData>& mapissueassetinfo)
