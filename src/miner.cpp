@@ -1306,8 +1306,15 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                 {
                     int nOfficialNum = 0;
                     if (fOverTimeoutLimit)
-                        nOfficialNum = g_nMasternodeSPosCount;
+                    {
+                        {
+                            LOCK(cs_timeout);
+                            g_fTimeoutThreetimes = true;
+                        }
 
+                        nOfficialNum = g_nMasternodeSPosCount;
+                    }
+    
                     SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs,
                                           nSelectMasterNodeRet, nStartNewLoopTime, true, nOfficialNum);
 
@@ -1322,10 +1329,10 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                         ntempStartNewLoopTime = g_nStartNewLoopTimeMS;
         			}
 
-                    if (fOverTimeoutLimit && nDeterministicMNCount > 0 && ntempStartNewLoopTime != g_nSelectGlobalDefaultValue && nPushForwardTime != g_nSelectGlobalDefaultValue)
+                    if (fOverTimeoutLimit && (nDeterministicMNCount <= 0 || ntempStartNewLoopTime == g_nSelectGlobalDefaultValue || nPushForwardTime == g_nSelectGlobalDefaultValue))
                     {
                         LOCK(cs_timeout);
-                        g_fTimeoutThreetimes = true;
+                        g_fTimeoutThreetimes = false;
                     }
                 }
                 else

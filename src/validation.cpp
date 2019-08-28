@@ -86,6 +86,8 @@ CCriticalSection cs_spork;
 CCriticalSection cs_sposcoinbase;
 CCriticalSection cs_reselectmn;
 CCriticalSection cs_timeout;
+CCriticalSection cs_firstblock;
+
 
 
 
@@ -193,6 +195,8 @@ std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
 
 std::mutex g_mutexAllDeterministicMasternode;
 std::map<COutPoint,CDeterministicMasternode_IndexValue> gAllDeterministicMasternodeMap;
+
+std::vector<CFirstBlockInfo> g_vecFirstBlockInfo;
 
 const static int M = 2000; //Maximum number of digits
 int numA[M];
@@ -5753,9 +5757,21 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
     //SQTODO
     if (fBlocksDisconnected)
     {
-        LOCK(cs_reselectmn);
-        g_vecReSelectResultMasternodes.clear();
-        std::vector<CDeterministicMasternode_IndexValue>().swap(g_vecReSelectResultMasternodes);
+        {
+            LOCK(cs_reselectmn);
+            g_vecReSelectResultMasternodes.clear();
+            std::vector<CDeterministicMasternode_IndexValue>().swap(g_vecReSelectResultMasternodes); 
+        }
+
+        {
+            LOCK(cs_firstblock);
+            g_vecFirstBlockInfo.clear();
+        }
+
+        {
+            LOCK(cs_timeout);
+            g_fTimeoutThreetimes = false;
+        }
    }
 
     // Build list of new blocks to connect.
@@ -6316,6 +6332,59 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     return true;
 }
 
+bool CheckDeterministicMNBlockIndex(const std::vector<CDeterministicMasternode_IndexValue>& vecReSelectResultMasternodes, const int32_t& interval, const CDeterministicMNCoinbaseData& deterministicMNCoinbaseData, const int& nHeight)
+{
+    int32_t mnSize = 0;
+    int32_t nIndex = 0;
+    CDeterministicMasternode_IndexValue mnTemp;
+
+    mnSize = vecReSelectResultMasternodes.size();
+
+    if (mnSize == 0)
+    {
+        LogPrintf("SPOS_Error: CheckDeterministicMNBlockIndex() vecReSelectResultMasternodes is empty, nHeight:%d\n", nHeight); 
+        return false;
+    }
+
+    if (mnSize < g_nMasternodeMinCount)
+    {
+        LogPrintf("SPOS_Error: CheckDeterministicMNBlockIndex() vecReSelectResultMasternodes size less than g_nMasternodeMinCount, mnSize:%d, g_nMasternodeMinCount:%d, nHeight:%d\n", 
+                  mnSize, g_nMasternodeMinCount, nHeight);
+        return false;
+    }
+
+    nIndex = interval % mnSize;
+    if (nIndex < 0)
+    {
+        LogPrintf("SPOS_Error: CheckDeterministicMNBlockIndex() incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
+        return false;
+    }
+
+    mnTemp = vecReSelectResultMasternodes[nIndex];
+
+    CKeyID mnkeyID;
+    std::string strkeyID = mnTemp.strSerialPubKeyId;
+    std::vector<unsigned char> vchKeyId;
+    for (unsigned int i = 0; i < strkeyID.length(); i++)
+        vchKeyId.push_back(strkeyID[i]);
+
+    CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
+    ssKey >> mnkeyID;
+
+    CBitcoinAddress indexAddress(mnkeyID);
+    CBitcoinAddress reserveAddress(deterministicMNCoinbaseData.keyIDMasternode);
+
+    if (mnkeyID != deterministicMNCoinbaseData.keyIDMasternode)
+    {
+        LogPrintf("SPOS_Warning: CheckDeterministicMNBlockIndex() the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
+                  "index keyID:%s, reserve keyID:%s, local nIndex:%d, ip:%s, indexAddress:%s, reserveAddress:%s\n", nHeight, mnkeyID.ToString(), 
+                  deterministicMNCoinbaseData.keyIDMasternode.ToString(), nIndex, mnTemp.strIP, indexAddress.ToString(), reserveAddress.ToString());
+        return false;
+    }
+
+    return true;
+}
+
 bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& nHeight, const std::vector<unsigned char>& vData, bool fCheckPOW )
 {
     if (block.nBits != 0)
@@ -6342,133 +6411,125 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
     if (deterministicMNCoinbaseData.nFirstBlock == 1)
     {
         std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
-
         ReSelectDeterministicMN(nHeight, deterministicMNCoinbaseData.nRandomNum, deterministicMNCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
 
-        int32_t mnSize = 0;
-        CDeterministicMasternode_IndexValue mnTemp;
-        int32_t nIndex = 0;
         CBlockIndex* pPreblockIndex = chainActive[nHeight - 1];
         if (pPreblockIndex == NULL)
         {
-            LogPrintf("SPOS_Warning:CheckSPOSBlockV2 pPreblockIndex is NULL,height:%d, nFirstBlock:%d\n",nHeight, deterministicMNCoinbaseData.nFirstBlock);
+            LogPrintf("SPOS_Warning:CheckSPOSBlockV2 first block pPreblockIndex is NULL,height:%d, nFirstBlock:%d\n",nHeight, deterministicMNCoinbaseData.nFirstBlock);
             return false;
         }
 
         uint32_t nTimeDifference = block.GetBlockTime() - pPreblockIndex->nTime;
         int32_t interval = nTimeDifference / Params().GetConsensus().nSPOSTargetSpacing - 1;
 
+        LogPrintf("SPOS_INFO:first block nTimeDifference:%d, block.GetBlockTime:%d, pPreblockIndex->nTime:%d, interval:%d, nHeight:%d\n", 
+                  nTimeDifference, block.GetBlockTime(), pPreblockIndex->nTime, interval, nHeight);
+
+        std::vector<CDeterministicMasternode_IndexValue> tempvecSelectResultMN;
         {
             LOCK(cs_reselectmn);
-            mnSize = g_vecReSelectResultMasternodes.size();
-
-            if (mnSize == 0)
-            {
-                LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes is empty,height:%d, nOfficialMNNum:%d, GeneralMNNum:%d\n", 
-                          nHeight, deterministicMNCoinbaseData.nOfficialMNNum, deterministicMNCoinbaseData.nGeneralMNNum);
-                return false;
-            }
-
-            if (mnSize < g_nMasternodeMinCount)
-            {
-                LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes less than g_nMasternodeMinCount,height:%d, mnSize:%d, g_nMasternodeMinCount:%d, nOfficialMNNum:%d, GeneralMNNum:%d\n", 
-                          nHeight, mnSize, g_nMasternodeMinCount, deterministicMNCoinbaseData.nOfficialMNNum, deterministicMNCoinbaseData.nGeneralMNNum);
-                return false;
-            }
-
-            nIndex = interval % mnSize;
-            if (nIndex < 0)
-            {
-                LogPrintf("SPOS_Error CheckSPOSBlockV2():incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
-                return false;
-            }
-
-            mnTemp = g_vecReSelectResultMasternodes[nIndex];
+            tempvecSelectResultMN = g_vecReSelectResultMasternodes;
         }
 
-        CKeyID mnkeyID;
-        std::string strkeyID = mnTemp.strSerialPubKeyId;
-        std::vector<unsigned char> vchKeyId;
-        for (unsigned int i = 0; i < strkeyID.length(); i++)
-            vchKeyId.push_back(strkeyID[i]);
-
-        CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
-        ssKey >> mnkeyID;
-
-        if (mnkeyID != deterministicMNCoinbaseData.keyIDMasternode)
-        {
-            LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
-                      "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
-                       mnkeyID.ToString(), nIndex, mnTemp.strIP);
+        if (!CheckDeterministicMNBlockIndex(tempvecSelectResultMN, interval, deterministicMNCoinbaseData, nHeight))
             return false;
+
+        CFirstBlockInfo tempFirstBlockInfo;
+        tempFirstBlockInfo.deterministicMNCoinbaseData = deterministicMNCoinbaseData;
+        tempFirstBlockInfo.block = block;
+        tempFirstBlockInfo.nHeight = nHeight;
+
+        {
+            LOCK(cs_firstblock);
+            g_vecFirstBlockInfo.clear();
+            g_vecFirstBlockInfo.push_back(tempFirstBlockInfo);
         }
     }
     else
     {
-        int ntempHeight = nHeight - 1;
         CBlock firstBlock;
         CDeterministicMNCoinbaseData firstCoinbaseData;
-        int nCycles = 0;
-        bool fFindFirstBlock = false;
-        while (true)
+        int ntempHeight = 0;
+        int nFirstBlockCount = 0;
+
         {
-            if (nCycles >= g_nMasternodeSPosCount * 2)
-            {
-                break;
-            }
-            
-            CBlockIndex* pPreblockIndex = chainActive[ntempHeight];
-            if (pPreblockIndex == NULL)
-            {
-                LogPrintf("SPOS_Warning:CheckSPOSBlockV2 pPreblockIndex is NULL,height:%d, nFirstBlock:%d\n",ntempHeight, deterministicMNCoinbaseData.nFirstBlock);
-                return false;
-            }
-
-            CBlock tempblock;
-            if (!ReadBlockFromDisk(tempblock, pPreblockIndex, Params().GetConsensus()))
-            {
-                LogPrintf("SPOS_Warning:CheckSPOSBlockV2() ReadBlockFromDisk fail, height:%d\n", ntempHeight);
-                return false;
-            }
-
-            CTransaction tempTransaction  = tempblock.vtx[0];
-            const CTxOut &out = tempTransaction.vout[0];
-            CSposHeader header;
-            vector<unsigned char> vData;
-            if (!ParseSposReserve(out.vReserve, header, vData))
-            {
-                LogPrintf("SPOS_Warning:ParseSposReserve() failed height:%d\n", nHeight);
-                return false;    
-            }
-
-            if (header.nVersion != 2)
-            {
-                return state.DoS(100, error("SPOS_Error CheckSPOSBlockV2(): analysis CTxOut vReserve fail, height:%d, header.nVersion:%d",ntempHeight,header.nVersion), REJECT_INVALID, "bad-vReserve", true);
-            }
-
-            CDeterministicMNCoinbaseData tempdeterministicMNCoinbaseData;
-            if (!ParseDeterministicMNCoinbaseData(vData, tempdeterministicMNCoinbaseData))
-            {
-                LogPrintf("SPOS_Warning: CheckSPOSBlockV2() ParseDeterministicMNCoinbaseData failed height:%d\n", nHeight);
-                return false;
-            }
-
-            if (tempdeterministicMNCoinbaseData.nFirstBlock == 1)
-            {
-                firstBlock = tempblock;
-                firstCoinbaseData = tempdeterministicMNCoinbaseData;
-                fFindFirstBlock = true;
-                break;
-            }
-            
-            ntempHeight--;
-            nCycles++;
+             LOCK(cs_firstblock);
+             nFirstBlockCount = g_vecFirstBlockInfo.size();
+             if (nFirstBlockCount != 0)
+             {
+                CFirstBlockInfo tempFirstBlockInfo = g_vecFirstBlockInfo[0];
+                firstBlock = tempFirstBlockInfo.block;
+                firstCoinbaseData = tempFirstBlockInfo.deterministicMNCoinbaseData;
+                ntempHeight = tempFirstBlockInfo.nHeight;
+             }
         }
 
-        if (!fFindFirstBlock)
+        if (nFirstBlockCount == 0)
         {
-            LogPrintf("SPOS_Warning: CheckSPOSBlockV2() did not find the first block in this round, height:%d\n", nHeight);
-            return false;
+            ntempHeight = nHeight - 1;
+            int nCycles = 0;
+            bool fFindFirstBlock = false;
+            while (true)
+            {
+                if (nCycles >= g_nMasternodeSPosCount * 2)
+                {
+                    break;
+                }
+                
+                CBlockIndex* pPreblockIndex = chainActive[ntempHeight];
+                if (pPreblockIndex == NULL)
+                {
+                    LogPrintf("SPOS_Warning:CheckSPOSBlockV2 pPreblockIndex is NULL,height:%d, nFirstBlock:%d\n",ntempHeight, deterministicMNCoinbaseData.nFirstBlock);
+                    return false;
+                }
+
+                CBlock tempblock;
+                if (!ReadBlockFromDisk(tempblock, pPreblockIndex, Params().GetConsensus()))
+                {
+                    LogPrintf("SPOS_Warning:CheckSPOSBlockV2() ReadBlockFromDisk fail, height:%d\n", ntempHeight);
+                    return false;
+                }
+
+                CTransaction tempTransaction  = tempblock.vtx[0];
+                const CTxOut &out = tempTransaction.vout[0];
+                CSposHeader header;
+                vector<unsigned char> vData;
+                if (!ParseSposReserve(out.vReserve, header, vData))
+                {
+                    LogPrintf("SPOS_Warning:ParseSposReserve() failed height:%d\n", nHeight);
+                    return false;    
+                }
+
+                if (header.nVersion != 2)
+                {
+                    return state.DoS(100, error("SPOS_Error CheckSPOSBlockV2(): analysis CTxOut vReserve fail, height:%d, header.nVersion:%d",ntempHeight,header.nVersion), REJECT_INVALID, "bad-vReserve", true);
+                }
+
+                CDeterministicMNCoinbaseData tempdeterministicMNCoinbaseData;
+                if (!ParseDeterministicMNCoinbaseData(vData, tempdeterministicMNCoinbaseData))
+                {
+                    LogPrintf("SPOS_Warning: CheckSPOSBlockV2() ParseDeterministicMNCoinbaseData failed height:%d\n", nHeight);
+                    return false;
+                }
+
+                if (tempdeterministicMNCoinbaseData.nFirstBlock == 1)
+                {
+                    firstBlock = tempblock;
+                    firstCoinbaseData = tempdeterministicMNCoinbaseData;
+                    fFindFirstBlock = true;
+                    break;
+                }
+                
+                ntempHeight--;
+                nCycles++;
+            }
+
+            if (!fFindFirstBlock)
+            {
+                LogPrintf("SPOS_Warning: CheckSPOSBlockV2() did not find the first block in this round, height:%d\n", nHeight);
+                return false;
+            }
         }
 
         if (deterministicMNCoinbaseData.nOfficialMNNum != firstCoinbaseData.nOfficialMNNum || deterministicMNCoinbaseData.nGeneralMNNum != firstCoinbaseData.nGeneralMNNum)
@@ -6485,68 +6546,28 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         {
             LOCK(cs_reselectmn);
             mnSize = g_vecReSelectResultMasternodes.size();
-            if (mnSize != 0)
-            {
-                for(auto& mn : g_vecReSelectResultMasternodes)
-                    tempvecReSelectResult.push_back(mn);               
-            }
+            tempvecReSelectResult = g_vecReSelectResultMasternodes;
         }
 
         if (mnSize == 0)
         {
             std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
-
             ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, firstCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
-
-            int32_t nIndex = 0;
-            CDeterministicMasternode_IndexValue mnTemp;
-            int32_t tempmnSize = 0;
 
             uint32_t nTimeDifferenceOfFirst = block.GetBlockTime() - firstBlock.GetBlockTime();
             int32_t interval = nTimeDifferenceOfFirst / Params().GetConsensus().nSPOSTargetSpacing;
 
+            LogPrintf("SPOS_INFO: nTimeDifferenceOfFirst:%d, block.GetBlockTime:%d, firstBlock.GetBlockTime():%d, interval:%d, nHeight:%d\n", 
+                      nTimeDifferenceOfFirst, block.GetBlockTime(), firstBlock.GetBlockTime(), interval, nHeight);
+
+            std::vector<CDeterministicMasternode_IndexValue> tempReSelectResultMN;
             {
                 LOCK(cs_reselectmn);
-                tempmnSize = g_vecReSelectResultMasternodes.size();
-                if (tempmnSize == 0)
-                {
-                    LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes is empty,height:%d, ntempHeight:%d, nOfficialMNNum:%d, GeneralMNNum:%d\n", 
-                              nHeight, ntempHeight, firstCoinbaseData.nOfficialMNNum, firstCoinbaseData.nGeneralMNNum);
-                    return false;
-                }
-
-                if (tempmnSize < g_nMasternodeMinCount)
-                {
-                    LogPrintf("SPOS_Error CheckSPOSBlockV2():g_vecReSelectResultMasternodes Less than g_nMasternodeMinCount,height:%d, mnSize:%d, g_nMasternodeMinCount:%d\n", nHeight, mnSize, g_nMasternodeMinCount);
-                    return false;
-                }
-
-                nIndex = interval % tempmnSize;
-                if (nIndex < 0)
-                {
-                    LogPrintf("SPOS_Error CheckSPOSBlockV2():incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
-                    return false;
-                }
-
-                mnTemp = g_vecReSelectResultMasternodes[nIndex];
+                tempReSelectResultMN = g_vecReSelectResultMasternodes;
             }
 
-            CKeyID mnkeyID;
-            std::string strkeyID = mnTemp.strSerialPubKeyId;
-            std::vector<unsigned char> vchKeyId;
-            for (unsigned int i = 0; i < strkeyID.length(); i++)
-                vchKeyId.push_back(strkeyID[i]);
-
-            CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
-            ssKey >> mnkeyID;
-
-            if (mnkeyID != deterministicMNCoinbaseData.keyIDMasternode)
-            {
-                LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
-                          "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
-                           mnkeyID.ToString(),nIndex,mnTemp.strIP);
+            if (!CheckDeterministicMNBlockIndex(tempReSelectResultMN, interval, deterministicMNCoinbaseData, nHeight))
                 return false;
-            }
         }
         else
         {
@@ -6557,35 +6578,11 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             }
             else
             {
-                int32_t nIndex = 0;
-                CDeterministicMasternode_IndexValue mnTemp;
-            
                 uint32_t nTimeDifferenceOfFirst = block.GetBlockTime() - firstBlock.GetBlockTime();
                 int32_t interval = nTimeDifferenceOfFirst / Params().GetConsensus().nSPOSTargetSpacing;
-                nIndex = interval % mnSize;
-                if (nIndex < 0)
-                {
-                    LogPrintf("SPOS_Error CheckSPOSBlockV2():incorrect index value,height:%d, invalid index:%d\n", nHeight, nIndex);
+
+                if (!CheckDeterministicMNBlockIndex(tempvecReSelectResult, interval, deterministicMNCoinbaseData, nHeight))
                     return false;
-                }
-
-                mnTemp = tempvecReSelectResult[nIndex];
-
-                CKeyID mnkeyID;
-                std::string strkeyID = mnTemp.strSerialPubKeyId;
-                std::vector<unsigned char> vchKeyId;
-                for (unsigned int i = 0; i < strkeyID.length(); i++)
-                    vchKeyId.push_back(strkeyID[i]);
-
-                CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
-                ssKey >> mnkeyID;
-                if (mnkeyID != deterministicMNCoinbaseData.keyIDMasternode)
-                {
-                    LogPrintf("SPOS_Warning CheckSPOSBlockV2():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
-                              "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s\n", nHeight, deterministicMNCoinbaseData.keyIDMasternode.ToString(),
-                              mnkeyID.ToString(),nIndex,mnTemp.strIP);
-                    return false;
-                }
             }
         }
     }
@@ -11059,8 +11056,6 @@ void SortDeterministicMNs(const std::map<COutPoint, CDeterministicMasternode_Ind
         ss << mn.strCollateralAddress;
         ss << nScoreTime;
         uint256 score = ss.GetHash();
-        LogPrintf("SPOS_INFO:SortDeterministicMNs strCollateralAddress:%s, score:%s\n", mn.strCollateralAddress, score.ToString());
-        
         scoreMasternodes[score] = mn;
     }
 
@@ -11344,8 +11339,6 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
         unsigned int vec2Size = vecResultMasternodesL2.size();
         unsigned int vec3Size = vecResultMasternodesL3.size();
 
-        LogPrintf("SPOS_INFO:vec1Size:%d, vec2Size:%d, vec3Size%d, nAllEffectiveGeneralMNNum:%d, nGeneralMNNum:%d\n",
-                  vec1Size, vec2Size, vec3Size, nAllEffectiveGeneralMNNum, nGeneralMNNum);
         unsigned int nP1 = ((double)vec1Size / nAllEffectiveGeneralMNNum) * nGeneralMNNum;
         unsigned int nP2 = ((double)vec2Size / nAllEffectiveGeneralMNNum) * nGeneralMNNum;
         unsigned int nP3 = ((double)vec3Size / nAllEffectiveGeneralMNNum) * nGeneralMNNum;
