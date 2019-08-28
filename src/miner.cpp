@@ -783,15 +783,13 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		bTimeIntervalLog = false;
 	}
 
-	int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
-	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
-	int nNextIndex = (nNextBlockTime - nStartNewLoopTime - nPushForwardTime) / nSPosTargetSpacing;
-	nNextIndex--;
-	nNextIndex = nNextIndex % nRealyMinerCount;
-	
-	//int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing);	
+	//int nNextIndex = (nNextBlockTime - nStartNewLoopTime - nPushForwardTime) / nSPosTargetSpacing;
 	//nNextIndex--;
 	//nNextIndex = nNextIndex % nRealyMinerCount;
+	
+	int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing);	
+	nNextIndex--;
+	nNextIndex = nNextIndex % nRealyMinerCount;
 	/*if (nNextIndex < 0)
 	{	
 		if (!bErrorIndexLog)
@@ -813,19 +811,18 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	}*/
 
 	int64_t nFutureLocalTime = nCurTime + (nNextIndex + 1) * nSPosTargetSpacing;
-	int64_t nBlockOffset = abs(nNextBlockTime - nFutureLocalTime);
+	int64_t nBlockOffset = abs(nCurTime - nFutureLocalTime);
 	if (nBlockOffset > nSPosTargetSpacing)
 	{
 		if (!bErrCreateBlcokLog)
 		{
 			bErrCreateBlcokLog = true;
 			LogPrintf("SPOS_Warning: index is valid, but it is not create block, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, "
-				"nPushForwardTime: %d, nNextBlockTime:%lld, nFutureLocalTime:%lld, nRealyMinerCount: %d\n",
+				"nPushForwardTime: %d, nFutureLocalTime:%lld, nRealyMinerCount: %d\n",
 				nNextIndex,
 				nCurTime,
 				nStartNewLoopTime,
 				nPushForwardTime,
-				nNextBlockTime,
 				nFutureLocalTime,
 				nRealyMinerCount);
 		}
@@ -883,7 +880,8 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		return;
 	}
 
-	
+	int nTimeIntervalCount = nTimeInterval / nSPosTargetSpacing;
+	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTimeIntervalCount + 1) * nSPosTargetSpacing;
 	CBlock *pblock = &pblocktemplate->block;
 	pblock->nTime = nNextBlockTime;
 	if (IsStartDeterministicMNHeight(nNextBlockHeight))
@@ -917,11 +915,12 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		CValidationState state;
 		if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false))
 		{
-			LogPrintf("SPOS_Error: failed TestBlockValidity, miner:%s, blockHeight:%d, blockTime:%lld, nStartNewLoopTime:%lld, nPushForwardTime:%d, "
+			LogPrintf("SPOS_Error: failed TestBlockValidity, miner:%s, blockHeight:%d, blockTime:%lld, nCurTime:%lld, nStartNewLoopTime:%lld, nPushForwardTime:%d, "
 				"nCurIndex:%d, nTimeInerval:%d, nBlockOffset:%lld, nRealyMinerCount:%d\n",
 				addr.ToString(),
 				nNextBlockHeight,
 				pblock->nTime,
+				nCurTime,
 				nStartNewLoopTime,
 				nPushForwardTime,
 				nNextIndex,
@@ -933,16 +932,16 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	}
 	
 	nNextBlockTime = nNextBlockTime * 1000;
-	nCurTime = GetTimeMillis();
-	int64_t nActualTimeMillisInterval = std::abs(nNextBlockTime - nCurTime);
+	int64_t nTempTime = GetTimeMillis();
+	int64_t nActualTimeMillisInterval = std::abs(nNextBlockTime - nTempTime);
 
 	// whether to meet the broadcast block requirements 
 	while (nActualTimeMillisInterval > 500)
 	{
 		boost::this_thread::interruption_point();
 		MilliSleep(50);
-		nCurTime = GetTimeMillis();
-		nActualTimeMillisInterval = std::abs(nNextBlockTime - nCurTime);
+		nTempTime = GetTimeMillis();
+		nActualTimeMillisInterval = std::abs(nNextBlockTime - nTempTime);
 	}
 
 	// broadcast block
@@ -955,12 +954,13 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		LogPrintf("SPOS_Info: failed found block, ");
 	}
 
-	LogPrintf("miner:%s, blockHeight:%d, blockTime:%lld, nActualTimeMillisInterval:%d, nStartNewLoopTime:%lld, nPushForwardTime:%d, "
+	LogPrintf("miner:%s, blockHeight:%d, blockTime:%lld, nActualTimeMillisInterval:%d, nCurTime:%lld, nStartNewLoopTime:%lld, nPushForwardTime:%d, "
 		"nCurIndex:%d, nTimeInerval:%d, nBlockOffset:%lld, nRealyMinerCount:%d\n",
 		addr.ToString(),
 		nNextBlockHeight,
 		pblock->nTime,
 		nActualTimeMillisInterval,
+		nCurTime,
 		nStartNewLoopTime,
 		nPushForwardTime,		
 		nNextIndex,
