@@ -77,6 +77,7 @@ extern bool g_fReceiveBlock;
 
 extern int g_nLastSelectMasterNodeSuccessHeight;
 extern bool g_fTimeoutThreetimes;
+extern int g_nAdjacentBlockInterval;
 
 
 extern int g_nStorageSpork;
@@ -831,7 +832,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	
 	int64_t nNextBlockTime = nCurTime + nSPosTargetSpacing;
 	int64_t nBlockOffset = abs(nNextBlockTime - pindexPrev->GetBlockTime());
-	if (nBlockOffset < nSPosTargetSpacing - 2)
+	if (nBlockOffset < g_nAdjacentBlockInterval)
 	{
 		if (!bErrCreateBlcokLog)
 		{
