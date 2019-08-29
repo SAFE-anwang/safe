@@ -5772,6 +5772,8 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
             LOCK(cs_timeout);
             g_fTimeoutThreetimes = false;
         }
+
+        InitDeterministicMNGlobalData();
    }
 
     // Build list of new blocks to connect.
@@ -6423,7 +6425,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             return false;
         }
 
-        int32_t interval = (block.GetBlockTime() - pForwardIndex->nTime - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+        int32_t interval = (block.GetBlockTime() - pForwardIndex->nTime - g_nPushForwardHeight * Params().GetConsensus().nSPOSTargetSpacing) / Params().GetConsensus().nSPOSTargetSpacing - 1;
         LogPrintf("SPOS_INFO:first block block.GetBlockTime:%d, pForwardIndex->nTime:%d, interval:%d, nHeight:%d\n", 
                   block.GetBlockTime(), pForwardIndex->nTime, interval, nHeight);
 
@@ -6569,7 +6571,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
             ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, firstCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
 
-            int32_t interval = (block.GetBlockTime() - nForwardTime - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+            int32_t interval = (block.GetBlockTime() - nForwardTime - g_nPushForwardHeight * Params().GetConsensus().nSPOSTargetSpacing) / Params().GetConsensus().nSPOSTargetSpacing - 1;
 
             LogPrintf("SPOS_INFO: block.GetBlockTime:%d, nForwardTime:%d, interval:%d, nHeight:%d\n", 
                       block.GetBlockTime(), nForwardTime, interval, nHeight);
@@ -6592,7 +6594,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             }
             else
             {
-                int32_t interval = (block.GetBlockTime() - nForwardTime - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+                int32_t interval = (block.GetBlockTime() - nForwardTime - g_nPushForwardHeight * Params().GetConsensus().nSPOSTargetSpacing) / Params().GetConsensus().nSPOSTargetSpacing - 1;
                 LogPrintf("SPOS_INFO: block.GetBlockTime:%d, nForwardTime:%d, interval:%d, nHeight:%d\n", 
                           block.GetBlockTime(), nForwardTime, interval, nHeight);
 
