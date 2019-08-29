@@ -6421,7 +6421,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         CBlockIndex* pForwardIndex = chainActive[nForwardHeight];
         if (pForwardIndex == NULL)
         {
-            LogPrintf("SPOS_Warning:CheckSPOSBlockV2 first block pForwardIndex is NULL,height:%d, nFirstBlock:%d\n",nHeight, deterministicMNCoinbaseData.nFirstBlock);
+            LogPrintf("SPOS_Warning:CheckSPOSBlockV2 first block pForwardIndex is NULL,height:%d, nFirstBlock:%d, chainActive height:%d\n",nHeight, deterministicMNCoinbaseData.nFirstBlock, chainActive.Height());
             return false;
         }
 
