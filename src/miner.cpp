@@ -848,12 +848,17 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	}
 	
 	int64_t nNextBlockTime = nCurTime + nSPosTargetSpacing;
-	int64_t nTempBlockTime = (nNextBlockTime - nStartNewLoopTime - nPushForwardTime) / nSPosTargetSpacing;
-	int64_t nAdjustBlockTime = nStartNewLoopTime + nPushForwardTime + nTempBlockTime * nSPosTargetSpacing;
+	int64_t nTempBlockInterval = (nNextBlockTime - nStartNewLoopTime - nPushForwardTime) / nSPosTargetSpacing;
+	int64_t nAdjustBlockTime = nStartNewLoopTime + nPushForwardTime + nTempBlockInterval * nSPosTargetSpacing;
 	if (nAdjustBlockTime < nNextBlockTime)
 	{
-		LogPrintf("SPOS_Warning: ---------------adjust block time is too samll, again calc block time---------------");
-		nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTempBlockTime + 1) * nSPosTargetSpacing;
+		LogPrintf("SPOS_Warning: adjust block time is too samll, again calc block time, oldBlockTime: %lld, adjustBlockTime: %lld"
+		"nStartNewLoopTime: %lld, nPushForwardTime: %d\n",
+			nNextBlockTime,
+			nAdjustBlockTime,
+			nStartNewLoopTime,
+			nPushForwardTime);
+		nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTempBlockInterval + 1) * nSPosTargetSpacing;
 	}
 	else
 	{
