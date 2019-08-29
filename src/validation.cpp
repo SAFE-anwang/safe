@@ -6409,7 +6409,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
     if (deterministicMNCoinbaseData.nFirstBlock == 1)
     {
         std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
-        ReSelectDeterministicMN(nHeight, deterministicMNCoinbaseData.nRandomNum, deterministicMNCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
+        ReSelectDeterministicMN(nHeight - 1, deterministicMNCoinbaseData.nRandomNum, deterministicMNCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
 
         int nForwardHeight = nHeight - 1 - g_nPushForwardHeight;
         if (nForwardHeight < 0)
@@ -6569,7 +6569,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         if (mnSize == 0)
         {
             std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
-            ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, firstCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
+            ReSelectDeterministicMN(ntempHeight - 1, firstCoinbaseData.nRandomNum, firstCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
 
             int32_t interval = (block.GetBlockTime() - nForwardTime - g_nPushForwardHeight * Params().GetConsensus().nSPOSTargetSpacing) / Params().GetConsensus().nSPOSTargetSpacing - 1;
 
@@ -11076,7 +11076,7 @@ void SortDeterministicMNs(const std::map<COutPoint, CDeterministicMasternode_Ind
         scoreMasternodes[score] = mn;
     }
 
-    LogPrintf("SPOS_INFO:%s mapMasternodes size:%d scoreMasternodes size:%d\n", strArrName, mapMasternodes.size(), scoreMasternodes.size());
+    LogPrint("SortDeterministicMNs", "SPOS_INFO:%s mapMasternodes size:%d scoreMasternodes size:%d\n", strArrName, mapMasternodes.size(), scoreMasternodes.size());
     for (auto& mnpair : scoreMasternodes)
     {
         CDeterministicMasternode_IndexValue& mn = mnpair.second;
@@ -11099,8 +11099,6 @@ void SortDeterministicMNs(const std::map<COutPoint, CDeterministicMasternode_Ind
         uint32_t j = i + k%jmax;
         std::swap(vecResultMasternodes[i], vecResultMasternodes[j]);
     }
-
-    LogPrintf("SPOS_INFO:vecResultMasternodes size():%d\n", vecResultMasternodes.size());
 }
 
 void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, const uint32_t& nScoreTime, const bool& bProcessSpork, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes,
@@ -11177,6 +11175,8 @@ void ReSelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nScore
                   g_nLocalStartSavePayeeHeight, nCurrBlockHeight, g_nCanSelectMasternodeHeight, g_nSaveMasternodePayeeHeight);
         return;
     }
+
+    LogPrintf("SPOS_Info:ReSelectDeterministicMN--------------------------------------------------------\n");
 
     InitReSelectMNGlobalData();
     int nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
@@ -11281,7 +11281,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
     }
 
     unsigned int nGeneralMNNum = g_nMasternodeSPosCount - nOfficialCount;
-    LogPrintf("SPOS_INFO:g_nMasternodeSPosCount:%d, nOfficialCount:%d, nGeneralMNNum:%d\n", g_nMasternodeSPosCount, nOfficialCount, nGeneralMNNum);
+    LogPrint("GetDeterministicMNList", "SPOS_INFO:g_nMasternodeSPosCount:%d, nOfficialCount:%d, nGeneralMNNum:%d\n", g_nMasternodeSPosCount, nOfficialCount, nGeneralMNNum);
     if (nGeneralMNNum > 0)
     {
         std::map<std::string, CMasternodePayee_IndexValue> mapAllPayeeInfo;
@@ -11408,9 +11408,9 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
                   "nRemainNum:%d, intervalHeight:%d,", localIpPortInfo, nCurrBlockHeight, size, g_nMasternodeMinCount, nRemainNum, intervalHeight);
 
         LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nAllEffectiveGeneralMNNum:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
-                  "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d,g_nPushForwardTime:%d\n",
+                  "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d\n",
                   nMnSize, g_nMasternodeMinCount, nTotalEffectiveMN, nAllEffectiveGeneralMNNum, mapAllPayeeInfo.size(), mapMasternodesL1.size(),
-                  mapMasternodesL2.size(), mapMasternodesL3.size(), nP1, nP1Increase,nP2, nP2Increase, nP3, nP3Increase, g_nTimeoutCount, g_nPushForwardTime);
+                  mapMasternodesL2.size(), mapMasternodesL3.size(), nP1, nP1Increase,nP2, nP2Increase, nP3, nP3Increase, g_nTimeoutCount);
 
         for (uint32_t i = 0; i < size; ++i)
         {
