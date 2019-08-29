@@ -737,6 +737,24 @@ void static BitcoinMiner(const CChainParams& chainparams, CConnman& connman)
 }
 */
 
+static CKeyID StringToKeyId(const string &strKeyId)
+{
+	if (strKeyId.empty())
+	{
+		return CKeyID();
+	}
+
+	CKeyID keyId;
+	std::vector<unsigned char> vtKeyId;
+	for (unsigned int i = 0; i < strKeyId.length(); i++)
+		vtKeyId.push_back(strKeyId[i]);
+
+	CDataStream ssKey(vtKeyId, SER_DISK, CLIENT_VERSION);
+	ssKey >> keyId;
+
+	return keyId;
+}
+
 /*
     Consensus Use Safe Pos
 */
@@ -806,21 +824,20 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	nNextIndex = nNextIndex % nRealyMinerCount;
 
 	CKeyID keyID;
+	CScript sposMinerPayee;
 	unsigned int nNextBlockHeight = pindexPrev->nHeight + 1;
+
 	if (IsStartDeterministicMNHeight(nNextBlockHeight))
 	{
-		std::string strkeyID = vtResultDeterministicMN[nNextIndex].strSerialPubKeyId;
-		std::vector<unsigned char> vchKeyId;
-		for (unsigned int i = 0; i < strkeyID.length(); i++)
-			vchKeyId.push_back(strkeyID[i]);
-
-		CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
-		ssKey >> keyID;
+		const CDeterministicMasternode_IndexValue &stDMN = vtResultDeterministicMN[nNextIndex];
+		keyID = StringToKeyId(stDMN.strSerialPubKeyId);
+		sposMinerPayee = GetScriptForDestination(StringToKeyId(stDMN.strCollateralAddress));
 	}
 	else
 	{
-		std::vector<CMasternode> &vtTempResult = (std::vector<CMasternode> &)vtResultMasternodes;
-		keyID = vtTempResult[nNextIndex].GetInfo().pubKeyMasternode.GetID();
+		CMasternode &stTempMN = (CMasternode &)vtResultMasternodes[nNextIndex];
+		keyID = stTempMN.GetInfo().pubKeyMasternode.GetID();
+		sposMinerPayee = GetScriptForDestination(stTempMN.pubKeyCollateralAddress.GetID());
 	}
 
 	// whether self will create block
@@ -852,7 +869,6 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 
 	bErrCreateBlcokLog = false;	
 
-	CScript sposMinerPayee = GetScriptForDestination(keyID);
 	std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, sposMinerPayee));
 	if (!pblocktemplate.get())
 	{
