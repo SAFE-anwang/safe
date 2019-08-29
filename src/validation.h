@@ -1341,11 +1341,11 @@ struct CDiskTxPos : public CDiskBlockPos
 struct CFirstBlockInfo
 {
     CDeterministicMNCoinbaseData deterministicMNCoinbaseData;
-    CBlock block;
     int nHeight;
+    uint32_t nForwardTime;
 
-    CFirstBlockInfo(const CDeterministicMNCoinbaseData& deterministicMNCoinbaseDataIn, const CBlock& blockIn, const int& nHeightIn)
-                       : deterministicMNCoinbaseData(deterministicMNCoinbaseDataIn), block(blockIn), nHeight(nHeightIn){
+    CFirstBlockInfo(const CDeterministicMNCoinbaseData& deterministicMNCoinbaseDataIn, const int& nHeightIn, const uint32_t& nForwardTimeIn)
+                       : deterministicMNCoinbaseData(deterministicMNCoinbaseDataIn), nHeight(nHeightIn), nForwardTime(nForwardTimeIn){
     }
 
     CFirstBlockInfo& operator=(const CFirstBlockInfo& data)
@@ -1354,8 +1354,8 @@ struct CFirstBlockInfo
             return *this;
 
         deterministicMNCoinbaseData = data.deterministicMNCoinbaseData;
-        block = data.block;
         nHeight = data.nHeight;
+        nForwardTime = data.nForwardTime;
 
         return *this;
     }
@@ -1368,8 +1368,8 @@ struct CFirstBlockInfo
     void SetNull()
     {
         deterministicMNCoinbaseData.SetNull();
-        block.SetNull();
         nHeight = 0;
+        nForwardTime = 0;
     }
 };
 

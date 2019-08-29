@@ -6339,7 +6339,6 @@ bool CheckDeterministicMNBlockIndex(const std::vector<CDeterministicMasternode_I
     CDeterministicMasternode_IndexValue mnTemp;
 
     mnSize = vecReSelectResultMasternodes.size();
-
     if (mnSize == 0)
     {
         LogPrintf("SPOS_Error: CheckDeterministicMNBlockIndex() vecReSelectResultMasternodes is empty, nHeight:%d\n", nHeight); 
@@ -6371,14 +6370,11 @@ bool CheckDeterministicMNBlockIndex(const std::vector<CDeterministicMasternode_I
     CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
     ssKey >> mnkeyID;
 
-    CBitcoinAddress indexAddress(mnkeyID);
-    CBitcoinAddress reserveAddress(deterministicMNCoinbaseData.keyIDMasternode);
-
     if (mnkeyID != deterministicMNCoinbaseData.keyIDMasternode)
     {
         LogPrintf("SPOS_Warning: CheckDeterministicMNBlockIndex() the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
-                  "index keyID:%s, reserve keyID:%s, local nIndex:%d, ip:%s, indexAddress:%s, reserveAddress:%s\n", nHeight, mnkeyID.ToString(), 
-                  deterministicMNCoinbaseData.keyIDMasternode.ToString(), nIndex, mnTemp.strIP, indexAddress.ToString(), reserveAddress.ToString());
+                  "index keyID:%s, reserve keyID:%s, local nIndex:%d, index ip:%s\n", nHeight, mnkeyID.ToString(), 
+                  deterministicMNCoinbaseData.keyIDMasternode.ToString(), nIndex, mnTemp.strIP);
         return false;
     }
 
@@ -6413,18 +6409,23 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
         ReSelectDeterministicMN(nHeight, deterministicMNCoinbaseData.nRandomNum, deterministicMNCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
 
-        CBlockIndex* pPreblockIndex = chainActive[nHeight - 1];
-        if (pPreblockIndex == NULL)
+        int nForwardHeight = nHeight - 1 - g_nPushForwardHeight;
+        if (nForwardHeight < 0)
         {
-            LogPrintf("SPOS_Warning:CheckSPOSBlockV2 first block pPreblockIndex is NULL,height:%d, nFirstBlock:%d\n",nHeight, deterministicMNCoinbaseData.nFirstBlock);
+            LogPrintf("SPOS_Warning:CheckSPOSBlockV2 first block nForwardHeight error, nHeight:%d, g_nPushForwardHeight:%d\n", nHeight, g_nPushForwardHeight);
             return false;
         }
 
-        uint32_t nTimeDifference = block.GetBlockTime() - pPreblockIndex->nTime;
-        int32_t interval = nTimeDifference / Params().GetConsensus().nSPOSTargetSpacing - 1;
+        CBlockIndex* pForwardIndex = chainActive[nForwardHeight];
+        if (pForwardIndex == NULL)
+        {
+            LogPrintf("SPOS_Warning:CheckSPOSBlockV2 first block pForwardIndex is NULL,height:%d, nFirstBlock:%d\n",nHeight, deterministicMNCoinbaseData.nFirstBlock);
+            return false;
+        }
 
-        LogPrintf("SPOS_INFO:first block nTimeDifference:%d, block.GetBlockTime:%d, pPreblockIndex->nTime:%d, interval:%d, nHeight:%d\n", 
-                  nTimeDifference, block.GetBlockTime(), pPreblockIndex->nTime, interval, nHeight);
+        int32_t interval = (block.GetBlockTime() - pForwardIndex->nTime - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+        LogPrintf("SPOS_INFO:first block block.GetBlockTime:%d, pForwardIndex->nTime:%d, interval:%d, nHeight:%d\n", 
+                  block.GetBlockTime(), pForwardIndex->nTime, interval, nHeight);
 
         std::vector<CDeterministicMasternode_IndexValue> tempvecSelectResultMN;
         {
@@ -6437,8 +6438,8 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
 
         CFirstBlockInfo tempFirstBlockInfo;
         tempFirstBlockInfo.deterministicMNCoinbaseData = deterministicMNCoinbaseData;
-        tempFirstBlockInfo.block = block;
         tempFirstBlockInfo.nHeight = nHeight;
+        tempFirstBlockInfo.nForwardTime = pForwardIndex->nTime;
 
         {
             LOCK(cs_firstblock);
@@ -6448,9 +6449,9 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
     }
     else
     {
-        CBlock firstBlock;
         CDeterministicMNCoinbaseData firstCoinbaseData;
         int ntempHeight = 0;
+        uint32_t nForwardTime = 0;
         int nFirstBlockCount = 0;
 
         {
@@ -6459,9 +6460,9 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
              if (nFirstBlockCount != 0)
              {
                 CFirstBlockInfo tempFirstBlockInfo = g_vecFirstBlockInfo[0];
-                firstBlock = tempFirstBlockInfo.block;
                 firstCoinbaseData = tempFirstBlockInfo.deterministicMNCoinbaseData;
                 ntempHeight = tempFirstBlockInfo.nHeight;
+                nForwardTime = tempFirstBlockInfo.nForwardTime;
              }
         }
 
@@ -6515,8 +6516,22 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
 
                 if (tempdeterministicMNCoinbaseData.nFirstBlock == 1)
                 {
-                    firstBlock = tempblock;
                     firstCoinbaseData = tempdeterministicMNCoinbaseData;
+                    int ntempForwardHeight = ntempHeight - 1 - g_nPushForwardHeight;
+                    if (ntempForwardHeight < 0)
+                    {
+                        LogPrintf("SPOS_Warning:CheckSPOSBlockV2 nForwardHeight error, nHeight:%d, g_nPushForwardHeight:%d\n", nHeight, g_nPushForwardHeight);
+                        return false;
+                    }
+                    
+                    CBlockIndex* ptempForwardIndex = chainActive[ntempForwardHeight];
+                    if (ptempForwardIndex == NULL)
+                    {
+                        LogPrintf("SPOS_Warning:CheckSPOSBlockV2  ptempForwardIndex is NULL,height:%d, nFirstBlock:%d\n",nHeight, deterministicMNCoinbaseData.nFirstBlock);
+                        return false;
+                    }
+
+                    nForwardTime = ptempForwardIndex->nTime;
                     fFindFirstBlock = true;
                     break;
                 }
@@ -6554,11 +6569,10 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
             ReSelectDeterministicMN(ntempHeight, firstCoinbaseData.nRandomNum, firstCoinbaseData.nOfficialMNNum, tmpVecResultMasternodes);
 
-            uint32_t nTimeDifferenceOfFirst = block.GetBlockTime() - firstBlock.GetBlockTime();
-            int32_t interval = nTimeDifferenceOfFirst / Params().GetConsensus().nSPOSTargetSpacing;
+            int32_t interval = (block.GetBlockTime() - nForwardTime - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
 
-            LogPrintf("SPOS_INFO: nTimeDifferenceOfFirst:%d, block.GetBlockTime:%d, firstBlock.GetBlockTime():%d, interval:%d, nHeight:%d\n", 
-                      nTimeDifferenceOfFirst, block.GetBlockTime(), firstBlock.GetBlockTime(), interval, nHeight);
+            LogPrintf("SPOS_INFO: block.GetBlockTime:%d, nForwardTime:%d, interval:%d, nHeight:%d\n", 
+                      block.GetBlockTime(), nForwardTime, interval, nHeight);
 
             std::vector<CDeterministicMasternode_IndexValue> tempReSelectResultMN;
             {
@@ -6578,8 +6592,9 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
             }
             else
             {
-                uint32_t nTimeDifferenceOfFirst = block.GetBlockTime() - firstBlock.GetBlockTime();
-                int32_t interval = nTimeDifferenceOfFirst / Params().GetConsensus().nSPOSTargetSpacing;
+                int32_t interval = (block.GetBlockTime() - nForwardTime - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+                LogPrintf("SPOS_INFO: block.GetBlockTime:%d, nForwardTime:%d, interval:%d, nHeight:%d\n", 
+                          block.GetBlockTime(), nForwardTime, interval, nHeight);
 
                 if (!CheckDeterministicMNBlockIndex(tempvecReSelectResult, interval, deterministicMNCoinbaseData, nHeight))
                     return false;
