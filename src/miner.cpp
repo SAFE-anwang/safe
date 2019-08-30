@@ -894,7 +894,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		nNextBlockTime = nAdjustBlockTime;
 	}
 
-	int nNextIndex = isMinerByMe(chainparams, pindexPrev, nNextBlockTime, nStartNewLoopTime, nPushForwardTime, vtResultMasternodes, vtResultDeterministicMN);
+	nNextIndex = isMinerByMe(chainparams, pindexPrev, nNextBlockTime, nStartNewLoopTime, nPushForwardTime, vtResultMasternodes, vtResultDeterministicMN);
 	if (nNextIndex < 0)
 	{
 		return;
