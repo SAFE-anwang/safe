@@ -6384,7 +6384,7 @@ bool CheckDeterministicMNBlockIndex(const std::vector<CDeterministicMasternode_I
     return true;
 }
 
-bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& nHeight, const std::vector<unsigned char>& vData, bool fCheckPOW )
+bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& nHeight, const std::vector<unsigned char>& vData, bool fCheckSPOSIndex)
 {
     if (block.nBits != 0 || block.nNonce != 0 )
         return state.DoS(100, error("SPOS_Warning CheckSPOSBlockV2(): block.nBits or block.nNonce  not equal to 0,this block may receive from pow chain,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
@@ -6408,7 +6408,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
     }
 
     string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
-    if (fCheckPOW)
+    if (!fCheckSPOSIndex)
     {
         LogPrintf("SPOS_Message:CheckSPOSBlockV2() check spos block succ, height:%d, blockTime:%lld(%s)\n",
                   nHeight, nBlockTime, strBlockTime);
@@ -6637,7 +6637,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
 
         if (header.nVersion == 2)
         {
-            if (!CheckSPOSBlockV2(block, state, nHeight, vData, fCheckPOW))
+            if (!CheckSPOSBlockV2(block, state, nHeight, vData, block.fChecked))
                 return false;
         }
     }

@@ -1525,7 +1525,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW = true);
 bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 bool CheckSPOSBlock(const CBlock& block, CValidationState& state, const int& nHeight,bool fCheckPOW = true);
-bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& nHeight, const std::vector<unsigned char>& vData, bool fCheckPOW = true);
+bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& nHeight, const std::vector<unsigned char>& vData, bool fCheckSPOSIndex = true);
 bool DealDeterministicMNCoinBaseReserve(const CBlock& block, CBlockIndex* pindex, bool fCheckFail);
 bool DealMemAndDBSpork(CBlockIndex* pindex);
 bool LoadSporkInfo();
