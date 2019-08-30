@@ -5473,7 +5473,7 @@ static int64_t nTimePostConnect = 0;
  */
 bool static ConnectTip(CValidationState& state, const CChainParams& chainparams, CBlockIndex* pindexNew, const CBlock* pblock)
 {
-    LogPrintf("ConnectTip chainActive.Tip() height:%s\n", chainActive.Tip().nHeight);
+    LogPrintf("ConnectTip chainActive.Tip() height:%d\n", chainActive.Tip().nHeight);
     assert(pindexNew->pprev == chainActive.Tip());
     // Read block from disk.
     int64_t nTime1 = GetTimeMicros();
