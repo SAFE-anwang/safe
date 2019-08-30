@@ -790,7 +790,7 @@ static int isMinerByMe(const CChainParams &chainparams,
 				nStartNewLoopTime,
 				nPushForwardTime);
 		}
-		return;
+		return -1;
 	}
 	else
 	{
@@ -812,7 +812,7 @@ static int isMinerByMe(const CChainParams &chainparams,
 				nRealyMinerCount);
 		}
 
-		return;
+		return -1;
 	}
 
 	bErrorIndexLog = false;
