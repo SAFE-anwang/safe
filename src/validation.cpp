@@ -6623,6 +6623,25 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
 {
     // These are checks that are independent of context.
 
+    CSposHeader header;
+    vector<unsigned char> vData;
+    if (nHeight >= g_nStartSPOSHeight)
+    {
+        CTransaction tempTransaction  = block.vtx[0];
+        const CTxOut &out = tempTransaction.vout[0];
+        if (!ParseSposReserve(out.vReserve, header, vData))
+        {
+            LogPrintf("SPOS_Warning:ParseSposReserve() failed height:%d\n", nHeight);
+            return false;    
+        }
+
+        if (header.nVersion == 2)
+        {
+            if (!CheckSPOSBlockV2(block, state, nHeight, vData, fCheckPOW))
+                return false;
+        }
+    }
+
     if (block.fChecked)
         return true;
 
@@ -6642,22 +6661,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
 
     if (nHeight >= g_nStartSPOSHeight)
     {
-        CTransaction tempTransaction  = block.vtx[0];
-        const CTxOut &out = tempTransaction.vout[0];
-        CSposHeader header;
-        vector<unsigned char> vData;
-        if (!ParseSposReserve(out.vReserve, header, vData))
-        {
-            LogPrintf("SPOS_Warning:ParseSposReserve() failed height:%d\n", nHeight);
-            return false;    
-        }
-
-        if (header.nVersion == 2)
-        {
-            if (!CheckSPOSBlockV2(block, state, nHeight, vData, fCheckPOW))
-                return false;
-        }
-        else if (header.nVersion == 1)
+        if (header.nVersion == 1)
         {
             if (!CheckSPOSBlock(block, state,nHeight,fCheckPOW))
                 return false;
