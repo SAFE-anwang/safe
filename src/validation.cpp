@@ -6638,6 +6638,8 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (!CheckBlockHeader(block, state, fCheckPOW))
         return false;
 
+    int blockheight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
+    LogPrintf("SPOS_INFO: CheckBlock block height:%d, nHeight:%d\n", blockheight, nHeight);
     if (nHeight >= g_nStartSPOSHeight)
     {
         CTransaction tempTransaction  = block.vtx[0];
