@@ -5478,7 +5478,7 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
         LogPrintf("ConnectTip pindexNew height:%d\n", pindexNew->nHeight);
     // Read block from disk.
 
-    LogPrintf("SPOS_INFO:test1111111111111111111111111111111111111111111111\n");
+    LogPrintf("SPOS_INFO:test1111111111111111111111111111111111111111111111, chainActive height:%d\n", chainActive.Height());
     int64_t nTime1 = GetTimeMicros();
     CBlock block;
     if (!pblock) {
@@ -6389,8 +6389,8 @@ bool CheckDeterministicMNBlockIndex(const std::vector<CDeterministicMasternode_I
 
 bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& nHeight, const std::vector<unsigned char>& vData, bool fCheckPOW )
 {
-    if (block.nBits != 0)
-        return state.DoS(100, error("SPOS_Warning CheckSPOSBlockV2(): block.nBits  not equal to 0,this block may receive from pow chain,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
+    if (block.nBits != 0 || block.nNonce != 0 )
+        return state.DoS(100, error("SPOS_Warning CheckSPOSBlockV2(): block.nBits or block.nNonce  not equal to 0,this block may receive from pow chain,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
 
     int64_t nLocalTime = GetTime();
     //Synchronization of old blocks will result in a large difference between block time and local time, and cannot be compared using absolute values.
@@ -6641,7 +6641,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
         return false;
 
     int blockheight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
-    LogPrintf("SPOS_INFO: CheckBlock block height:%d, nHeight:%d, chainActive height:%d, block.hashPrevBlock\n", blockheight, nHeight, chainActive.Height(), block.hashPrevBlock.ToString());
+    LogPrintf("SPOS_INFO: CheckBlock block height:%d, nHeight:%d, chainActive height:%d, block.hashPrevBlock:%s\n", blockheight, nHeight, chainActive.Height(), block.hashPrevBlock.ToString());
     if (nHeight >= g_nStartSPOSHeight)
     {
         CTransaction tempTransaction  = block.vtx[0];
