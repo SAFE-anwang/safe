@@ -5474,11 +5474,8 @@ static int64_t nTimePostConnect = 0;
 bool static ConnectTip(CValidationState& state, const CChainParams& chainparams, CBlockIndex* pindexNew, const CBlock* pblock)
 {
     assert(pindexNew->pprev == chainActive.Tip());
-    if (pindexNew)
-        LogPrintf("ConnectTip pindexNew height:%d\n", pindexNew->nHeight);
     // Read block from disk.
 
-    LogPrintf("SPOS_INFO:test1111111111111111111111111111111111111111111111, chainActive height:%d\n", chainActive.Height());
     int64_t nTime1 = GetTimeMicros();
     CBlock block;
     if (!pblock) {
@@ -6410,6 +6407,15 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         return false;
     }
 
+    int64_t nBlockTime = block.GetBlockTime();
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
+    if (fCheckPOW)
+    {
+        LogPrintf("SPOS_Message:CheckSPOSBlockV2() check spos block succ, height:%d, blockTime:%lld(%s)\n",
+                  nHeight, nBlockTime, strBlockTime);
+        return true;
+    }
+
     if (deterministicMNCoinbaseData.nFirstBlock == 1)
     {
         std::vector<CDeterministicMasternode_IndexValue> tmpVecResultMasternodes;
@@ -6608,13 +6614,8 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         }
     }
 
-    if (fCheckPOW)
-    {
-        int64_t nBlockTime = block.GetBlockTime();
-        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
-        LogPrintf("SPOS_Message:CheckSPOSBlockV2() check spos block succ,height:%d,blockTime:%lld(%s), nScoreTime:%d,strKeyID:%s\n",
-                  nHeight, nBlockTime, strBlockTime, deterministicMNCoinbaseData.nRandomNum, deterministicMNCoinbaseData.keyIDMasternode.ToString());
-    }
+    LogPrintf("SPOS_Message:CheckSPOSBlockV2() check spos block succ, height:%d, blockTime:%lld(%s), nScoreTime:%d, strKeyID:%s\n",
+              nHeight, nBlockTime, strBlockTime, deterministicMNCoinbaseData.nRandomNum, deterministicMNCoinbaseData.keyIDMasternode.ToString());
 
     return true;
 }
@@ -6640,8 +6641,6 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (!CheckBlockHeader(block, state, fCheckPOW))
         return false;
 
-    int blockheight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
-    LogPrintf("SPOS_INFO: CheckBlock block height:%d, nHeight:%d, chainActive height:%d, block.hashPrevBlock:%s\n", blockheight, nHeight, chainActive.Height(), block.hashPrevBlock.ToString());
     if (nHeight >= g_nStartSPOSHeight)
     {
         CTransaction tempTransaction  = block.vtx[0];
