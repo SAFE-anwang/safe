@@ -852,8 +852,6 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	const std::vector<CMasternode> &vtResultMasternodes,
 	const std::vector<CDeterministicMasternode_IndexValue> &vtResultDeterministicMN)
 {
-	static bool bTimeIntervalLog = false;
-	static bool bErrorIndexLog = false;
 	static bool bErrCreateBlcokLog = false;
 
 	int nRealyMinerCount = 0;
@@ -894,11 +892,31 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		nNextBlockTime = nAdjustBlockTime;
 	}
 
-	nNextIndex = -1;
-	nNextIndex = isMinerByMe(chainparams, pindexPrev, nNextBlockTime, nStartNewLoopTime, nPushForwardTime, vtResultMasternodes, vtResultDeterministicMN);
+	int nNextIndex = nNextBlockTime / nSPosTargetSpacing;
+	nNextIndex--;
 	if (nNextIndex < 0)
 	{
-		return;
+		return ;
+	}
+
+	nNextIndex = nNextIndex % nRealyMinerCount;
+
+	CKeyID keyID;
+	unsigned int nNextBlockHeight = pindexPrev->nHeight + 1;
+	if (IsStartDeterministicMNHeight(nNextBlockHeight))
+	{
+		const CDeterministicMasternode_IndexValue &stDMN = vtResultDeterministicMN[nNextIndex];
+		keyID = StringToKeyId(stDMN.strSerialPubKeyId);
+	}
+	else
+	{
+		CMasternode &stTempMN = (CMasternode &)vtResultMasternodes[nNextIndex];
+		keyID = stTempMN.GetInfo().pubKeyMasternode.GetID();
+	}
+
+	if (activeMasternode.pubKeyMasternode.GetID() != keyID)
+	{
+		return ;
 	}
 
 	int64_t nBlockOffset = abs(nNextBlockTime - pindexPrev->GetBlockTime());
