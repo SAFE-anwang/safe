@@ -943,7 +943,6 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 
 	CKeyID mnKeyID, minerKeyID;
 	CScript sposMinerPayee;
-	unsigned int nNextBlockHeight = pindexPrev->nHeight + 1;
 	uint32_t nNonce = 0;
 
 	if (IsStartDeterministicMNHeight(nNextBlockHeight))
