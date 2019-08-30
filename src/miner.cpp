@@ -892,7 +892,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		nNextBlockTime = nAdjustBlockTime;
 	}
 
-	int nNextIndex = nNextBlockTime / nSPosTargetSpacing;
+	nNextIndex = nNextBlockTime / nSPosTargetSpacing;
 	nNextIndex--;
 	if (nNextIndex < 0)
 	{
