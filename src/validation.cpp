@@ -5477,6 +5477,8 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
     if (pindexNew)
         LogPrintf("ConnectTip pindexNew height:%d\n", pindexNew->nHeight);
     // Read block from disk.
+
+    LogPrintf("SPOS_INFO:test1111111111111111111111111111111111111111111111\n");
     int64_t nTime1 = GetTimeMicros();
     CBlock block;
     if (!pblock) {
@@ -6639,7 +6641,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
         return false;
 
     int blockheight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
-    LogPrintf("SPOS_INFO: CheckBlock block height:%d, nHeight:%d, chainActive height:%d\n", blockheight, nHeight, chainActive.Height());
+    LogPrintf("SPOS_INFO: CheckBlock block height:%d, nHeight:%d, chainActive height:%d, block.hashPrevBlock\n", blockheight, nHeight, chainActive.Height(), block.hashPrevBlock.ToString());
     if (nHeight >= g_nStartSPOSHeight)
     {
         CTransaction tempTransaction  = block.vtx[0];
