@@ -11446,3 +11446,21 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
 
     return true;
 }
+
+void LoadSPOSInfo()
+{
+    {
+        std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
+        pblocktree->Read_MasternodePayee_Index(gAllPayeeInfoMap);
+        LogPrintf("SPOS_Info:init read masternode payee, gAllPayeeInfoMap size:%d\n", gAllPayeeInfoMap.size());
+    }
+
+    pblocktree->Read_LocalStartSavePayeeHeight_Index(g_nLocalStartSavePayeeHeight);
+    LogPrintf("SPOS_Info:read local start save payee height(%d)\n", g_nLocalStartSavePayeeHeight);
+
+    {
+        std::lock_guard<std::mutex> lockDMN(g_mutexAllDeterministicMasternode);
+        pblocktree->Read_DeterministicMasternode_Index(gAllDeterministicMasternodeMap);
+        LogPrintf("SPOS_Info:init read deterministic masternode, gAllDeterministicMasternodeMap size:%d\n", gAllDeterministicMasternodeMap.size());
+    }
+}

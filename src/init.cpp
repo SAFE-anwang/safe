@@ -106,13 +106,8 @@ extern int g_nStartSPOSHeight;
 extern unsigned int g_nMasternodeSPosCount;
 extern unsigned int g_nMasternodeCanBeSelectedTime;
 extern unsigned int g_nMasternodeMinCount;
-extern std::mutex g_mutexAllPayeeInfo;
-extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
-extern std::mutex g_mutexAllDeterministicMasternode;
-extern std::map<COutPoint,CDeterministicMasternode_IndexValue> gAllDeterministicMasternodeMap;
 extern int64_t g_nAllowMasterNodeSyncErrorTime;
 extern int g_nLogMaxCnt;
-extern int g_nLocalStartSavePayeeHeight;
 extern int g_nCanSelectMasternodeHeight;
 extern int g_nMinerBlockTimeout;
 extern int g_nAdjustMiningRewardHeight;
@@ -1622,12 +1617,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
                 pcoinscatcher = new CCoinsViewErrorCatcher(pcoinsdbview);
                 pcoinsTip = new CCoinsViewCache(pcoinscatcher);
 
-                if (!LoadSporkInfo())
-                {
-                    strLoadError = _("Error loading spork info");
-                    break;
-                }
-
                 if (fReindex) {
                     pblocktree->WriteReindexing(true);
                     //If we're reindexing in prune mode, wipe away unusable block files and all undo data files
@@ -1640,6 +1629,12 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
                     strLoadError = _("Error loading block database");
                     break;
                 }
+
+                LogPrintf("SPOS_INFO:Load info height:%d\n", chainActive.Height());
+ 
+                LoadSporkInfo();
+
+                LoadSPOSInfo();
 
                 // If the loaded chain has a wrong genesis, bail out immediately
                 // (we're likely using a testnet datadir, or the other way around).
@@ -2146,27 +2141,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 
     // Generate coins in the background
     //GenerateBitcoins(GetBoolArg("-gen", DEFAULT_GENERATE), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
-
-    {
-        std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
-        if(!pblocktree->Read_MasternodePayee_Index(gAllPayeeInfoMap))
-        {
-            LogPrintf("SPOS_Warning:init read masternode payee fail\n");
-        }
-        if(!pblocktree->Read_LocalStartSavePayeeHeight_Index(g_nLocalStartSavePayeeHeight))
-        {
-            LogPrintf("SPOS_Warning:init read local start save payee height fail\n");
-        }else
-        {
-            LogPrintf("SPOS_Message:read local start save payee height(%d) succ\n",g_nLocalStartSavePayeeHeight);
-        }
-
-        std::lock_guard<std::mutex> lockDMN(g_mutexAllDeterministicMasternode);
-        if(!pblocktree->Read_DeterministicMasternode_Index(gAllDeterministicMasternodeMap))
-        {
-            LogPrintf("SPOS_Warning:init read deterministic masternode fail\n");
-        }
-    }
 
 #if SCN_CURRENT == SCN__main
     GenerateBitcoinsBySPOS(fMasterNode, GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);

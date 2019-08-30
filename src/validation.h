@@ -1741,5 +1741,7 @@ bool WriteSporkInfo(const int& nStorageSpork, const CSporkInfo_IndexValue& value
 void GetAllDeterministicMasternodeMap(std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapOfficialDeterministicMasternode,
                    std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapAllDeterministicMasternode,bool fSaveCommon=false);
 
+void LoadSPOSInfo();
+
 
 #endif // BITCOIN_VALIDATION_H
