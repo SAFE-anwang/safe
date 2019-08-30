@@ -6407,7 +6407,6 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
         return false;
     }
 
-    int64_t nBlockTime = block.GetBlockTime();
     string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
     if (fCheckPOW)
     {
