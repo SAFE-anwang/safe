@@ -6639,7 +6639,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
         return false;
 
     int blockheight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
-    LogPrintf("SPOS_INFO: CheckBlock block height:%d, nHeight:%d\n", blockheight, nHeight);
+    LogPrintf("SPOS_INFO: CheckBlock block height:%d, nHeight:%d, chainActive height:%d\n", blockheight, nHeight, chainActive.Height());
     if (nHeight >= g_nStartSPOSHeight)
     {
         CTransaction tempTransaction  = block.vtx[0];
