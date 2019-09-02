@@ -6296,8 +6296,12 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
             return true;
 
         if(mnSize == 0)
-            return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d,g_nSelectMasterNodeRet:%d"
-                                        ,nHeight, keyID.ToString(), strSigMessage, vchSig.size(),g_nSelectMasterNodeRet), REJECT_INVALID, "bad-mnSize", true);
+        {
+            LogPrintf("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d,g_nSelectMasterNodeRet:%d", 
+                      nHeight, keyID.ToString(), strSigMessage, vchSig.size(), g_nSelectMasterNodeRet);
+            return false;
+        }
+
         int32_t interval = (block.GetBlockTime() - nStartNewLoopTime - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
         nIndex = interval % mnSize;
         if(nIndex<0)
@@ -6309,10 +6313,12 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
 
     if (keyID != mnkeyID)
-        return state.DoS(100, error("SPOS_Warning CheckSPOSBlock():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
-                                    "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s,blocktime:%lld,startlooptime:%lld\n",nHeight,keyID.ToString()
-                                    ,mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP(),block.GetBlockTime(),nStartNewLoopTime), REJECT_INVALID
-                                    ,"bad-blockaddress", true);
+    {
+        LogPrintf("SPOS_Warning CheckSPOSBlock():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
+                  "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s,blocktime:%lld,startlooptime:%lld\n",nHeight,keyID.ToString(),
+                  mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP(),block.GetBlockTime(),nStartNewLoopTime);
+        return false;
+    }
 
     uint32_t tempMnActiveTime = mnTemp.getCanbeSelectTime(nHeight);
     if (block.nNonce <= g_nMasternodeCanBeSelectedTime)
