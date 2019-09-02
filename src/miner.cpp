@@ -821,49 +821,18 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	bErrorIndexLog = false;
 	nNextIndex = nNextIndex % nRealyMinerCount;
 
-	CKeyID mnKeyID, minerKeyID;
-	CScript sposMinerPayee;
+	CKeyID mnKeyID;
 	unsigned int nNextBlockHeight = pindexPrev->nHeight + 1;
-
 	if (IsStartDeterministicMNHeight(nNextBlockHeight))
 	{
 		const CDeterministicMasternode_IndexValue &stDMN = vtResultDeterministicMN[nNextIndex];
 		mnKeyID = StringToKeyId(stDMN.strSerialPubKeyId);
-
-		CBitcoinAddress minerAddress(stDMN.strCollateralAddress);
-		if (!minerAddress.GetKeyID(minerKeyID))
-		{
-			LogPrintf("SPOS_Error: pay address error for miner: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
-				nNextIndex,
-				nCurTime,
-				nStartNewLoopTime,
-				nPushForwardTime,
-				nRealyMinerCount);
-			return ;
-		}
-
-		sposMinerPayee = GetScriptForDestination(minerKeyID);
 	}
 	else
 	{
 		CMasternode &oldMN = (CMasternode &)vtResultMasternodes[nNextIndex];
 		mnKeyID = oldMN.GetInfo().pubKeyMasternode.GetID();
-		minerKeyID = oldMN.pubKeyCollateralAddress.GetID();
-		if (!minerKeyID.IsNull())
-		{
-			LogPrintf("SPOS_Error: pay address error for miner: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
-				nNextIndex,
-				nCurTime,
-				nStartNewLoopTime,
-				nPushForwardTime,
-				nRealyMinerCount);
-			return;
-		}
-
-		sposMinerPayee = GetScriptForDestination(minerKeyID);
 	}
-
-	
 
 	// whether self will create block
 	if (activeMasternode.pubKeyMasternode.GetID() != mnKeyID)
@@ -873,23 +842,6 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	}
 	
 	int64_t nNextBlockTime = nCurTime + nSPosTargetSpacing;
-	//int64_t nTempBlockInterval = (nNextBlockTime - nStartNewLoopTime - nPushForwardTime) / nSPosTargetSpacing;
-	//int64_t nAdjustBlockTime = nStartNewLoopTime + nPushForwardTime + nTempBlockInterval * nSPosTargetSpacing;
-	//if (nAdjustBlockTime < nNextBlockTime)
-	//{
-	//	LogPrintf("SPOS_Warning: adjust block time is too samll, again calc block time, oldBlockTime: %lld, adjustBlockTime: %lld"
-	//	"nStartNewLoopTime: %lld, nPushForwardTime: %d\n",
-	//		nNextBlockTime,
-	//		nAdjustBlockTime,
-	//		nStartNewLoopTime,
-	//		nPushForwardTime);
-	//	nNextBlockTime = nStartNewLoopTime + nPushForwardTime + (nTempBlockInterval + 1) * nSPosTargetSpacing;
-	//}
-	//else
-	//{
-	//	nNextBlockTime = nAdjustBlockTime;
-	//}
-
 	int64_t nBlockOffset = abs(nNextBlockTime - pindexPrev->GetBlockTime());
 	if (nBlockOffset < nSPosTargetSpacing)
 	{
@@ -911,6 +863,53 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 
 	bErrCreateBlcokLog = false;	
 
+	CKeyID minerKeyID;
+	CScript sposMinerPayee;
+	uint32_t nNonce = 0;
+	if (IsStartDeterministicMNHeight(nNextBlockHeight))
+	{
+		const CDeterministicMasternode_IndexValue &stDMN = vtResultDeterministicMN[nNextIndex];
+		CBitcoinAddress minerAddress(stDMN.strCollateralAddress);
+		if (!minerAddress.GetKeyID(minerKeyID))
+		{
+			LogPrintf("SPOS_Error: pay address error for miner: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+				nNextIndex,
+				nCurTime,
+				nStartNewLoopTime,
+				nPushForwardTime,
+				nRealyMinerCount);
+			return;
+		}
+
+		sposMinerPayee = GetScriptForDestination(minerKeyID);
+	}
+	else
+	{
+		CMasternode &oldMN = (CMasternode &)vtResultMasternodes[nNextIndex];
+		minerKeyID = oldMN.pubKeyCollateralAddress.GetID();
+		if (!minerKeyID.IsNull())
+		{
+			LogPrintf("SPOS_Error: pay address error for miner: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+				nNextIndex,
+				nCurTime,
+				nStartNewLoopTime,
+				nPushForwardTime,
+				nRealyMinerCount);
+			return;
+		}
+
+		sposMinerPayee = GetScriptForDestination(minerKeyID);
+
+		nNonce = oldMN.getCanbeSelectTime(nNextBlockHeight);
+		if (nNonce <= g_nMasternodeCanBeSelectedTime)
+		{
+			LogPrintf("SPOS_Warning: the activation time of the selected master node is less than or equal to the master node "
+				"can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n",
+				nNonce, g_nMasternodeCanBeSelectedTime);
+			return;
+		}
+	}
+
 	std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(chainparams, sposMinerPayee));
 	if (!pblocktemplate.get())
 	{
@@ -929,18 +928,10 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	}
 	else
 	{
-		const CMasternode &mn = vtResultMasternodes[nNextIndex];
-		pblock->nNonce = mn.getCanbeSelectTime(nNextBlockHeight);
-		if (pblock->nNonce <= g_nMasternodeCanBeSelectedTime)
-		{
-			LogPrintf("SPOS_Warning: the activation time of the selected master node is less than or equal to the master node "
-				"can be selected time of the limit. pblock->nNonce:%d, g_nMasternodeCanBeSelectedTime:%d\n",
-				pblock->nNonce, g_nMasternodeCanBeSelectedTime);
-			return;
-		}
+		pblock->nNonce = nNonce;
 
 		//coin base add extra data
-		if (!CoinBaseAddSPosExtraData(pblock, pindexPrev, mn))
+		if (!CoinBaseAddSPosExtraData(pblock, pindexPrev, vtResultMasternodes[nNextIndex]))
 			return;
 	}
 
