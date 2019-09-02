@@ -829,7 +829,19 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	{
 		const CDeterministicMasternode_IndexValue &stDMN = vtResultDeterministicMN[nNextIndex];
 		mnKeyID = StringToKeyId(stDMN.strSerialPubKeyId);
-		minerKeyID = StringToKeyId(stDMN.strCollateralAddress);
+
+		CBitcoinAddress minerAddress(stDMN.strCollateralAddress);
+		if (!minerAddress.GetKeyID(minerKeyID))
+		{
+			LogPrintf("SPOS_Error: pay address error for miner: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+				nNextIndex,
+				nCurTime,
+				nStartNewLoopTime,
+				nPushForwardTime,
+				nRealyMinerCount);
+			return ;
+		}
+
 		sposMinerPayee = GetScriptForDestination(minerKeyID);
 	}
 	else
@@ -837,8 +849,21 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		CMasternode &oldMN = (CMasternode &)vtResultMasternodes[nNextIndex];
 		mnKeyID = oldMN.GetInfo().pubKeyMasternode.GetID();
 		minerKeyID = oldMN.pubKeyCollateralAddress.GetID();
+		if (!minerKeyID.IsNull())
+		{
+			LogPrintf("SPOS_Error: pay address error for miner: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+				nNextIndex,
+				nCurTime,
+				nStartNewLoopTime,
+				nPushForwardTime,
+				nRealyMinerCount);
+			return;
+		}
+
 		sposMinerPayee = GetScriptForDestination(minerKeyID);
 	}
+
+	
 
 	// whether self will create block
 	if (activeMasternode.pubKeyMasternode.GetID() != mnKeyID)
