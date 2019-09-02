@@ -887,7 +887,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	{
 		CMasternode &oldMN = (CMasternode &)vtResultMasternodes[nNextIndex];
 		minerKeyID = oldMN.pubKeyCollateralAddress.GetID();
-		if (!minerKeyID.IsNull())
+		if (minerKeyID.IsNull())
 		{
 			LogPrintf("SPOS_Error: pay address error for miner: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
 				nNextIndex,
