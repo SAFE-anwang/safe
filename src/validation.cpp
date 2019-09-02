@@ -6241,7 +6241,7 @@ bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vecto
     return true;
 }
 
-bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight,bool fCheckPOW)
+bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight, bool fCheckSPOSIndex)
 {
     CTransaction testTransaction  = block.vtx[0];
     const CTxOut &testout = testTransaction.vout[0];
@@ -6283,6 +6283,14 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
     if (!CMessageSigner::VerifyMessage(keyID, vchSig, strSigMessage, strError))
         return state.DoS(100, error("SPOS_Error CheckSPOSBlock():Signature verification does not pass, height:%d, keyID:%s, strSigMessage:%s, vchSig size:%d",
                                     nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-signature", true);
+
+    string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
+
+    if (!fCheckSPOSIndex)
+    {
+        LogPrintf("SPOS_Message:check spos block succ, height:%d, blockTime:%lld(%s),\n",nHeight, nBlockTime, strBlockTime);
+        return true;
+    }
 
     int32_t mnSize = 0;
     int64_t nStartNewLoopTime = 0;
@@ -6329,15 +6337,11 @@ bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHe
         return state.DoS(100,error("SPOS_Error CheckSPOSBlock():the block.nNonce(%d) is bigger than real active time(%d),height:%d\n",
                                    block.nNonce,tempMnActiveTime,nHeight), REJECT_INVALID,"bad-nNonce", true);
 
-    if(fCheckPOW)
-    {
-        int64_t nBlockTime = block.GetBlockTime();
-        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
-        string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime);
-        LogPrintf("SPOS_Message:check spos block succ,height:%d,index:%d,ip:%s,blockTime:%lld(%s),nStartNewLoopTime:%lld(%s),mnSize:%d,nPushForwardTime:%d,"
-                  "strKeyID:%s\n",nHeight,nIndex,mnTemp.addr.ToStringIP(),nBlockTime,strBlockTime,nStartNewLoopTime,strStartNewLoopTime,mnSize,
-                  g_nPushForwardTime,keyID.ToString());
-    }
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime);
+    LogPrintf("SPOS_Message:check spos block succ,height:%d,index:%d,ip:%s,blockTime:%lld(%s),nStartNewLoopTime:%lld(%s),mnSize:%d,nPushForwardTime:%d,"
+              "strKeyID:%s\n",nHeight,nIndex,mnTemp.addr.ToStringIP(),nBlockTime,strBlockTime,nStartNewLoopTime,strStartNewLoopTime,mnSize,
+              g_nPushForwardTime,keyID.ToString());
+
     return true;
 }
 
@@ -6646,6 +6650,11 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
             if (!CheckSPOSBlockV2(block, state, nHeight, vData, fCheckSposIndex))
                 return false;
         }
+        else if (header.nVersion == 1)
+        {
+            if (!CheckSPOSBlock(block, state, nHeight, fCheckSposIndex))
+                return false;
+        }
     }
 
     if (block.fChecked)
@@ -6664,15 +6673,6 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     // redundant with the call in AcceptBlockHeader.
     if (!CheckBlockHeader(block, state, fCheckPOW))
         return false;
-
-    if (nHeight >= g_nStartSPOSHeight)
-    {
-        if (header.nVersion == 1)
-        {
-            if (!CheckSPOSBlock(block, state,nHeight,fCheckPOW))
-                return false;
-        }
-    }
 
     // Check the merkle root.
     if (fCheckMerkleRoot) {
