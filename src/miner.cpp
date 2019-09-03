@@ -1338,6 +1338,7 @@ void ThreadSPOSAutoReselect(const CChainParams& chainparams, CConnman& connman)
                         }
 
                         nOfficialNum = g_nMasternodeSPosCount;
+                        InitDeterministicMNGlobalData();
                     }
     
                     SelectDeterministicMN(nCurrBlockHeight, forwardIndex->nTime, scoreIndex->nTime, true, tmpVecDeterministicMNs,
