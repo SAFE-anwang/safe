@@ -842,8 +842,8 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	}
 	
 	int64_t nNextBlockTime = nCurTime + nSPosTargetSpacing;
-	int64_t nBlockOffset = abs(nNextBlockTime - pindexPrev->GetBlockTime());
-	if (nBlockOffset < nSPosTargetSpacing)
+	int64_t nBlockOffset = nNextBlockTime - pindexPrev->GetBlockTime();
+	if ((nBlockOffset < nSPosTargetSpacing) || (nBlockOffset % nSPosTargetSpacing != 0))
 	{
 		if (!bErrCreateBlcokLog)
 		{
