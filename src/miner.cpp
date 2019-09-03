@@ -872,7 +872,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		CBitcoinAddress minerAddress(stDMN.strCollateralAddress);
 		if (!minerAddress.GetKeyID(minerKeyID))
 		{
-			LogPrintf("SPOS_Error: pay address error for miner: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+			LogPrintf("SPOS_Error: pay address error for miner, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
 				nNextIndex,
 				nCurTime,
 				nStartNewLoopTime,
@@ -889,7 +889,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		minerKeyID = oldMN.pubKeyCollateralAddress.GetID();
 		if (minerKeyID.IsNull())
 		{
-			LogPrintf("SPOS_Error: pay address error for miner: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
+			LogPrintf("SPOS_Error: pay address error for miner, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
 				nNextIndex,
 				nCurTime,
 				nStartNewLoopTime,
