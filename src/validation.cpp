@@ -2633,10 +2633,10 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
             return false;
 
         map<CPutCandy_IndexKey, CAmount> mapAssetGetCandy;
-        if(!CheckAppTransaction(tx, state, view, mapAssetGetCandy, true, g_nChainHeight))
+        if(!CheckAppTransaction(tx, state, view, mapAssetGetCandy, true))
             return false;
 
-        if(!CheckSposTransaction(tx,state,view,true))
+        if(!CheckSposTransaction(tx,state,view,true,g_nChainHeight))
             return false;
 
         CTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, chainActive.Height(), pool.HasNoInputsOf(tx), inChainInputValue, fSpendsCoinbase, nSigOps, lp);
