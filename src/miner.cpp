@@ -962,7 +962,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	int64_t nActualTimeMillisInterval = std::abs(nNextBlockTime - nTempTime);
 
 	// whether to meet the broadcast block requirements 
-	while (nActualTimeMillisInterval > 500)
+	while (nActualTimeMillisInterval > 100)
 	{
 		boost::this_thread::interruption_point();
 		MilliSleep(50);
