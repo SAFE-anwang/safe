@@ -188,6 +188,7 @@ extern int g_nForbidOldVersionHeightV2;
 extern int g_nDeterministicMNTxMinConfirmNum;
 int g_nLastSelectMasterNodeSuccessHeight = 0;
 uint32_t g_nScoreTime = 0;
+extern int g_nForbidStartDMN;
 
 
 std::mutex g_mutexAllPayeeInfo;
