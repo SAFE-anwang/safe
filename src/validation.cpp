@@ -862,8 +862,11 @@ bool CheckAssetTxInputAndOutput(const CTransaction& tx, CValidationState &state,
     return true;
 }
 
-bool CheckSposTransaction(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view, const bool &fWithMempool)
+bool CheckSposTransaction(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view, const bool &fWithMempool,const int& nHeight)
 {
+    if(nHeight<g_nForbidStartDMN)
+        return true;
+
     if(tx.IsCoinBase())
         return true;
 
@@ -2630,7 +2633,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
             return false;
 
         map<CPutCandy_IndexKey, CAmount> mapAssetGetCandy;
-        if(!CheckAppTransaction(tx, state, view, mapAssetGetCandy, true))
+        if(!CheckAppTransaction(tx, state, view, mapAssetGetCandy, true, g_nChainHeight))
             return false;
 
         if(!CheckSposTransaction(tx,state,view,true))
@@ -4592,7 +4595,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         if(!fJustCheck && !CheckAppTransaction(tx, state, view, mapAssetGetCandy, false))
             return error("ConnectBlock(): CheckAppTransaction on %s failed with %s", txhash.ToString(), FormatStateMessage(state));
 
-        if(!fJustCheck && !CheckSposTransaction(tx,state,view,false))
+        if(!fJustCheck && !CheckSposTransaction(tx,state,view,false,pindex->nHeight))
             return error("ConnectBlock(): CheckSposTransaction on %s failed with %s", txhash.ToString(), FormatStateMessage(state));
 
         nInputs += tx.vin.size();

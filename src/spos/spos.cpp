@@ -11,6 +11,7 @@
 #include "utilmoneystr.h"
 #include "streams.h"
 extern bool fOfficialMasternodeSign;
+extern int g_nForbidStartDMN;
 
 bool IsNeedUpdateDMN(const CDeterministicMasternode_IndexValue& srcDMNValue,const CDeterministicMasternodeData& newDMN)
 {
@@ -173,6 +174,12 @@ bool CheckDeterministicMasternode(CDeterministicMasternodeData &dmn, std::string
 
 bool BuildDeterministicMasternode(CDeterministicMasternodeData &dmn, const std::string &strPrivKey, bool& fExist, std::string &strError)
 {
+    if(chainActive.Height()<g_nForbidStartDMN)
+    {
+        fExist = true;
+        return true;
+    }
+
     CKey keyMasternode;
     CPubKey pubKeyMasternode;
     if (!CMessageSigner::GetKeysFromSecret(strPrivKey, keyMasternode, pubKeyMasternode))
@@ -258,6 +265,9 @@ bool RegisterDeterministicMasternodes(std::vector<CDeterministicMasternodeData> 
         return false;
 
     LOCK2(cs_main,pwalletMain->cs_wallet);
+    if(chainActive.Height()<g_nForbidStartDMN)
+        return true;
+
     if(!masternodeSync.IsBlockchainSynced())
     {
         strError = _("Synchronizing block data");
