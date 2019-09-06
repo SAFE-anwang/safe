@@ -47,9 +47,9 @@ static const string DB_GETCANDY_INDEX = "getcandy";
 static const string DB_CANDYHEIGHT_TOTALAMOUNT_INDEX = "candyheight_totalamount";
 static const string DB_CANDYHEIGHT_INDEX = "candyheight";
 static const string DB_GETCANDYCOUNT_INDEX = "getcandycount";
-static const string DB_MASTERNODE_PAYEE_INDEX ="masternode_payee";
-static const string DB_LOCAL_START_SAVE_PAYEE_HEIGHT_INDEX ="localstartsavepayee_height";
-static const string DB_SPORK_INFO_INDEX = "sprokinfo";
+static const string DB_MASTERNODE_PAYEE_INDEX ="masternode_payee_v2";
+static const string DB_LOCAL_START_SAVE_PAYEE_HEIGHT_INDEX ="localstartsavepayee_height_v2";
+static const string DB_SPORK_INFO_INDEX = "sporkinfo";
 static const string DB_DETERMINISTIC_MASTERNODE_INDEX = "deterministic_masternode";
 static const string DB_DETERMINISTIC_MASTERNODE_TX_INDEX = "deterministic_masternode_tx";
 

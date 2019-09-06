@@ -189,6 +189,7 @@ extern int g_nDeterministicMNTxMinConfirmNum;
 int g_nLastSelectMasterNodeSuccessHeight = 0;
 uint32_t g_nScoreTime = 0;
 extern int g_nForbidStartDMN;
+int g_nMasternodePaymentVecMaxSize = 100;
 
 
 std::mutex g_mutexAllPayeeInfo;
@@ -4153,7 +4154,6 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
             {
                 strPubKeyCollateralAddress = keyid.ToString();
                 masternodePayment_IndexValue.nHeight = pindex->nHeight;
-                masternodePayment_IndexValue.blockTime = pindex->nTime;
             }
         }
     }
@@ -4244,18 +4244,23 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                 return AbortNode(state, "SPOS_Error:Failed to read masternode payee index when disconnect block");
             if(!pblocktree->Erase_MasternodePayee_Index(strPubKeyCollateralAddress))
                 return AbortNode(state, "SPOS_Error:Failed to erase masternode payee index when disconnect block");
-            masternodePayment_IndexValue.nPayeeTimes = value.nPayeeTimes - 1;
-            if(masternodePayment_IndexValue.nPayeeTimes>0)
+            value.vecHeight.pop_back();
+            unsigned int nVecSize = value.vecHeight.size();
+            if(nVecSize>0)
             {
-                if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
+                value.nHeight = value.vecHeight[nVecSize-1];
+                if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,value))
                     return AbortNode(state, "SPOS_Error:Failed to write masternode payee index when disconnect block");
+            }else
+            {
+                value.nHeight = 0;
             }
             {
                 std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
-                gAllPayeeInfoMap[strPubKeyCollateralAddress] = masternodePayment_IndexValue;
+                gAllPayeeInfoMap[strPubKeyCollateralAddress] = value;
             }
-            LogPrint("masternode","remove masternode payee:strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
-                     masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
+            LogPrint("masternode","remove masternode payee:strPubKeyCollateralAddress:%s,nHeight:%d,nVecHightSize:%dn",strPubKeyCollateralAddress,
+                     masternodePayment_IndexValue.nHeight,value.vecHeight.size());
         }
     }
 
@@ -4996,7 +5001,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 {
                     strPubKeyCollateralAddress = keyid.ToString();
                     masternodePayment_IndexValue.nHeight = pindex->nHeight;
-                    masternodePayment_IndexValue.blockTime = pindex->nTime;
                 }
             }
         }else
@@ -5148,24 +5152,28 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     //add masternode payee
     if(strPubKeyCollateralAddress.size())
     {
+        CMasternodePayee_IndexValue value;
         if(pblocktree->Is_Exists_MasternodePayee_Key(strPubKeyCollateralAddress))
         {
-            CMasternodePayee_IndexValue value;
             if(!pblocktree->Read_MasternodePayee_Index(strPubKeyCollateralAddress,value))
                 return AbortNode(state, "SPOS_Error:Failed to read masternode payee index when connect block");
             if(!pblocktree->Erase_MasternodePayee_Index(strPubKeyCollateralAddress))
                 return AbortNode(state, "SPOS_Error:Failed to erase masternode payee index when connect block");
-            masternodePayment_IndexValue.nPayeeTimes = value.nPayeeTimes + 1;
         }
-        if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
+        value.nHeight = masternodePayment_IndexValue.nHeight;
+        value.vecHeight.push_back(value.nHeight);
+        if(value.vecHeight.size()>g_nMasternodePaymentVecMaxSize){
+            value.vecHeight.erase(value.vecHeight.begin());
+        }
+        if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,value))
             return AbortNode(state, "SPOS_Error:Failed to write masternode payee index when connect block");
 
         {
             std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
-            gAllPayeeInfoMap[strPubKeyCollateralAddress] = masternodePayment_IndexValue;
+            gAllPayeeInfoMap[strPubKeyCollateralAddress] = value;
         }
-        LogPrintf("SPOS_Info:add masternode payee,strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
-                 masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
+        LogPrintf("SPOS_Info:add masternode payee,strPubKeyCollateralAddress:%s,nHeight:%d,nVecHightSize:%d\n",strPubKeyCollateralAddress,
+                 value.nHeight,value.vecHeight.size());
     }
 
     //add deterministic masternode
@@ -10259,15 +10267,15 @@ void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std
         {
             if(logNormalCnt<=g_nLogMaxCnt)
             {
-                LogPrintf("SPOS_Info:%s[%d]:ip:%s,collateralAddress:%s,nScoreTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
+                LogPrintf("SPOS_Info:%s[%d]:ip:%s,collateralAddress:%s,nScoreTime:%d,nVecHightSize:%d,"
                           "lastHeight:%d,nState:%d\n",strArrName,logErrorCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
-                          nScoreTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
+                          nScoreTime,tempit->second.vecHeight.size(),tempit->second.nHeight,
                           mnpair.second.nActiveState);
             }else
             {
-                LogPrint("sposinfo","SPOS_Info:extra %s[%d]:ip:%s,collateralAddress:%s,nScoreTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
+                LogPrint("sposinfo","SPOS_Info:extra %s[%d]:ip:%s,collateralAddress:%s,nScoreTime:%d,nVecHightSize:%d,"
                                     "lastHeight:%d,nState:%d\n",strArrName,logErrorCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
-                                    nScoreTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
+                                    nScoreTime,tempit->second.vecHeight.size(),tempit->second.nHeight,
                                     mnpair.second.nActiveState);
             }
         }
@@ -10529,9 +10537,9 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
                           i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nCurrBlockHeight);
             }else
             {
-                LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,currHeight:%d,nPayeeBlockTime:%d,"
-                          "nPayeeTimes:%d,lastHeight:%d\n", i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,
-                          mn.sigTime,nCurrBlockHeight,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight);
+                LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,currHeight:%d,"
+                          "nVecHightSize:%d,lastHeight:%d\n", i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,
+                          mn.sigTime,nCurrBlockHeight,tempit->second.vecHeight.size(),tempit->second.nHeight);
             }
         }
 
@@ -10687,8 +10695,8 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
             }else
             {
                 LogPrintf("SPOS_Message:General masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s,currHeight:%d,"
-                          "nPayeeBlockTime:%d,nPayeeTimes:%d,lastHeight:%d\n", i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),
-                          mn.lastPing.sigTime,mn.sigTime,nPStr,nCurrBlockHeight,tempit->second.blockTime,tempit->second.nPayeeTimes,
+                          "nVecHightSize:%d,lastHeight:%d\n", i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),
+                          mn.lastPing.sigTime,mn.sigTime,nPStr,nCurrBlockHeight,tempit->second.vecHeight.size(),
                           tempit->second.nHeight);
             }
         }
@@ -11454,9 +11462,8 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
                 else
                 {
                     LogPrintf("SPOS_Message:General masterNodeIP[%d]:%s(spos_select), strCollateralAddress:%s,location:%s,currHeight:%d,"
-                              "nPayeeBlockTime:%d,nPayeeTimes:%d,lastHeight:%d\n", i, mn.strIP, mn.strCollateralAddress,
-                              nPStr, nCurrBlockHeight, tempit->second.blockTime, tempit->second.nPayeeTimes,
-                              tempit->second.nHeight);
+                              "nVecHightSize:%d,lastHeight:%d\n", i, mn.strIP, mn.strCollateralAddress,
+                              nPStr, nCurrBlockHeight,  tempit->second.vecHeight.size(),tempit->second.nHeight);
                 }
             }
         }

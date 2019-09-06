@@ -803,10 +803,10 @@ struct CIterator_MasternodePayeeKey
 struct CMasternodePayee_IndexValue
 {
     int nHeight;
-    int64_t blockTime;
-    int nPayeeTimes;
-    CMasternodePayee_IndexValue(const int& height = 0,const int64_t& time=0,const int& paymentTimes=1)
-        :nHeight(height),blockTime(time),nPayeeTimes(paymentTimes){
+    std::vector<int> vecHeight;
+    CMasternodePayee_IndexValue(const int& height = 0)
+        :nHeight(height){
+        vecHeight.clear();
     }
 
     ADD_SERIALIZE_METHODS;
@@ -814,9 +814,8 @@ struct CMasternodePayee_IndexValue
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
     {
-        READWRITE(nPayeeTimes);
         READWRITE(nHeight);
-        READWRITE(blockTime);
+        READWRITE(vecHeight);
     }
 };
 
