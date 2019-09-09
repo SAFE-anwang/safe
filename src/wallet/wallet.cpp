@@ -2991,7 +2991,7 @@ CAmount CWallet::GetUnconfirmedBalance(const bool fAsset, const uint256* pAssetI
             }
         }else
         {
-            int count = 0;
+            //int count = 0;
             for (map<uint256, CWalletTx>::const_iterator it = mapWallet_tmp.begin(); it != mapWallet_tmp.end(); ++it)
             {
                 boost::this_thread::interruption_point();

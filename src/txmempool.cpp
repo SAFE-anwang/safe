@@ -1434,13 +1434,14 @@ void CTxMemPool::add_DeterministicMasternode_Index(const CTxMemPoolEntry &entry,
     std::vector<std::pair<COutPoint,CDeterministicMasternode_IndexValue> > deterministicMasternode_inserted;
 
     uint256 txhash = tx.GetHash();
+    int nHeight = chainActive.Height();
     for(unsigned int i = 0; i < tx.vout.size(); i++)
     {
         const CTxOut& txout = tx.vout[i];
 
         CSposHeader header;
         std::vector<unsigned char> vData;
-        if(ParseSposReserve(txout.vReserve, header, vData))
+        if(ParseSposReserve(txout.vReserve, header, vData,nHeight))
         {
             CTxDestination dest;
             if(!ExtractDestination(txout.scriptPubKey, dest))
@@ -1448,7 +1449,7 @@ void CTxMemPool::add_DeterministicMasternode_Index(const CTxMemPoolEntry &entry,
             if(header.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
             {
                 CDeterministicMasternodeData dmn;
-                if(ParseDeterministicMasternode(vData, dmn))
+                if(ParseDeterministicMasternode(vData, dmn,nHeight))
                 {
                     uint256 hash = uint256S(dmn.strDMNTxid);
                     COutPoint out(hash,dmn.nDMNOutputIndex);
@@ -1458,7 +1459,7 @@ void CTxMemPool::add_DeterministicMasternode_Index(const CTxMemPoolEntry &entry,
                     value.strCollateralAddress = dmn.strCollateralAddress;
                     value.strSerialPubKeyId = dmn.strSerialPubKeyId;
                     value.currTxOut = COutPoint(txhash,i);
-                    value.nHeight = g_nChainHeight;
+                    value.nHeight = nHeight;
                     value.fOfficial = !dmn.strOfficialSignedMsg.empty();
                     deterministicMasternode_inserted.push_back(std::make_pair(out,value));
                     LogPrintf("SPOS_Message:mempool add deterministic masternode:ip:%s,strCollateralAddress:%s,fOfficial:%s,%s\n",dmn.strIP,

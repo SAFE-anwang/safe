@@ -442,8 +442,11 @@ std::vector<unsigned char> FillDeterministicCoinbaseData(const CSposHeader& head
 
     return vData;
 }
-bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData)
+bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData,const int& nHeight)
 {
+    if(nHeight<g_nForbidStartDMN)
+        return false;
+
     if(vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t))
         return false;
 
@@ -464,8 +467,11 @@ bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& h
     return true;
 }
 
-bool ParseDeterministicMasternode(const std::vector<unsigned char> &vDMNData, CDeterministicMasternodeData &dmn)
+bool ParseDeterministicMasternode(const std::vector<unsigned char> &vDMNData, CDeterministicMasternodeData &dmn,const int& nHeight)
 {
+    if(nHeight<g_nForbidStartDMN)
+        return false;
+
     Spos::DeterministicMasternodeData data;
     if(!data.ParseFromArray(&vDMNData[0], vDMNData.size()))
         return false;

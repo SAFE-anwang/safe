@@ -1037,6 +1037,7 @@ UniValue getdmndetails(const UniValue &params, bool fHelp)
 
     UniValue ret(UniValue::VOBJ);
     UniValue txData(UniValue::VARR);
+    int nHeight = chainActive.Height();
 
     for(unsigned int i = 0; i < tx.vout.size(); i++)
     {
@@ -1044,7 +1045,7 @@ UniValue getdmndetails(const UniValue &params, bool fHelp)
 
         CSposHeader header;
         vector<unsigned char> vData;
-        if(ParseSposReserve(txout.vReserve, header, vData))
+        if(ParseSposReserve(txout.vReserve, header, vData,nHeight))
         {
             CTxDestination dest;
             if(!ExtractDestination(txout.scriptPubKey, dest))
@@ -1053,7 +1054,7 @@ UniValue getdmndetails(const UniValue &params, bool fHelp)
             if(header.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
             {
                 CDeterministicMasternodeData dmn;
-                if(ParseDeterministicMasternode(vData, dmn))
+                if(ParseDeterministicMasternode(vData, dmn,nHeight))
                 {
                     COutPoint outpoint(uint256S(dmn.strDMNTxid),dmn.nDMNOutputIndex);
                     CDeterministicMasternode_IndexValue dmnValue;
