@@ -1441,7 +1441,7 @@ void CTxMemPool::add_DeterministicMasternode_Index(const CTxMemPoolEntry &entry,
 
         CSposHeader header;
         std::vector<unsigned char> vData;
-        if(ParseSposReserve(txout.vReserve, header, vData, nHeight, g_nForbidStartDMN))
+        if(ParseDMNReserve(txout.vReserve, header, vData, nHeight))
         {
             CTxDestination dest;
             if(!ExtractDestination(txout.scriptPubKey, dest))

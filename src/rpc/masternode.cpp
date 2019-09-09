@@ -16,7 +16,6 @@
 #include "rpc/server.h"
 #include "util.h"
 #include "utilmoneystr.h"
-#include "main.h"
 
 #include <fstream>
 #include <iomanip>
@@ -1048,7 +1047,7 @@ UniValue getdmndetails(const UniValue &params, bool fHelp)
 
         CSposHeader header;
         vector<unsigned char> vData;
-        if(ParseSposReserve(txout.vReserve, header, vData, nHeight, g_nForbidStartDMN))
+        if(ParseDMNReserve(txout.vReserve, header, vData, nHeight))
         {
             CTxDestination dest;
             if(!ExtractDestination(txout.scriptPubKey, dest))

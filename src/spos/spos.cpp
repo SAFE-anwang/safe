@@ -13,6 +13,7 @@
 extern bool fOfficialMasternodeSign;
 extern int g_nForbidStartDMN;
 
+
 bool IsNeedUpdateDMN(const CDeterministicMasternode_IndexValue& srcDMNValue,const CDeterministicMasternodeData& newDMN)
 {
     bool fEqual = srcDMNValue.strCollateralAddress==newDMN.strCollateralAddress;
@@ -442,11 +443,20 @@ std::vector<unsigned char> FillDeterministicCoinbaseData(const CSposHeader& head
 
     return vData;
 }
-bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData, const int& nHeight, const int& nStartHeight)
+
+bool ParseDMNReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData, const int& nHeight)
 {
-    if (nHeight < nStartHeight)
+    if (nHeight < g_nForbidStartDMN)
         return false;
 
+    if (!ParseSposReserve(vReserve, header, vData))
+        return false;
+
+    return true;    
+}
+
+bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData)
+{
     if(vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t))
         return false;
 
