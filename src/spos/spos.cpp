@@ -442,9 +442,9 @@ std::vector<unsigned char> FillDeterministicCoinbaseData(const CSposHeader& head
 
     return vData;
 }
-bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData,const int& nHeight)
+bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData, const int& nHeight, const int& nStartHeight)
 {
-    if(nHeight<g_nForbidStartDMN)
+    if (nHeight < nStartHeight)
         return false;
 
     if(vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t))

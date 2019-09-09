@@ -60,6 +60,8 @@ extern std::vector<CDeterministicMasternode_IndexValue> g_vecResultDeterministic
 extern std::vector<CDeterministicMasternode_IndexValue> g_vecReSelectResultMasternodes;
 extern int g_nDeterministicMNTxMinConfirmNum;
 extern bool g_fTimeoutThreetimes;
+extern int g_nForbidStartDMN;
+
 
 
 

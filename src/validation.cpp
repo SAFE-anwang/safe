@@ -881,7 +881,7 @@ bool CheckSposTransaction(const CTransaction& tx, CValidationState &state, const
         const CTxOut& txout = tx.vout[i];
         CSposHeader header;
         vector<unsigned char> vData;
-        if(!ParseSposReserve(txout.vReserve, header, vData,nHeight))
+        if(!ParseSposReserve(txout.vReserve, header, vData, nHeight, g_nForbidStartDMN))
             continue;
 
         if(header.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
@@ -975,7 +975,7 @@ bool CheckSposTransaction(const CTransaction& tx, CValidationState &state, const
 
         CSposHeader header;
         vector<unsigned char> vData;
-        if(!ParseSposReserve(txout.vReserve, header, vData,nHeight))
+        if(!ParseSposReserve(txout.vReserve, header, vData,nHeight, g_nForbidStartDMN))
             continue;
 
         if(header.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
@@ -4126,7 +4126,7 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, GET_CANDY_TXOUT, COutPoint(hash, m)), -1));
                     }
                 }
-            }else if(ParseSposReserve(txout.vReserve, sposHeader, vSposData,pindex->nHeight))
+            }else if(ParseSposReserve(txout.vReserve, sposHeader, vSposData,pindex->nHeight, g_nForbidStartDMN))
             {
                 if(sposHeader.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
                 {
@@ -4928,7 +4928,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(candyData.assetId, strAddress, GET_CANDY_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
                     }
                 }
-            }else if(ParseSposReserve(txout.vReserve, sposHeader, vSposData,pindex->nHeight))
+            }else if(ParseSposReserve(txout.vReserve, sposHeader, vSposData,pindex->nHeight, g_nForbidStartDMN))
             {
                 if(sposHeader.nVersion == SPOS_VERSION_REGIST_MASTERNODE)
                 {
@@ -6529,7 +6529,7 @@ bool CheckSPOSBlockV2(const CBlock& block, CValidationState& state, const int& n
                 const CTxOut &out = tempTransaction.vout[0];
                 CSposHeader header;
                 vector<unsigned char> vData;
-                if (!ParseSposReserve(out.vReserve, header, vData,ntempHeight))
+                if (!ParseSposReserve(out.vReserve, header, vData, ntempHeight, g_nStartDeterministicMNHeight))
                 {
                     LogPrintf("SPOS_Warning:ParseSposReserve() failed height:%d\n", nHeight);
                     return false;    
@@ -6651,7 +6651,7 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     {
         CTransaction tempTransaction  = block.vtx[0];
         const CTxOut &out = tempTransaction.vout[0];
-        if (!ParseSposReserve(out.vReserve, header, vData,nHeight))
+        if (!ParseSposReserve(out.vReserve, header, vData, nHeight, g_nStartDeterministicMNHeight))
         {
             LogPrintf("SPOS_Warning:ParseSposReserve() failed height:%d\n", nHeight);
             return false;    
@@ -10907,7 +10907,7 @@ bool DealDeterministicMNCoinBaseReserve(const CBlock& block, CBlockIndex* pindex
 
     CSposHeader header;
     vector<unsigned char> vData;
-    if (!ParseSposReserve(out.vReserve, header, vData,pindex->nHeight))
+    if (!ParseSposReserve(out.vReserve, header, vData, pindex->nHeight, g_nStartDeterministicMNHeight))
     {
         LogPrintf("SPOS_Warning:ParseSposReserve() failed height:%d\n", pindex->nHeight);
         fCheckFail = true;

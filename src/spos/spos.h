@@ -158,7 +158,7 @@ bool ParseDeterministicMNCoinbaseData(const std::vector<unsigned char>& vData, C
 
 std::vector<unsigned char> FillDeterministicMasternode(const CSposHeader& header,const CDeterministicMasternodeData& dmn);
 
-bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData,const int& nHeight);
+bool ParseSposReserve(const std::vector<unsigned char>& vReserve, CSposHeader& header, std::vector<unsigned char>& vData, const int& nHeight, const int& nStartHeight);
 bool ParseDeterministicMasternode(const std::vector<unsigned char>& vDMNData, CDeterministicMasternodeData& dmn,const int& nHeight);
 
 bool ExistDeterministicMasternode(const COutPoint& out, CDeterministicMasternode_IndexValue& dmn_IndexValue, const bool fWithMempool = true);
