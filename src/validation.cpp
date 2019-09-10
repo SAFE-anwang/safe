@@ -7808,7 +7808,7 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
         assert(pindex->nHeight == nHeight); // nHeight must be consistent.
         if (IsStartSPosHeight(pindex->nHeight))
         {
-                assert(pindex->pprev == NULL || pindex->nHeight >= pindex->pprev->nHeight);
+            assert(pindex->pprev == NULL || pindex->nHeight >= pindex->pprev->nHeight);
         }
         else
             assert(pindex->pprev == NULL || pindex->nChainWork >= pindex->pprev->nChainWork); // For every block except the genesis block, the chainwork must be larger than the parent's.
