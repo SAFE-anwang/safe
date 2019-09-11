@@ -335,7 +335,7 @@ void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
                 return;
             }
 
-            if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
+            if (nOfficialMasterNodeCount < 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
             {
                 LogPrintf("SPOS_Warning: SelectMasterNodeForSpork() nOfficialMasterNodeCount is error,height:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
                 return;
@@ -377,11 +377,9 @@ bool CSporkManager::CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& n
             int nHeight = boost::lexical_cast<int>(strHeight);
             int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
 
-            const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
-
-            if (nOfficialMasterNodeCount < 0 || nOfficialMasterNodeCount > vtempOutPointData.size())
+            if (nOfficialMasterNodeCount < 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
             {
-                strErrMessage = "value less than or equal to 0 or greater than the total number of official master nodes";
+                strErrMessage = "value less than 0 or greater than g_nMasternodeSPosCount";
                 return false;
             }            
         }
