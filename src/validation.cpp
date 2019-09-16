@@ -11078,6 +11078,16 @@ void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMas
                     LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:The transaction confirmation number is less than 200, %s ntempHeight(%d), nHeight(%d)\n", mn.second.strIP, ntempHeight, nHeight);
                     continue;
                 }
+
+                mn.second.nHeight = ntempHeight;
+            }
+            else
+            {
+                if (nHeight - mn.second.nHeight < g_nDeterministicMNTxMinConfirmNum)
+                {
+                    LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:The transaction confirmation number is less than 200, %s mn.second.nHeight(%d), nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
+                    continue;
+                }
             }
         }
         else
@@ -11087,11 +11097,13 @@ void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMas
                 LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:%s mn.second.nHeight(%d) more than the  nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
                 continue;
             }
-
-            if (nHeight - mn.second.nHeight < g_nDeterministicMNTxMinConfirmNum)
+            else
             {
-                LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:The transaction confirmation number is less than 200, %s mn.second.nHeight(%d), nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
-                continue;
+                if (nHeight - mn.second.nHeight < g_nDeterministicMNTxMinConfirmNum)
+                {
+                    LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:The transaction confirmation number is less than 200, %s mn.second.nHeight(%d), nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
+                    continue;
+                }
             }
         }
 
@@ -11135,6 +11147,16 @@ void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexVal
                    LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s reward height is too old, ntempPayeeHeightt: %d, nHeight:%d\n", payeeInfo.first, ntempPayeeHeight, nHeight);
                    continue; 
                 }
+
+                payeeInfo.second.nHeight = ntempPayeeHeight;
+            }
+            else
+            {
+                if (nHeight - payeeInfo.second.nHeight >= g_nCanSelectMasternodeHeight)
+                {
+                   LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s reward height is too old, payeeInfo.second.nHeight: %d, nHeight:%d\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
+                   continue; 
+                }
             }
         }
         else
@@ -11144,11 +11166,13 @@ void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexVal
                LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s payeeInfo.second.nHeight(%d) more than the  nHeight(%d)\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
                continue;
             }
-
-            if (nHeight - payeeInfo.second.nHeight >= g_nCanSelectMasternodeHeight)
+            else
             {
-               LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s reward height is too old, payeeInfo.second.nHeight: %d, nHeight:%d\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
-               continue; 
+                if (nHeight - payeeInfo.second.nHeight >= g_nCanSelectMasternodeHeight)
+                {
+                   LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s reward height is too old, payeeInfo.second.nHeight: %d, nHeight:%d\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
+                   continue; 
+                }
             }
         }
 
