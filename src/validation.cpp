@@ -11051,26 +11051,31 @@ void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMas
                 LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:%s mn.second.nHeight(%d) more than the  nHeight(%d), find the requirements in the historical transaction\n", mn.second.strIP, mn.second.nHeight, nHeight);
                 COutPoint tempOutPoint = mn.second.lastTxOut;
                 bool fFind = false;
+                int ntempHeight = 0;
                 while (!tempOutPoint.IsNull())
                 {
                     CDeterministicMasternode_IndexValue tempDMNValue;
                     if (GetDeterministicMasternodeTx_Index(tempOutPoint, tempDMNValue))
                     {
                         tempOutPoint = tempDMNValue.lastTxOut;
-                        if (tempDMNValue.nHeight > nHeight)
-                            continue;
-
-                        if (nHeight - tempDMNValue.nHeight >= g_nDeterministicMNTxMinConfirmNum)
+                        if (tempDMNValue.nHeight <= nHeight)
                         {
+                            ntempHeight = tempDMNValue.nHeight;
                             fFind = true;
-                            break;
-                        }   
+                            break;   
+                        } 
                     }
                 }
 
                 if (!fFind)
                 {
                     LogPrint("GetEffectiveDeterministicMNData","No data found to meet the requirements\n");
+                    continue;
+                }
+
+                if (nHeight - ntempHeight < g_nDeterministicMNTxMinConfirmNum)
+                {
+                    LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:The transaction confirmation number is less than 200, %s ntempHeight(%d), nHeight(%d)\n", mn.second.strIP, ntempHeight, nHeight);
                     continue;
                 }
             }
@@ -11105,26 +11110,30 @@ void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexVal
                 LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s payeeInfo.second.nHeight(%d) more than the  nHeight(%d), find out if there are conditions in the historical reward\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
 
                 bool fFind = false;
-                std::vector<int>::const_iterator it =  payeeInfo.second.vecHeight.begin();
-                for (; it != payeeInfo.second.vecHeight.end(); it++)
+                int ntempPayeeHeight = 0;
+                std::vector<int>::const_iterator it = payeeInfo.second.vecHeight.rbegin();
+                for (; it != payeeInfo.second.vecHeight.rend(); it++)
                 {
                     int ntempHeight = *it;
 
-                    if (ntempHeight > nHeight)
-                        continue;
-
-                    if (nHeight - ntempHeight < g_nCanSelectMasternodeHeight)
+                    if (ntempHeight <= nHeight)
                     {
+                        ntempPayeeHeight = ntempHeight;
                         fFind = true;
                         break;
                     }
-                        
                 }
 
                 if (!fFind)
                 {
                     LogPrint("GetEffectiveDeterministicMNData", "no reward height found to meet the conditions\n");
                     continue;   
+                }
+
+                if (nHeight - ntempPayeeHeight >= g_nCanSelectMasternodeHeight)
+                {
+                   LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s reward height is too old, ntempPayeeHeightt: %d, nHeight:%d\n", payeeInfo.first, ntempPayeeHeight, nHeight);
+                   continue; 
                 }
             }
         }
