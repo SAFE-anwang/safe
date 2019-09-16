@@ -11040,40 +11040,107 @@ void GetEffectiveGeneralMNData(const std::map<COutPoint, CDeterministicMasternod
     }
 }
 
-void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue>& mapAllMasterNode, const int& nHeight, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveMasternode)
+void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue>& mapAllMasterNode, const int& nHeight, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveMasternode, bool fReSelect)
 {
     for (auto& mn : mapAllMasterNode)
     {
-        if (mn.second.nHeight > nHeight)
+        if (fReSelect)
         {
-            LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:%s mn.second.nHeight(%d) more than the  nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
-            continue;
-        }
+            if (mn.second.nHeight > nHeight)
+            {
+                LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:%s mn.second.nHeight(%d) more than the  nHeight(%d), find the requirements in the historical transaction\n", mn.second.strIP, mn.second.nHeight, nHeight);
+                COutPoint tempOutPoint = mn.second.lastTxOut;
+                bool fFind = false;
+                while (!tempOutPoint.IsNull())
+                {
+                    CDeterministicMasternode_IndexValue tempDMNValue;
+                    if (GetDeterministicMasternodeTx_Index(tempOutPoint, tempDMNValue))
+                    {
+                        tempOutPoint = tempDMNValue.lastTxOut;
+                        if (tempDMNValue.nHeight > nHeight)
+                            continue;
 
-        if (mn.second.nHeight <= nHeight && nHeight - mn.second.nHeight < g_nDeterministicMNTxMinConfirmNum)
+                        if (nHeight - tempDMNValue.nHeight >= g_nDeterministicMNTxMinConfirmNum)
+                        {
+                            fFind = true;
+                            break;
+                        }   
+                    }
+                }
+
+                if (!fFind)
+                {
+                    LogPrint("GetEffectiveDeterministicMNData","No data found to meet the requirements\n");
+                    continue;
+                }
+            }
+        }
+        else
         {
-            LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:The transaction confirmation number is less than 200, %s mn.second.nHeight(%d), nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
-            continue;
+            if (mn.second.nHeight > nHeight)
+            {
+                LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:%s mn.second.nHeight(%d) more than the  nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
+                continue;
+            }
+
+            if (nHeight - mn.second.nHeight < g_nDeterministicMNTxMinConfirmNum)
+            {
+                LogPrint("GetEffectiveDeterministicMNData","SPOS_Warning:The transaction confirmation number is less than 200, %s mn.second.nHeight(%d), nHeight(%d)\n", mn.second.strIP, mn.second.nHeight, nHeight);
+                continue;
+            }
         }
 
         mapEffectiveMasternode[mn.first] = mn.second;
     }
 }
 
-void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexValue>& mapAllPayeeInfo, const int& nHeight, std::map<std::string, CMasternodePayee_IndexValue>& mapAllEffectivePayeeInfo)
+void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexValue>& mapAllPayeeInfo, const int& nHeight, std::map<std::string, CMasternodePayee_IndexValue>& mapAllEffectivePayeeInfo, bool fReSelect)
 {
     for (auto& payeeInfo : mapAllPayeeInfo)
     {
-        if (payeeInfo.second.nHeight > nHeight)
+        if (fReSelect)
         {
-            LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s payeeInfo.second.nHeight(%d) more than the  nHeight(%d)\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
-            continue;
-        }
+            if (payeeInfo.second.nHeight > nHeight)
+            {
+                LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s payeeInfo.second.nHeight(%d) more than the  nHeight(%d), find out if there are conditions in the historical reward\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
 
-        if (payeeInfo.second.nHeight <= nHeight && nHeight - payeeInfo.second.nHeight >= g_nCanSelectMasternodeHeight)
+                bool fFind = false;
+                std::vector<int>::iterator it =  payeeInfo.second.vecHeight.begin();
+                for (; it != payeeInfo.second.vecHeight.end(); it++)
+                {
+                    int ntempHeight = *it;
+
+                    if (ntempHeight > nHeight)
+                        continue;
+
+                    if (nHeight - ntempHeight < g_nCanSelectMasternodeHeight)
+                    {
+                        fFind = true;
+                        break;
+                    }
+                        
+                }
+
+                if (!fFind)
+                {
+                    LogPrint("GetEffectiveDeterministicMNData", "no reward height found to meet the conditions\n");
+                    continue;   
+                }
+            }
+        }
+        else
         {
-            LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s reward height is too old, payeeInfo.second.nHeight: %d, nHeight:%d\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
-            continue;              
+            if (payeeInfo.second.nHeight > nHeight)
+            {
+               LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s payeeInfo.second.nHeight(%d) more than the  nHeight(%d)\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
+               continue;
+            }
+
+            if (nHeight - payeeInfo.second.nHeight >= g_nCanSelectMasternodeHeight)
+            {
+               LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s reward height is too old, payeeInfo.second.nHeight: %d, nHeight:%d\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
+               continue; 
+            }
         }
 
         mapAllEffectivePayeeInfo[payeeInfo.first] = payeeInfo.second;
@@ -11179,7 +11246,7 @@ void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, c
     nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
     string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime);
 
-    if (GetDeterministicMNList(nCurrBlockHeight, nScoreTime, tmpVecResultMasternodes, nOfficialCount, nSelectMasterNodeRet))
+    if (GetDeterministicMNList(nCurrBlockHeight, nScoreTime, tmpVecResultMasternodes, nOfficialCount, nSelectMasterNodeRet, false))
     {
         LogPrintf("SPOS_Message:start new loop, currHeight:%d, startNewLoopTime:%lld(%s)\n", nCurrBlockHeight, nStartNewLoopTime, strStartNewLoopTime);
     
@@ -11214,13 +11281,13 @@ void ReSelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nScore
     InitReSelectMNGlobalData();
     int nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
 
-    if (GetDeterministicMNList(nCurrBlockHeight, nScoreTime, tmpVecResultMasternodes, nOfficialCount, nSelectMasterNodeRet))
+    if (GetDeterministicMNList(nCurrBlockHeight, nScoreTime, tmpVecResultMasternodes, nOfficialCount, nSelectMasterNodeRet, true))
         UpdateReSelectMNGlobalData(tmpVecResultMasternodes);
     else
         LogPrintf("SPOS_ERROR:ReSelectDeterministicMN() fail, nCurrBlockHeight:%d, nScoreTime:%d, nOfficialCount:%d\n", nCurrBlockHeight, nScoreTime, nOfficialCount);
 }
 
-bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreTime, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes, const unsigned int& nOfficialCount, int& nSelectMasterNodeRet)
+bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreTime, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes, const unsigned int& nOfficialCount, int& nSelectMasterNodeRet, bool fReSelect)
 {
     std::map<COutPoint, CDeterministicMasternode_IndexValue> mapEffectiveOfficialMNs;
     std::map<COutPoint, CDeterministicMasternode_IndexValue> mapEffectiveGeneralMNs;
@@ -11241,7 +11308,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
     LogPrint("GetDeterministicMNList", "SPOS_INFO: nOfficialCount:%d, nCurrBlockHeight:%d\n", nOfficialCount, nCurrBlockHeight);
 
     std::map<COutPoint, CDeterministicMasternode_IndexValue> mapAllEffectiveMasterNode;
-    GetEffectiveDeterministicMNData(mapAllMasterNode, nCurrBlockHeight, mapAllEffectiveMasterNode);
+    GetEffectiveDeterministicMNData(mapAllMasterNode, nCurrBlockHeight, mapAllEffectiveMasterNode, fReSelect);
     LogPrint("GetDeterministicMNList", "SPOS_INFO:mapAllEffectiveMasterNode size:%d, nCurrBlockHeight:%d\n", mapAllEffectiveMasterNode.size(), nCurrBlockHeight);
     int nTotalEffectiveMN = mapAllEffectiveMasterNode.size();
     
@@ -11262,7 +11329,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
         }
 
         std::map<COutPoint, CDeterministicMasternode_IndexValue> maptempEffectiveOfficialMNs;
-        GetEffectiveDeterministicMNData(mapAllOfficialMNs, nCurrBlockHeight, maptempEffectiveOfficialMNs);
+        GetEffectiveDeterministicMNData(mapAllOfficialMNs, nCurrBlockHeight, maptempEffectiveOfficialMNs, fReSelect);
         LogPrint("GetDeterministicMNList","SPOS_INFO: maptempEffectiveOfficialMNs size:%d, nCurrBlockHeight%d\n", maptempEffectiveOfficialMNs.size(), nCurrBlockHeight);
 
         if (maptempEffectiveOfficialMNs.empty())
@@ -11322,7 +11389,7 @@ bool GetDeterministicMNList(const int& nCurrBlockHeight, const uint32_t& nScoreT
         LogPrint("GetDeterministicMNList","SPOS_INFO: mapAllPayeeInfo size:%d, nCurrBlockHeight:%d\n", mapAllPayeeInfo.size(), nCurrBlockHeight);
 
         std::map<std::string, CMasternodePayee_IndexValue> mapAllEffectivePayeeInfo;
-        GetEffectivePayeeData(mapAllPayeeInfo, nCurrBlockHeight, mapAllEffectivePayeeInfo);
+        GetEffectivePayeeData(mapAllPayeeInfo, nCurrBlockHeight, mapAllEffectivePayeeInfo, fReSelect);
         LogPrint("GetDeterministicMNList","SPOS_INFO: mapAllEffectivePayeeInfo size:%d, nCurrBlockHeight:%d\n", mapAllEffectivePayeeInfo.size(), nCurrBlockHeight);
 
         GetEffectiveGeneralMNData(mapAllEffectiveMasterNode, mapAllEffectivePayeeInfo, mapEffectiveGeneralMNs);
@@ -11495,4 +11562,12 @@ void LoadSPOSInfo()
         pblocktree->Read_DeterministicMasternode_Index(gAllDeterministicMasternodeMap);
         LogPrintf("SPOS_Info:init read deterministic masternode, gAllDeterministicMasternodeMap size:%d\n", gAllDeterministicMasternodeMap.size());
     }
+}
+
+bool GetDeterministicMasternodeTx_Index(const COutPoint &out, CDeterministicMasternode_IndexValue &value)
+{
+    if (!pblocktree->Read_DeterministicMasternodeTx_Index(out,value))
+        return false;
+
+    return true;
 }
