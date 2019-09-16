@@ -11044,6 +11044,7 @@ void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMas
 {
     for (auto& mn : mapAllMasterNode)
     {
+        int nDMNHeight = 0;
         if (fReSelect)
         {
             if (mn.second.nHeight > nHeight)
@@ -11079,7 +11080,7 @@ void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMas
                     continue;
                 }
 
-                mn.second.nHeight = ntempHeight;
+                nDMNHeight = ntempHeight;
             }
             else
             {
@@ -11108,6 +11109,9 @@ void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMas
         }
 
         mapEffectiveMasternode[mn.first] = mn.second;
+
+        if (nDMNHeight != 0)
+            mapEffectiveMasternode[mn.first].nHeight = nDMNHeight;
     }
 }
 
@@ -11115,6 +11119,7 @@ void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexVal
 {
     for (auto& payeeInfo : mapAllPayeeInfo)
     {
+        int nPayeeHeight = 0;
         if (fReSelect)
         {
             if (payeeInfo.second.nHeight > nHeight)
@@ -11148,7 +11153,7 @@ void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexVal
                    continue; 
                 }
 
-                payeeInfo.second.nHeight = ntempPayeeHeight;
+                nPayeeHeight = ntempPayeeHeight;
             }
             else
             {
@@ -11177,6 +11182,9 @@ void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexVal
         }
 
         mapAllEffectivePayeeInfo[payeeInfo.first] = payeeInfo.second;
+
+        if (nPayeeHeight != 0)
+            mapAllEffectivePayeeInfo[payeeInfo.first].nHeight = nPayeeHeight;
     }
 }
 
