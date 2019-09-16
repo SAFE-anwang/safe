@@ -11105,7 +11105,7 @@ void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexVal
                 LogPrint("GetEffectivePayeeData", "SPOS_Warning:%s payeeInfo.second.nHeight(%d) more than the  nHeight(%d), find out if there are conditions in the historical reward\n", payeeInfo.first, payeeInfo.second.nHeight, nHeight);
 
                 bool fFind = false;
-                std::vector<int>::iterator it =  payeeInfo.second.vecHeight.begin();
+                std::vector<int>::const_iterator it =  payeeInfo.second.vecHeight.begin();
                 for (; it != payeeInfo.second.vecHeight.end(); it++)
                 {
                     int ntempHeight = *it;
