@@ -11111,7 +11111,7 @@ void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexVal
 
                 bool fFind = false;
                 int ntempPayeeHeight = 0;
-                std::vector<int>::const_iterator it = payeeInfo.second.vecHeight.rbegin();
+                std::vector<int>::const_reverse_iterator it = payeeInfo.second.vecHeight.rbegin();
                 for (; it != payeeInfo.second.vecHeight.rend(); it++)
                 {
                     int ntempHeight = *it;
