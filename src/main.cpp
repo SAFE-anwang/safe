@@ -57,6 +57,7 @@ bool g_fReceiveBlock = false;
 int64_t g_nFirstSelectMasterNodeTime = 0;
 int64_t g_nAllowMasterNodeSyncErrorTime = 0;
 int g_nLocalStartSavePayeeHeight = 0;
+int g_nLocalStartSavePayeeHeightV2 = 0;
 int g_nCanSelectMasternodeHeight = 10000;
 
 
@@ -68,6 +69,8 @@ int g_nDeterministicMNTxMinConfirmNum = 200;
 std::vector<CDeterministicMasternode_IndexValue> g_vecResultDeterministicMN;
 std::vector<CDeterministicMasternode_IndexValue> g_vecReSelectResultMasternodes;
 bool g_fTimeoutThreetimes = false;
+int g_nSaveMasternodePayeeHeightV2 = 1290500;
+
 
 
 

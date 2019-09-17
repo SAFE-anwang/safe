@@ -1687,12 +1687,12 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
                 nLogPayNotFoundCnt++;
                 if(nLogPayNotFoundCnt<=g_nLogMaxCnt)
                 {
-                    LogPrintf("SPOS_Warning:payee(%s) not found in masternode map,nHeight:%d,nVecHightSize:%d\n",payeeInfo.first,
-                              payeeInfo.second.nHeight,payeeInfo.second.vecHeight.size());
+                    LogPrintf("SPOS_Warning:payee(%s) not found in masternode map,nHeight:%d,blockTime:%lld,nPayeeTimes:%d\n",payeeInfo.first,
+                              payeeInfo.second.nHeight,payeeInfo.second.blockTime,payeeInfo.second.nPayeeTimes);
                 }else
                 {
-                    LogPrint("sposinfo","SPOS_Warning:extra payee(%s) not found in masternode map,nHeight:%d,nVecHightSize:%d\n",payeeInfo.first,
-                              payeeInfo.second.nHeight,payeeInfo.second.vecHeight.size());
+                    LogPrint("sposinfo","SPOS_Warning:extra payee(%s) not found in masternode map,nHeight:%d,blockTime:%lld,nPayeeTimes:%d\n",payeeInfo.first,
+                              payeeInfo.second.nHeight,payeeInfo.second.blockTime,payeeInfo.second.nPayeeTimes);
                 }
 
                 continue;
@@ -1704,19 +1704,22 @@ void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &map
             {
                 if(fSelfMasternode)
                 {
-                    LogPrintf("SPOS_Message:not meeted active masternode,payee(%s),ip:%s,nHeight:%d is old,nVecHightSize:%d,currHeight:%d\n",
-                              payeeInfo.first,mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.vecHeight.size(),nHeight);
+                   LogPrintf("SPOS_Message:not meeted active masternode,payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",
+                              payeeInfo.first,mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
+                              payeeInfo.second.nPayeeTimes,nHeight);
                 }else
                 {
                     nLogOldCnt++;
                     if(nLogOldCnt<=g_nLogMaxCnt)
                     {
-                        LogPrintf("SPOS_Message:payee(%s),ip:%s,nHeight:%d is old,nVecHightSize:%d,currHeight:%d\n",payeeInfo.first,
-                                  mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.vecHeight.size(),nHeight);
+                        LogPrintf("SPOS_Message:payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
+                                  mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
+                                  payeeInfo.second.nPayeeTimes,nHeight);
                     }else
                     {
-                        LogPrint("sposinfo","SPOS_Message:extra payee(%s),ip:%s,nHeight:%d is old,nVecHightSize:%d,currHeight:%d\n",payeeInfo.first,
-                                  mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.vecHeight.size(),nHeight);
+                        LogPrint("sposinfo","SPOS_Message:extra payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
+                                  mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
+                                  payeeInfo.second.nPayeeTimes,nHeight);
                     }
                 }
                 continue;

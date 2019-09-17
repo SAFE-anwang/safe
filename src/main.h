@@ -61,6 +61,8 @@ extern std::vector<CDeterministicMasternode_IndexValue> g_vecReSelectResultMaste
 extern int g_nDeterministicMNTxMinConfirmNum;
 extern bool g_fTimeoutThreetimes;
 extern int g_nForbidStartDMN;
+extern int g_nLocalStartSavePayeeHeightV2;
+extern int g_nSaveMasternodePayeeHeightV2;
 
 
 

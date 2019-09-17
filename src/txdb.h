@@ -161,8 +161,17 @@ public:
     bool Read_MasternodePayee_Index(std::map<std::string,CMasternodePayee_IndexValue>& mapPayeeInfo);
     bool Is_Exists_MasternodePayee_Key(const std::string& strPubKeyCollateralAddress);
 
+    bool Write_MasternodePayee_DMN_Index(const std::string& strPubKeyCollateralAddress, const CMasternodePayee_DMN_IndexValue& value);
+    bool Erase_MasternodePayee_DMN_Index(const string &strPubKeyCollateralAddress);
+    bool Read_MasternodePayee_DMN_Index(const string &strPubKeyCollateralAddress, CMasternodePayee_DMN_IndexValue &value);
+    bool Read_MasternodePayee_DMN_Index(std::map<string, CMasternodePayee_DMN_IndexValue> &mapPayeeInfo);
+    bool Is_Exists_MasternodePayee_DMN_Key(const string &strPubKeyCollateralAddress);
+
     bool Write_LocalStartSavePayeeHeight_Index(const int& nHeight);
     bool Read_LocalStartSavePayeeHeight_Index(int& nHeight);
+
+    bool Write_LocalStartSavePayeeHeight_DMN_Index(const int &nHeight);
+    bool Read_LocalStartSavePayeeHeight_DMN_Index(int &nHeight);
 
     bool Write_SporkInfo_Index(const int& nStorageSpork, const CSporkInfo_IndexValue& value);
     bool Erase_SporkInfo_Index(const int& nStorageSpork);

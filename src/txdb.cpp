@@ -47,8 +47,10 @@ static const string DB_GETCANDY_INDEX = "getcandy";
 static const string DB_CANDYHEIGHT_TOTALAMOUNT_INDEX = "candyheight_totalamount";
 static const string DB_CANDYHEIGHT_INDEX = "candyheight";
 static const string DB_GETCANDYCOUNT_INDEX = "getcandycount";
-static const string DB_MASTERNODE_PAYEE_INDEX ="masternode_payee_v2";
-static const string DB_LOCAL_START_SAVE_PAYEE_HEIGHT_INDEX ="localstartsavepayee_height_v2";
+static const string DB_MASTERNODE_PAYEE_INDEX ="masternode_payee";
+static const string DB_MASTERNODE_PAYEE_DMN_INDEX ="masternode_payee_dmn";
+static const string DB_LOCAL_START_SAVE_PAYEE_HEIGHT_INDEX ="localstartsavepayee_height";
+static const string DB_LOCAL_START_SAVE_PAYEE_HEIGHT_DMN_INDEX ="localstartsavepayee_height_dmn";
 static const string DB_SPORK_INFO_INDEX = "sporkinfo";
 static const string DB_DETERMINISTIC_MASTERNODE_INDEX = "deterministic_masternode";
 static const string DB_DETERMINISTIC_MASTERNODE_TX_INDEX = "deterministic_masternode_tx";
@@ -1274,6 +1276,13 @@ bool CBlockTreeDB::Write_MasternodePayee_Index(const std::string& strPubKeyColla
     return WriteBatch(batch);
 }
 
+bool CBlockTreeDB::Write_MasternodePayee_DMN_Index(const std::string& strPubKeyCollateralAddress, const CMasternodePayee_DMN_IndexValue& value)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Write(make_pair(DB_MASTERNODE_PAYEE_DMN_INDEX, strPubKeyCollateralAddress), value);
+    return WriteBatch(batch);
+}
+
 bool CBlockTreeDB::Erase_MasternodePayee_Index(const string &strPubKeyCollateralAddress)
 {
     CDBBatch batch(&GetObfuscateKey());
@@ -1281,9 +1290,21 @@ bool CBlockTreeDB::Erase_MasternodePayee_Index(const string &strPubKeyCollateral
     return WriteBatch(batch);
 }
 
+bool CBlockTreeDB::Erase_MasternodePayee_DMN_Index(const string &strPubKeyCollateralAddress)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Erase(make_pair(DB_MASTERNODE_PAYEE_DMN_INDEX, strPubKeyCollateralAddress));
+    return WriteBatch(batch);
+}
+
 bool CBlockTreeDB::Read_MasternodePayee_Index(const string &strPubKeyCollateralAddress, CMasternodePayee_IndexValue &value)
 {
     return Read(make_pair(DB_MASTERNODE_PAYEE_INDEX, strPubKeyCollateralAddress), value);
+}
+
+bool CBlockTreeDB::Read_MasternodePayee_DMN_Index(const string &strPubKeyCollateralAddress, CMasternodePayee_DMN_IndexValue &value)
+{
+    return Read(make_pair(DB_MASTERNODE_PAYEE_DMN_INDEX, strPubKeyCollateralAddress), value);
 }
 
 bool CBlockTreeDB::Read_MasternodePayee_Index(std::map<string, CMasternodePayee_IndexValue> &mapPayeeInfo)
@@ -1296,6 +1317,37 @@ bool CBlockTreeDB::Read_MasternodePayee_Index(std::map<string, CMasternodePayee_
         boost::this_thread::interruption_point();
         std::pair<std::string, std::string> key;
         if (pcursor->GetKey(key) && key.first == DB_MASTERNODE_PAYEE_INDEX)
+        {
+            CMasternodePayee_IndexValue value;
+            if(pcursor->GetValue(value))
+            {
+                mapPayeeInfo[key.second] = value;
+                pcursor->Next();
+            }
+            else
+            {
+                return error("failed to get masternode payee index value");
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return mapPayeeInfo.size();
+}
+
+bool CBlockTreeDB::Read_MasternodePayee_DMN_Index(std::map<string, CMasternodePayee_DMN_IndexValue> &mapPayeeInfo)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(make_pair(DB_MASTERNODE_PAYEE_DMN_INDEX, CIterator_MasternodePayeeKey()));
+
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, std::string> key;
+        if (pcursor->GetKey(key) && key.first == DB_MASTERNODE_PAYEE_DMN_INDEX)
         {
             CMasternodePayee_IndexValue value;
             if(pcursor->GetValue(value))
@@ -1341,10 +1393,41 @@ bool CBlockTreeDB::Is_Exists_MasternodePayee_Key(const string &strPubKeyCollater
     return ret;
 }
 
+bool CBlockTreeDB::Is_Exists_MasternodePayee_DMN_Key(const string &strPubKeyCollateralAddress)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(make_pair(DB_MASTERNODE_PAYEE_DMN_INDEX, strPubKeyCollateralAddress));
+
+    bool ret = false;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, std::string> key;
+        if (pcursor->GetKey(key) && key.first == DB_MASTERNODE_PAYEE_DMN_INDEX && key.second == strPubKeyCollateralAddress)
+        {
+            ret = true;
+            break;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return ret;
+}
+
 bool CBlockTreeDB::Write_LocalStartSavePayeeHeight_Index(const int &nHeight)
 {
     CDBBatch batch(&GetObfuscateKey());
     batch.Write(DB_LOCAL_START_SAVE_PAYEE_HEIGHT_INDEX, nHeight);
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::Write_LocalStartSavePayeeHeight_DMN_Index(const int &nHeight)
+{
+    CDBBatch batch(&GetObfuscateKey());
+    batch.Write(DB_LOCAL_START_SAVE_PAYEE_HEIGHT_DMN_INDEX, nHeight);
     return WriteBatch(batch);
 }
 
@@ -1373,6 +1456,33 @@ bool CBlockTreeDB::Read_LocalStartSavePayeeHeight_Index(int &nHeight)
 
     return ret;
 }
+
+bool CBlockTreeDB::Read_LocalStartSavePayeeHeight_DMN_Index(int &nHeight)
+{
+    boost::scoped_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(DB_LOCAL_START_SAVE_PAYEE_HEIGHT_DMN_INDEX);
+
+    bool ret = false;
+    while (pcursor->Valid())
+    {
+        boost::this_thread::interruption_point();
+        std::pair<std::string, CGetCandyCount_IndexKey> key;
+        int height = 0;
+        if(pcursor->GetValue(height))
+        {
+            nHeight = height;
+            ret = true;
+            break;
+        }
+        else
+        {
+            return error("failed to get local start save payee height index value");
+        }
+    }
+
+    return ret;
+}
+
 
 bool CBlockTreeDB::Write_SporkInfo_Index(const int& nStorageSpork, const CSporkInfo_IndexValue& value)
 {

@@ -1594,6 +1594,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nForbidOldVersionHeightV2 = GetArg("-spos_forbid_old_version_height_V2", g_nForbidOldVersionHeightV2);
     g_nForbidStartDMN = GetArg("-spos_forbit_start_dmn", g_nForbidStartDMN);
     g_nDeterministicMNTxMinConfirmNum = GetArg("-spos_deterministicmn_tx_min_confirm_num", g_nDeterministicMNTxMinConfirmNum);
+    g_nSaveMasternodePayeeHeightV2 = GetArg("-save_masternode_payee_height_V2", g_nSaveMasternodePayeeHeightV2);
 #else
 #error unsupported <safe chain name>
 #endif

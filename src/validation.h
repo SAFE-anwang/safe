@@ -710,13 +710,14 @@ struct CDeterministicMasternode_IndexValue
     std::string strCollateralAddress;
     std::string strSerialPubKeyId;
     int         nHeight;
+    int         nSpendHeight;
     bool        fOfficial;
     COutPoint   currTxOut;
     COutPoint   lastTxOut;
     CDeterministicMasternode_IndexValue(const std::string& strIP="",const uint16_t& nPort=0,const std::string& strCollateralAddress="",const std::string& strSerialPubKeyId="",
-                                        const int& nHeight=0,const bool& fOfficial=false,const COutPoint& currTxOut=COutPoint(),const COutPoint& lastTxOut=COutPoint())
+                                        const int& nHeight=0,const int& nSpendHeight =0, const bool& fOfficial=false,const COutPoint& currTxOut=COutPoint(),const COutPoint& lastTxOut=COutPoint())
                                         :strIP(strIP),nPort(nPort),strCollateralAddress(strCollateralAddress),strSerialPubKeyId(strSerialPubKeyId),
-                                         nHeight(nHeight),fOfficial(fOfficial),currTxOut(currTxOut),lastTxOut(lastTxOut){
+                                         nHeight(nHeight),nSpendHeight(nSpendHeight),fOfficial(fOfficial),currTxOut(currTxOut),lastTxOut(lastTxOut){
     }
 
     ADD_SERIALIZE_METHODS;
@@ -729,6 +730,7 @@ struct CDeterministicMasternode_IndexValue
         READWRITE(strCollateralAddress);
         READWRITE(strSerialPubKeyId);
         READWRITE(nHeight);
+        READWRITE(nSpendHeight);
         READWRITE(fOfficial);
         READWRITE(lastTxOut);
         READWRITE(currTxOut);
@@ -803,8 +805,28 @@ struct CIterator_MasternodePayeeKey
 struct CMasternodePayee_IndexValue
 {
     int nHeight;
+    int64_t blockTime;
+    int nPayeeTimes;
+    CMasternodePayee_IndexValue(const int& height = 0,const int64_t& time=0,const int& paymentTimes=1)
+        :nHeight(height),blockTime(time),nPayeeTimes(paymentTimes){
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nPayeeTimes);
+        READWRITE(nHeight);
+        READWRITE(blockTime);
+    }
+};
+
+struct CMasternodePayee_DMN_IndexValue
+{
+    int nHeight;
     std::vector<int> vecHeight;
-    CMasternodePayee_IndexValue(const int& height = 0)
+    CMasternodePayee_DMN_IndexValue(const int& height = 0)
         :nHeight(height){
         vecHeight.clear();
     }
@@ -1716,11 +1738,11 @@ void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScor
 
 void SelectDeterministicMN(const int& nCurrBlockHeight, const uint32_t& nTime, const uint32_t& nScoreTime, const bool& bProcessSpork, std::vector<CDeterministicMasternode_IndexValue>& tmpVecResultMasternodes,
                                  int& nSelectMasterNodeRet, int64_t& nStartNewLoopTime, bool fTimeoutReselect, const unsigned int& nOfficialCount);
-void GetEffectiveGeneralMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue>& mapAllEffectiveMasterNode, const std::map<std::string, CMasternodePayee_IndexValue>& mapAllEffectivePayeeInfo,
-                                       std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveGeneralMNs);
+void GetEffectiveGeneralMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue>& mapAllEffectiveMasterNode, const std::map<std::string, CMasternodePayee_DMN_IndexValue>& mapAllEffectivePayeeInfo,
+                                       std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveGeneralMNs, const int& nCurrentHeight);
 void GetEffectiveDeterministicMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue>& mapAllMasterNode, const int& nHeight, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveMasternode, bool fReSelect = false);
-void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_IndexValue>& mapAllPayeeInfo, const int& nHeight, std::map<std::string, CMasternodePayee_IndexValue>& mapAllEffectivePayeeInfo, bool fReSelect = false);
-void GetEffectiveOfficialMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapAllOfficialMNs, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveOfficialMNs);
+void GetEffectivePayeeData(const std::map<std::string, CMasternodePayee_DMN_IndexValue>& mapAllPayeeInfo, const int& nHeight, std::map<std::string, CMasternodePayee_DMN_IndexValue>& mapAllEffectivePayeeInfo, bool fReSelect = false);
+void GetEffectiveOfficialMNData(const std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapAllOfficialMNs, std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapEffectiveOfficialMNs, const int& nCurrentHeight);
 void SortDeterministicMNs(const std::map<COutPoint, CDeterministicMasternode_IndexValue> &mapMasternodes, std::vector<CDeterministicMasternode_IndexValue>& vecResultMasternodes, const uint32_t& nScoreTime, const std::string& strArrName);
 void UpdateReSelectMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes);
 void UpdateDeterministicMNGlobalData(const std::vector<CDeterministicMasternode_IndexValue>& tmpVecMasternodes, const int& selectMasterNodeRet, const int64_t& nStartNewLoopTime);
