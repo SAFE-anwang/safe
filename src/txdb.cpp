@@ -1349,7 +1349,7 @@ bool CBlockTreeDB::Read_MasternodePayee_DMN_Index(std::map<string, CMasternodePa
         std::pair<std::string, std::string> key;
         if (pcursor->GetKey(key) && key.first == DB_MASTERNODE_PAYEE_DMN_INDEX)
         {
-            CMasternodePayee_IndexValue value;
+            CMasternodePayee_DMN_IndexValue value;
             if(pcursor->GetValue(value))
             {
                 mapPayeeInfo[key.second] = value;
