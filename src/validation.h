@@ -1762,6 +1762,8 @@ bool WriteSporkInfo(const int& nStorageSpork, const CSporkInfo_IndexValue& value
 void GetAllDeterministicMasternodeMap(std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapOfficialDeterministicMasternode,
                    std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapAllDeterministicMasternode,bool fSaveCommon=false);
 
+void GetAllDMNData(std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapAllDMN);
+
 void LoadSPOSInfo();
 
 bool GetDeterministicMasternodeTx_Index(const COutPoint &out, CDeterministicMasternode_IndexValue &value);

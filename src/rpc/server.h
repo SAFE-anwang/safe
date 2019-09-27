@@ -343,6 +343,10 @@ extern UniValue getlocalassetlist(const UniValue& params, bool fHelp);
 extern UniValue transfermanyasset(const UniValue& params, bool fHelp);
 extern UniValue getassetlocaltxlist(const UniValue& params, bool fHelp);
 
+//safevode
+extern UniValue regsupernodecandidate(const UniValue& params, bool fHelp);
+
+
 
 
 bool StartRPC();

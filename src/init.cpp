@@ -121,6 +121,12 @@ extern int g_nForbidStartDMN;
 extern int g_nDeterministicMNTxMinConfirmNum;
 extern vector<string> g_versionVecV2;
 
+extern std::string g_strSafeVoteAppID;
+extern std::string g_strPXTAssetID;
+extern int g_SafeVoteStartHeight;
+
+
+
 
 
 std::unique_ptr<CConnman> g_connman;
@@ -1595,6 +1601,9 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nForbidStartDMN = GetArg("-spos_forbit_start_dmn", g_nForbidStartDMN);
     g_nDeterministicMNTxMinConfirmNum = GetArg("-spos_deterministicmn_tx_min_confirm_num", g_nDeterministicMNTxMinConfirmNum);
     g_nSaveMasternodePayeeHeightV2 = GetArg("-save_masternode_payee_height_V2", g_nSaveMasternodePayeeHeightV2);
+    g_strSafeVoteAppID = GetArg("-safevote_appid", g_strSafeVoteAppID);
+    g_strPXTAssetID = GetArg("-pxt_assetid", g_strPXTAssetID);
+    g_SafeVoteStartHeight = GetArg("-safevote_start_height", g_SafeVoteStartHeight);
 #else
 #error unsupported <safe chain name>
 #endif

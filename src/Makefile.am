@@ -203,7 +203,9 @@ BITCOIN_CORE_H = \
   app/app.pb.h \
   app/app.h \
   spos/spos.pb.h \
-  spos/spos.h
+  spos/spos.h \
+  safevote/safevote.pb.h \
+  safevote/safevote.h
 
 
 obj/build.h: FORCE
@@ -269,6 +271,9 @@ libbitcoin_server_a_SOURCES = \
   spos/spos.pb.cc \
   spos/spos.cpp \
   spos/rpcspos.cpp \
+  safevote/safevote.pb.cc \
+  safevote/safevote.cpp \
+  safevote/rpcsafevote.cpp \
   $(BITCOIN_CORE_H)
 
 if ENABLE_ZMQ
@@ -430,7 +435,7 @@ nodist_libbitcoin_util_a_SOURCES = $(srcdir)/obj/build.h
 safed_SOURCES = safed.cpp
 safed_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 safed_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-safed_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(LIBTOOL_SPOS_LDFLAGS)
+safed_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(LIBTOOL_SPOS_LDFLAGS) $(LIBTOOL_SAFEVOTE_LDFLAGS)
 
 if TARGET_WINDOWS
 safed_SOURCES += safed-res.rc
@@ -460,7 +465,7 @@ safed_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_
 safe_cli_SOURCES = safe-cli.cpp
 safe_cli_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(EVENT_CFLAGS)
 safe_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-safe_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(LIBTOOL_SPOS_LDFLAGS)
+safe_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(LIBTOOL_SPOS_LDFLAGS) $(LIBTOOL_SAFEVOTE_LDFLAGS)
 
 if TARGET_WINDOWS
 safe_cli_SOURCES += safe-cli-res.rc
@@ -477,7 +482,7 @@ safe_cli_LDADD += $(BOOST_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_LIBS)
 safe_tx_SOURCES = safe-tx.cpp
 safe_tx_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 safe_tx_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-safe_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(LIBTOOL_SPOS_LDFLAGS)
+safe_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) $(LIBTOOL_SPOS_LDFLAGS) $(LIBTOOL_SAFEVOTE_LDFLAGS)
 
 if TARGET_WINDOWS
 safe_tx_SOURCES += safe-tx-res.rc

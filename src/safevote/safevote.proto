@@ -1,0 +1,94 @@
+package Safevote;
+option java_package = "org.safe.Safevote";
+option java_outer_classname = "Safevote";
+
+message RegInfo{
+    required bytes safePubkey =1;	    //string
+    required bytes safeTxHash =2;	    //string  
+    required uint32 safeTxOutIdx=3;	  //uint32
+    required bytes  utxoType=4;	  	  //byte [0~255]
+}
+
+message RegSuperNodeCandidate{
+    required bytes scBpPubKey = 1;	  //string
+    required bytes dividendRatio=2;	  //uint16
+    required bytes bpName=3;		      //string 32 max
+    required bytes bpURL=4;		        //string 256 max
+    repeated RegInfo info=5;       	  //see RegInfo
+    map<string,string> signature=6; 	//pubKey-signature
+}
+
+message UnRegSuperNodeCandidate{
+    required bytes regTxHash=1;		    //string
+    map<string,string> signature=2;   //pubkey-signature
+}
+
+message SuperNodeUpdateInfo{
+    required bytes dividendRatio=1;	  //uint16
+    required bytes bpName=2;		      //string 32 max
+    required bytes bpURL=3;		        //string 256 max
+}
+
+message UpdateSuperNodeCandidate{
+    required bytes regTxHash=1;		  //string
+    repeated SuperNodeUpdateInfo updateInfo=2;//See SuperNodeUpdateInfo
+    map<string,string> signature=3;//pubkey-signature
+}
+
+message VoteInfo{
+    required bytes safePubKey=1;	  //string
+    required bytes safeTxHash=2;	  //string
+    required uint32 safeTxOutIdx=3; //uint32  
+    required uint64 safeAmount=4;	  //uint64
+    required bytes  utxoType=5;     //byte[0~255]
+}
+
+message HolderVote{
+   required bytes regTxHash=1;		 //string
+   repeated VoteInfo voteInfo=2;
+   map<string,string> signature=3;
+}
+
+message IVote{
+	 required bytes regTxHash=1;		 //string
+}
+
+message RevokeInfo{
+  required bytes safePubKey=1;    //string
+  required bytes safeTxHash=2;	  //string
+  required uint32 safeTxOutIdx=3;	//uint32
+}
+message RevokeVtxo{
+  repeated RevokeInfo revokeInfo=1;
+  map<string,string> signature=2;
+}
+
+message BindInfo{
+  required bytes safePubKey=1;		//string
+  required bytes scAccount=2;		//string
+}
+
+message BindVoterSafecodeAccount{
+  repeated BindInfo bindInfo=1;
+  map<string,string> signature=2;
+}
+
+message CCTA{
+  required bytes scAccount=1;//string
+  required bytes targetChain=2;//string
+  required bytes sepChar=3;//string
+  required bytes bizRemarks=4;//sring
+}
+
+message regCastCoinInfoes {
+  required bytes scTxHash=1;
+  required bytes assetName=2;
+  optional bytes assetId=3;   //empty if safe
+  required uint64 quantity=4;  //byte uint64
+  required bytes safeUser=5; 
+}
+
+message BcctaCastCoin {
+  required bytes command=1; //uint32
+  repeated regCastCoinInfoes regInfoes=2;
+}

@@ -517,6 +517,9 @@ static const CRPCCommand vRPCCommands[] =
     { "asset",              "transfermanyasset",      &transfermanyasset,           true  },
     { "asset",              "getassetlocaltxlist",    &getassetlocaltxlist,         true  },
 
+    /* safevote */
+    { "safevote",           "regsupernodecandidate",  &regsupernodecandidate,      true  },
+
 #endif // ENABLE_WALLET
 };
 

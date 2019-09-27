@@ -10395,6 +10395,16 @@ void GetAllDeterministicMasternodeMap(std::map<COutPoint,CDeterministicMasternod
     }
 }
 
+void GetAllDMNData(std::map<COutPoint,CDeterministicMasternode_IndexValue>& mapAllDMN)
+{
+    std::lock_guard<std::mutex> lock(g_mutexAllDeterministicMasternode);
+
+    for (auto& Dmnpair : gAllDeterministicMasternodeMap)
+    {
+        mapAllDMN[Dmnpair.first] = Dmnpair.second;
+    }
+}
+
 void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vecSize,unsigned int nPercentCnt)
 {
     if(nRemainNum > 0)
