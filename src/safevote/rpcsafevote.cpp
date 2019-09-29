@@ -51,7 +51,7 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    if(!masternodeSync.IsBlockchainSynced())
+    if (!masternodeSync.IsBlockchainSynced())
         throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
 
     std::string strscBpPubkey = TrimString(params[0].get_str());
@@ -132,7 +132,7 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
         CKeyID keyid;
         CPubKey vchPubKey;
         
-        if(address.GetKeyID(keyid))
+        if (address.GetKeyID(keyid))
         {
             if (!pwalletMain->GetPubKey(keyid, vchPubKey))
                 throw JSONRPCError(RPC_WALLET_ERROR, "PubKey key for address is not known");
@@ -302,7 +302,19 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
         LogPrintf("serialPubKey:%s ------- strSig:%s\n", serialPubKey, strSig);
     }
 
-    wtx.vout[0].vReserve = FillRegSuperNodeCandidate(appHeader, tempregSuperNodeCandidate);
+    std::vector<unsigned char> vecrealdata;
+    vecdata = FillRegSuperNodeCandidate(appHeader, tempregSuperNodeCandidate);
+    std::string strRealExtendData = "";
+
+    std::vector<unsigned char>::iterator vecrealdata = vecrealdata.begin();
+    for (; itdata ! = vecrealdata.end(); ++itdata)
+    {
+        strRealExtendData.push_back(*itdata);
+    }
+
+    CExtendData extendRealData(REG_SUPER_NODE_CANDIDATE_CMD, strRealExtendData);
+
+    wtx.vout[0].vReserve = FillExtendData(appHeader, extendRealData);
 
     if(!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Create extenddata transaction failed, please check your wallet and try again later!");
