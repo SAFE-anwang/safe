@@ -298,6 +298,8 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
         ssPubKey << temppubkey;
         string serialPubKey = ssPubKey.str();
         tempregSuperNodeCandidate.mapsignature[serialPubKey] = strSig;
+
+        LogPrintf("serialPubKey:%s ------- strSig:%s\n", serialPubKey, strSig);
     }
 
     wtx.vout[0].vReserve = FillRegSuperNodeCandidate(appHeader, tempregSuperNodeCandidate);
