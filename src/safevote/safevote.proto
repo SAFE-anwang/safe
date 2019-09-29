@@ -1,3 +1,4 @@
+syntax = "proto2";
 package Safevote;
 option java_package = "org.safe.Safevote";
 option java_outer_classname = "Safevote";
