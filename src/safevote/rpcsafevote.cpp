@@ -275,14 +275,6 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
 
     uint256 rowHash = ssrowHash.GetHash();
 
-    vecpubkey.push_back(vchPubKey);
-        
-    CDataStream ssPubKey(SER_DISK, CLIENT_VERSION);
-    ssPubKey.reserve(1000);
-    ssPubKey << vchPubKey;
-    string serialPubKey = ssPubKey.str();
-
-
     tempregSuperNodeCandidate.mapsignature.clear();
     vector<CPubKey>::iterator itpubkey = vecpubkey.begin();
     for (; itpubkey != vecpubkey.end(); ++itkeyid)
