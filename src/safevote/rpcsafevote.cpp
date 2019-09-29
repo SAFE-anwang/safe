@@ -45,8 +45,8 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
             "  \"txId\" : \"xxxxx\" (string) The transaction id\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("regsupernodecandidate", "\"EOS6PiiPK2nD4GvVEJuvbhigvthYuz65YtQR5hRGu6NhmVsKTb9mC\" 50 \"testbp\" \"http://www.anwang.com/\" \"[{\\\"safeTxHash\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"safeTxOutIdx\\\":1}]\"")
-            + HelpExampleRpc("regsupernodecandidate", "\"EOS6PiiPK2nD4GvVEJuvbhigvthYuz65YtQR5hRGu6NhmVsKTb9mC\", 50, \"testbp\", \"http://www.anwang.com/\", \"[{\\\"safeTxHash\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"safeTxOutIdx\\\":1}]\"")
+            + HelpExampleCli("regsupernodecandidate", "\"EOS6PiiPK2nD4GvVEJuvbhigvthYuz65YtQR5hRGu6NhmVsKTb9mC\" 50 \"testbp\" \"http://www.testbp.com/\" \"[{\\\"safeTxHash\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"safeTxOutIdx\\\":1}]\"")
+            + HelpExampleRpc("regsupernodecandidate", "\"EOS6PiiPK2nD4GvVEJuvbhigvthYuz65YtQR5hRGu6NhmVsKTb9mC\", 50, \"testbp\", \"http://www.testbp.com/\", \"[{\\\"safeTxHash\\\":\\\"a08e6907dbbd3d809776dbfc5d82e371b764ed838b5655e72f463568df1aadf0\\\",\\\"safeTxOutIdx\\\":1}]\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -194,7 +194,7 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
             if(mapBlockIndex.count(hashBlock) == 0 || mapBlockIndex[hashBlock]->nHeight < g_SafeVoteStartHeight)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, tx height before g_SafeVoteStartHeight");
 
-            if (temptxout.nValue != 1000 * COIN)
+            if (temptxout.nValue != 10000 * COIN)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, txout Value before g_SafeVoteStartHeight");
 
             if (temptxout.nUnlockedHeight == 0)
@@ -206,6 +206,9 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
             continue;
         }
     }
+
+    if (!fFoundPXTAsset || !fFoundDMN || !fFoundLockTx)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "tx type error");
 
     CAppId_AppInfo_IndexValue appInfo;
     if(!GetAppInfoByAppId(uint256S(g_strSafeVoteAppID), appInfo, false))
