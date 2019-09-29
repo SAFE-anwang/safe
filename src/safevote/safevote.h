@@ -38,6 +38,7 @@ enum SafeVoteRpcError
 
 extern std::string g_strSafeVoteAppID;
 extern std::string g_strPXTAssetID;
+extern std::string g_stradminSafeAddress;
 extern int g_SafeVoteStartHeight;
 
 

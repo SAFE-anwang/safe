@@ -14,14 +14,17 @@ using namespace std;
 #if SCN_CURRENT == SCN__main
 string g_strSafeVoteAppID = "577e345eafbbc41a9cdb3d5e420ba337401c8e7353fe852b65f220f2470ee94a";
 string g_strPXTAssetID = "dc1884981a18260303737d0a492b12de69b7928d8711399faf2d84ce394379b7";
+string g_stradminSafeAddress = "XnC9y9fowx441hhxKKfsher25LTS7PQV8M";
 int g_SafeVoteStartHeight = 1459779;
 #elif SCN_CURRENT == SCN__dev
 string g_strSafeVoteAppID = "577e345eafbbc41a9cdb3d5e420ba337401c8e7353fe852b65f220f2470ee94a";
 string g_strPXTAssetID = "dc1884981a18260303737d0a492b12de69b7928d8711399faf2d84ce394379b7";
+string g_stradminSafeAddress = "XnC9y9fowx441hhxKKfsher25LTS7PQV8M";
 int g_SafeVoteStartHeight = 1000;
 #elif SCN_CURRENT == SCN__test
 string g_strSafeVoteAppID = "577e345eafbbc41a9cdb3d5e420ba337401c8e7353fe852b65f220f2470ee94a";
 string g_strPXTAssetID = "dc1884981a18260303737d0a492b12de69b7928d8711399faf2d84ce394379b7";
+string g_stradminSafeAddress = "XnC9y9fowx441hhxKKfsher25LTS7PQV8M";
 int g_SafeVoteStartHeight = 1000;
 #else
 #error unsupported <safe chain name>

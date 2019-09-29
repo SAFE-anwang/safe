@@ -2,7 +2,6 @@
 
 #include "safevote.h"
 #include "init.h"
-#include "spork.h"
 #include "validation.h"
 #include "utilmoneystr.h"
 #include "rpc/server.h"
@@ -131,24 +130,24 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
         CBitcoinAddress address(dest);
         CKeyID keyid;
         CPubKey vchPubKey;
-        
-        if (address.GetKeyID(keyid))
-        {
-            if (!pwalletMain->GetPubKey(keyid, vchPubKey))
-                throw JSONRPCError(RPC_WALLET_ERROR, "PubKey key for address is not known");
 
-            vecpubkey.push_back(vchPubKey);
+        if (!address.GetKeyID(keyid))
+            throw JSONRPCError(RPC_WALLET_ERROR, "keyid for address is not known");
         
-            CDataStream ssPubKey(SER_DISK, CLIENT_VERSION);
-            ssPubKey.reserve(1000);
-            ssPubKey << vchPubKey;
-            string serialPubKey = ssPubKey.str();
+        if (!pwalletMain->GetPubKey(keyid, vchPubKey))
+            throw JSONRPCError(RPC_WALLET_ERROR, "pubKey key for address is not known");
 
-            tempregInfo.strsafeTxHash = tempOutPoint.hash;
-            tempregInfo.nsafeTxOutIdx = tempOutPoint.n;
-            tempregInfo.strsafePubkey = serialPubKey;
-            tempregSuperNodeCandidate.mapsignature[serialPubKey] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-        }
+        vecpubkey.push_back(vchPubKey);
+    
+        CDataStream ssPubKey(SER_DISK, CLIENT_VERSION);
+        ssPubKey.reserve(1000);
+        ssPubKey << vchPubKey;
+        string serialPubKey = ssPubKey.str();
+
+        tempregInfo.strsafeTxHash = tempOutPoint.hash;
+        tempregInfo.nsafeTxOutIdx = tempOutPoint.n;
+        tempregInfo.strsafePubkey = serialPubKey;
+        tempregSuperNodeCandidate.mapsignature[serialPubKey] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
         std::map<COutPoint,CDeterministicMasternode_IndexValue>::iterator ittemp = mapAllDMN.find(tempOutPoint);
         if (ittemp != mapAllDMN.end())
@@ -156,7 +155,6 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
             fFoundDMN = true;
             tempregInfo.nutxoType = 1;
             tempregSuperNodeCandidate.vecRegInfo.push_back(tempregInfo);
-            
             continue;
         }
 
@@ -210,11 +208,7 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
     if (!fFoundPXTAsset || !fFoundDMN || !fFoundLockTx)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "tx type error");
 
-    CAppId_AppInfo_IndexValue appInfo;
-    if(!GetAppInfoByAppId(uint256S(g_strSafeVoteAppID), appInfo, false))
-        throw JSONRPCError(NONEXISTENT_APPID, "Non-existent app id");
-
-    CBitcoinAddress adminSafeAddress(appInfo.strAdminAddress);
+    CBitcoinAddress adminSafeAddress(g_stradminSafeAddress);
 
     string strExtendData = "";
 
@@ -274,10 +268,11 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
     }
 
     uint256 rowHash = ssrowHash.GetHash();
+    LogPrintf("rowHash:%s\n", rowHash);
 
     tempregSuperNodeCandidate.mapsignature.clear();
     vector<CPubKey>::iterator itpubkey = vecpubkey.begin();
-    for (; itpubkey != vecpubkey.end(); ++itkeyid)
+    for (; itpubkey != vecpubkey.end(); ++itpubkey)
     {
         CPubKey temppubkey = *itpubkey;
         CKey vchSecret;
@@ -324,3 +319,154 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
 
     return ret;
 }
+
+UniValue unregsupernodecandidate(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() != 5)
+        throw runtime_error(
+            "unregsupernodecandidate \"txid\" \n"
+            "\nCreate transaction which logout campaign super node.\n"
+            "\nArguments:\n"
+            "1.\"txid\"      (string, required) The transaction id which regTxHash\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"txId\" : \"xxxxx\" (string) The transaction id\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("unregsupernodecandidate", "\"ae05096c00a3101ec099f43e1bd8ee76603dd660199f14ce6e43968ef24a5e57\"")
+            + HelpExampleRpc("unregsupernodecandidate", "\"ae05096c00a3101ec099f43e1bd8ee76603dd660199f14ce6e43968ef24a5e57\"")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    if (!masternodeSync.IsBlockchainSynced())
+        throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
+    uint256 txhash = ParseHashV(params[0], "parameter 1");
+    string strTxHex = txhash.ToString();
+
+    CTransaction tx;
+    uint256 hashBlock;
+    if (!GetTransaction(txhash, tx, Params().GetConsensus(), hashBlock, true))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
+
+    const CTxOut& temptxout = tx.vout[0];
+    CTxDestination dest;
+    if(!ExtractDestination(temptxout.scriptPubKey, dest))
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, failed to get address");
+
+    CBitcoinAddress address(dest);
+    CKeyID keyid;
+    CPubKey vchPubKey;
+
+    if (!address.GetKeyID(keyid))
+        throw JSONRPCError(RPC_WALLET_ERROR, "keyid for address is not known");
+
+    if (!pwalletMain->GetPubKey(keyid, vchPubKey))
+            throw JSONRPCError(RPC_WALLET_ERROR, "PubKey key for address is not known");
+
+    CUnRegSuperNodeCandidate tempunRegSuperNodeCandidate;
+    tempunRegSuperNodeCandidate.strregTxHash = strTxHex;
+
+    CDataStream ssPubKey(SER_DISK, CLIENT_VERSION);
+    ssPubKey.reserve(1000);
+    ssPubKey << vchPubKey;
+    string serialPubKey = ssPubKey.str();
+
+    tempunRegSuperNodeCandidate.mapsignature[serialPubKey] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+    string strExtendData = "";
+
+    std::vector<unsigned char> vecdata;
+    vecdata = FillUnregSuperNodeCandidate(appHeader, tempunRegSuperNodeCandidate);
+
+    std::vector<unsigned char>::iterator itdata = vecdata.begin();
+    for (; itdata ! = vecdata.end(); ++itdata)
+    {
+        strExtendData.push_back(*itdata);
+    }
+
+    CAppHeader appHeader(g_nAppHeaderVersion, uint256S(g_strSafeVoteAppID), CREATE_EXTEND_TX_CMD);
+    CExtendData extendData(UN_REG_SUPER_NODE_CANDIDATE_CMD, strExtendData);
+
+    EnsureWalletIsUnlocked();
+
+    if (pwalletMain->GetBroadcastTransactions() && !g_connman)
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+    if(APP_OUT_VALUE >= pwalletMain->GetBalance())
+        throw JSONRPCError(INSUFFICIENT_SAFE, "Insufficient safe funds");
+
+    CBitcoinAddress adminSafeAddress(g_stradminSafeAddress);
+
+    vector<CRecipient> vecSend;
+    CRecipient userRecipient = {GetScriptForDestination(adminSafeAddress.Get()), APP_OUT_VALUE, 0, false, false};
+    vecSend.push_back(userRecipient);
+
+    CWalletTx wtx;
+    CReserveKey reservekey(pwalletMain);
+    CAmount nFeeRequired;
+    int nChangePosRet = -1;
+    string strError;
+    if(!pwalletMain->CreateAppTransaction(&appHeader, (void*)&extendData, vecSend, &adminSafeAddress, wtx, reservekey, nFeeRequired, nChangePosRet, strError, NULL, true, ALL_COINS, false))
+    {
+        if(APP_OUT_VALUE + nFeeRequired > pwalletMain->GetBalance())
+            strError = strprintf("Error: Insufficient safe funds, this transaction requires a transaction fee of at least %1!", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    COutPoint prevout = wtx.vin[0].prevout;
+
+    CHashWriter ssrowHash(SER_GETHASH, PROTOCOL_VERSION);
+    ssrowHash << prevout.hash;
+    ssrowHash << prevout.n;
+    ssrowHash << strTxHex;
+
+    uint256 rowHash = ssrowHash.GetHash();
+    LogPrintf("rowHash:%s\n", rowHash);
+
+    tempunRegSuperNodeCandidate.mapsignature.clear();
+
+    CKey vchSecret;
+    if (!pwalletMain->GetKey(vchPubKey.GetID(), vchSecret))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address is not known");
+
+    std::vector<unsigned char> vchSig;
+    if (!vchSecret.Sign(rowHash, vchSig))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Private key for sign error");
+
+    std::string strSig = "";
+    std::vector<unsigned char>::iterator itch = vchSig.begin();
+    for (; itch != vchSig.end(); ++itch)
+        strSig.push_back(*itch);
+
+    tempunRegSuperNodeCandidate.mapsignature[serialPubKey] = strSig;
+
+    LogPrintf("serialPubKey:%s ------- strSig:%s\n", serialPubKey, strSig);
+
+    std::vector<unsigned char> vecrealdata;
+    vecdata = FillUnregSuperNodeCandidate(appHeader, tempunRegSuperNodeCandidate);
+    std::string strRealExtendData = "";
+
+    std::vector<unsigned char>::iterator vecrealdata = vecrealdata.begin();
+    for (; itdata ! = vecrealdata.end(); ++itdata)
+    {
+        strRealExtendData.push_back(*itdata);
+    }
+
+    CExtendData extendRealData(UN_REG_SUPER_NODE_CANDIDATE_CMD, strRealExtendData);
+
+    wtx.vout[0].vReserve = FillExtendData(appHeader, extendRealData);
+    
+    if(!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: Create extenddata transaction failed, please check your wallet and try again later!");
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("txId", wtx.GetHash().GetHex()));
+
+    return ret;
+}
+

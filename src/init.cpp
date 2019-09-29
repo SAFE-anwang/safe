@@ -123,6 +123,7 @@ extern vector<string> g_versionVecV2;
 
 extern std::string g_strSafeVoteAppID;
 extern std::string g_strPXTAssetID;
+extern std::string g_stradminSafeAddress;
 extern int g_SafeVoteStartHeight;
 
 
@@ -1604,6 +1605,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_strSafeVoteAppID = GetArg("-safevote_appid", g_strSafeVoteAppID);
     g_strPXTAssetID = GetArg("-pxt_assetid", g_strPXTAssetID);
     g_SafeVoteStartHeight = GetArg("-safevote_start_height", g_SafeVoteStartHeight);
+    g_stradminSafeAddress = GetArg("-admin_safe_address", g_stradminSafeAddress);
 #else
 #error unsupported <safe chain name>
 #endif

@@ -345,6 +345,7 @@ extern UniValue getassetlocaltxlist(const UniValue& params, bool fHelp);
 
 //safevode
 extern UniValue regsupernodecandidate(const UniValue& params, bool fHelp);
+extern UniValue unregsupernodecandidate(const UniValue& params, bool fHelp);
 
 
 

@@ -167,6 +167,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "sendmanywithlock", 0},
     { "transfermanyasset", 1},
     { "getassetlocaltxlist", 1},
+    { "regsupernodecandidate", 1},
 };
 
 class CRPCConvertTable
