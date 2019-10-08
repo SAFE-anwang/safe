@@ -81,7 +81,7 @@ vector<unsigned char> FillRegSuperNodeCandidate(const CAppHeader& header, const 
         datereginfo = data.add_info();
         datereginfo->set_safepubkey(tempregInfo.strsafePubkey);
         datereginfo->set_safetxhash(tempregInfo.strsafeTxHash);
-        datereginfo->set_safetxoutidx((const unsigned char*)&tempregInfo.nsafeTxOutIdx, sizeof(tempregInfo.nsafeTxOutIdx));
+        datereginfo->set_safetxoutidx(tempregInfo.nsafeTxOutIdx);
         datereginfo->set_utxotype((const char*)&(tempregInfo.nutxoType));
     }
 
@@ -189,11 +189,11 @@ vector<unsigned char> FillHolderVote(const CAppHeader& header, const CHolderVote
     {
         CVoteInfo tempvoteInfo = *it;
         datevoteinfo = data.add_voteinfo();
-        datevoteinfo->set_safepubKey(tempvoteInfo.strsafePubkey)
+        datevoteinfo->set_safepubkey(tempvoteInfo.strsafePubkey);
         datevoteinfo->set_safetxhash(tempvoteInfo.strsafeTxHash);
-        datevoteinfo->set_safetxoutidx((const unsigned char*)&(tempvoteInfo.nsafeTxOutIdx), sizeof(tempvoteInfo.nsafeTxOutIdx));
-        datevoteinfo->set_safeamount((const unsigned char*)&(tempvoteInfo.nsafeAmount), sizeof(tempvoteInfo.nsafeAmount))
-        datevoteinfo->set_utxotype((const unsigned char*)&(tempvoteInfo.nutxoType), sizeof(tempvoteInfo.nutxoType));
+        datevoteinfo->set_safetxoutidx(tempvoteInfo.nsafeTxOutIdx);
+        datevoteinfo->set_safeamount(tempvoteInfo.nsafeAmount);
+        datevoteinfo->set_utxotype((const char*)&(tempvoteInfo.nutxoType));
     }
 
     std::map<std::string,std::string>::const_iterator ittemp = holderVote.mapsignature.begin();
@@ -249,9 +249,9 @@ vector<unsigned char> FillRevokeVtxo(const CAppHeader& header, const CRevokeVtxo
     {
         CRevokeInfo temprevokeInfo = *it;
         daterevokeinfo = data.add_revokeinfo();
-        daterevokeinfo->set_safepubKey(temprevokeInfo.strsafePubkey);
+        daterevokeinfo->set_safepubkey(temprevokeInfo.strsafePubkey);
         daterevokeinfo->set_safetxhash(temprevokeInfo.strsafeTxHash);
-        daterevokeinfo->set_safetxoutidx((const unsigned char*)&(temprevokeInfo.nsafeTxOutIdx), sizeof(temprevokeInfo.nsafeTxOutIdx));
+        daterevokeinfo->set_safetxoutidx(temprevokeInfo.nsafeTxOutIdx);
     }
 
     std::map<std::string,std::string>::const_iterator ittemp = revokeVtxo.mapsignature.begin();
@@ -283,11 +283,11 @@ vector<unsigned char> FillBindVoterSafecodeAccount(const CAppHeader& header, con
     Safevote::MapFieldEntry* signaturedata;
 
     std::vector<CBindInfo>::const_iterator it = bindVoterSafecodeAccount.vecBindInfo.begin();
-    for (; it != revokeVtxo.vecRevokeInfo.end(); ++it)
+    for (; it != bindVoterSafecodeAccount.vecBindInfo.end(); ++it)
     {
        CBindInfo tempbindInfo = *it;
-       datebindinfo = data.add_bindinfoes();
-       datebindinfo->set_safepubKey(tempbindInfo.strsafePubkey);
+       datebindinfo = data.add_bindinfo();
+       datebindinfo->set_safepubkey(tempbindInfo.strsafePubkey);
        datebindinfo->set_scaccount(tempbindInfo.strscAccount);
     }
 

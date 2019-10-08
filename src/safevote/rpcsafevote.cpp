@@ -10,6 +10,9 @@
 #include "masternode-sync.h"
 #include "primitives/transaction.h"
 
+#include <boost/assign/list_of.hpp>
+
+
 
 
 using namespace std;
@@ -144,7 +147,7 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
         ssPubKey << vchPubKey;
         string serialPubKey = ssPubKey.str();
 
-        tempregInfo.strsafeTxHash = tempOutPoint.hash;
+        tempregInfo.strsafeTxHash = tempOutPoint.hash.ToString();
         tempregInfo.nsafeTxOutIdx = tempOutPoint.n;
         tempregInfo.strsafePubkey = serialPubKey;
         tempregSuperNodeCandidate.mapsignature[serialPubKey] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -212,16 +215,16 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
 
     string strExtendData = "";
 
+    CAppHeader appHeader(g_nAppHeaderVersion, uint256S(g_strSafeVoteAppID), CREATE_EXTEND_TX_CMD);
     std::vector<unsigned char> vecdata;
     vecdata = FillRegSuperNodeCandidate(appHeader, tempregSuperNodeCandidate);
 
     std::vector<unsigned char>::iterator itdata = vecdata.begin();
-    for (; itdata ! = vecdata.end(); ++itdata)
+    for (; itdata != vecdata.end(); ++itdata)
     {
         strExtendData.push_back(*itdata);
     }
 
-    CAppHeader appHeader(g_nAppHeaderVersion, uint256S(g_strSafeVoteAppID), CREATE_EXTEND_TX_CMD);
     CExtendData extendData(REG_SUPER_NODE_CANDIDATE_CMD, strExtendData);
 
     EnsureWalletIsUnlocked();
@@ -268,7 +271,7 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
     }
 
     uint256 rowHash = ssrowHash.GetHash();
-    LogPrintf("rowHash:%s\n", rowHash);
+    LogPrintf("rowHash:%s\n", rowHash.ToString());
 
     tempregSuperNodeCandidate.mapsignature.clear();
     vector<CPubKey>::iterator itpubkey = vecpubkey.begin();
@@ -301,17 +304,23 @@ UniValue regsupernodecandidate(const UniValue& params, bool fHelp)
     vecdata = FillRegSuperNodeCandidate(appHeader, tempregSuperNodeCandidate);
     std::string strRealExtendData = "";
 
-    std::vector<unsigned char>::iterator vecrealdata = vecrealdata.begin();
-    for (; itdata ! = vecrealdata.end(); ++itdata)
+    std::vector<unsigned char>::iterator itrealdata = vecrealdata.begin();
+    for (; itrealdata != vecrealdata.end(); ++itrealdata)
     {
-        strRealExtendData.push_back(*itdata);
+        strRealExtendData.push_back(*itrealdata);
     }
 
     CExtendData extendRealData(REG_SUPER_NODE_CANDIDATE_CMD, strRealExtendData);
 
-    wtx.vout[0].vReserve = FillExtendData(appHeader, extendRealData);
+    CMutableTransaction tempmtx = CMutableTransaction(wtx);
+    tempmtx.vout[0].vReserve = FillExtendData(appHeader, extendRealData);
 
-    if(!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
+    CWalletTx wRealtx;
+
+    // Embed the constructed transaction data in wRealtx.
+    *static_cast<CTransaction*>(&wRealtx) = CTransaction(tempmtx);
+
+    if(!pwalletMain->CommitTransaction(wRealtx, reservekey, g_connman.get()))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Create extenddata transaction failed, please check your wallet and try again later!");
 
     UniValue ret(UniValue::VOBJ);
@@ -380,16 +389,17 @@ UniValue unregsupernodecandidate(const UniValue& params, bool fHelp)
 
     string strExtendData = "";
 
+    CAppHeader appHeader(g_nAppHeaderVersion, uint256S(g_strSafeVoteAppID), CREATE_EXTEND_TX_CMD);
+
     std::vector<unsigned char> vecdata;
     vecdata = FillUnregSuperNodeCandidate(appHeader, tempunRegSuperNodeCandidate);
 
     std::vector<unsigned char>::iterator itdata = vecdata.begin();
-    for (; itdata ! = vecdata.end(); ++itdata)
+    for (; itdata != vecdata.end(); ++itdata)
     {
         strExtendData.push_back(*itdata);
     }
 
-    CAppHeader appHeader(g_nAppHeaderVersion, uint256S(g_strSafeVoteAppID), CREATE_EXTEND_TX_CMD);
     CExtendData extendData(UN_REG_SUPER_NODE_CANDIDATE_CMD, strExtendData);
 
     EnsureWalletIsUnlocked();
@@ -426,7 +436,7 @@ UniValue unregsupernodecandidate(const UniValue& params, bool fHelp)
     ssrowHash << strTxHex;
 
     uint256 rowHash = ssrowHash.GetHash();
-    LogPrintf("rowHash:%s\n", rowHash);
+    LogPrintf("rowHash:%s\n", rowHash.ToString());
 
     tempunRegSuperNodeCandidate.mapsignature.clear();
 
@@ -451,17 +461,23 @@ UniValue unregsupernodecandidate(const UniValue& params, bool fHelp)
     vecdata = FillUnregSuperNodeCandidate(appHeader, tempunRegSuperNodeCandidate);
     std::string strRealExtendData = "";
 
-    std::vector<unsigned char>::iterator vecrealdata = vecrealdata.begin();
-    for (; itdata ! = vecrealdata.end(); ++itdata)
+    std::vector<unsigned char>::iterator itrealdata = vecrealdata.begin();
+    for (; itrealdata != vecrealdata.end(); ++itrealdata)
     {
-        strRealExtendData.push_back(*itdata);
+        strRealExtendData.push_back(*itrealdata);
     }
 
     CExtendData extendRealData(UN_REG_SUPER_NODE_CANDIDATE_CMD, strRealExtendData);
 
-    wtx.vout[0].vReserve = FillExtendData(appHeader, extendRealData);
-    
-    if(!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
+    CMutableTransaction tempmtx = CMutableTransaction(wtx);
+    tempmtx.vout[0].vReserve = FillExtendData(appHeader, extendRealData);
+
+    CWalletTx wRealtx;
+
+    // Embed the constructed transaction data in wRealtx.
+    *static_cast<CTransaction*>(&wRealtx) = CTransaction(tempmtx);
+
+    if(!pwalletMain->CommitTransaction(wRealtx, reservekey, g_connman.get()))
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: Create extenddata transaction failed, please check your wallet and try again later!");
 
     UniValue ret(UniValue::VOBJ);
