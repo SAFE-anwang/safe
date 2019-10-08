@@ -67,6 +67,7 @@ vector<unsigned char> FillRegSuperNodeCandidate(const CAppHeader& header, const 
 
     Safevote::RegSuperNodeCandidate data;
     Safevote::RegInfo* datereginfo;
+    Safevote::MapFieldEntry* signaturedata;
     
     data.set_scbppubkey(regSuperNodeCandidate.strscBpPubkey);
     data.set_dividendratio((const unsigned char*)&(regSuperNodeCandidate.ndividendRatio), sizeof(regSuperNodeCandidate.ndividendRatio));
@@ -77,17 +78,19 @@ vector<unsigned char> FillRegSuperNodeCandidate(const CAppHeader& header, const 
     for (; it != regSuperNodeCandidate.vecRegInfo.end(); ++it)
     {
         CRegInfo tempregInfo = *it;
-        datereginfo = data.add_reginfo();
+        datereginfo = data.add_info();
         datereginfo->set_safepubkey(tempregInfo.strsafePubkey);
         datereginfo->set_safetxhash(tempregInfo.strsafeTxHash);
-        datereginfo->set_safetxoutidx((const unsigned char*)&(tempregInfo.nsafeTxOutIdx), sizeof(tempregInfo.nsafeTxOutIdx));
-        datereginfo->set_utxoType((const unsigned char*)&(tempregInfo.nutxoType), sizeof(tempregInfo.nutxoType));
+        datereginfo->set_safetxoutidx((const unsigned char*)&tempregInfo.nsafeTxOutIdx, sizeof(tempregInfo.nsafeTxOutIdx));
+        datereginfo->set_utxotype((const char*)&(tempregInfo.nutxoType));
     }
 
     std::map<std::string,std::string>::const_iterator ittemp = regSuperNodeCandidate.mapsignature.begin();
     for (; ittemp != regSuperNodeCandidate.mapsignature.end(); ittemp++)
     {
-        data.signature[ittemp->first] = ittemp.second;
+        signaturedata = data.add_signature();
+        signaturedata->set_key(ittemp->first);
+        signaturedata->set_value(ittemp->second);
     }
 
     string strData;
@@ -107,13 +110,16 @@ vector<unsigned char> FillUnregSuperNodeCandidate(const CAppHeader& header, cons
     FillSafeVoteHeader(header, vData);
 
     Safevote::UnRegSuperNodeCandidate data;
+    Safevote::MapFieldEntry* signaturedata;
     
     data.set_regtxhash(unRegSuperNodeCandidate.strregTxHash);
 
     std::map<std::string,std::string>::const_iterator it = unRegSuperNodeCandidate.mapsignature.begin();
     for (; it != unRegSuperNodeCandidate.mapsignature.end(); ++it)
     {
-         data.signature[it->first] = it->second;   
+        signaturedata = data.add_signature();
+        signaturedata->set_key(it->first);
+        signaturedata->set_value(it->second);
     }
 
     string strData;
@@ -134,6 +140,7 @@ vector<unsigned char> FillUpdateSuperNodeCandidate(const CAppHeader& header, con
 
     Safevote::UpdateSuperNodeCandidate data;
     Safevote::SuperNodeUpdateInfo* datesupernodeupdateinfo;
+    Safevote::MapFieldEntry* signaturedata;
 
     data.set_regtxhash(updateSuperNodeCandidate.strregTxHash);
 
@@ -141,7 +148,7 @@ vector<unsigned char> FillUpdateSuperNodeCandidate(const CAppHeader& header, con
     for (; it != updateSuperNodeCandidate.vecSuperNodeUpdateInfo.end(); ++it)
     {
         CSuperNodeUpdateInfo tempsuperNodeUpdateInfo = *it;
-        datesupernodeupdateinfo = data.add_supernodeupdateinfo();
+        datesupernodeupdateinfo = data.add_updateinfo();
         datesupernodeupdateinfo->set_dividendratio((const unsigned char*)&(tempsuperNodeUpdateInfo.ndividendRatio), sizeof(tempsuperNodeUpdateInfo.ndividendRatio));
         datesupernodeupdateinfo->set_bpname(tempsuperNodeUpdateInfo.strbpName);
         datesupernodeupdateinfo->set_bpurl(tempsuperNodeUpdateInfo.strbpURL);
@@ -150,7 +157,9 @@ vector<unsigned char> FillUpdateSuperNodeCandidate(const CAppHeader& header, con
     std::map<std::string,std::string>::const_iterator ittemp = updateSuperNodeCandidate.mapsignature.begin();
     for (; ittemp != updateSuperNodeCandidate.mapsignature.end(); ittemp++)
     {
-        data.signature[ittemp->first] = ittemp.second;
+        signaturedata = data.add_signature();
+        signaturedata->set_key(ittemp->first);
+        signaturedata->set_value(ittemp->second);
     }
 
     string strData;
@@ -171,6 +180,7 @@ vector<unsigned char> FillHolderVote(const CAppHeader& header, const CHolderVote
 
     Safevote::HolderVote data;
     Safevote::VoteInfo* datevoteinfo;
+    Safevote::MapFieldEntry* signaturedata;
 
     data.set_regtxhash(holderVote.strregTxHash);
 
@@ -189,7 +199,9 @@ vector<unsigned char> FillHolderVote(const CAppHeader& header, const CHolderVote
     std::map<std::string,std::string>::const_iterator ittemp = holderVote.mapsignature.begin();
     for (; ittemp != holderVote.mapsignature.end(); ittemp++)
     {
-        data.signature[ittemp->first] = ittemp.second;
+        signaturedata = data.add_signature();
+        signaturedata->set_key(ittemp->first);
+        signaturedata->set_value(ittemp->second);
     }
 
     string strData;
@@ -230,6 +242,7 @@ vector<unsigned char> FillRevokeVtxo(const CAppHeader& header, const CRevokeVtxo
 
     Safevote::RevokeVtxo data;
     Safevote::RevokeInfo* daterevokeinfo;
+    Safevote::MapFieldEntry* signaturedata;
 
     std::vector<CRevokeInfo>::const_iterator it = revokeVtxo.vecRevokeInfo.begin();
     for (; it != revokeVtxo.vecRevokeInfo.end(); ++it)
@@ -244,7 +257,9 @@ vector<unsigned char> FillRevokeVtxo(const CAppHeader& header, const CRevokeVtxo
     std::map<std::string,std::string>::const_iterator ittemp = revokeVtxo.mapsignature.begin();
     for (; ittemp != revokeVtxo.mapsignature.end(); ittemp++)
     {
-        data.signature[ittemp->first] = ittemp.second;
+        signaturedata = data.add_signature();
+        signaturedata->set_key(ittemp->first);
+        signaturedata->set_value(ittemp->second);
     }
 
     string strData;
@@ -265,12 +280,13 @@ vector<unsigned char> FillBindVoterSafecodeAccount(const CAppHeader& header, con
 
     Safevote::BindVoterSafecodeAccount data;
     Safevote::BindInfo* datebindinfo;
+    Safevote::MapFieldEntry* signaturedata;
 
     std::vector<CBindInfo>::const_iterator it = bindVoterSafecodeAccount.vecBindInfo.begin();
     for (; it != revokeVtxo.vecRevokeInfo.end(); ++it)
     {
        CBindInfo tempbindInfo = *it;
-       datebindinfo = data.add_bindinfo();
+       datebindinfo = data.add_bindinfoes();
        datebindinfo->set_safepubKey(tempbindInfo.strsafePubkey);
        datebindinfo->set_scaccount(tempbindInfo.strscAccount);
     }
@@ -278,7 +294,9 @@ vector<unsigned char> FillBindVoterSafecodeAccount(const CAppHeader& header, con
     std::map<std::string,std::string>::const_iterator ittemp = bindVoterSafecodeAccount.mapsignature.begin();
     for (; ittemp != bindVoterSafecodeAccount.mapsignature.end(); ittemp++)
     {
-       data.signature[ittemp->first] = ittemp.second;
+        signaturedata = data.add_signature();
+        signaturedata->set_key(ittemp->first);
+        signaturedata->set_value(ittemp->second);
     }
 
     string strData;

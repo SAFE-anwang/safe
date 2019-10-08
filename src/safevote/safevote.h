@@ -31,7 +31,6 @@ enum SafeVoteRpcError
     INVALID_BPURL_SIZE              = -503,
     INVALID_ARRAY_NUM               = -504,
     INVALID_UNLOCKEDHEIGHT          = -505,
-    SYNCING_BLOCK                   = -506,
 };
 
 
@@ -134,7 +133,7 @@ class CUnRegSuperNodeCandidate
 {
 public:
     std::string strregTxHash;
-    std::map<string,string> mapsignature;
+    std::map<std::string,std::string> mapsignature;
     
     CUnRegSuperNodeCandidate()
     {
@@ -157,7 +156,7 @@ public:
         return *this;
     }
 
-    SetNull()
+    void SetNull()
     {
         strregTxHash.clear();
         mapsignature.clear();
@@ -193,7 +192,7 @@ public:
         return *this;
     }
                               
-    SetNull()
+    void SetNull()
     {
         ndividendRatio = 0;
         strbpName.clear();
@@ -231,7 +230,7 @@ public:
         return *this;
     }
 
-    SetNull()
+    void SetNull()
     {
         strregTxHash.clear();
         vecSuperNodeUpdateInfo.clear();
@@ -272,7 +271,7 @@ public:
         return *this;
     }
 
-    SetNull()
+    void SetNull()
     {
         strsafePubkey.clear();
         strsafeTxHash.clear();
@@ -311,7 +310,7 @@ public:
         return *this;
     }
 
-    SetNull()
+    void SetNull()
     {
         strregTxHash.clear();
         vecVoteInfo.clear();
@@ -344,7 +343,7 @@ public:
         return *this;
     }
 
-    SetNull()
+    void SetNull()
     {
         strregTxHash.clear();
     }
@@ -380,7 +379,7 @@ public:
         return *this;
     }
 
-    SetNull()
+    void SetNull()
     {
         strsafePubkey.clear();
         strsafeTxHash.clear();
@@ -415,7 +414,7 @@ public:
         return *this;
     }
 
-    SetNull()
+    void SetNull()
     {
         vecRevokeInfo.clear();
         mapsignature.clear();
@@ -450,7 +449,7 @@ public:
         return *this;
     }
 
-    SetNull()
+    void SetNull()
     {
         strsafePubkey.clear();
         strscAccount.clear();
@@ -484,7 +483,7 @@ public:
         return *this;
     }
 
-    SetNull()
+    void SetNull()
     {
         vecBindInfo.clear();
         mapsignature.clear();
