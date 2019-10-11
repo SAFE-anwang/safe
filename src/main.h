@@ -55,7 +55,6 @@ extern int64_t g_nFirstSelectMasterNodeTime;
 extern int64_t g_nAllowMasterNodeSyncErrorTime;
 
 extern int g_nStartDeterministicMNHeight;
-extern int g_nForbidOldVersionHeightV2;
 extern std::vector<CDeterministicMasternode_IndexValue> g_vecResultDeterministicMN;
 extern std::vector<CDeterministicMasternode_IndexValue> g_vecReSelectResultMasternodes;
 extern int g_nDeterministicMNTxMinConfirmNum;

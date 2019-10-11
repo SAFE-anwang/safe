@@ -116,10 +116,8 @@ extern bool fOfficialMasternodeSign;
 
 extern vector<string> g_versionVec;
 extern int g_nStartDeterministicMNHeight;
-extern int g_nForbidOldVersionHeightV2;
 extern int g_nForbidStartDMN;
 extern int g_nDeterministicMNTxMinConfirmNum;
-extern vector<string> g_versionVecV2;
 
 
 
@@ -971,17 +969,6 @@ void initVersionVec()
     }
 }
 
-void initVersionVecV2()
-{
-    if (g_versionVecV2.empty())
-    {
-        g_versionVecV2.push_back("Safe Core:2.5.0");
-        g_versionVecV2.push_back("Safe Core:2.5.1");
-        g_versionVecV2.push_back("Safe Core:2.6.0");
-        g_versionVecV2.push_back("Safe Core:2.6.1");
-    }
-}
-
 
 /** Initialize Safe Core.
  *  @pre Parameters should be parsed and config file should be read.
@@ -1014,8 +1001,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 #endif
 
     initVersionVec();
-
-    initVersionVecV2();
 
     if (!SetupNetworking())
         return InitError("Initializing networking failed");
@@ -1591,7 +1576,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     g_nAdjustMiningRewardHeight = GetArg("-spos_adjust_mining_reward_height", g_nAdjustMiningRewardHeight);
     g_nForbidOldVersionHeight = GetArg("-spos_forbid_old_version_height", g_nForbidOldVersionHeight);
     g_nStartDeterministicMNHeight = GetArg("-spos_start_deterministic_masternode_height", g_nStartDeterministicMNHeight);
-    g_nForbidOldVersionHeightV2 = GetArg("-spos_forbid_old_version_height_V2", g_nForbidOldVersionHeightV2);
     g_nForbidStartDMN = GetArg("-spos_forbit_start_dmn", g_nForbidStartDMN);
     g_nDeterministicMNTxMinConfirmNum = GetArg("-spos_deterministicmn_tx_min_confirm_num", g_nDeterministicMNTxMinConfirmNum);
     g_nSaveMasternodePayeeHeightV2 = GetArg("-save_masternode_payee_height_V2", g_nSaveMasternodePayeeHeightV2);

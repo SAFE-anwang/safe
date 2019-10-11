@@ -50,8 +50,6 @@ using namespace std;
 extern int g_nStartSPOSHeight;
 extern int g_nForbidOldVersionHeight;
 extern vector<string> g_versionVec;
-extern int g_nForbidOldVersionHeightV2;
-extern vector<string> g_versionVecV2;
 
 
 int64_t nTimeBestReceived = 0; // Used only to inform the wallet of when we last received a block
@@ -1223,35 +1221,18 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             vRecv >> LIMITED_STRING(strSubVer, MAX_SUBVERSION_LENGTH);
         }
 
-        if (chainActive.Height() >= g_nForbidOldVersionHeightV2)
+        if(chainActive.Height() >= g_nForbidOldVersionHeight)
         {
-            for (unsigned int i = 0; i < g_versionVecV2.size(); i++)
+            for(unsigned int i=0;i<g_versionVec.size();i++)
             {
-                if (strSubVer.find(g_versionVecV2[i]) != string::npos)
+                if(strSubVer.find(g_versionVec[i])!=string::npos)
                 {
+                    // disconnect from peers older
                     LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
                     connman.PushMessageWithVersion(pfrom, INIT_PROTO_VERSION, NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
                                        strprintf("Sub version(%s) must be %s or greater",strSubVer, FormatFullVersion()));
                     pfrom->fDisconnect = true;
                     return false;
-                }
-            }
-        }
-        else
-        {
-            if(chainActive.Height() >= g_nForbidOldVersionHeight && chainActive.Height() < g_nForbidOldVersionHeightV2)
-            {
-                for(unsigned int i=0;i<g_versionVec.size();i++)
-                {
-                    if(strSubVer.find(g_versionVec[i])!=string::npos)
-                    {
-                        // disconnect from peers older
-                        LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
-                        connman.PushMessageWithVersion(pfrom, INIT_PROTO_VERSION, NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
-                                           strprintf("Sub version(%s) must be %s or greater",strSubVer, FormatFullVersion()));
-                        pfrom->fDisconnect = true;
-                        return false;
-                    }
                 }
             }
         }

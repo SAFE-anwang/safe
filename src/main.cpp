@@ -63,8 +63,7 @@ int g_nCanSelectMasternodeHeight = 10000;
 
 //SQTODO
 int g_nStartDeterministicMNHeight = 1299269;
-int g_nForbidOldVersionHeightV2 = 1290000;
-int g_nForbidStartDMN = g_nForbidOldVersionHeightV2+SPOS_BLOCKS_PER_DAY*2;
+int g_nForbidStartDMN = g_nSaveMasternodePayeeHeightV2 + SPOS_BLOCKS_PER_DAY*5;
 int g_nDeterministicMNTxMinConfirmNum = 200;
 std::vector<CDeterministicMasternode_IndexValue> g_vecResultDeterministicMN;
 std::vector<CDeterministicMasternode_IndexValue> g_vecReSelectResultMasternodes;

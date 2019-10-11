@@ -159,7 +159,6 @@ int g_nForbidOldVersionHeight =  1101183;
 vector<string> g_versionVec;
 
 //SQTODO
-vector<string> g_versionVecV2;
 int g_nStorageSpork = 1;
 CSporkInfo_IndexValue g_SporkInfo;
 
@@ -185,7 +184,6 @@ extern int g_nSelectMasterNodeFail;
 extern bool g_fReceiveBlock;
 
 extern int g_nStartDeterministicMNHeight;
-extern int g_nForbidOldVersionHeightV2;
 extern int g_nDeterministicMNTxMinConfirmNum;
 int g_nLastSelectMasterNodeSuccessHeight = 0;
 uint32_t g_nScoreTime = 0;
