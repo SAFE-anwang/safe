@@ -800,26 +800,8 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		bTimeIntervalLog = false;
 	}
 	
-	int nNextIndex = ((nTimeInterval + nSPosTargetSpacing) / nSPosTargetSpacing);	
-	nNextIndex--;
-	if (nNextIndex < 0)
-	{
-		if (!bErrorIndexLog)
-		{
-			bErrorIndexLog = true;
-			LogPrintf("SPOS_Error: error index, unknow reason, nIndex: %d, nCurTime:%lld, nStartNewLoopTime: %lld, nPushForwardTime: %d, nRealyMinerCount: %d\n",
-				nNextIndex,
-				nCurTime,
-				nStartNewLoopTime,
-				nPushForwardTime,
-				nRealyMinerCount);
-		}
-
-		return;
-	}
-
-	bErrorIndexLog = false;
-	nNextIndex = nNextIndex % nRealyMinerCount;
+	int nTargetSpacingInterval = nTimeInterval / nSPosTargetSpacing;
+	int nNextIndex = nTargetSpacingInterval % nRealyMinerCount;
 
 	CKeyID mnKeyID;
 	unsigned int nNextBlockHeight = pindexPrev->nHeight + 1;
@@ -841,7 +823,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		return;
 	}
 	
-	int64_t nNextBlockTime = nCurTime + nSPosTargetSpacing;
+	int64_t nNextBlockTime = nStartNewLoopTime + nPushForwardTime + ((nTargetSpacingInterval + 1) * nSPosTargetSpacing);
 	int64_t nBlockOffset = nNextBlockTime - pindexPrev->GetBlockTime();
 	if ((nBlockOffset < nSPosTargetSpacing) || (nBlockOffset % nSPosTargetSpacing != 0))
 	{
@@ -864,7 +846,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	bErrCreateBlcokLog = false;
 	if (std::abs((nNextBlockTime * 1000) - GetTimeMillis()) > 10000)    // create block in 20s-30s
 	{
-		return ;
+		return;
 	}
 
 	CKeyID minerKeyID;
