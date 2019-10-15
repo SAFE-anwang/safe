@@ -98,7 +98,7 @@ UniValue getinfo(const UniValue& params, bool fHelp)
 #if SCN_CURRENT == SCN__main
     obj.push_back(Pair("version", CLIENT_VERSION));
 #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
-    obj.push_back(Pair("version", 2050044));
+    obj.push_back(Pair("version", 2050045));
 #else
 #error unsupported <safe chain name>
 #endif
