@@ -861,7 +861,11 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 		return;
 	}
 
-	bErrCreateBlcokLog = false;	
+	bErrCreateBlcokLog = false;
+	if (std::abs((nNextBlockTime * 1000) - GetTimeMillis()) > 10000)    // create block in 20s-30s
+	{
+		return ;
+	}
 
 	CKeyID minerKeyID;
 	CScript sposMinerPayee;
@@ -962,7 +966,7 @@ static void ConsensusUseSPos(const CChainParams &chainparams,
 	int64_t nActualTimeMillisInterval = std::abs(nNextBlockTime - nTempTime);
 
 	// whether to meet the broadcast block requirements 
-	while (nActualTimeMillisInterval > 100)
+	while (nActualTimeMillisInterval > 200)
 	{
 		boost::this_thread::interruption_point();
 		MilliSleep(50);
