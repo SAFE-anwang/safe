@@ -28,6 +28,9 @@ std::string g_strCancelledSafeAddress = "XagqqFetxiDb9wbartKDrXgnqLah9fKoTx"; //
 std::string g_strCancelledAssetAddress = "XagqqFetxiDb9wbartKDrXgnqLahHSe2VE"; // asset's black hold address (hash160: 0x0000...02)
 std::string g_strPutCandyAddress = "XagqqFetxiDb9wbartKDrXgnqLahUovwfs"; // candy's black hold address (hash160: 0x0000...03)
 
+std::string g_straddrCCTA = "XagqqFetxiDb9wbartKDrXgnqLahYeM9Eg";// CCTA's black hold address (hash160: 0x0000...04)
+std::string g_strsafeCastCoin = "XagqqFetxiDb9wbartKDrXgnqLahgJ1yXG";// BCCTA's black hold address (hash160: 0x0000...05)
+
 
 int g_nStartSPOSHeight = 1092826;
 int g_nSaveMasternodePayeeHeight = 1088804;

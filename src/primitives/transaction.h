@@ -29,6 +29,7 @@
 #define CHANGE_ASSET_CMD        204
 #define PUT_CANDY_CMD           205
 #define GET_CANDY_CMD           206
+#define GET_BCCTA_ASSET_CMD     207
 #define TRANSFER_SAFE_CMD       300
 
 extern int g_nProtocolV1Height;
@@ -255,7 +256,7 @@ public:
         if(pAppCmd)
             *pAppCmd = nAppCmd;
 
-        return (nAppCmd == ISSUE_ASSET_CMD || nAppCmd == ADD_ASSET_CMD || nAppCmd == TRANSFER_ASSET_CMD || nAppCmd == DESTORY_ASSET_CMD || nAppCmd == CHANGE_ASSET_CMD || nAppCmd == PUT_CANDY_CMD || nAppCmd == GET_CANDY_CMD);
+        return (nAppCmd == ISSUE_ASSET_CMD || nAppCmd == ADD_ASSET_CMD || nAppCmd == TRANSFER_ASSET_CMD || nAppCmd == DESTORY_ASSET_CMD || nAppCmd == CHANGE_ASSET_CMD || nAppCmd == PUT_CANDY_CMD || nAppCmd == GET_CANDY_CMD || nAppCmd == GET_BCCTA_ASSET_CMD);
     }
 
     bool IsApp(uint32_t* pAppCmd = NULL) const

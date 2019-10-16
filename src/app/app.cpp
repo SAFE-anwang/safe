@@ -213,13 +213,12 @@ vector<unsigned char> FillIssueData(const CAppHeader& header, const CAssetData& 
     return vData;
 }
 
-vector<unsigned char> FillCommonData(const CAppHeader& header, const CCommonData& commonData)
+vector<unsigned char> FillCommonData(const CAppHeader& header, const CCommonData& commonData, const uint16_t& nVersion)
 {
     vector<unsigned char> vData;
     FillHeader(header, vData);
 
     App::CommonData data;
-    uint16_t nVersion = g_nAppDataVersion;
     data.set_version((const unsigned char*)&nVersion, sizeof(nVersion));
     data.set_assetid(commonData.assetId.begin(), commonData.assetId.size());
     data.set_amount(commonData.nAmount);
@@ -283,13 +282,12 @@ vector<unsigned char> FillGetCandyData(const CAppHeader& header, const CGetCandy
     return vData;
 }
 
-vector<unsigned char> FillTransferSafeData(const CAppHeader& header, const CTransferSafeData& safeData)
+vector<unsigned char> FillTransferSafeData(const CAppHeader& header, const CTransferSafeData& safeData, const uint16_t& nVersion)
 {
     vector<unsigned char> vData;
     FillHeader(header, vData);
 
     App::TransferSafeData data;
-    uint16_t nVersion = g_nAppDataVersion;
     data.set_version((const unsigned char*)&nVersion, sizeof(nVersion));
     data.set_remarks(safeData.strRemarks);
 

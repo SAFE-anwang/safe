@@ -21,6 +21,8 @@
 #define PUT_CANDY_TXOUT         8
 #define GET_CANDY_TXOUT         9
 #define CHANGE_ASSET_TXOUT      10
+#define GET_BCCTA_ASSET_TXOUT   11
+
 
 #define REGISTER_APP_CMD        100
 #define ADD_AUTH_CMD            101
@@ -33,6 +35,7 @@
 #define CHANGE_ASSET_CMD        204
 #define PUT_CANDY_CMD           205
 #define GET_CANDY_CMD           206
+#define GET_BCCTA_ASSET_CMD     207
 #define TRANSFER_SAFE_CMD       300
 
 #define MAX_ADDRESS_SIZE        34
@@ -590,10 +593,10 @@ std::vector<unsigned char> FillRegisterData(const std::string& strAdminAddress, 
 std::vector<unsigned char> FillAuthData(const std::string& strAdminAddress, const CAppHeader& header, const CAuthData& authData);
 std::vector<unsigned char> FillExtendData(const CAppHeader& header, const CExtendData& extendData);
 std::vector<unsigned char> FillIssueData(const CAppHeader& header, const CAssetData& assetData);
-std::vector<unsigned char> FillCommonData(const CAppHeader& header, const CCommonData& commonData);
+std::vector<unsigned char> FillCommonData(const CAppHeader& header, const CCommonData& commonData, const uint16_t& nVersion = 1);
 std::vector<unsigned char> FillPutCandyData(const CAppHeader& header, const CPutCandyData& candyData);
 std::vector<unsigned char> FillGetCandyData(const CAppHeader& header, const CGetCandyData& candyData);
-std::vector<unsigned char> FillTransferSafeData(const CAppHeader& header, const CTransferSafeData& safeData);
+std::vector<unsigned char> FillTransferSafeData(const CAppHeader& header, const CTransferSafeData& safeData, const uint16_t& nVersion = 1);
 
 bool ParseReserve(const std::vector<unsigned char>& vReserve, CAppHeader& header, std::vector<unsigned char>& vData);
 bool ParseRegisterData(const std::vector<unsigned char>& vAppData, CAppData& appData, std::string* pAdminAddress = NULL);

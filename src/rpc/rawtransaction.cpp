@@ -111,7 +111,8 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
                             }
                         }
                         else if (header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD ||
-                                 header.nAppCmd == DESTORY_ASSET_CMD ||header.nAppCmd == CHANGE_ASSET_CMD)
+                                 header.nAppCmd == DESTORY_ASSET_CMD ||header.nAppCmd == CHANGE_ASSET_CMD ||
+                                 header.nAppCmd == GET_BCCTA_ASSET_CMD)
                         {
                             CCommonData commonData;
                             if (ParseCommonData(vData, commonData))
@@ -212,6 +213,19 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
                     }
                 }
                 else if (header.nAppCmd == ADD_ASSET_CMD)
+                {
+                    CCommonData commonData;
+                    if (ParseCommonData(vData, commonData))
+                    {
+                        CAssetId_AssetInfo_IndexValue assetInfo;
+                        if (commonData.assetId.IsNull() || !GetAssetInfoByAssetId(commonData.assetId, assetInfo))
+                            continue;
+
+                        assetId = commonData.assetId;
+                        out.push_back(Pair("value", StrValueFromAmount(txout.nValue, assetInfo.assetData.nDecimals)));
+                    }
+                }
+                else if (header.nAppCmd == GET_BCCTA_ASSET_CMD)
                 {
                     CCommonData commonData;
                     if (ParseCommonData(vData, commonData))

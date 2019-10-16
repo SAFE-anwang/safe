@@ -1,3 +1,4 @@
+syntax = "proto2";
 package App;
 option java_package = "org.safe.App";
 option java_outer_classname = "App";

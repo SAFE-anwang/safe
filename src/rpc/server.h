@@ -343,9 +343,30 @@ extern UniValue getlocalassetlist(const UniValue& params, bool fHelp);
 extern UniValue transfermanyasset(const UniValue& params, bool fHelp);
 extern UniValue getassetlocaltxlist(const UniValue& params, bool fHelp);
 
+
 //safevode
 extern UniValue regsupernodecandidate(const UniValue& params, bool fHelp);
 extern UniValue unregsupernodecandidate(const UniValue& params, bool fHelp);
+extern UniValue updatesupernodecandidate(const UniValue& params, bool fHelp);
+extern UniValue holdervote(const UniValue& params, bool fHelp);
+extern UniValue ivote(const UniValue& params, bool fHelp);
+extern UniValue revokevtxo(const UniValue& params, bool fHelp);
+extern UniValue bindvotersafecodeaccount(const UniValue& params, bool fHelp);
+
+//ccta
+extern UniValue cctasafe(const UniValue& params, bool fHelp);
+extern UniValue cctaasset(const UniValue& params, bool fHelp);
+extern UniValue regcrosschaincoinageinfo(const UniValue& params, bool fHelp);
+extern UniValue getbcctasafe(const UniValue& params, bool fHelp);
+extern UniValue getbcctaasset(const UniValue& params, bool fHelp);
+
+
+
+
+
+
+
+
 
 
 

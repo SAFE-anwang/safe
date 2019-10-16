@@ -1,11 +1,7 @@
+syntax = "proto2";
 package Safevote;
 option java_package = "org.safe.Safevote";
 option java_outer_classname = "Safevote";
-
-message MapFieldEntry{
-  required bytes key=1;                   //string  
-  required bytes value=2;                 //string
-}
 
 message RegInfo{
     required bytes safePubkey=1;	      //string
@@ -15,17 +11,17 @@ message RegInfo{
 }
 
 message RegSuperNodeCandidate{
-    required bytes scBpPubKey=1;	      //string
+    required bytes scBpPubKey=1;	        //string
     required bytes dividendRatio=2;	      //uint16
-    required bytes bpName=3;		      //string 32 max
-    required bytes bpURL=4;		          //string 256 max
+    required bytes bpName=3;		          //string 32 max
+    required bytes bpURL=4;		            //string 256 max
     repeated RegInfo info=5;       	      //see RegInfo
-    repeated MapFieldEntry signature=6;   //pubKey-signature
+    map<string,string> signature=6;       //pubKey-signature
 }
 
 message UnRegSuperNodeCandidate{
     required bytes regTxHash=1;           //string
-    repeated MapFieldEntry signature=2;   //pubkey-signature
+    map<string,string> signature=2;       //pubkey-signature
 }
 
 message SuperNodeUpdateInfo{
@@ -37,7 +33,7 @@ message SuperNodeUpdateInfo{
 message UpdateSuperNodeCandidate{
     required bytes regTxHash=1;                       //string
     repeated SuperNodeUpdateInfo updateInfo=2;        //See SuperNodeUpdateInfo
-    repeated MapFieldEntry signature=3;               //pubkey-signature
+    map<string,string> signature=3;               //pubkey-signature
 }
 
 message VoteInfo{
@@ -50,8 +46,8 @@ message VoteInfo{
 
 message HolderVote{
    required bytes regTxHash=1;             //string
-   repeated VoteInfo voteInfo=2;
-   repeated MapFieldEntry signature=3;
+   repeated VoteInfo voteInfo=2;           //see VoteInfo
+   map<string,string> signature=3;         //pubkey-signature
 }
 
 message IVote{
@@ -63,9 +59,10 @@ message RevokeInfo{
   required bytes safeTxHash=2;             //string
   required uint32 safeTxOutIdx=3;          //uint32
 }
+
 message RevokeVtxo{
-  repeated RevokeInfo revokeInfo=1;
-  repeated MapFieldEntry signature=2;
+  repeated RevokeInfo revokeInfo=1;        //see RevokeInfo
+  map<string,string> signature=2;          //pubkey-signature
 }
 
 message BindInfo{
@@ -74,26 +71,6 @@ message BindInfo{
 }
 
 message BindVoterSafecodeAccount{
-  repeated BindInfo bindInfo=1;
-  repeated MapFieldEntry signature=2;
-}
-
-message CCTA{
-  required bytes scAccount=1;           //string
-  required bytes targetChain=2;         //string
-  required bytes sepChar=3;             //string
-  required bytes bizRemarks=4;          //sring
-}
-
-message regCastCoinInfoes {
-  required bytes scTxHash=1;
-  required bytes assetName=2;
-  optional bytes assetId=3;           //empty if safe
-  required uint64 quantity=4;         //byte uint64
-  required bytes safeUser=5; 
-}
-
-message BcctaCastCoin {
-  required bytes command=1;           //uint32
-  repeated regCastCoinInfoes regInfoes=2;
+  repeated BindInfo bindInfo=1;           //see BindInfo
+  map<string,string> signature=2;         //pubkey-signature
 }

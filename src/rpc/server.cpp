@@ -520,7 +520,18 @@ static const CRPCCommand vRPCCommands[] =
     /* safevote */
     { "safevote",           "regsupernodecandidate",  &regsupernodecandidate,       true  },
     { "safevote",         "unregsupernodecandidate",  &unregsupernodecandidate,     true  },
+    { "safevote",         "updatesupernodecandidate", &updatesupernodecandidate,    true  },
+    { "safevote",           "holdervote",             &holdervote,                  true  },
+    { "safevote",           "ivote",                  &ivote,                       true  },
+    { "safevote",           "revokevtxo",             &revokevtxo,                  true  },
+    { "safevote",       "bindvotersafecodeaccount",   &bindvotersafecodeaccount,    true  },
 
+    /* safeccta */
+    { "safeccta",            "cctasafe",               &cctasafe,                   true  },
+    { "safeccta",            "cctaasset",              &cctaasset,                  true  },
+    { "safeccta",       "regcrosschaincoinageinfo",    &regcrosschaincoinageinfo,   true  },
+    { "safeccta",            "getbcctasafe",           &getbcctasafe,               true  },
+    { "safeccta",            "getbcctaasset",          &getbcctaasset,              true  },
 
 
 #endif // ENABLE_WALLET

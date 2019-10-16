@@ -45,7 +45,7 @@ extern int g_SafeVoteStartHeight;
 class CRegInfo
 {
 public:
-    std::string strsafePubkey;
+    char vchpubkey[33];
     std::string strsafeTxHash;
     uint32_t nsafeTxOutIdx;
     uint8_t nutxoType;
@@ -55,9 +55,13 @@ public:
         SetNull();
     }
 
-    CRegInfo(const std::string& strsafePubkeyIn, const std::string& strsafeTxHashIn, const uint32_t& nsafeTxOutIdxIn, const uint8_t& nutxoTypeIn, const CPubKey& vchPubKeyIn)
-               : strsafePubkey(strsafePubkeyIn), strsafeTxHash(strsafeTxHashIn), nsafeTxOutIdx(nsafeTxOutIdxIn), nutxoType(nutxoTypeIn)
+    CRegInfo(const char* vchpubkeyIn, const std::string& strsafeTxHashIn, const uint32_t& nsafeTxOutIdxIn, const uint8_t& nutxoTypeIn)
     {
+        memset(vchpubkey, 0, sizeof(vchpubkey));
+        strncpy(vchpubkey, vchpubkeyIn, sizeof(vchpubkey));
+        strsafeTxHash = strsafeTxHashIn;
+        nsafeTxOutIdx = nsafeTxOutIdxIn;
+        nutxoType = nutxoTypeIn;
     }
 
     CRegInfo& operator=(const CRegInfo& data)
@@ -65,7 +69,7 @@ public:
         if(this == &data)
             return *this;
 
-        strsafePubkey = data.strsafePubkey;
+        strncpy(vchpubkey, data.vchpubkey, sizeof(vchpubkey));
         strsafeTxHash = data.strsafeTxHash;
         nsafeTxOutIdx = data.nsafeTxOutIdx;
         nutxoType = data.nutxoType;
@@ -75,7 +79,7 @@ public:
     
     void SetNull()
     {
-        strsafePubkey.clear();
+        memset(vchpubkey, 0, sizeof(vchpubkey));
         strsafeTxHash.clear();
         nsafeTxOutIdx = 0;
         nutxoType = 0;
@@ -241,7 +245,7 @@ public:
 class CVoteInfo
 {
 public:
-    std::string strsafePubkey;
+    char vchpubkey[33];
     std::string strsafeTxHash;
     int32_t nsafeTxOutIdx;
     CAmount nsafeAmount;
@@ -252,9 +256,14 @@ public:
         SetNull();
     }
 
-    CVoteInfo(const std::string& strsafePubkeyIn, const std::string& strsafeTxHashIn, const int32_t& nsafeTxOutIdxIn, const CAmount& nsafeAmountIn, const uint8_t& nutxoTypeIn)
-                :strsafePubkey(strsafePubkeyIn), strsafeTxHash(strsafeTxHashIn), nsafeTxOutIdx(nsafeTxOutIdxIn), nsafeAmount(nsafeAmountIn), nutxoType(nutxoTypeIn)
+    CVoteInfo(const char* vchpubkeyIn, const std::string& strsafeTxHashIn, const int32_t& nsafeTxOutIdxIn, const CAmount& nsafeAmountIn, const uint8_t& nutxoTypeIn)
     {
+        memset(vchpubkey, 0, sizeof(vchpubkey));
+        strncpy(vchpubkey, vchpubkeyIn, sizeof(vchpubkey));
+        strsafeTxHash = strsafeTxHashIn;
+        nsafeTxOutIdx = nsafeTxOutIdxIn;
+        nsafeAmount = nsafeAmountIn;
+        nutxoType = nutxoTypeIn;
     }
     
     CVoteInfo& operator=(const CVoteInfo& data)
@@ -262,7 +271,7 @@ public:
         if(this == &data)
             return *this;
 
-        strsafePubkey = data.strsafePubkey;
+        strncpy(vchpubkey, data.vchpubkey, sizeof(vchpubkey));
         strsafeTxHash = data.strsafeTxHash;
         nsafeTxOutIdx = data.nsafeTxOutIdx;
         nsafeAmount = data.nsafeAmount;
@@ -273,7 +282,7 @@ public:
 
     void SetNull()
     {
-        strsafePubkey.clear();
+        memset(vchpubkey, 0, sizeof(vchpubkey));
         strsafeTxHash.clear();
         nsafeTxOutIdx = 0;
         nsafeAmount = 0;
@@ -353,7 +362,7 @@ public:
 class CRevokeInfo
 {
 public:
-    std::string strsafePubkey;
+    char vchpubkey[33];
     std::string strsafeTxHash;
     uint32_t nsafeTxOutIdx;
 
@@ -362,9 +371,12 @@ public:
         SetNull();
     }
 
-    CRevokeInfo(const std::string& strsafePubkeyIn, const std::string& strsafeTxHashIn, const uint32_t& nsafeTxOutIdxIn)
-                :strsafePubkey(strsafePubkeyIn), strsafeTxHash(strsafeTxHashIn), nsafeTxOutIdx(nsafeTxOutIdxIn)
+    CRevokeInfo(const char* vchpubkeyIn, const std::string& strsafeTxHashIn, const uint32_t& nsafeTxOutIdxIn)
     {
+        memset(vchpubkey, 0, sizeof(vchpubkey));
+        strncpy(vchpubkey, vchpubkeyIn, sizeof(vchpubkey));
+        strsafeTxHash = strsafeTxHashIn;
+        nsafeTxOutIdx = nsafeTxOutIdxIn;
     }
     
     CRevokeInfo& operator=(const CRevokeInfo& data)
@@ -372,7 +384,7 @@ public:
         if(this == &data)
             return *this;
 
-        strsafePubkey = data.strsafePubkey;
+        strncpy(vchpubkey, data.vchpubkey, sizeof(vchpubkey));
         strsafeTxHash = data.strsafeTxHash;
         nsafeTxOutIdx = data.nsafeTxOutIdx;
 
@@ -381,7 +393,7 @@ public:
 
     void SetNull()
     {
-        strsafePubkey.clear();
+        memset(vchpubkey, 0, sizeof(vchpubkey));
         strsafeTxHash.clear();
         nsafeTxOutIdx = 0;
     }
@@ -425,7 +437,7 @@ public:
 class CBindInfo 
 {
 public:
-    std::string strsafePubkey;
+    char vchpubkey[33];
     std::string strscAccount;
 
     CBindInfo()
@@ -433,9 +445,11 @@ public:
         SetNull();
     }
 
-    CBindInfo(const std::string& strsafePubkeyIn, const std::string& strscAccountIn)
-                :strsafePubkey(strsafePubkeyIn), strscAccount(strscAccountIn)
+    CBindInfo(const char* vchpubkeyIn, const std::string& strscAccountIn)
     {
+        memset(vchpubkey, 0, sizeof(vchpubkey));
+        strncpy(vchpubkey, vchpubkeyIn, sizeof(vchpubkey));
+        strscAccount = strscAccountIn;
     }
     
     CBindInfo& operator=(const CBindInfo& data)
@@ -443,7 +457,7 @@ public:
         if(this == &data)
             return *this;
 
-        strsafePubkey = data.strsafePubkey;
+        strncpy(vchpubkey, data.vchpubkey, sizeof(vchpubkey));
         strscAccount = data.strscAccount;
 
         return *this;
@@ -451,7 +465,7 @@ public:
 
     void SetNull()
     {
-        strsafePubkey.clear();
+        memset(vchpubkey, 0, sizeof(vchpubkey));
         strscAccount.clear();
     }
 };
@@ -491,14 +505,13 @@ public:
 };
 
 
-std::vector<unsigned char> FillRegSuperNodeCandidate(const CAppHeader& header, const CRegSuperNodeCandidate& regSuperNodeCandidate);
-std::vector<unsigned char> FillUnregSuperNodeCandidate(const CAppHeader& header, const CUnRegSuperNodeCandidate& unRegSuperNodeCandidate);
-std::vector<unsigned char> FillUpdateSuperNodeCandidate(const CAppHeader& header, const CUpdateSuperNodeCandidate& updateSuperNodeCandidate);
-std::vector<unsigned char> FillHolderVote(const CAppHeader& header, const CHolderVote& holderVote);
-std::vector<unsigned char> FillIVote(const CAppHeader& header, const CIVote& iVote);
-std::vector<unsigned char> FillRevokeVtxo(const CAppHeader& header, const CRevokeVtxo& revokeVtxo);
-std::vector<unsigned char> FillBindVoterSafecodeAccount(const CAppHeader& header, const CBindVoterSafecodeAccount& bindVoterSafecodeAccount);
-
+std::vector<unsigned char> FillRegSuperNodeCandidate(const CRegSuperNodeCandidate& regSuperNodeCandidate);
+std::vector<unsigned char> FillUnregSuperNodeCandidate(const CUnRegSuperNodeCandidate& unRegSuperNodeCandidate);
+std::vector<unsigned char> FillUpdateSuperNodeCandidate(const CUpdateSuperNodeCandidate& updateSuperNodeCandidate);
+std::vector<unsigned char> FillHolderVote(const CHolderVote& holderVote);
+std::vector<unsigned char> FillIVote(const CIVote& iVote);
+std::vector<unsigned char> FillRevokeVtxo(const CRevokeVtxo& revokeVtxo);
+std::vector<unsigned char> FillBindVoterSafecodeAccount(const CBindVoterSafecodeAccount& bindVoterSafecodeAccount);
 
 
 #endif

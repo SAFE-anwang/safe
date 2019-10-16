@@ -1036,7 +1036,7 @@ UniValue getlocalassetinfo(const UniValue& params, bool fHelp)
             std::vector<unsigned char> vData;
             if(!ParseReserve(txout.vReserve, header, vData))
                 continue;
-            if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd==CHANGE_ASSET_CMD || header.nAppCmd==TRANSFER_ASSET_CMD || header.nAppCmd==DESTORY_ASSET_CMD)
+            if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd==CHANGE_ASSET_CMD || header.nAppCmd==TRANSFER_ASSET_CMD || header.nAppCmd==DESTORY_ASSET_CMD || header.nAppCmd == GET_BCCTA_ASSET_CMD)
             {
                 CCommonData commonData;
                 if(!ParseCommonData(vData, commonData))
@@ -1479,6 +1479,24 @@ UniValue getassetdetails(const UniValue& params, bool fHelp)
                     addData.push_back(Pair("remarks", commonData.strRemarks));
 
                     txData.push_back(addData);
+                }
+            }
+            else if(header.nAppCmd == GET_BCCTA_ASSET_CMD)
+            {
+                CCommonData commonData;
+                if(ParseCommonData(vData, commonData))
+                {
+                    CAssetId_AssetInfo_IndexValue assetInfo;
+                    if(commonData.assetId.IsNull() || !GetAssetInfoByAssetId(commonData.assetId, assetInfo))
+                        continue;
+
+                    UniValue bcctaAssetData(UniValue::VOBJ);
+                    bcctaAssetData.push_back(Pair("adminSafeAddress", strAddress));
+                    bcctaAssetData.push_back(Pair("assetId", commonData.assetId.GetHex()));
+                    bcctaAssetData.push_back(Pair("addAmount", StrValueFromAmount(commonData.nAmount, assetInfo.assetData.nDecimals)));
+                    bcctaAssetData.push_back(Pair("remarks", commonData.strRemarks));
+
+                    txData.push_back(bcctaAssetData);
                 }
             }
             else if(header.nAppCmd == TRANSFER_ASSET_CMD)
@@ -1944,6 +1962,12 @@ UniValue getlocalassetlist(const UniValue& params, bool fHelp)
                         assetId = assetData.GetHash();
                 }
                 else if (header.nAppCmd == ADD_ASSET_CMD)
+                {
+                    CCommonData commonData;
+                    if (ParseCommonData(vData, commonData))
+                        assetId = commonData.assetId;
+                }
+                else if (header.nAppCmd == GET_BCCTA_ASSET_CMD)
                 {
                     CCommonData commonData;
                     if (ParseCommonData(vData, commonData))

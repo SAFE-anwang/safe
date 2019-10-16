@@ -181,8 +181,9 @@ struct CRecipient
     bool fSubtractFeeFromAmount;
     bool fAsset;
     std::string strMemo;
+    uint16_t nVersion;
 
-    CRecipient(const CScript& scriptPubKeyIn, const CAmount& nAmountIn, const int& nLockedMonthIn, const bool fSubtractFeeFromAmountIn, const bool fAssetIn = false, const std::string& strMemoIn = "")
+    CRecipient(const CScript& scriptPubKeyIn, const CAmount& nAmountIn, const int& nLockedMonthIn, const bool fSubtractFeeFromAmountIn, const bool fAssetIn = false, const std::string& strMemoIn = "", const uint16_t& nVersionIn = 1)
     {
         scriptPubKey = scriptPubKeyIn;
         nAmount = nAmountIn;
@@ -190,6 +191,7 @@ struct CRecipient
         fSubtractFeeFromAmount = fSubtractFeeFromAmountIn;
         fAsset = fAssetIn;
         strMemo = strMemoIn;
+        nVersion = nVersionIn;
     }
 };
 

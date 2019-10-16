@@ -1,3 +1,4 @@
+syntax = "proto2";
 package Spos;
 option java_package = "org.safe.Spos";
 option java_outer_classname = "Spos";

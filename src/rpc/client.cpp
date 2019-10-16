@@ -168,6 +168,18 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "transfermanyasset", 1},
     { "getassetlocaltxlist", 1},
     { "regsupernodecandidate", 1},
+    { "regsupernodecandidate", 4},
+    { "updatesupernodecandidate", 1},
+    { "holdervote", 1},
+    { "ivote", 1},
+    { "revokevtxo", 0},
+    { "bindvotersafecodeaccount", 0},
+    { "cctasafe", 0},
+    { "cctaasset", 1},
+    { "regcrosschaincoinageinfo", 0},
+    { "getbcctasafe", 1},
+    { "getbcctasafe", 1},
+
 };
 
 class CRPCConvertTable

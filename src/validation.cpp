@@ -1041,6 +1041,15 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                 return state.DoS(50, false, REJECT_INVALID, "add_asset: asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
             mapAssetId[addData.assetId]++;
         }
+        else if(header.nAppCmd == GET_BCCTA_ASSET_CMD)
+        {
+            CCommonData addData;
+            if(!ParseCommonData(vData, addData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse add txout reserve failed");
+            if(addData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "get_bccta_asset: asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapAssetId[addData.assetId]++;
+        }
         else if(header.nAppCmd == TRANSFER_ASSET_CMD)
         {
             CCommonData transferData;
@@ -1182,6 +1191,15 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse add txin reserve failed");
             if(addData.assetId.IsNull())
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: txin asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
+            mapInAssetId[addData.assetId]++;
+        }
+        else if(header.nAppCmd == GET_BCCTA_ASSET_CMD)
+        {
+            CCommonData addData;
+            if(!ParseCommonData(vData, addData))
+                return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse bccta asset txin reserve failed");
+            if(addData.assetId.IsNull())
+                return state.DoS(50, false, REJECT_INVALID, "bccta_asset_tx: txin asset id is null, " + strprintf("%s-%d", tx.GetHash().GetHex(), i));
             mapInAssetId[addData.assetId]++;
         }
         else if(header.nAppCmd == TRANSFER_ASSET_CMD)
@@ -1807,6 +1825,64 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                     return state.DoS(10, false, REJECT_INVALID, "add_asset: cannot parse txin address");
                 if(strInAddress != strAdminAddress)
                     return state.DoS(10, false, REJECT_INVALID, "add_asset: txin address is different from admin address, " + strInAddress + " != " + strAdminAddress);
+            }
+        }
+        else if(header.nAppCmd == GET_BCCTA_ASSET_CMD)
+        {
+            if(txout.nUnlockedHeight > 0)
+                return state.DoS(50, false, REJECT_INVALID, "bccta_asset: conflict with locked txout");
+
+            if(header.appId.GetHex() != g_strSafeAssetId)
+                return state.DoS(50, false, REJECT_INVALID, "bccta_asset: invalid safe-asset app id in header, " + header.appId.GetHex());
+
+            CCommonData addData;
+            if(!ParseCommonData(vData, addData))
+                return state.DoS(50, false, REJECT_INVALID, "bccta_asset: parse reserve failed");
+
+            CAssetId_AssetInfo_IndexValue assetInfo;
+            if(!GetAssetInfoByAssetId(addData.assetId, assetInfo, false))
+                return state.DoS(10, false, REJECT_INVALID, "bccta_asset: non-existent asset");
+            string strAdminAddress = assetInfo.strAdminAddress;
+            if(strAddress != strAdminAddress)
+                return state.DoS(10, false, REJECT_INVALID, "bccta_asset: txout address is different from admin address, " + strAddress + " != " + strAdminAddress);
+
+            if(addData.nAmount <= 0 || addData.nAmount > MAX_ASSETS)
+                return state.DoS(10, false, REJECT_INVALID, "bccta_asset: invalid add amount");
+
+            if(addData.strRemarks.size() > MAX_REMARKS_SIZE)
+                return state.DoS(10, false, REJECT_INVALID, "bccta_asset: invalid remarks");
+
+            if(view.GetValueIn(tx, true) != 0)
+                return state.DoS(50, false, REJECT_INVALID, "bccta_asset: vin asset amount must be 0");
+
+            // check other txout
+            for(unsigned int m = 0; m < tx.vout.size(); m++)
+            {
+                if(m == i)
+                    continue;
+
+                uint32_t nAppCmd = 0;
+                if(!(tx.vout[m].IsSafeOnly(&nAppCmd) && nAppCmd != TRANSFER_SAFE_CMD)) // non-simple-safe txout
+                    return state.DoS(10, false, REJECT_INVALID, "bccta_asset: tx can contain add txout and simple safe txout only, " + txout.ToString());
+            }
+
+            // check vin
+            for(unsigned int m = 0; m < tx.vin.size(); m++)
+            {
+                const CTxIn& txin = tx.vin[m];
+                const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+                if (!coins)
+                    return state.DoS(10, false, REJECT_INVALID, "bccta_asset: missing txin, " + txin.ToString());
+
+                const CTxOut& in_txout = coins->vout[txin.prevout.n];
+                if(in_txout.IsAsset()) // forbid asset txin
+                    return state.DoS(50, false, REJECT_INVALID, "bccta_asset: txin cannot be asset txout, " + txin.ToString());
+
+                string strInAddress = "";
+                if(!GetTxOutAddress(in_txout, &strInAddress))
+                    return state.DoS(10, false, REJECT_INVALID, "bccta_asset: cannot parse txin address");
+                if(strInAddress != strAdminAddress)
+                    return state.DoS(10, false, REJECT_INVALID, "bccta_asset: txin address is different from admin address, " + strInAddress + " != " + strAdminAddress);
             }
         }
         else if(header.nAppCmd == TRANSFER_ASSET_CMD)
@@ -3529,7 +3605,7 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
                         return state.DoS(100, false, REJECT_INVALID, "app_txout: bad-txns-inputvalues-outofrange");
                 }
 
-                if(header.nAppCmd == REGISTER_APP_CMD || header.nAppCmd == ADD_AUTH_CMD || header.nAppCmd == DELETE_AUTH_CMD || header.nAppCmd == ISSUE_ASSET_CMD || header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == PUT_CANDY_CMD || header.nAppCmd == GET_CANDY_CMD)
+                if(header.nAppCmd == REGISTER_APP_CMD || header.nAppCmd == ADD_AUTH_CMD || header.nAppCmd == DELETE_AUTH_CMD || header.nAppCmd == ISSUE_ASSET_CMD || header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == PUT_CANDY_CMD || header.nAppCmd == GET_CANDY_CMD || header.nAppCmd == GET_BCCTA_ASSET_CMD)
                 {
                     if(coins->nHeight <= 0)
                         return state.DoS(10, false, REJECT_INVALID, "app_tx/asset_tx: txin need 1 confirmation at least, " + prevout.ToString());
@@ -4065,6 +4141,12 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                     CCommonData addData;
                     if(ParseCommonData(vData, addData))
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(addData.assetId, strAddress, ADD_ISSUE_TXOUT, COutPoint(hash, m)), -1));
+                }
+                else if(header.nAppCmd == GET_BCCTA_ASSET_CMD)
+                {
+                    CCommonData addData;
+                    if(ParseCommonData(vData, addData))
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(addData.assetId, strAddress, GET_BCCTA_ASSET_TXOUT, COutPoint(hash, m)), -1));
                 }
                 else if(header.nAppCmd == TRANSFER_ASSET_CMD)
                 {
@@ -4924,6 +5006,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                     CCommonData addData;
                     if(ParseCommonData(vData, addData))
                         assetTx_index.push_back(make_pair(CAssetTx_IndexKey(addData.assetId, strAddress, ADD_ISSUE_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
+                }
+                else if(header.nAppCmd == GET_BCCTA_ASSET_CMD)
+                {
+                    CCommonData addData;
+                    if(ParseCommonData(vData, addData))
+                        assetTx_index.push_back(make_pair(CAssetTx_IndexKey(addData.assetId, strAddress, GET_BCCTA_ASSET_TXOUT, COutPoint(txhash, m)), pindex->nHeight));
                 }
                 else if (header.nAppCmd == CHANGE_ASSET_CMD)
                 {

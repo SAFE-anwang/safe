@@ -1,0 +1,23 @@
+syntax = "proto2";
+package Safeccta;
+option java_package = "org.safe.Safeccta";
+option java_outer_classname = "Safeccta";
+
+message CCTA{
+  required bytes scAccount=1;           //string
+  required bytes targetChain=2;         //string
+  required bytes sepChar=3;             //string
+  required bytes bizRemarks=4;          //string
+}
+
+message regCastCoinInfoes {
+  required bytes scTxHash=1;					 //string
+  required bytes assetName=2;          //string
+  optional bytes assetId=3;            //empty if safe
+  required uint64 quantity=4;          //byte uint64
+  required bytes safeUser=5;           //string
+}
+
+message BcctaCastCoin {
+  repeated regCastCoinInfoes regInfoes=2;
+}

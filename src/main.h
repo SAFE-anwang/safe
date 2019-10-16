@@ -64,6 +64,9 @@ extern int g_nForbidStartDMN;
 extern int g_nLocalStartSavePayeeHeightV2;
 extern int g_nSaveMasternodePayeeHeightV2;
 
+extern std::string g_straddrCCTA;
+extern std::string g_strsafeCastCoin;
+
 
 
 

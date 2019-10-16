@@ -1325,7 +1325,7 @@ CAmount CWallet::GetDebit(const CTxIn &txin, const isminefilter& filter, const b
                         if(assetData.GetHash() != *pAssetId)
                             return 0;
                     }
-                    else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == CHANGE_ASSET_CMD)
+                    else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == CHANGE_ASSET_CMD || header.nAppCmd == GET_BCCTA_ASSET_CMD)
                     {
                         CCommonData commonData;
                         if(!ParseCommonData(vData, commonData))
@@ -1702,7 +1702,7 @@ CAmount CWallet::GetCredit(const CTransaction& tx, const isminefilter& filter, c
                 if(assetData.GetHash() != *pAssetId)
                     continue;
             }
-            else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == CHANGE_ASSET_CMD)
+            else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == CHANGE_ASSET_CMD || header.nAppCmd == GET_BCCTA_ASSET_CMD)
             {
                 CCommonData commonData;
                 if(!ParseCommonData(vData, commonData))
@@ -2272,7 +2272,7 @@ CAmount CWalletTx::GetAvailableCredit(const bool fAsset, const uint256* pAssetId
                 if(assetData.GetHash() != *pAssetId)
                     continue;
             }
-            else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == CHANGE_ASSET_CMD)
+            else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == CHANGE_ASSET_CMD || header.nAppCmd == GET_BCCTA_ASSET_CMD)
             {
                 CCommonData commonData;
                 if(!ParseCommonData(vData, commonData))
@@ -2477,7 +2477,7 @@ CAmount CWalletTx::GetAvailableWatchOnlyCredit(const bool fAsset, const uint256*
                 if(assetData.GetHash() != *pAssetId)
                     continue;
             }
-            else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == CHANGE_ASSET_CMD)
+            else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == CHANGE_ASSET_CMD || header.nAppCmd == GET_BCCTA_ASSET_CMD)
             {
                 CCommonData commonData;
                 if(!ParseCommonData(vData, commonData))
@@ -3334,7 +3334,7 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
                     if(!ParseReserve(pcoin->vout[i].vReserve, header, vData))
                         continue;
 
-                    if(header.nAppCmd == ISSUE_ASSET_CMD || header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == GET_CANDY_CMD)
+                    if(header.nAppCmd == ISSUE_ASSET_CMD || header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == GET_CANDY_CMD || header.nAppCmd == GET_BCCTA_ASSET_CMD)
                     {
                         if(nDepth <= 0)
                             continue;
@@ -3348,7 +3348,7 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
                         if(assetData.GetHash() != *pAssetId)
                             continue;
                     }
-                    else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == CHANGE_ASSET_CMD)
+                    else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == CHANGE_ASSET_CMD || header.nAppCmd == GET_BCCTA_ASSET_CMD)
                     {
                         CCommonData commonData;
                         if(!ParseCommonData(vData, commonData))
@@ -4312,7 +4312,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         //fill deterministic masternode
                         txout.vReserve = FillDeterministicMasternode(CSposHeader(SPOS_VERSION_REGIST_MASTERNODE),dmn);
                     }if(!recipient.strMemo.empty())
-                        txout.vReserve = FillTransferSafeData(CAppHeader(g_nAppHeaderVersion, uint256S(g_strSafePayId), TRANSFER_SAFE_CMD), CTransferSafeData(recipient.strMemo));
+                        txout.vReserve = FillTransferSafeData(CAppHeader(g_nAppHeaderVersion, uint256S(g_strSafePayId), TRANSFER_SAFE_CMD), CTransferSafeData(recipient.strMemo), recipient.nVersion);
 
                     if (recipient.fSubtractFeeFromAmount)
                     {
@@ -5106,9 +5106,9 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
                             CCommonData commonData(*(const CCommonData*)pBody);
                             commonData.nAmount = recipient.nAmount;
                             commonData.strRemarks = recipient.strMemo;
-                            txout.vReserve = FillCommonData(*pHeader, commonData);
+                            txout.vReserve = FillCommonData(*pHeader, commonData, recipient.nVersion);
                         }
-                        if(pHeader->nAppCmd == ADD_ASSET_CMD || pHeader->nAppCmd == DESTORY_ASSET_CMD)
+                        if(pHeader->nAppCmd == ADD_ASSET_CMD || pHeader->nAppCmd == DESTORY_ASSET_CMD || pHeader->nAppCmd == GET_BCCTA_ASSET_CMD)
                         {
                             txout.vReserve = FillCommonData(*pHeader, *(const CCommonData*)pBody);
                         }
@@ -5204,10 +5204,10 @@ bool CWallet::CreateAssetTransaction(const CAppHeader* pHeader, const void* pBod
                         scriptChange = GetScriptForDestination(coinControl->destChange);
                     else
                     {
-                        if(pHeader->nAppCmd == ADD_ASSET_CMD || pHeader->nAppCmd == TRANSFER_ASSET_CMD || pHeader->nAppCmd == DESTORY_ASSET_CMD || pHeader->nAppCmd == PUT_CANDY_CMD || pHeader->nAppCmd == GET_CANDY_CMD)
+                        if(pHeader->nAppCmd == ADD_ASSET_CMD || pHeader->nAppCmd == TRANSFER_ASSET_CMD || pHeader->nAppCmd == DESTORY_ASSET_CMD || pHeader->nAppCmd == PUT_CANDY_CMD || pHeader->nAppCmd == GET_CANDY_CMD || pHeader->nAppCmd == GET_BCCTA_ASSET_CMD)
                         {
                             uint256 assetId;
-                            if(pHeader->nAppCmd == ADD_ASSET_CMD || pHeader->nAppCmd == TRANSFER_ASSET_CMD || pHeader->nAppCmd == DESTORY_ASSET_CMD)
+                            if(pHeader->nAppCmd == ADD_ASSET_CMD || pHeader->nAppCmd == TRANSFER_ASSET_CMD || pHeader->nAppCmd == DESTORY_ASSET_CMD || pHeader->nAppCmd == GET_BCCTA_ASSET_CMD)
                                 assetId = ((const CCommonData*)pBody)->assetId;
                             else if(pHeader->nAppCmd == PUT_CANDY_CMD)
                                 assetId = ((const CPutCandyData*)pBody)->assetId;

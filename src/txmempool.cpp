@@ -1060,7 +1060,7 @@ void CTxMemPool::add_AssetTx_Index(const CTxMemPoolEntry& entry, const CCoinsVie
                     inserted.push_back(key);
                 }
             }
-            else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD)
+            else if(header.nAppCmd == ADD_ASSET_CMD || header.nAppCmd == TRANSFER_ASSET_CMD || header.nAppCmd == DESTORY_ASSET_CMD || header.nAppCmd == GET_BCCTA_ASSET_CMD)
             {
                 CCommonData commonData;
                 if(ParseCommonData(vData, commonData))
@@ -1091,6 +1091,12 @@ void CTxMemPool::add_AssetTx_Index(const CTxMemPoolEntry& entry, const CCoinsVie
                             mapAssetTx.insert(make_pair(key, -1));
                             inserted.push_back(key);
                         }
+                    }
+                    else if (header.nAppCmd == GET_BCCTA_ASSET_CMD)
+                    {
+                        CAssetTx_IndexKey key(commonData.assetId, CBitcoinAddress(dest).ToString(), GET_BCCTA_ASSET_TXOUT, COutPoint(txhash, i));
+                        mapAssetTx.insert(make_pair(key, -1));
+                        inserted.push_back(key);
                     }
                 }
             }
