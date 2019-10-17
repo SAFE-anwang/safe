@@ -239,8 +239,7 @@ UniValue regcrosschaincoinageinfo(const UniValue& params, bool fHelp)
         if (!vscTxHash.isStr())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing safeaddress key");
 
-        uint256 txhash = ParseHashV(vscTxHash, "parameter 1");
-        tempregCastCoinInfoes.strscTxHash = txhash.ToString();
+        tempregCastCoinInfoes.strscTxHash = vscTxHash.get_str();;
 
         const UniValue& vassetName = find_value(o, "assetName");
         if (!vassetName.isStr())
