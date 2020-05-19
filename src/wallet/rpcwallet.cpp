@@ -3064,7 +3064,7 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
     CReserveKey reservekey(pwalletMain);
     UniValue result;
 
-    BOOST_FOREACH(wtx, vWtx) 
+    BOOST_FOREACH(const CWalletTx &wtx, vWtx) 
     {
         if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
           throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
