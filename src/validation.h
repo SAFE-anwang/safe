@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -21,6 +21,8 @@
 #include "versionbits.h"
 #include "spentindex.h"
 #include "app/app.h"
+#include "masternode.h"
+
 
 #include <algorithm>
 #include <exception>
@@ -46,6 +48,7 @@ class CScriptCheck;
 class CTxMemPool;
 class CValidationInterface;
 class CValidationState;
+class CMasternode;
 
 struct LockPoints;
 
@@ -170,6 +173,8 @@ static const int DIP0001_PROTOCOL_VERSION = 70208;
 extern std::atomic<bool> fDIP0001WasLockedIn;
 extern std::atomic<bool> fDIP0001ActiveAtTip;
 
+extern int64_t g_nAllowableErrorTime;
+
 /** Block hash whose ancestors we will assume to have valid scripts without checking them. */
 extern uint256 hashAssumeValid;
 
@@ -267,7 +272,21 @@ bool ActivateBestChain(CValidationState& state, const CChainParams& chainparams,
 
 double ConvertBitsToDouble(unsigned int nBits);
 CAmount GetBlockSubsidy(int nBits, int nHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly = false);
+CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly  = false);
 CAmount GetMasternodePayment(int nHeight, CAmount blockValue);
+
+int ConvertBlockHeight(const Consensus::Params& consensusParams);
+
+int ConvertBlockParameterByHeight(const int& nHeight, const Consensus::Params& consensusParams);
+
+int ConvertBlockConfirmationsByHeight(const int& nHeight);
+
+int ConvertBlockNum();
+
+int ConvertMasternodeConfirmationsByHeight(const int& nHeight, const Consensus::Params& consensusParams);
+
+int ConvertSuperblockCycle(const int& nHeight);
+
 
 /**
  * Prune block and undo files (blk???.dat and undo???.dat) so that the disk space used is less than a user-defined target.
@@ -713,6 +732,42 @@ struct CGetCandy_IndexValue
         READWRITE(nHeight);
         READWRITE(blockHash);
         READWRITE(nTxIndex);
+    }
+};
+
+struct CIterator_MasternodePayeeKey
+{
+    std::string strPubKeyCollateralAddress;
+
+    CIterator_MasternodePayeeKey(const std::string& strAddress = "") : strPubKeyCollateralAddress(strAddress) {
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(LIMITED_STRING(strPubKeyCollateralAddress, MAX_ADDRESS_SIZE));
+    }
+};
+
+struct CMasternodePayee_IndexValue
+{
+    int nHeight;
+    int64_t blockTime;
+    int nPayeeTimes;
+    CMasternodePayee_IndexValue(const int& height = 0,const int64_t& time=0,const int& paymentTimes=1)
+        :nHeight(height),blockTime(time),nPayeeTimes(paymentTimes){
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion)
+    {
+        READWRITE(nPayeeTimes);
+        READWRITE(nHeight);
+        READWRITE(blockTime);
     }
 };
 
@@ -1228,6 +1283,17 @@ enum CTxSrcType{
     FROM_WALLET,
     FROM_NEW
 };
+
+enum SPORK_SELECT_LOOP
+{
+  NO_SPORK_SELECT_LOOP = 0,
+  SPORK_SELECT_LOOP_1 = 1,
+  SPORK_SELECT_LOOP_2 = 2,
+  SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT = 3
+};
+
+bool CheckUnlockedHeight(const int32_t& nTxVersion, const int64_t& nOffset);
+
 /** Context-independent validity checks */
 bool CheckTransaction(const CTransaction& tx, CValidationState& state, const enum CTxSrcType& nType, const int& nHeight = -1);
 
@@ -1335,6 +1401,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 /** Context-independent validity checks */
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW = true);
 bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
+bool CheckSPOSBlock(const CBlock& block, CValidationState& state, const int& nHeight,bool fCheckPOW = true);
 
 /** Context-dependent validity checks */
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex *pindexPrev);
@@ -1508,6 +1575,17 @@ bool ExistForbidTxin(const int nHeight, const std::vector<int>& prevheights);
 
 bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ngetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
 bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAssetGetCandy, const CPutCandy_IndexKey &key, const CAmount &ndbgetcandytotalamount, const CAmount &nputcandytotalamount, const CAmount &nCandyAmount, CAmount &nmapgetcandyamount);
+
+void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
+                                ,int64_t nStartNewLoopTime);
+void UpdateGlobalTimeoutCount(int nTimeoutCount);
+void UpdateGlobalReceiveBlock(bool fReceiveBlock);
+void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScoreTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
+                             ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect,
+                             const unsigned int& nMasternodeSPosCount, SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode = false);
+
+bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals = false);
+void updateForwardHeightAndScoreHeight(int nCurrBlockHeight,int& nForwardHeight,int& nScoreHeight);
 
 
 #endif // BITCOIN_VALIDATION_H

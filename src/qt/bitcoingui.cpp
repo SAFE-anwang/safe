@@ -1,6 +1,6 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -37,6 +37,7 @@
 #include "masternode-sync.h"
 #include "masternodelist.h"
 #include "walletview.h"
+#include "main.h"
 
 #include <iostream>
 
@@ -129,7 +130,6 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *platformStyle, const NetworkStyle *n
     rpcConsole(0),
     helpMessageDialog(0),
     modalOverlay(0),
-    bUpdateAssetsDisplay(true),
     prevBlocks(0),
     spinnerFrame(0),
     platformStyle(platformStyle)
@@ -987,6 +987,21 @@ void BitcoinGUI::removeAllWallets()
     setWalletActionsEnabled(false);
     walletFrame->removeAllWallets();
 }
+
+void BitcoinGUI::ShowHistoryPage(const QString& name)
+{
+	if (!walletFrame)
+		return ;
+	return walletFrame->ShowHistoryPage(name);
+}
+
+void BitcoinGUI::disconnectSign(const QString& name)
+{
+	if (!walletFrame)
+		return;
+	return walletFrame->disconnectSign(name);
+}
+
 #endif // ENABLE_WALLET
 
 void BitcoinGUI::setWalletActionsEnabled(bool enabled)
@@ -1265,7 +1280,12 @@ void BitcoinGUI::updateHeadersSyncProgressLabel()
 {
     int64_t headersTipTime = clientModel->getHeaderTipTime();
     int headersTipHeight = clientModel->getHeaderTipHeight();
-    int estHeadersLeft = (GetTime() - headersTipTime) / Params().GetConsensus().nPowTargetSpacing;
+
+    int estHeadersLeft = 0;
+    if (headersTipHeight >= g_nStartSPOSHeight)
+        estHeadersLeft= (GetTime() - headersTipTime) / Params().GetConsensus().nSPOSTargetSpacing;
+    else
+        estHeadersLeft = (GetTime() - headersTipTime) / Params().GetConsensus().nPowTargetSpacing;
     if (estHeadersLeft > HEADER_HEIGHT_DELTA_SYNC)
         progressBarLabel->setText(tr("Syncing Headers (%1%)...").arg(QString::number(100.0 / (headersTipHeight+estHeadersLeft)*headersTipHeight, 'f', 1)));
 }
@@ -1422,12 +1442,6 @@ void BitcoinGUI::setAdditionalDataSyncProgress(double nSyncProgress)
         progressBar->setValue(nSyncProgress * 1000000000.0 + 0.5);
     }
 
-    if(bUpdateAssetsDisplay)
-    {
-        if(masternodeSync.IsSynced()||nSyncProgress>=0.5)
-            if(walletFrame->updateAssetsDisplay())
-                bUpdateAssetsDisplay = false;
-    }
     strSyncStatus = QString(masternodeSync.GetSyncStatus().c_str());
     progressBarLabel->setText(strSyncStatus);
     tooltip = strSyncStatus + QString("<br>") + tooltip;

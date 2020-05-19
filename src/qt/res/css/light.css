@@ -2208,6 +2208,10 @@ QLabel#transactionSumLabel { /* Example of setObjectName for widgets without nam
 color:#333333;
 font-weight:bold;
 }
+
+QLabel#transactionMaxDisplayLabel { /* Example of setObjectName for widgets without name */
+color:#333333;
+}
  
 QLabel#transactionSum { /* Example of setObjectName for widgets without name */
 color:#333333;
@@ -2243,6 +2247,10 @@ color:#333333;
 font-weight:bold;
 }
 
+QLabel#lockedTransactionMaxDisplayLabel { /* Example of setObjectName for widgets without name */
+color:#333333;
+}
+
 QLabel#lockedTransactionSum { /* Example of setObjectName for widgets without name */
 color:#333333;
 }
@@ -2251,14 +2259,26 @@ QLabel#assetsTransactionSumLabel { /* Example of setObjectName for widgets witho
 color:#333333;
 font-weight:bold;
 }
+
+QLabel#assetsTransactionMaxDisplayLabel { /* Example of setObjectName for widgets without name */
+color:#333333;
+}
  
 QLabel#assetsTransactionSum { /* Example of setObjectName for widgets without name */
+color:#333333;
+}
+
+QLabel#appTransactionMaxDisplayLabel { /* Example of setObjectName for widgets without name */
 color:#333333;
 }
 
 QLabel#candyTransactionSumLabel { /* Example of setObjectName for widgets without name */
 color:#333333;
 font-weight:bold;
+}
+
+QLabel#candyTransactionMaxDisplayLabel { /* Example of setObjectName for widgets without name */
+color:#333333;
 }
  
 QLabel#candyTransactionSum { /* Example of setObjectName for widgets without name */

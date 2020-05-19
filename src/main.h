@@ -11,6 +11,16 @@
 // generate blocks per year = 12 * BLOCKS_PER_MONTH
 #define BLOCKS_PER_YEAR     207360
 
+
+// SPOS generate blocks per day = 24 * 60 * 60 / 30
+#define SPOS_BLOCKS_PER_DAY      2880
+// SPOS generate blcoks per month = 30 * SPOS_BLOCKS_PER_DAY
+#define SPOS_BLOCKS_PER_MONTH    86400
+// SPOS generate blocks per year = 12 * SPOS_BLOCKS_PER_MONTH
+#define SPOS_BLOCKS_PER_YEAR     1036800
+
+
+
 #define MIN_MN_LOCKED_MONTH     6
 
 class CBlock;
@@ -19,6 +29,7 @@ class CBlockIndex;
 class CTxOut;
 class uint256;
 class CTransaction;
+class CMasternode;
 
 extern int g_nChainHeight;
 extern int g_nCriticalHeight;
@@ -29,7 +40,22 @@ extern std::string g_strCancelledSafeAddress;
 extern std::string g_strCancelledAssetAddress;
 extern std::string g_strPutCandyAddress;
 
+extern int g_nStartSPOSHeight;
+extern int g_nSaveMasternodePayeeHeight;
+extern unsigned int g_nMasternodeSPosCount;
+extern int64_t g_nStartNewLoopTimeMS;
+extern int g_nSposGeneratedIndex;
+extern std::vector<CMasternode> g_vecResultMasternodes;
+extern int g_nSelectMasterNodeRet;
+
+extern int64_t g_nFirstSelectMasterNodeTime;
+extern int64_t g_nAllowMasterNodeSyncErrorTime;
+
+
+
 inline bool IsCriticalHeight(int nHeight) { return nHeight == g_nCriticalHeight; }
+
+inline bool IsStartSPosHeight(int nHeight) { return nHeight >= g_nStartSPOSHeight; }
 
 inline bool IsLockedMonthRange(int nMonth) { return (nMonth >= 1 && nMonth <= 120); }
 
@@ -41,19 +67,30 @@ CBlock CreateCriticalBlock(const CBlockIndex* pindexPrev, const int nVersion, co
 
 bool CheckCriticalBlock(const CBlockHeader& block);
 
-int GetTxHeight(const uint256& txHash, uint256* pBlockHash = NULL);
+int GetTxHeight(const uint256& txHash, uint256* pBlockHash = NULL, int32_t* pVersion = NULL);
 
 bool IsLockedTxOut(const uint256& txHash, const CTxOut& txout);
 
-bool IsLockedTxOutByHeight(const int& nheight, const CTxOut& txout);
+bool IsLockedTxOutByHeight(const int& nHeight, const CTxOut& txout, const int32_t& nVersion);
 
 int GetLockedMonth(const uint256& txHash, const CTxOut& txout);
 
-int GetLockedMonthByHeight(const int& nheight, const CTxOut& txout);
+int GetLockedMonthByHeight(const int& nHeight, const CTxOut& txout, const int32_t& nVersion);
 
 
 CAmount GetCancelledAmount(const int& nHeight);
 
+CAmount GetPowCancelledAmount(const int& nHeight);
+
+CAmount GetSPOSCancelledAmount(const int& nHeight);
+
+
+
 CAmount GetTxAdditionalFee(const CTransaction& tx);
+
+int GetPrevBlockHeight(const uint256& hash);
+
+
+
 
 #endif

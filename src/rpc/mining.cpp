@@ -1,7 +1,7 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -38,6 +38,8 @@
 #include <univalue.h>
 
 using namespace std;
+
+extern int g_nStartSPOSHeight;
 
 /**
  * Return average network hashes per second based on the last 'lookup' blocks,
@@ -100,6 +102,10 @@ UniValue getnetworkhashps(const UniValue& params, bool fHelp)
        );
 
     LOCK(cs_main);
+
+    if (chainActive.Height() >= g_nStartSPOSHeight)
+        return 0;
+
     return GetNetworkHashPS(params.size() > 0 ? params[0].get_int() : 120, params.size() > 1 ? params[1].get_int() : -1);
 }
 
@@ -262,6 +268,9 @@ UniValue getmininginfo(const UniValue& params, bool fHelp)
 
     LOCK(cs_main);
 
+    if (chainActive.Height() >= g_nStartSPOSHeight)
+        throw JSONRPCError(RPC_MINGING_NOT_SUPPORT_FOR_SPOS, "SPOS does not support mining");
+
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("blocks",           (int)chainActive.Height()));
     obj.push_back(Pair("currentblocksize", (uint64_t)nLastBlockSize));
@@ -301,6 +310,10 @@ UniValue prioritisetransaction(const UniValue& params, bool fHelp)
         );
 
     LOCK(cs_main);
+
+    if (chainActive.Height() >= g_nStartSPOSHeight)
+        throw JSONRPCError(RPC_MINGING_NOT_SUPPORT_FOR_SPOS, "SPOS does not support mining");
+
     uint256 hash = ParseHashStr(params[0].get_str(), "txid");
     CAmount nAmount = params[2].get_int64();
 
@@ -425,6 +438,9 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
          );
 
     LOCK(cs_main);
+
+    if (chainActive.Height() >= g_nStartSPOSHeight)
+        throw JSONRPCError(RPC_MINGING_NOT_SUPPORT_FOR_SPOS, "SPOS does not support mining");
 
     std::string strMode = "template";
     UniValue lpval = NullUniValue;
@@ -785,6 +801,9 @@ UniValue submitblock(const UniValue& params, bool fHelp)
             + HelpExampleCli("submitblock", "\"mydata\"")
             + HelpExampleRpc("submitblock", "\"mydata\"")
         );
+
+    if (chainActive.Height() >= g_nStartSPOSHeight)
+        throw JSONRPCError(RPC_MINGING_NOT_SUPPORT_FOR_SPOS, "SPOS does not support mining");
 
     CBlock block;
     if (!DecodeHexBlk(block, params[0].get_str()))

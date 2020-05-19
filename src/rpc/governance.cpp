@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -20,6 +20,9 @@
 #include "rpc/server.h"
 #include "util.h"
 #include "utilmoneystr.h"
+#include "main.h"
+
+
 
 #include <boost/lexical_cast.hpp>
 
@@ -928,7 +931,7 @@ UniValue getgovernanceinfo(const UniValue& params, bool fHelp)
 
     // Get chain parameters
     int nSuperblockStartBlock = Params().GetConsensus().nSuperblockStartBlock;
-    int nSuperblockCycle = Params().GetConsensus().nSuperblockCycle;
+    int nSuperblockCycle = ConvertSuperblockCycle(nBlockHeight);
 
     // Get first superblock
     int nFirstSuperblockOffset = (nSuperblockCycle - nSuperblockStartBlock % nSuperblockCycle) % nSuperblockCycle;
@@ -946,7 +949,7 @@ UniValue getgovernanceinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("governanceminquorum", Params().GetConsensus().nGovernanceMinQuorum));
     obj.push_back(Pair("masternodewatchdogmaxseconds", MASTERNODE_WATCHDOG_MAX_SECONDS));
     obj.push_back(Pair("proposalfee", ValueFromAmount(GOVERNANCE_PROPOSAL_FEE_TX)));
-    obj.push_back(Pair("superblockcycle", Params().GetConsensus().nSuperblockCycle));
+    obj.push_back(Pair("superblockcycle", nSuperblockCycle));
     obj.push_back(Pair("lastsuperblock", nLastSuperblock));
     obj.push_back(Pair("nextsuperblock", nNextSuperblock));
 

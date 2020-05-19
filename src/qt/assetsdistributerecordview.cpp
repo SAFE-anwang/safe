@@ -222,11 +222,11 @@ void AssetsDistributeRecordView::setModel(WalletModel *model)
     {
         transactionProxyModel = new TransactionFilterProxy(this);
         transactionProxyModel->setSourceModel(model->getAssetsDistributeTableModel());
-        transactionProxyModel->setDynamicSortFilter(true);
-        transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
+    //    transactionProxyModel->setDynamicSortFilter(true);
+   //     transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
         transactionProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
 
-        transactionProxyModel->setSortRole(Qt::EditRole);
+     //   transactionProxyModel->setSortRole(Qt::EditRole);
 
         distributeView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         distributeView->setModel(transactionProxyModel);
@@ -451,7 +451,7 @@ void AssetsDistributeRecordView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getAssetsDistributeTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+    model->getUpdateTransaction()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void AssetsDistributeRecordView::copyAddress()
@@ -747,3 +747,15 @@ void AssetsDistributeRecordView::updateWatchOnlyColumn(bool fHaveWatchOnly)
     distributeView->setColumnHidden(AssetsDistributeRecordModel::AssetsDistributeColumnWatchonly, !fHaveWatchOnly);
 }
 
+void AssetsDistributeRecordView::refreshPage()
+{
+	if (model->getAssetsDistributeTableModel()->size() > 0)
+	{
+        bool bHidden = distributeView->isColumnHidden(AssetsDistributeRecordModel::AssetsDistributeColumnWatchonly);
+		transactionProxyModel->invalidate();
+        if(bHidden)
+        {
+            distributeView->setColumnHidden(AssetsDistributeRecordModel::AssetsDistributeColumnWatchonly, bHidden);
+        }
+	}
+}

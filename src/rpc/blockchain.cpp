@@ -1,7 +1,7 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -41,6 +41,9 @@ double GetDifficulty(const CBlockIndex* blockindex)
         else
             blockindex = chainActive.Tip();
     }
+
+    if (blockindex->nBits == 0)
+        return 0.0;
 
     int nShift = (blockindex->nBits >> 24) & 0xff;
 

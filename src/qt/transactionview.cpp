@@ -230,11 +230,11 @@ void TransactionView::setModel(WalletModel *model)
     {
         transactionProxyModel = new TransactionFilterProxy(this);
         transactionProxyModel->setSourceModel(model->getTransactionTableModel());
-        transactionProxyModel->setDynamicSortFilter(true);
-        transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
+    //    transactionProxyModel->setDynamicSortFilter(true);
+    //    transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
         transactionProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
 
-        transactionProxyModel->setSortRole(Qt::EditRole);
+    //    transactionProxyModel->setSortRole(Qt::EditRole);
 
         transactionView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         transactionView->setModel(transactionProxyModel);
@@ -398,7 +398,7 @@ void TransactionView::changedAmount(const QString &amount)
     }
     else
     {
-        if(amount.trimmed().isEmpty()){
+        if(amount.trimmed().isEmpty()||amount.at(0)=='0'){
             transactionProxyModel->setMinAmount(0,assetAmountStr);
         }else{
             transactionProxyModel->setMinAmount(MAX_MONEY,assetAmountStr);
@@ -447,6 +447,10 @@ void TransactionView::contextualMenu(const QPoint &point)
     if(!index.isValid())
         return;
     QModelIndexList selection = transactionView->selectionModel()->selectedRows(0);
+	if (selection.isEmpty())
+	{
+		return ;
+	}
 
     // check if transaction can be abandoned, disable context menu action in case it doesn't
     uint256 hash;
@@ -470,7 +474,7 @@ void TransactionView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getTransactionTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+    model->getUpdateTransaction()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void TransactionView::copyAddress()
@@ -780,4 +784,17 @@ void TransactionView::updateWatchOnlyColumn(bool fHaveWatchOnly)
 {
     watchOnlyWidget->setVisible(true);
     transactionView->setColumnHidden(TransactionTableModel::TransactionColumnWatchonly, !fHaveWatchOnly);
+}
+
+void TransactionView::refreshPage()
+{
+	if (model->getTransactionTableModel()->size() > 0)
+	{
+        bool bHidden = transactionView->isColumnHidden(TransactionTableModel::TransactionColumnWatchonly);
+		transactionProxyModel->invalidate();
+        if(bHidden)
+        {
+            transactionView->setColumnHidden(TransactionTableModel::TransactionColumnWatchonly, bHidden);
+        }
+	}
 }

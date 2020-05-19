@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -114,10 +114,6 @@ UniValue registerapp(const UniValue& params, bool fHelp)
 
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
-
-    int nOffset = g_nChainHeight - g_nProtocolV2Height;
-    if (nOffset < 0)
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height));
 
     CAmount nCancelledValue = GetCancelledAmount(g_nChainHeight);
     if(!IsCancelledRange(nCancelledValue))

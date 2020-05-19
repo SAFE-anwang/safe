@@ -1,6 +1,6 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -299,7 +299,7 @@ QVariant AddressTableModel::headerData(int section, Qt::Orientation orientation,
 {
     if(orientation == Qt::Horizontal)
     {
-        if(role == Qt::DisplayRole && section < columns.size())
+        if(role == Qt::DisplayRole && section>=0 && section<columns.size())
         {
             return columns[section];
         }

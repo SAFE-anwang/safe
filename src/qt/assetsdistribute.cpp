@@ -1,4 +1,4 @@
-#include "customslider.h"
+﻿#include "customslider.h"
 #include "customlineedit.h"
 #include "assetsdistribute.h"
 #include "ui_assetsdistribute.h"
@@ -24,12 +24,15 @@
 #include <string>
 #include <vector>
 #include <QCompleter>
+#include <boost/thread.hpp>
+
 using std::string;
 using std::vector;
 extern CAmount gFilterAmountMaxNum;
 extern bool gInitByDefault;
 
 double gMaxAsset = 200000000000000.0000;
+
 
 AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
     QWidget(assetsPage),
@@ -76,6 +79,7 @@ AssetsDistribute::AssetsDistribute(AssetsPage *assetsPage):
     connect(ui->expireLineEdit, SIGNAL(textChanged(const QString &)), this, SLOT(handlerExpireLineEditTextChange(const QString &)));
     clearDisplay();
     msgboxTitle = tr("Assets distribute");
+
     completer = new QCompleter;
     stringListModel = new QStringListModel;
     completer->setCaseSensitivity(Qt::CaseInsensitive);
@@ -112,30 +116,19 @@ AssetsDistribute::~AssetsDistribute()
 
 }
 
-void AssetsDistribute::updateAssetsInfo()
+void AssetsDistribute::updateAssetsInfo(QStringList listAsset)
 {
-    std::map<uint256, CAssetData> issueAssetMap;
-    std::vector<std::string> assetNameVec;
-    if(GetIssueAssetInfo(issueAssetMap))
-    {
-        for(std::map<uint256, CAssetData>::iterator iter = issueAssetMap.begin();iter != issueAssetMap.end();++iter)
-        {
-            CAssetData& assetData = (*iter).second;
-            assetNameVec.push_back(assetData.strAssetName);
-        }
-        std::sort(assetNameVec.begin(),assetNameVec.end());
-    }
+	QStringList listTemp;
+	for (int i = 0; i < listAsset.size(); i++)
+	{
+		if (ui->assetsNameComboBox->findText(listAsset[i]) < 0)
+		{
+			listTemp.push_back(listAsset[i]);
+		}
+	}
 
-    ui->assetsNameComboBox->clear();
-    QStringList stringList;
-    for(unsigned int i=0;i<assetNameVec.size();i++)
-        stringList.append(QString::fromStdString(assetNameVec[i]));
-
-    ui->assetsNameComboBox->addItems(stringList);
-    stringListModel->setStringList(stringList);
-    completer->setModel(stringListModel);
-    completer->popup()->setStyleSheet("font: 12px;");
-    ui->assetsNameComboBox->setCompleter(completer);
+	ui->assetsNameComboBox->addItems(listTemp);
+	stringListModel->setStringList(listTemp);
 }
 
 void AssetsDistribute::on_assetsCandyRatioSlider_valueChanged(int /*value*/)
@@ -306,7 +299,6 @@ void AssetsDistribute::initFirstDistribute()
 
 void AssetsDistribute::initAdditionalDistribute()
 {
-    updateAssetsInfo();
     displayFirstDistribute(false);
     initWidget();
 }
@@ -644,13 +636,6 @@ bool AssetsDistribute::distributeAssets()
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
     {
         QMessageBox::warning(assetsPage, msgboxTitle,tr("Peer-to-peer functionality missing or disabled"),tr("Ok"));
-        return false;
-    }
-
-    int nOffset = g_nChainHeight - g_nProtocolV2Height;
-    if (nOffset < 0)
-    {
-        QMessageBox::warning(assetsPage,msgboxTitle, tr("This feature is enabled when the block height is %1").arg(g_nProtocolV2Height),tr("Ok"));
         return false;
     }
 

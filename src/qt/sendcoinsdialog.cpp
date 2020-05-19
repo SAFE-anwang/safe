@@ -1,6 +1,6 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -29,12 +29,15 @@
 #include "init.h"
 #include "validation.h"
 #include "masternode-sync.h"
+#include "main.h"
 
 #include <QMessageBox>
 #include <QScrollBar>
 #include <QSettings>
 #include <QTextDocument>
 #include <QCompleter>
+#include <boost/thread.hpp>
+
 extern QString gStrSafe;
 
 SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *parent) :
@@ -71,7 +74,6 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *pa
     connect(ui->pushButtonCoinControl, SIGNAL(clicked()), this, SLOT(coinControlButtonClicked()));
     connect(ui->checkBoxCoinControlChange, SIGNAL(stateChanged(int)), this, SLOT(coinControlChangeChecked(int)));
     connect(ui->lineEditCoinControlChange, SIGNAL(textEdited(const QString &)), this, SLOT(coinControlChangeEdited(const QString &)));
-    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
 
     // Safe specific
     QSettings settings;
@@ -96,7 +98,7 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *pa
         CoinControlDialog::coinControl->fUseInstantSend = fUseInstantSend;
     }
 
-    connect(ui->checkUsePrivateSend, SIGNAL(stateChanged ( int )), this, SLOT(updateDisplayUnit()));
+    connect(ui->checkUsePrivateSend, SIGNAL(stateChanged ( int )), this, SLOT(updateDisplayUnit(int)));
     connect(ui->checkUseInstantSend, SIGNAL(stateChanged ( int )), this, SLOT(updateInstantSend()));
 
     // Coin Control: clipboard actions
@@ -167,6 +169,9 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *platformStyle, QWidget *pa
     ui->frameFee->setMouseTracking(true);
     ui->frameFeeSelection->setMouseTracking(true);
     setMouseTracking(true);
+
+    addSafeToCombox();
+    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
 }
 
 void SendCoinsDialog::setClientModel(ClientModel *clientModel)
@@ -195,8 +200,6 @@ void SendCoinsDialog::setModel(WalletModel *model)
             }
         }
 
-        setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getImmatureBalance(), model->getLockedBalance(), model->getAnonymizedBalance(),
-                   model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance(), model->getWatchLockedBalance());
         connect(model, SIGNAL(balanceChanged(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)), this, SLOT(setBalance(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)));
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
         updateDisplayUnit();
@@ -291,6 +294,20 @@ void SendCoinsDialog::on_sendButton_clicked()
         }
     }
 
+    if(ui->radioCustomFee->isChecked())
+    {
+        if(!ui->customFee->validate())
+        {
+            valid = false;
+            ui->customFee->setValid(false);
+        }
+        if (ui->customFee->value(0) <= 0)
+        {
+            ui->customFee->setValid(false);
+            valid = false;
+        }
+    }
+
     if(!valid || recipients.isEmpty())
     {
         return;
@@ -374,7 +391,7 @@ void SendCoinsDialog::send(QList<SendCoinsRecipient> recipients, QString strFee,
 
     CAmount txFee = currentTransaction.getTransactionFee();
 
-    const QMap<QString,AssetsDisplayInfo>& assetNamesUnits = model->getAssetsNamesUnits();
+    const QMap<QString,AssetsDisplayInfo>& assetNamesUnits = mapConfirmedAssetDisplay;
     // Format confirmation message
     QStringList formatted;
     Q_FOREACH(const SendCoinsRecipient &rcp, currentTransaction.getRecipients())
@@ -560,7 +577,7 @@ SendCoinsEntry *SendCoinsDialog::addEntry(bool showLocked)
 
     // Focus the field, so that entry can start immediately
     entry->clear();
-    QMap<QString,AssetsDisplayInfo>& assetNamesUnits = model->getAssetsNamesUnits();
+    QMap<QString,AssetsDisplayInfo>& assetNamesUnits = mapConfirmedAssetDisplay;
     QString assetName = ui->assetsComboBox->currentText();
     QString assetUnit = "";
     if(assetNamesUnits.contains(assetName))
@@ -581,24 +598,6 @@ void SendCoinsDialog::updateTabsAndLabels()
 {
     setupTabChain(0);
     coinControlUpdateLabels();
-}
-
-void SendCoinsDialog::updateAssetsInfo()
-{
-    disconnect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
-    QString currText = ui->assetsComboBox->currentText();
-    ui->assetsComboBox->clear();
-    QStringList stringList;
-    stringList.append(gStrSafe);
-    model->getAssetsNames(true,stringList);
-    ui->assetsComboBox->addItems(stringList);
-    if(!currText.isEmpty()&&stringList.contains(currText))
-        ui->assetsComboBox->setCurrentText(currText);
-    stringListModel->setStringList(stringList);
-    completer->setModel(stringListModel);
-    completer->popup()->setStyleSheet("font: 12px;");
-    ui->assetsComboBox->setCompleter(completer);
-    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
 }
 
 void SendCoinsDialog::removeEntry(SendCoinsEntry* entry)
@@ -689,45 +688,45 @@ bool SendCoinsDialog::handlePaymentRequest(const SendCoinsRecipient &rv)
 }
 
 void SendCoinsDialog::setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& lockedBalance, const CAmount& anonymizedBalance,
-                                 const CAmount& watchBalance, const CAmount& watchUnconfirmedBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance)
+	const CAmount& watchBalance, const CAmount& watchUnconfirmedBalance, const CAmount& watchImmatureBalance, const CAmount& watchLockedBalance)
 {
-    Q_UNUSED(unconfirmedBalance);
-    Q_UNUSED(immatureBalance);
-    Q_UNUSED(lockedBalance);
-    Q_UNUSED(anonymizedBalance);
-    Q_UNUSED(watchBalance);
-    Q_UNUSED(watchUnconfirmedBalance);
-    Q_UNUSED(watchImmatureBalance);
-    Q_UNUSED(watchLockedBalance);
+	Q_UNUSED(unconfirmedBalance);
+	Q_UNUSED(immatureBalance);
+	Q_UNUSED(lockedBalance);
+	Q_UNUSED(anonymizedBalance);
+	Q_UNUSED(watchBalance);
+	Q_UNUSED(watchUnconfirmedBalance);
+	Q_UNUSED(watchImmatureBalance);
+	Q_UNUSED(watchLockedBalance);
 
-    if(model && model->getOptionsModel())
-    {
-	    uint64_t bal = 0;
-        QSettings settings;
-        settings.setValue("bUseDarkSend", ui->checkUsePrivateSend->isChecked());
-	    if(ui->checkUsePrivateSend->isChecked()) {
-		    bal = anonymizedBalance;
-	    } else {
-		    bal = balance;
-	    }
+	if (model && model->getOptionsModel() && !ShutdownRequested())
+	{
+		uint64_t bal = 0;
+		QSettings settings;
+		settings.setValue("bUseDarkSend", ui->checkUsePrivateSend->isChecked());
+		if (ui->checkUsePrivateSend->isChecked()) {
+			bal = anonymizedBalance;
+		}
+		else {
+			bal = balance;
+		}
 
-        if(fAssets)
-        {
-            uint256 assetId;
-            if(GetAssetIdByAssetName(ui->assetsComboBox->currentText().trimmed().toStdString(),assetId)){
-                bal = model->getBalance(NULL,true,&assetId);
-            }
-            ui->labelBalance->setText(QString("%1 %2").arg(BitcoinUnits::format(nAssetsDecimals,bal,false,BitcoinUnits::separatorAlways,true)).arg(strAssetsUnit));
-        }else{
-            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), bal));
-        }
-    }
+		if (fAssets)
+		{
+			uint256 assetId;
+			if (GetAssetIdByAssetName(ui->assetsComboBox->currentText().trimmed().toStdString(), assetId)) {
+				bal = model->getBalance(NULL, true, &assetId);
+			}
+			ui->labelBalance->setText(QString("%1 %2").arg(BitcoinUnits::format(nAssetsDecimals, bal, false, BitcoinUnits::separatorAlways, true)).arg(strAssetsUnit));
+		}
+		else {
+			ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), bal));
+		}
+	}
 }
 
-void SendCoinsDialog::updateDisplayUnit()
+void SendCoinsDialog::updateDisplayUnit(int state)
 {
-    setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getImmatureBalance(), model->getLockedBalance(), model->getAnonymizedBalance(),
-                   model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance(), model->getWatchLockedBalance());
     CoinControlDialog::coinControl->fUsePrivateSend = ui->checkUsePrivateSend->isChecked();
     coinControlUpdateLabels();
     ui->customFee->setDisplayUnit(model->getOptionsModel()->getDisplayUnit());
@@ -740,11 +739,25 @@ void SendCoinsDialog::updateDisplayUnit()
         fSendFreeTransactions = ui->checkBoxFreeTx->isChecked();
         ui->checkBoxFreeTx->hide();
         ui->labelFreeTx->hide();
+        if(ui->checkUsePrivateSend->isChecked() && state>=0)
+        {
+            CAmount amount = model->getAnonymizedBalance();
+            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        }else if(ui->checkUseInstantSend->isChecked() && state>=0)
+        {
+            CAmount amount = model->getBalance();
+            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        }
     }
     else
     {
         ui->checkBoxFreeTx->show();
         ui->labelFreeTx->show();
+        if(state >= 0)
+        {
+            CAmount amount = model->getBalance();
+            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        }
     }
 }
 
@@ -956,8 +969,15 @@ void SendCoinsDialog::updateCurrentAsset(const QString &currText)
     {
         ui->frameFee->setVisible(true);
         fAssets = false;
-        CAmount amount = model->getBalance();
-        ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        if(ui->checkUsePrivateSend->isChecked())
+        {
+            CAmount amount = model->getAnonymizedBalance();
+            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        }else
+        {
+            CAmount amount = model->getBalance();
+            ui->labelBalance->setText(BitcoinUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), amount));
+        }
     }
     else
     {
@@ -976,21 +996,16 @@ void SendCoinsDialog::updateCurrentAsset(const QString &currText)
             ui->labelBalance->setText(QString("%1 %2").arg(BitcoinUnits::format(nAssetsDecimals,amount,false,BitcoinUnits::separatorAlways,true)).arg(strAssetsUnit));
         }
     }
-    QMap<QString,AssetsDisplayInfo>& assetNamesUnits = model->getAssetsNamesUnits();
-    for(int i = 0; i < ui->entries->count(); ++i)
+
+	for(int i = 0; i < ui->entries->count(); ++i)
     {
         SendCoinsEntry *entry = qobject_cast<SendCoinsEntry*>(ui->entries->itemAt(i)->widget());
         if(entry)
         {
-            QString assetUnit = "";
-            if(assetNamesUnits.contains(currText))
-            {
-                if(assetNamesUnits[currText].bInMainChain)
-                    assetUnit = assetNamesUnits[currText].strAssetsUnit;
-            }
-            entry->updateAssetUnit(assetUnit,fAssets,nAssetsDecimals);
+            entry->updateAssetUnit(strAssetsUnit,fAssets,nAssetsDecimals);
         }
     }
+
     if(model->getOptionsModel()->getCoinControlFeatures()&&!fAssets)
         ui->frameCoinControl->setVisible(true);
     else
@@ -1222,4 +1237,57 @@ void SendCoinsDialog::coinControlUpdateLabels()
         ui->widgetCoinControl->hide();
         ui->labelCoinControlInsuffFunds->hide();
     }
+}
+
+void SendCoinsDialog::updateAssetDisplayInfo_slot(const QList<AssetsDisplayInfo> &listAssetDisplay)
+{
+	QList<AssetsDisplayInfo>::const_iterator itAsset = listAssetDisplay.begin();
+	while (itAsset != listAssetDisplay.end())
+	{
+		if (itAsset->bInMainChain)
+		{
+			QMap<QString, AssetsDisplayInfo>::iterator itConfiremed = mapConfirmedAssetDisplay.find(itAsset->strAssetName);
+			if (itConfiremed == mapConfirmedAssetDisplay.end())
+			{
+				mapConfirmedAssetDisplay.insert(itAsset->strAssetName, *itAsset);
+			}
+		}
+
+		itAsset++;
+	}
+
+	QStringList listTemp;
+	QMap<QString, AssetsDisplayInfo>::iterator itConfiremed = mapConfirmedAssetDisplay.begin();
+	while (itConfiremed != mapConfirmedAssetDisplay.end())
+	{
+		if (ui->assetsComboBox->findText(itConfiremed.key()) < 0)
+		{
+			listTemp.push_back(itConfiremed.key());
+		}
+
+		itConfiremed++;
+	}
+
+	if (listTemp.count() > 0)
+	{
+		ui->assetsComboBox->addItems(listTemp);
+		stringListModel->setStringList(listTemp);
+	}
+}
+
+void SendCoinsDialog::addSafeToCombox()
+{
+	QStringList stringList;
+	stringList.append(gStrSafe);
+
+	ui->assetsComboBox->addItems(stringList);
+	stringListModel->setStringList(stringList);
+}
+
+void SendCoinsDialog::disconnectSign()
+{
+	disconnect(model,
+		SIGNAL(balanceChanged(CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount)),
+		this,
+		SLOT(setBalance(CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount, CAmount)));
 }

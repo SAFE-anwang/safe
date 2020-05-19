@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -23,6 +23,7 @@ static const int SPORK_END                                              = 10103;
 static const int SPORK_2_INSTANTSEND_ENABLED                            = 10001;
 static const int SPORK_3_INSTANTSEND_BLOCK_FILTERING                    = 10002;
 static const int SPORK_5_INSTANTSEND_MAX_VALUE                          = 10004;
+static const int SPORK_6_SPOS_ENABLED                                   = 10005;
 static const int SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT                 = 10007;
 static const int SPORK_9_SUPERBLOCKS_ENABLED                            = 10008;
 static const int SPORK_10_MASTERNODE_PAY_UPDATED_NODES                  = 10009;
@@ -38,6 +39,7 @@ static const int SPORK_105_TX_CLASS_MAX_VALUE                           = 10104;
 static const int64_t SPORK_2_INSTANTSEND_ENABLED_DEFAULT                = 0;            // ON
 static const int64_t SPORK_3_INSTANTSEND_BLOCK_FILTERING_DEFAULT        = 0;            // ON
 static const int64_t SPORK_5_INSTANTSEND_MAX_VALUE_DEFAULT              = 1000;         // 1000 SAFE
+static const int64_t SPORK_6_SPOS_ENABLEDE_DEFAULT                      = 4070908800ULL;// OFF
 static const int64_t SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT     = 4070908800ULL;// OFF
 static const int64_t SPORK_9_SUPERBLOCKS_ENABLED_DEFAULT                = 4070908800ULL;// OFF
 static const int64_t SPORK_10_MASTERNODE_PAY_UPDATED_NODES_DEFAULT      = 4070908800ULL;// OFF
@@ -127,6 +129,10 @@ public:
     std::string GetSporkNameByID(int nSporkID);
 
     bool SetPrivKey(std::string strPrivKey);
+
+    void SelectMasterNodeForSpork(int nSporkID, int64_t nValue);
+
+    bool CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& nValue, std::string &strErrMessage);
 };
 
 #endif

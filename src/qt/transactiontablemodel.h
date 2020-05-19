@@ -10,6 +10,7 @@
 #include "uint256.h"
 #include <QAbstractTableModel>
 #include <QSet>
+#include <QTimer>
 
 class PlatformStyle;
 class TransactionTableModel;
@@ -29,6 +30,7 @@ public:
         showType(showType),
         parent(parent)
     {
+		cachedWallet.clear();
     }
 
     CWallet *wallet;
@@ -41,14 +43,12 @@ public:
      */
     QList<TransactionRecord> cachedWallet;
 
-    void refreshWallet();
-
     /* Update our model of the wallet incrementally, to synchronize our model of the wallet
        with that of the core.
 
        Call with transaction that was added, removed or changed.
      */
-    void updateWallet(const uint256 &hash, int status, bool showTransaction,bool& bUpdateAssets,QString& strAssetName);
+	void updateWallet(uint256 hash, const QList<TransactionRecord> &listNew, int status, bool showTransaction, bool &bRefresh);
 
     int size();
 
@@ -57,6 +57,12 @@ public:
     QString describe(TransactionRecord *rec, int unit,bool fAssets=false);
 
     QString getTxHex(TransactionRecord *rec);
+
+	void insertTransaction(const TransactionRecord &tr);
+
+	void clearData();
+
+	void sortData();
 };
 
 /** UI model for the transaction table of a wallet.
@@ -144,28 +150,30 @@ public:
     virtual QVariant data(const QModelIndex &index, int role) const;
     virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const;
     QModelIndex index(int row, int column, const QModelIndex & parent = QModelIndex()) const;
-    bool processingQueuedTransactions() { return fProcessingQueuedTransactions; }
-    QList<TransactionRecord>& getTransactionRecord();
-    QMap<QString,AssetsDisplayInfo>& getAssetsNamesUnits();
-    void emitUpdateAsset(bool updateAll,bool bConfirmedNewAssets,const QString& strAssetName);
-    void setUpdatingWallet(bool updatingWallet);
-    bool getUpdatingWallet();
+    int getShowType(){return showType;}
+
+	void insertTransaction(const TransactionRecord &tr);
+
+	void clearData();
+
+	void updateConfirmations();
+
+	int size();
+
+	void sortData();
+
+	void updateTransaction(uint256 hash, QList<TransactionRecord> listNew, int status, bool showTransaction, bool &bRefresh);
 
 private:
     CWallet* wallet;
     WalletModel *walletModel;
     QStringList columns;
     TransactionTablePriv *priv;
-    bool fProcessingQueuedTransactions;
     const PlatformStyle *platformStyle;
     int showType;
     int columnStatus;
     int columnToAddress;
     int columnAmount;
-    bool fUpdatingWallet;
-
-    void subscribeToCoreSignals();
-    void unsubscribeFromCoreSignals();
 
     QString lookupAddress(const std::string &address, bool tooltip) const;
     QVariant addressColor(const TransactionRecord *wtx) const;
@@ -191,19 +199,19 @@ private:
 
     QString formatCandyAmount(const TransactionRecord *wtx, bool showUnconfirmed=true, BitcoinUnits::SeparatorStyle separators=BitcoinUnits::separatorStandard) const;
 
+	/** Updates the column title to "Amount (DisplayUnit)" and emits headerDataChanged() signal for table headers to react. */
+	void updateAmountColumnTitle();
+
 Q_SIGNALS:
     void updateAssets(int,bool,QString);
 
+	void rowsInserted(int first, int last);
+
 public Q_SLOTS:
-    /* New transaction, or transaction changed status */
-    void updateTransaction(const QString &hash, int status, bool showTransaction);
-    void updateConfirmations();
+
+    void updateTransaction(uint256 hash, QList<TransactionRecord> listNew, int status, bool showTransaction);
+    
     void updateDisplayUnit();
-    /** Updates the column title to "Amount (DisplayUnit)" and emits headerDataChanged() signal for table headers to react. */
-    void updateAmountColumnTitle();
-    /* Needed to update fProcessingQueuedTransactions through a QueuedConnection */
-    void setProcessingQueuedTransactions(bool value) { fProcessingQueuedTransactions = value; }
-    void refreshWallet();
 
     friend class TransactionTablePriv;
     friend class CandyTableModel;

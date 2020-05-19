@@ -201,12 +201,12 @@ void CandyView::setModel(WalletModel *model)
     {
         transactionProxyModel = new TransactionFilterProxy(this);
         transactionProxyModel->setSourceModel(model->getCandyTableModel());
-        transactionProxyModel->setDynamicSortFilter(true);
-        transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
+    //    transactionProxyModel->setDynamicSortFilter(true);
+    //    transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
         transactionProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
         transactionProxyModel->setFilterType(false);
 
-        transactionProxyModel->setSortRole(Qt::EditRole);
+    //    transactionProxyModel->setSortRole(Qt::EditRole);
 
         candyView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         candyView->setModel(transactionProxyModel);
@@ -410,6 +410,10 @@ void CandyView::contextualMenu(const QPoint &point)
     if(!index.isValid())
         return;
     QModelIndexList selection = candyView->selectionModel()->selectedRows(0);
+	if (selection.isEmpty())
+	{
+		return;
+	}
 
     // check if transaction can be abandoned, disable context menu action in case it doesn't
     uint256 hash;
@@ -433,7 +437,7 @@ void CandyView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getCandyTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+    model->getUpdateTransaction()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void CandyView::copyAddress()
@@ -721,4 +725,17 @@ void CandyView::updateWatchOnlyColumn(bool fHaveWatchOnly)
 {
     watchOnlyWidget->setVisible(true);
     candyView->setColumnHidden(CandyTableModel::CandyColumnWatchonly, !fHaveWatchOnly);
+}
+
+void CandyView::refreshPage()
+{
+	if (model->getCandyTableModel()->size() > 0)
+	{
+        bool bHidden = candyView->isColumnHidden(CandyTableModel::CandyColumnWatchonly);
+		transactionProxyModel->invalidate();
+        if(bHidden)
+        {
+            candyView->setColumnHidden(CandyTableModel::CandyColumnWatchonly, bHidden);
+        }
+	}
 }

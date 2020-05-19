@@ -1,11 +1,14 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "validation.h"
+#if defined(HAVE_CONFIG_H)
+#include "config/safe-chain.h"
+#include "config/safe-config.h"
+#endif
 
 #include "alert.h"
 #include "arith_uint256.h"
@@ -40,6 +43,9 @@
 #include "main.h"
 #include "rpc/server.h"
 #include "masternode-sync.h"
+#include "messagesigner.h"
+#include "validation.h"
+
 
 #ifdef ENABLE_WALLET
 #include "wallet/wallet.h"
@@ -48,6 +54,7 @@
 #include "instantx.h"
 #include "masternodeman.h"
 #include "masternode-payments.h"
+#include "activemasternode.h"
 
 #include <sstream>
 
@@ -72,6 +79,7 @@ using namespace std;
  */
 
 CCriticalSection cs_main;
+CCriticalSection cs_spos;
 
 BlockMap mapBlockIndex;
 CChain chainActive;
@@ -104,6 +112,62 @@ std::mutex g_mutexTmpAllCandyInfo;
 std::vector<CCandy_BlockTime_Info> gTmpAllCandyInfoVec;
 bool fUpdateAllCandyInfoFinished = false;
 unsigned int nCandyPageCount = 20;//display 20 candy info per page
+int64_t g_nAllowableErrorTime = 60;
+#if SCN_CURRENT == SCN__main
+CAmount nMiningIncentives = 310662692;
+CAmount nSPOSAdjustMiningIncentives = 345180768;
+#elif SCN_CURRENT == SCN__dev
+CAmount nMiningIncentives = 450000000;
+CAmount nSPOSAdjustMiningIncentives = 500000000;
+#elif SCN_CURRENT == SCN__test
+CAmount nMiningIncentives = 45000000000;
+CAmount nSPOSAdjustMiningIncentives = 50000000000;
+#else
+#error unsupported <safe chain name>
+#endif//#if SCN_CURRENT == SCN__main
+
+int g_nAdjacentBlockInterval = 28;
+
+#if SCN_CURRENT == SCN__main
+int nPOWBeforeSPOSLastSuperblock = 1080040;
+int nPOWAfterSPOSfirstSuperblock = 1096656;
+#elif SCN_CURRENT == SCN__dev
+int nPOWBeforeSPOSLastSuperblock = 103972;
+int nPOWAfterSPOSfirstSuperblock = 104111;
+#elif SCN_CURRENT == SCN__test
+int nPOWBeforeSPOSLastSuperblock = 417;
+int nPOWAfterSPOSfirstSuperblock = 556;
+#else
+#error unsupported <safe chain name>
+#endif//#if SCN_CURRENT == SCN__main
+
+int g_nAdjustMiningRewardHeight = 1109103;
+int g_nForbidOldVersionHeight =  1101183;
+vector<string> g_versionVec;
+
+
+
+unsigned int nKeyIdSize = 20;
+unsigned int nConsensusAlgorithmLen = 4;
+extern unsigned int g_nMasternodeCanBeSelectedTime;
+extern CActiveMasternode activeMasternode;
+extern int64_t g_nLastSelectMasterNodeHeight;
+extern unsigned int g_nMasternodeMinCount;
+extern int g_nSelectGlobalDefaultValue;
+extern int g_nPushForwardHeight;
+extern int g_nTimeoutPushForwardHeight;
+extern int g_nLogMaxCnt;
+extern int g_nLocalStartSavePayeeHeight;
+extern int g_nCanSelectMasternodeHeight;
+extern int g_nTimeoutCount;
+extern int g_nPushForwardTime;
+extern int g_nSelectMasterNodeSucc;
+extern int g_nSelectMasterNodeReset;
+extern int g_nSelectMasterNodeFail;
+extern bool g_fReceiveBlock;
+
+std::mutex g_mutexAllPayeeInfo;
+std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
 
 const static int M = 2000; //Maximum number of digits
 int numA[M];
@@ -116,7 +180,7 @@ struct CompareCandyInfo
 {
     bool operator()(const std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue>& l, const std::pair<CPutCandy_IndexKey, CPutCandy_IndexValue>& r)
     {
-        return l.second.nHeight < r.second.nHeight;
+        return l.second.nHeight > r.second.nHeight;
     }
 };
 
@@ -164,18 +228,31 @@ namespace {
     struct CBlockIndexWorkComparator
     {
         bool operator()(CBlockIndex *pa, CBlockIndex *pb) const {
+            if(IsStartSPosHeight(pa->nHeight)||IsStartSPosHeight(pb->nHeight))
+            {
+                if (pa->nHeight > pb->nHeight && pa->nActiveTime > pb->nActiveTime)
+                    return false;
+                if (pa->nHeight < pb->nHeight && pa->nActiveTime < pb->nActiveTime)
+                    return true;
+            }
             // First sort by most total work, ...
-            if (pa->nChainWork > pb->nChainWork) return false;
-            if (pa->nChainWork < pb->nChainWork) return true;
+            if (pa->nChainWork > pb->nChainWork)
+                return false;
+            if (pa->nChainWork < pb->nChainWork)
+                return true;
 
             // ... then by earliest time received, ...
-            if (pa->nSequenceId < pb->nSequenceId) return false;
-            if (pa->nSequenceId > pb->nSequenceId) return true;
+            if (pa->nSequenceId < pb->nSequenceId)
+                return false;
+            if (pa->nSequenceId > pb->nSequenceId)
+                return true;
 
             // Use pointer address as tie breaker (should only happen with blocks
             // loaded from disk, as those all have id 0).
-            if (pa < pb) return false;
-            if (pa > pb) return true;
+            if (pa < pb)
+                return false;
+            if (pa > pb)
+                return true;
 
             // Identical blocks.
             return false;
@@ -533,6 +610,22 @@ bool GetTxOutAddress(const CTxOut& txout, string* pAddress)
     return true;
 }
 
+bool CheckUnlockedHeight(const int32_t& nTxVersion, const int64_t& nOffset)
+{
+    if (nTxVersion >= SAFE_TX_VERSION_3)
+    {
+        if(nOffset <= 28 * SPOS_BLOCKS_PER_DAY || nOffset > 120 * SPOS_BLOCKS_PER_MONTH)
+            return false;
+    }
+    else
+    {
+        if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+            return false;
+    }
+
+    return true;
+}
+
 bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enum CTxSrcType& nType, const int& nHeight)
 {
     int nTxHeight = 0;
@@ -620,7 +713,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
             if(nType == FROM_BLOCK)
             {
                 int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-                if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                if (!CheckUnlockedHeight(tx.nVersion, nOffset))
                     return state.DoS(50, false, REJECT_INVALID, "block_tx: invalid txout unlocked height");
             }
             else if(nType == FROM_WALLET)
@@ -628,7 +721,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                 if(!blockHash.IsNull())
                 {
                     int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                    if (!CheckUnlockedHeight(tx.nVersion, nOffset))
                         return state.DoS(50, false, REJECT_INVALID, "wallet_tx: invalid txout unlocked height");
                 }
             }
@@ -637,7 +730,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                 if(masternodeSync.IsBlockchainSynced())
                 {
                     int64_t nOffset = txout.nUnlockedHeight - nTxHeight;
-                    if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+                    if (!CheckUnlockedHeight(tx.nVersion, nOffset))
                         return state.DoS(50, false, REJECT_INVALID, "new_tx: invalid txout unlocked height");
                 }
             }
@@ -650,10 +743,12 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
                 continue;
             if(tx.nVersion >= SAFE_TX_VERSION_1)
             {
-                if(txout.nUnlockedHeight != 0 ||
-                   vReserve.size() != TXOUT_RESERVE_MIN_SIZE ||
-                   vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
-                    return state.DoS(50, false, REJECT_INVALID, "coinsbase: invalid txout reserve");
+                if(txout.nUnlockedHeight != 0 && !IsStartSPosHeight(nHeight+1))
+                {
+                    if(vReserve.size() != TXOUT_RESERVE_MIN_SIZE ||
+                    vReserve[0] != 's' || vReserve[1] != 'a' || vReserve[2] != 'f' || vReserve[3] != 'e')
+                        return state.DoS(50, false, REJECT_INVALID, "coinsbase: invalid txout reserve");
+                }
             }
         }
         else
@@ -700,7 +795,45 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, const enu
     return true;
 }
 
-bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view, map<CPutCandy_IndexKey, CAmount>& mapAssetGetCandy, const bool fWithMempool)
+bool CheckAssetTxInputAndOutput(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view)
+{
+    if (tx.IsCoinBase())
+        return true;
+
+    bool fvoutHasAssset = false;
+    for (unsigned int i = 0; i < tx.vout.size(); i++)
+    {
+        const CTxOut& txout = tx.vout[i];
+        if (txout.IsAsset())
+        {
+            fvoutHasAssset = true;
+            break;
+        }
+    }
+
+    bool fvinHasAsset = false;
+    for (unsigned int i = 0; i < tx.vin.size(); i++)
+    {
+        const CTxIn& txin = tx.vin[i];
+        const CCoins* coins = view.AccessCoins(txin.prevout.hash);
+        if (!coins || !coins->IsAvailable(txin.prevout.n))
+            return state.Invalid(false, REJECT_DUPLICATE, "3-bad-txns-inputs-spent");
+
+        const CTxOut& txout = coins->vout[txin.prevout.n];
+        if (txout.IsAsset())
+        {
+            fvinHasAsset = true;
+            break;
+        }
+    }
+
+    if (fvinHasAsset && !fvoutHasAssset)
+       return state.DoS(50, false, REJECT_INVALID, "bad tx");
+
+    return true;
+}
+
+bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const CCoinsViewCache& view, map<CPutCandy_IndexKey, CAmount>& mapAssetGetCandy, const bool &fWithMempool)
 {
     if(tx.IsCoinBase())
         return true;
@@ -709,7 +842,7 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
     map<uint256, int> mapAppId;
     map<uint256, int> mapAssetId;
     std::vector<std::string> voutaddress;
-    
+
     uint256 appId;
     for(unsigned int i = 0; i < tx.vout.size(); i++)
     {
@@ -788,8 +921,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             if (find(voutaddress.begin(), voutaddress.end(), strAddress) == voutaddress.end())
                 voutaddress.push_back(strAddress);
             else
-               return state.DoS(50, false, REJECT_INVALID, "get_candy: the output address already exists."); 
-            
+               return state.DoS(50, false, REJECT_INVALID, "get_candy: the output address already exists.");
+
             CGetCandyData getData;
             if(!ParseGetCandyData(vData, getData))
                 return state.DoS(50, false, REJECT_INVALID, "asset_tx: parse getcandy txout reserve failed");
@@ -1034,8 +1167,19 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             }
             if(nCount == 0)
                 return state.DoS(50, false, REJECT_INVALID, "register_app: need cancel safe");
-            if(!IsCancelledRange(nCancelledAmount) || (fWithMempool && masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
-                return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
+            if(!IsCancelledRange(nCancelledAmount))
+                 return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
+
+            if (fWithMempool)
+            {
+                if (masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight))
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
+            }
+            else
+            {
+                if (nCancelledAmount < GetCancelledAmount(nTxHeight))
+                    return state.DoS(10, false, REJECT_INVALID, "register_app: invalid safe cancelld amount");
+            }
 
             // check vin
             for(unsigned int m = 0; m < tx.vin.size(); m++)
@@ -1340,8 +1484,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             if(assetData.bPayCandy)
             {
                 char totalAmountStr[64] = "",candyAmountStr[64]="";
-                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetData.nTotalAmount);
-                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",assetData.nCandyAmount);
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,assetData.nCandyAmount);
                 string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
                 string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
                 if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -1410,8 +1554,20 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             }
             if(nCancelledCount == 0)
                 return state.DoS(50, false, REJECT_INVALID, "issue_asset: need cancel safe");
-            if(!IsCancelledRange(nCancelledAmount) || (fWithMempool && masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight)))
+            if(!IsCancelledRange(nCancelledAmount))
                 return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid safe cancelld amount");
+
+            if (fWithMempool)
+            {
+                if (masternodeSync.IsBlockchainSynced() && nCancelledAmount != GetCancelledAmount(nTxHeight))
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid safe cancelld amount");
+            }
+            else
+            {
+                if (nCancelledAmount < GetCancelledAmount(nTxHeight))
+                    return state.DoS(10, false, REJECT_INVALID, "issue_asset: invalid safe cancelld amount"); 
+            }
+
             if(assetData.bPayCandy && nCandyCount == 0)
                 return state.DoS(10, false, REJECT_INVALID, "issue_asset: tx need put candy txout when paycandy is opened");
 
@@ -1756,8 +1912,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                     return state.DoS(10, false, REJECT_INVALID, "put_candy: candy amount is different from candy amount of asset data");
 
                 char totalAmountStr[64] = "",candyAmountStr[64]="";
-                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetData.nTotalAmount);
-                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",assetData.nCandyAmount);
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,assetData.nCandyAmount);
                 string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
                 string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
                 if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -1776,8 +1932,8 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
                     return state.DoS(10, false, REJECT_INVALID, "put_candy: non-existent asset");
 
                 char totalAmountStr[64] = "",candyAmountStr[64]="";
-                snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetInfo.assetData.nTotalAmount);
-                snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",candyData.nAmount);
+                snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetInfo.assetData.nTotalAmount);
+                snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,candyData.nAmount);
                 string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
                 string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
                 if(compareFloatString(candyAmountStr,candyMinStr)<0||compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -1858,14 +2014,45 @@ bool CheckAppTransaction(const CTransaction& tx, CValidationState &state, const 
             int nPrevTxHeight = GetTxHeight(out.hash);
             //if(fWithMempool)
             {
-                if(nPrevTxHeight >= nTxHeight)
+                if (nPrevTxHeight >= nTxHeight)
                     return state.DoS(10, false, REJECT_INVALID, "get_candy: invalid candy txin");
 
-                if(nPrevTxHeight+BLOCKS_PER_DAY>nTxHeight)
-                    return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                if (nPrevTxHeight >= g_nStartSPOSHeight)
+                {
+                    if (nPrevTxHeight + SPOS_BLOCKS_PER_DAY > nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
 
-                if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
-                    return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                    if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nPrevTxHeight - 3 * SPOS_BLOCKS_PER_DAY < nTxHeight)
+                        return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");     
+                }
+                else
+                {
+                    if (nPrevTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
+                    {
+                        int nSPOSLaveHeight = (nPrevTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                        int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                        if (nTrueBlockHeight > nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                    }
+                    else
+                    {
+                        if (nPrevTxHeight + BLOCKS_PER_DAY > nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: get candy need wait");
+                    }
+                    
+                    if (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight >= g_nStartSPOSHeight)
+                    {
+                        int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                        int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                        if (nTrueBlockHeight < nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                    }
+                    else
+                    {
+                        if(candyInfo.nExpired * BLOCKS_PER_MONTH + nPrevTxHeight < nTxHeight)
+                            return state.DoS(10, false, REJECT_INVALID, "get_candy: candy is expired");
+                    }
+                }
             }
 
             CAmount nSafe = 0;
@@ -2106,8 +2293,8 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
         return state.Invalid(false, REJECT_ALREADY_KNOWN, "txn-already-in-mempool");
 
     // If this is a Transaction Lock Request check to see if it's valid
-    if(instantsend.HasTxLockRequest(hash) && !CTxLockRequest(tx).IsValid())
-        return state.DoS(10, error("AcceptToMemoryPool : CTxLockRequest %s is invalid", hash.ToString()),
+    if (instantsend.HasTxLockRequest(hash) && !CTxLockRequest(tx).IsValid())
+            return state.DoS(10, error("AcceptToMemoryPool : CTxLockRequest %s is invalid", hash.ToString()),
                             REJECT_INVALID, "bad-txlockrequest");
 
     // Check for conflicts with a completed Transaction Lock
@@ -2275,7 +2462,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
                 continue;
 
             int64_t nOffset = txout.nUnlockedHeight - coins->nHeight;
-            if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH)
+            if (!CheckUnlockedHeight(tx.nVersion, nOffset))
                 continue;
 
             return state.DoS(100, false, REJECT_NONSTANDARD, "invalid-txin-locked");
@@ -2283,6 +2470,9 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState &state, const C
 
         if(ExistForbidTxin( (uint32_t)g_nChainHeight + 1, prevheights))
             return state.DoS(50, error("%s: contain forbidden transaction(%s) txin", __func__, hash.GetHex()), REJECT_INVALID, "bad-txns-forbid");
+
+        if (!CheckAssetTxInputAndOutput(tx, state, view))
+            return false;
 
         map<CPutCandy_IndexKey, CAmount> mapAssetGetCandy;
         if(!CheckAppTransaction(tx, state, view, mapAssetGetCandy, true))
@@ -2745,8 +2935,13 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
     }
 
     // Check the header
-    if (!CheckCriticalBlock(block) && !CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
-        return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
+    if (!CheckCriticalBlock(block))
+    {
+        int nHeight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
+        if (nHeight < g_nStartSPOSHeight)
+            if (!CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
+                return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
+    }
 
     return true;
 }
@@ -2780,6 +2975,33 @@ double ConvertBitsToDouble(unsigned int nBits)
 
     return dDiff;
 }
+
+CAmount GetSPOSBlockSubsidy(int nPrevHeight, const Consensus::Params& consensusParams, bool fSuperblockPartOnly)
+{
+    CAmount nSubsidy = nMiningIncentives;
+
+    if (nPrevHeight >= g_nAdjustMiningRewardHeight)
+        nSubsidy = nSPOSAdjustMiningIncentives;
+
+    int nNextDecrementHeight = 1261441;
+
+    int nOffset = nNextDecrementHeight - g_nStartSPOSHeight;
+    int nStartDecrementHeight = g_nStartSPOSHeight + nOffset * ConvertBlockHeight(consensusParams);
+    int nSubsidyHalvingInterval = consensusParams.nSubsidyHalvingInterval * ConvertBlockHeight(consensusParams);
+
+    // yearly decline of production by ~7.1% per year, projected ~18M coins max by year 2050+.
+    for (int i = nStartDecrementHeight; i <= nPrevHeight; i += nSubsidyHalvingInterval)
+    {
+        nSubsidy -= nSubsidy/14;
+    }
+
+    nSubsidy = nSubsidy / ConvertBlockHeight(consensusParams);
+    // Hard fork to reduce the block reward by 10 extra percent (allowing budget/superblocks)
+    CAmount nSuperblockPart = (nPrevHeight > consensusParams.nBudgetPaymentsStartBlock) ? nSubsidy/10 : 0;
+
+    return fSuperblockPartOnly ? nSuperblockPart : nSubsidy - nSuperblockPart;
+}
+
 
 /*
 NOTE:   unlike bitcoin we are using PREVIOUS block height here,
@@ -2849,7 +3071,7 @@ CAmount GetMasternodePayment(int nHeight, CAmount blockValue)
     CAmount ret = blockValue/5; // start at 20%
 
     int nMNPIBlock = Params().GetConsensus().nMasternodePaymentsIncreaseBlock;
-    int nMNPIPeriod = Params().GetConsensus().nMasternodePaymentsIncreasePeriod;
+    int nMNPIPeriod = Params().GetConsensus().nMasternodePaymentsIncreasePeriod * ConvertBlockParameterByHeight(nHeight, Params().GetConsensus());
 
                                                                       // mainnet:
     if(nHeight > nMNPIBlock)                  ret += blockValue / 20; // 158000 - 25.0% - 2014-10-24
@@ -2876,8 +3098,13 @@ bool IsInitialBlockDownload()
     const CChainParams& chainParams = Params();
     if (chainActive.Tip() == NULL)
         return true;
-    if (chainActive.Tip()->nChainWork < UintToArith256(chainParams.GetConsensus().nMinimumChainWork))
-        return true;
+
+    if (!IsStartSPosHeight(chainActive.Tip()->nHeight))
+    {
+        if (chainActive.Tip()->nChainWork < UintToArith256(chainParams.GetConsensus().nMinimumChainWork))
+            return true;
+    }
+
     if (chainActive.Tip()->GetBlockTime() < (GetTime() - chainParams.MaxTipAge()))
         return true;
     lockIBDState = true;
@@ -2901,7 +3128,22 @@ void CheckForkWarningConditions()
     if (pindexBestForkTip && chainActive.Height() - pindexBestForkTip->nHeight >= 72)
         pindexBestForkTip = NULL;
 
-    if (pindexBestForkTip || (pindexBestInvalid && pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + (GetBlockProof(*chainActive.Tip()) * 6)))
+    bool bBestWorkOrHeight = false;
+    if (pindexBestInvalid)
+    {
+        if (IsStartSPosHeight(pindexBestInvalid->nHeight))
+        {
+            if (pindexBestInvalid->nHeight > chainActive.Tip()->nHeight + 6)
+                bBestWorkOrHeight = true;
+        }
+        else
+        {
+            if (pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + (GetBlockProof(*chainActive.Tip()) * 6))
+                bBestWorkOrHeight = true;
+        }
+    }
+
+    if (pindexBestForkTip || bBestWorkOrHeight)
     {
         if (!fLargeWorkForkFound && pindexBestForkBase)
         {
@@ -2958,21 +3200,44 @@ void CheckForkWarningConditionsOnNewFork(CBlockIndex* pindexNewForkTip)
     // hash rate operating on the fork.
     // We define it this way because it allows us to only store the highest fork tip (+ base) which meets
     // the 7-block condition and from this always have the most-likely-to-cause-warning fork
-    if (pfork && (!pindexBestForkTip || (pindexBestForkTip && pindexNewForkTip->nHeight > pindexBestForkTip->nHeight)) &&
+
+    if (IsStartSPosHeight(pindexNewForkTip->nHeight))
+    {
+        if (pfork && (!pindexBestForkTip || (pindexBestForkTip && pindexNewForkTip->nHeight > pindexBestForkTip->nHeight)) &&
+            pindexNewForkTip->nHeight - pfork->nHeight > 7 && chainActive.Height() - pindexNewForkTip->nHeight < 72)
+        {
+            pindexBestForkTip = pindexNewForkTip;
+            pindexBestForkBase = pfork;
+        }
+    }
+    else
+    {
+        if (pfork && (!pindexBestForkTip || (pindexBestForkTip && pindexNewForkTip->nHeight > pindexBestForkTip->nHeight)) &&
             pindexNewForkTip->nChainWork - pfork->nChainWork > (GetBlockProof(*pfork) * 7) &&
             chainActive.Height() - pindexNewForkTip->nHeight < 72)
-    {
-        pindexBestForkTip = pindexNewForkTip;
-        pindexBestForkBase = pfork;
+        {
+            pindexBestForkTip = pindexNewForkTip;
+            pindexBestForkBase = pfork;
+        }
     }
+
 
     CheckForkWarningConditions();
 }
 
 void static InvalidChainFound(CBlockIndex* pindexNew)
 {
-    if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
-        pindexBestInvalid = pindexNew;
+
+    if (IsStartSPosHeight(pindexNew->nHeight))
+    {
+        if (!pindexBestInvalid || CompareBestChainActiveTime (pindexNew, pindexBestInvalid))
+            pindexBestInvalid = pindexNew;
+    }
+    else
+    {
+        if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
+            pindexBestInvalid = pindexNew;
+    }
 
     LogPrintf("%s: invalid block=%s  height=%d  log2_work=%.8g  date=%s\n", __func__,
       pindexNew->GetBlockHash().ToString(), pindexNew->nHeight,
@@ -3077,7 +3342,7 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
 
             // If prev is coinbase, check that it's matured
             if (coins->IsCoinBase()) {
-                if (nSpendHeight - coins->nHeight < COINBASE_MATURITY)
+                if (!coins->IsMaturity(nSpendHeight))
                     return state.Invalid(false,
                         REJECT_INVALID, "bad-txns-premature-spend-of-coinbase",
                         strprintf("tried to spend coinbase at depth %d", nSpendHeight - coins->nHeight));
@@ -3405,6 +3670,8 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
     std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> > getCandy_index;
     std::vector<std::pair<CAssetTx_IndexKey, int> > assetTx_index;
     std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> getCandyCount_index;
+    std::string strPubKeyCollateralAddress = "";
+    CMasternodePayee_IndexValue masternodePayment_IndexValue;
 
     // undo transactions in reverse order
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
@@ -3695,6 +3962,24 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
         }
     }
 
+    const CTransaction& tx = block.vtx[0];
+    if(tx.vout.size()>1&&pindex->nHeight>=g_nSaveMasternodePayeeHeight)
+    {
+        CTxDestination dest;
+        int paymentIndex = 1;
+        if (ExtractDestination(tx.vout[paymentIndex].scriptPubKey, dest))
+        {
+            CBitcoinAddress pubKeyCollateralAddress(dest);
+            CKeyID keyid;
+            if(pubKeyCollateralAddress.GetKeyID(keyid))
+            {
+                strPubKeyCollateralAddress = keyid.ToString();
+                masternodePayment_IndexValue.nHeight = pindex->nHeight;
+                masternodePayment_IndexValue.blockTime = pindex->nTime;
+            }
+        }
+    }
+
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 
@@ -3768,6 +4053,31 @@ bool DisconnectBlock(const CBlock& block, CValidationState& state, const CBlockI
                     return AbortNode(state, "Failed to write getCandyCount index");
             }
             ++iter;
+        }
+    }
+
+    //remove masternode payee
+    if(strPubKeyCollateralAddress.size())
+    {
+        if(pblocktree->Is_Exists_MasternodePayee_Key(strPubKeyCollateralAddress))
+        {
+            CMasternodePayee_IndexValue value;
+            if(!pblocktree->Read_MasternodePayee_Index(strPubKeyCollateralAddress,value))
+                return AbortNode(state, "SPOS_Error:Failed to read masternode payee index when disconnect block");
+            if(!pblocktree->Erase_MasternodePayee_Index(strPubKeyCollateralAddress))
+                return AbortNode(state, "SPOS_Error:Failed to erase masternode payee index when disconnect block");
+            masternodePayment_IndexValue.nPayeeTimes = value.nPayeeTimes - 1;
+            if(masternodePayment_IndexValue.nPayeeTimes>0)
+            {
+                if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
+                    return AbortNode(state, "SPOS_Error:Failed to write masternode payee index when disconnect block");
+            }
+            {
+                std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
+                gAllPayeeInfoMap[strPubKeyCollateralAddress] = masternodePayment_IndexValue;
+            }
+            LogPrint("masternode","remove masternode payee:strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
+                     masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
         }
     }
     return fClean;
@@ -3919,20 +4229,30 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         // This setting doesn't force the selection of any particular chain but makes validating some faster by
         //  effectively caching the result of part of the verification.
         BlockMap::const_iterator  it = mapBlockIndex.find(hashAssumeValid);
-        if (it != mapBlockIndex.end()) {
-            if (it->second->GetAncestor(pindex->nHeight) == pindex &&
-                pindexBestHeader->GetAncestor(pindex->nHeight) == pindex &&
-                pindexBestHeader->nChainWork >= UintToArith256(chainparams.GetConsensus().nMinimumChainWork)) {
-                // This block is a member of the assumed verified chain and an ancestor of the best header.
-                // The equivalent time check discourages hashpower from extorting the network via DOS attack
-                //  into accepting an invalid block through telling users they must manually set assumevalid.
-                //  Requiring a software change or burying the invalid block, regardless of the setting, makes
-                //  it hard to hide the implication of the demand.  This also avoids having release candidates
-                //  that are hardly doing any signature verification at all in testing without having to
-                //  artificially set the default assumed verified block further back.
-                // The test against nMinimumChainWork prevents the skipping when denied access to any chain at
-                //  least as good as the expected chain.
-                fScriptChecks = (GetBlockProofEquivalentTime(*pindexBestHeader, *pindex, *pindexBestHeader, chainparams.GetConsensus()) <= 60 * 60 * 24 * 7 * 2);
+        if (it != mapBlockIndex.end())
+        {
+            if (it->second->GetAncestor(pindex->nHeight) == pindex && pindexBestHeader->GetAncestor(pindex->nHeight) == pindex)
+            {
+                if (!IsStartSPosHeight(pindex->nHeight))
+                {
+                    if (pindexBestHeader->nChainWork >= UintToArith256(chainparams.GetConsensus().nMinimumChainWork))
+                    {
+                       // This block is a member of the assumed verified chain and an ancestor of the best header.
+                        // The equivalent time check discourages hashpower from extorting the network via DOS attack
+                        //  into accepting an invalid block through telling users they must manually set assumevalid.
+                        //  Requiring a software change or burying the invalid block, regardless of the setting, makes
+                        //  it hard to hide the implication of the demand.  This also avoids having release candidates
+                        //  that are hardly doing any signature verification at all in testing without having to
+                        //  artificially set the default assumed verified block further back.
+                        // The test against nMinimumChainWork prevents the skipping when denied access to any chain at
+                        //  least as good as the expected chain.
+                        fScriptChecks = (GetBlockProofEquivalentTime(*pindexBestHeader, *pindex, *pindexBestHeader, chainparams.GetConsensus()) <= 60 * 60 * 24 * 7 * 2);
+                    }
+                }
+                else
+                {
+                    fScriptChecks = (GetBlockSPOSEquivalentTime(*pindexBestHeader, *pindex) <= 60 * 60 * 24 * 7 * 2);
+                }
             }
         }
     }
@@ -4030,6 +4350,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     std::vector<std::pair<CGetCandy_IndexKey, CGetCandy_IndexValue> > getCandy_index;
     std::vector<std::pair<CAssetTx_IndexKey, int> > assetTx_index;
     std::map<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> getCandyCount_index;
+    std::string strPubKeyCollateralAddress = "";
+    CMasternodePayee_IndexValue masternodePayment_IndexValue;
 
     map<string, CAmount> mapAddressAmount;
 
@@ -4040,6 +4362,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     {
         const CTransaction& tx = block.vtx[i];
         const uint256& txhash = tx.GetHash();
+
+        if (!CheckAssetTxInputAndOutput(tx, state, view))
+            return error("ConnectBlock(): CheckAssetTxInputAndOutput on %s failed with %s", txhash.ToString(), FormatStateMessage(state));
 
         if(!fJustCheck && !CheckAppTransaction(tx, state, view, mapAssetGetCandy, false))
             return error("ConnectBlock(): CheckAppTransaction on %s failed with %s", txhash.ToString(), FormatStateMessage(state));
@@ -4391,7 +4716,13 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if(CheckCriticalBlock(block))
         blockReward = nFees + g_nCriticalReward;
     else
-        blockReward = nFees + GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, chainparams.GetConsensus());
+    {
+        if (pindex->nHeight >= g_nStartSPOSHeight)
+            blockReward = nFees + GetSPOSBlockSubsidy(pindex->pprev->nHeight, chainparams.GetConsensus());
+        else
+            blockReward = nFees + GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, chainparams.GetConsensus());
+    }
+
     std::string strError = "";
     if (!IsBlockValueValid(block, pindex->nHeight, blockReward, strError)) {
         return state.DoS(0, error("ConnectBlock(SAFE): %s", strError), REJECT_INVALID, "bad-cb-amount");
@@ -4402,6 +4733,33 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         return state.DoS(0, error("ConnectBlock(SAFE): couldn't find masternode or superblock payments"),
                                 REJECT_INVALID, "bad-cb-payee");
     }
+
+    const CTransaction& tx = block.vtx[0];
+    if(tx.vout.size()>1&&pindex->nHeight>=g_nSaveMasternodePayeeHeight)
+    {
+        int paymentIndex = 1;
+        CAmount nMasternodePayment = GetMasternodePayment(pindex->nHeight, tx.GetValueOut());
+        CAmount nActualValue = tx.vout[paymentIndex].nValue;
+        if(nMasternodePayment == nActualValue)
+        {
+            CTxDestination dest;
+            if (ExtractDestination(tx.vout[paymentIndex].scriptPubKey, dest))
+            {
+                CBitcoinAddress pubKeyCollateralAddress(dest);
+                CKeyID keyid;
+                if(pubKeyCollateralAddress.GetKeyID(keyid))
+                {
+                    strPubKeyCollateralAddress = keyid.ToString();
+                    masternodePayment_IndexValue.nHeight = pindex->nHeight;
+                    masternodePayment_IndexValue.blockTime = pindex->nTime;
+                }
+            }
+        }else
+        {
+            LogPrintf("SPOS_Warning:curr height(%d) no masternode payee,this block may be super block,tx:%s\n", pindex->nHeight, tx.ToString());
+        }
+    }
+
     // END SAFE
 
     if (!control.Wait())
@@ -4507,6 +4865,40 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
     }
 
+    if(g_nLocalStartSavePayeeHeight==0&&pindex->nHeight>=g_nSaveMasternodePayeeHeight)
+    {
+        if(!pblocktree->Write_LocalStartSavePayeeHeight_Index(masternodePayment_IndexValue.nHeight))
+            return AbortNode(state, "SPOS_Error:Failed to write local start save payee height");
+        else
+        {
+            g_nLocalStartSavePayeeHeight = masternodePayment_IndexValue.nHeight;
+            LogPrintf("SPOS_Message:write local start save payee height:%d\n",masternodePayment_IndexValue.nHeight);
+        }
+    }
+
+    //add masternode payee
+    if(strPubKeyCollateralAddress.size())
+    {
+        if(pblocktree->Is_Exists_MasternodePayee_Key(strPubKeyCollateralAddress))
+        {
+            CMasternodePayee_IndexValue value;
+            if(!pblocktree->Read_MasternodePayee_Index(strPubKeyCollateralAddress,value))
+                return AbortNode(state, "SPOS_Error:Failed to read masternode payee index when connect block");
+            if(!pblocktree->Erase_MasternodePayee_Index(strPubKeyCollateralAddress))
+                return AbortNode(state, "SPOS_Error:Failed to erase masternode payee index when connect block");
+            masternodePayment_IndexValue.nPayeeTimes = value.nPayeeTimes + 1;
+        }
+        if(!pblocktree->Write_MasternodePayee_Index(strPubKeyCollateralAddress,masternodePayment_IndexValue))
+            return AbortNode(state, "SPOS_Error:Failed to write masternode payee index when connect block");
+
+        {
+            std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
+            gAllPayeeInfoMap[strPubKeyCollateralAddress] = masternodePayment_IndexValue;
+        }
+        LogPrintf("SPOS_Info:add masternode payee,strPubKeyCollateralAddress:%s,nHeight:%d,nPayeeTimes:%d,blockTime:%lld\n",strPubKeyCollateralAddress,
+                 masternodePayment_IndexValue.nHeight,masternodePayment_IndexValue.nPayeeTimes,masternodePayment_IndexValue.blockTime);
+    }
+
     while(GetChangeInfoListSize() >= g_nListChangeInfoLimited)
     {
         boost::this_thread::interruption_point();
@@ -4516,14 +4908,24 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if(!PutChangeInfoToList(pindex->nHeight, blockReward - nFees, !putCandy_index.empty(), mapAddressAmount))
         return AbortNode(state, "Failed to write change info");
 
-    // add this block to the view's block chain
-    view.SetBestBlock(pindex->GetBlockHash());
+	// add this block to the view's block chain
+	view.SetBestBlock(pindex->GetBlockHash());
 
-    if(masternodeSync.IsBlockchainSynced())
-    {
-        for(std::vector<std::pair<std::string, CName_Id_IndexValue> >::const_iterator it = assetName_assetId_index.begin(); it != assetName_assetId_index.end(); it++)
-            uiInterface.AssetFound(it->first);
-    }
+	if (masternodeSync.IsBlockchainSynced())
+	{
+		std::vector<uint256> listAssetId;
+		std::vector<std::pair<uint256, CAssetId_AssetInfo_IndexValue> >::const_iterator itAssetId;
+
+		for (itAssetId = assetId_assetInfo_index.begin(); itAssetId != assetId_assetInfo_index.end(); itAssetId++)
+		{
+			listAssetId.push_back(itAssetId->first);
+		}
+
+		if (listAssetId.size() > 0)
+		{
+			uiInterface.AssetFound(listAssetId);
+		}
+	}
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint("bench", "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime5 - nTime4), nTimeIndex * 0.000001);
@@ -4536,6 +4938,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime6 = GetTimeMicros(); nTimeCallbacks += nTime6 - nTime5;
     LogPrint("bench", "    - Callbacks: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeCallbacks * 0.000001);
 
+    LogPrintf("SPOS_Message:connect new block:%d\n",pindex->nHeight);
     return true;
 }
 
@@ -4810,6 +5213,82 @@ bool static ConnectTip(CValidationState& state, const CChainParams& chainparams,
     mempool.removeForBlock(pblock->vtx, pindexNew->nHeight, txConflicted, !IsInitialBlockDownload());
     // Update chainActive & related variables.
     UpdateTip(pindexNew);
+
+    if(IsStartSPosHeight(pindexNew->nHeight+1))
+    {
+        std::vector<CMasternode> tmpVecResultMasternodes;
+        bool bClearVec=false;
+        int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
+        int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
+        int nForwardHeight = 0,nScoreHeight = 0;
+        updateForwardHeightAndScoreHeight(pindexNew->nHeight,nForwardHeight,nScoreHeight);
+        CBlockIndex* forwardIndex = chainActive[nForwardHeight];
+        if(forwardIndex==NULL)
+        {
+            LogPrintf("SPOS_Warning:forwardIndex is NULL,height:%d,connect new block:%d\n",nForwardHeight,pindexNew->nHeight);
+            return true;
+        }
+        CBlockIndex* scoreIndex = chainActive[nScoreHeight];
+        if(scoreIndex==NULL)
+        {
+            LogPrintf("SPOS_Warning:scoreIndex is NULL,height:%d,connect new block:%d\n",nForwardHeight,pindexNew->nHeight);
+            return true;
+        }
+
+        bool fseselectNewLoop = true;
+        SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
+        if (sporkManager.IsSporkActive(SPORK_6_SPOS_ENABLED))
+        {
+            int64_t ntempSporkValue = sporkManager.GetSporkValue(SPORK_6_SPOS_ENABLED);
+            std::string strSporkValue = boost::lexical_cast<std::string>(ntempSporkValue);
+            std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
+            std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
+            int nHeight = boost::lexical_cast<int>(strHeight);
+            int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
+            /*LogPrintf("SPOS_Message: ConnectTip() strHeight:%s---strOfficialMasterNodeCount:%s---nHeight:%d--nOfficialMasterNodeCount:%d--pindexNew->nHeight:%d\n",
+                      strHeight, strOfficialMasterNodeCount, nHeight, nOfficialMasterNodeCount, pindexNew->nHeight);
+            */
+            
+            if (pindexNew->nHeight + 1 >= nHeight)
+            {
+                fseselectNewLoop = false;
+
+                if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
+                {
+                    LogPrintf("SPOS_Warning: ConnectTip() nOfficialMasterNodeCount is error,pindexNew->nHeight:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",pindexNew->nHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
+                    return true;
+                }
+
+                nSporkSelectLoop = SPORK_SELECT_LOOP_1;
+                SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, true, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
+                                        nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, nSporkSelectLoop, false);
+
+                nSporkSelectLoop = SPORK_SELECT_LOOP_2;
+                if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
+                    SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, false, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
+                                            nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
+            }
+        }
+
+        if (fseselectNewLoop)
+        {
+            int64_t nCurrentTime = GetTime();
+            if (g_nAllowMasterNodeSyncErrorTime != 0)
+            {
+                if (nCurrentTime - g_nFirstSelectMasterNodeTime <= g_nAllowMasterNodeSyncErrorTime)
+                {
+                    LogPrintf("SPOS_Warning:Does not satisfy the condition of selecting the master node,height:%d,connect new block:%d,nCurrentTime:%lld,g_nFirstSelectMasterNodeTime:%lld,g_nAllowMasterNodeSyncErrorTime:%lld\n",
+                              nForwardHeight,pindexNew->nHeight, nCurrentTime, g_nFirstSelectMasterNodeTime, g_nAllowMasterNodeSyncErrorTime);
+                    return true;
+                }
+            }
+
+            SelectMasterNodeByPayee(pindexNew->nHeight,forwardIndex->nTime,scoreIndex->nTime, false, false,tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,
+                                    nSposGeneratedIndex,nStartNewLoopTime, false, g_nMasternodeSPosCount, nSporkSelectLoop, false);
+        }
+        UpdateMasternodeGlobalData(tmpVecResultMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+    }
+
     // Tell wallet about transactions that went from mempool
     // to conflicted:
     BOOST_FOREACH(const CTransaction &tx, txConflicted) {
@@ -4901,8 +5380,17 @@ static CBlockIndex* FindMostWorkChain() {
             bool fMissingData = !(pindexTest->nStatus & BLOCK_HAVE_DATA);
             if (fFailedChain || fMissingData) {
                 // Candidate chain is not usable (either invalid or missing data)
-                if (fFailedChain && (pindexBestInvalid == NULL || pindexNew->nChainWork > pindexBestInvalid->nChainWork))
-                    pindexBestInvalid = pindexNew;
+                if (IsStartSPosHeight(pindexNew->nHeight))
+                {
+                    if (fFailedChain && (pindexBestInvalid == NULL || (pindexNew->nHeight > pindexBestInvalid->nHeight && CompareBestChainActiveTime(pindexNew, pindexBestInvalid))))
+                        pindexBestInvalid = pindexNew;
+                }
+                else
+                {
+                    if (fFailedChain && (pindexBestInvalid == NULL || pindexNew->nChainWork > pindexBestInvalid->nChainWork))
+                        pindexBestInvalid = pindexNew;
+                }
+
                 CBlockIndex *pindexFailed = pindexNew;
                 // Remove the entire chain from the set.
                 while (pindexTest != pindexFailed) {
@@ -4977,7 +5465,10 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
 
         // Connect new blocks.
         BOOST_REVERSE_FOREACH(CBlockIndex *pindexConnect, vpindexToConnect) {
-            if (!ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : NULL)) {
+            UpdateGlobalReceiveBlock(true);
+            bool fConnectTip = ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : NULL);
+            UpdateGlobalReceiveBlock(false);
+            if (!fConnectTip) {
                 if (state.IsInvalid()) {
                     // The block violates a consensus rule.
                     if (!state.CorruptionPossible())
@@ -4992,10 +5483,21 @@ static bool ActivateBestChainStep(CValidationState& state, const CChainParams& c
                 }
             } else {
                 PruneBlockIndexCandidates();
-                if (!pindexOldTip || chainActive.Tip()->nChainWork > pindexOldTip->nChainWork) {
-                    // We're in a better position than we were. Return temporarily to release the lock.
-                    fContinue = false;
-                    break;
+                if (IsStartSPosHeight(chainActive.Tip()->nHeight))
+                {
+                    if (!pindexOldTip || CompareBestChainActiveTime (chainActive.Tip(), pindexOldTip)) {
+                        // We're in a better position than we were. Return temporarily to release the lock.
+                        fContinue = false;
+                        break;
+                    }
+                }
+                else
+                {
+                    if (!pindexOldTip || chainActive.Tip()->nChainWork > pindexOldTip->nChainWork) {
+                        // We're in a better position than we were. Return temporarily to release the lock.
+                        fContinue = false;
+                        break;
+                    }
                 }
             }
         }
@@ -5195,9 +5697,22 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
         pindexNew->nHeight = pindexNew->pprev->nHeight + 1;
         pindexNew->BuildSkip();
     }
-    pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
+
+    if (IsStartSPosHeight(pindexNew->nHeight))
+    {
+        pindexNew->nActiveTime = (pindexNew->pprev ? pindexNew->pprev->nActiveTime: 0) + block.nNonce;
+    }
+    else
+    {
+        pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
+    }
+    
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
-    if (pindexBestHeader == NULL || pindexBestHeader->nChainWork < pindexNew->nChainWork)
+    if (IsStartSPosHeight(pindexNew->nHeight))
+    {
+        if (pindexBestHeader == NULL || CompareBestChainActiveTime(pindexNew, pindexBestHeader))
+            pindexBestHeader = pindexNew;
+    }else if (pindexBestHeader == NULL || pindexBestHeader->nChainWork < pindexNew->nChainWork)
         pindexBestHeader = pindexNew;
 
     setDirtyBlockIndex.insert(pindexNew);
@@ -5344,16 +5859,147 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
     if(CheckCriticalBlock(block))
         return true;
 
-    // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
-        return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
-                         REJECT_INVALID, "high-hash");
+    int nHeight = GetPrevBlockHeight(block.hashPrevBlock) + 1;
+    if (nHeight < g_nStartSPOSHeight)
+    {
+        // Check proof of work matches claimed amount
+        if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
+            return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
+                             REJECT_INVALID, "high-hash");
+    }
 
     // Check timestamp
     if (block.GetBlockTime() > GetAdjustedTime() + 2 * 60 * 60)
         return state.Invalid(error("CheckBlockHeader(): block timestamp too far in the future"),
                              REJECT_INVALID, "time-too-new");
 
+    return true;
+}
+
+
+bool ParseCoinBaseReserve(const std::vector<unsigned char> &vReserve, std::vector<unsigned char> &vchKeyId, std::vector<unsigned char> &vchSig, std::vector<unsigned char> &vchConAlg, uint16_t &nSPOSVersion, string &strSigMessage)
+{
+    unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + nConsensusAlgorithmLen + sizeof(nSPOSVersion) + nKeyIdSize;
+
+    if (vReserve.size() <= nFixedLen)
+        return false;
+
+    unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
+
+    //1.Consensus algorithm(4 bytes)
+    for(unsigned int k = 0; k < nConsensusAlgorithmLen; k++)
+        vchConAlg.push_back(vReserve[nOffset++]);
+
+    // 2. version (2 bytes)
+    nSPOSVersion = *(uint16_t*)&vReserve[nOffset];
+    nOffset += sizeof(nSPOSVersion);
+
+    // 3. keyid (20 bytes)
+    for(unsigned int i = 0; i < nKeyIdSize; i++)
+        vchKeyId.push_back(vReserve[nOffset++]);
+
+    // 4. vchSig
+    unsigned int nvchSigLen = vReserve.size() - nFixedLen;
+    for (unsigned int j = 0; j < nvchSigLen; j++)
+        vchSig.push_back(vReserve[nOffset++]);
+
+    for (unsigned int m = 0; m < nFixedLen; m++)
+        strSigMessage.push_back(vReserve[m]);
+
+    return true;
+}
+
+bool CheckSPOSBlock(const CBlock &block, CValidationState &state, const int &nHeight,bool fCheckPOW)
+{
+    CTransaction testTransaction  = block.vtx[0];
+    const CTxOut &testout = testTransaction.vout[0];
+    string strAddress = "";
+    if (GetTxOutAddress(testout, &strAddress))
+        LogPrint("sposinfo","SPOS_Message:AAAAABlockAddress:%s, height:%d, blockHash:%s\n", strAddress, nHeight, block.GetHash().ToString());
+
+    if (block.nBits != 0)
+        return state.DoS(100, error("SPOS_Warning CheckSPOSBlock(): block.nBits  not equal to 0,this block may receive from pow chain,height:%d,", nHeight), REJECT_INVALID, "bad-nBits", true);
+
+    int64_t nLockTime = GetTime();
+    //Synchronization of old blocks will result in a large difference between block time and local time, and cannot be compared using absolute values.
+    int64_t nBlockTime = block.GetBlockTime();
+    if (nBlockTime - nLockTime > g_nAllowableErrorTime)
+    {
+        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
+        string strLockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nLockTime);
+        return state.DoS(100, error("SPOS_Warning CheckSPOSBlock():Block time(block.nTime:%lld,%s) minus local time(now:%lld,%s) exceeds allowable time error range(allowableErrorTime:%d),height:%d",
+                                    nBlockTime,strBlockTime, nLockTime,strLockTime,g_nAllowableErrorTime,nHeight), REJECT_INVALID, "bad-nTime", true);
+    }
+
+    CTransaction tempTransaction  = block.vtx[0];
+    const CTxOut &out = tempTransaction.vout[0];
+
+    std::vector<unsigned char> vchKeyId;
+    std::vector<unsigned char> vchSig;
+    std::vector<unsigned char> vchConAlg;
+    string strSigMessage = "";
+    uint16_t nSPOSVersion = 1;
+
+    if (!ParseCoinBaseReserve(out.vReserve, vchKeyId, vchSig, vchConAlg, nSPOSVersion, strSigMessage) || vchConAlg.size() != nConsensusAlgorithmLen || vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock(): analysis CTxOut vReserve fail, height:%d, vchConAlg size:%d",nHeight,vchConAlg.size()), REJECT_INVALID, "bad-vReserve", true);
+
+    CKeyID keyID;
+    CDataStream ssKey(vchKeyId, SER_DISK, CLIENT_VERSION);
+    ssKey >> keyID;
+
+    std::string strError = "";
+    if (!CMessageSigner::VerifyMessage(keyID, vchSig, strSigMessage, strError))
+        return state.DoS(100, error("SPOS_Error CheckSPOSBlock():Signature verification does not pass, height:%d, keyID:%s, strSigMessage:%s, vchSig size:%d",
+                                    nHeight, keyID.ToString(), strSigMessage, vchSig.size()), REJECT_INVALID, "bad-signature", true);
+
+    int32_t mnSize = 0;
+    int64_t nStartNewLoopTime = 0;
+    int32_t nIndex = 0;
+    CMasternode mnTemp;
+    {
+        LOCK(cs_spos);
+        mnSize = g_vecResultMasternodes.size();
+        nStartNewLoopTime = g_nStartNewLoopTimeMS;
+        if (!masternodeSync.IsSynced()|| (mnSize == 0 && g_nSelectMasterNodeRet == g_nSelectMasterNodeReset))
+            return true;
+
+        if(mnSize == 0)
+            return state.DoS(100, error("SPOS_Error CheckSPOSBlock():g_vecResultMasternodes is empty,height:%d, signature error, keyID:%s, strSigMessage:%s, vchSig size:%d,g_nSelectMasterNodeRet:%d"
+                                        ,nHeight, keyID.ToString(), strSigMessage, vchSig.size(),g_nSelectMasterNodeRet), REJECT_INVALID, "bad-mnSize", true);
+        int32_t interval = (block.GetBlockTime() - nStartNewLoopTime / 1000 - g_nPushForwardTime) / Params().GetConsensus().nSPOSTargetSpacing - 1;
+        nIndex = interval % mnSize;
+        if(nIndex<0)
+            return state.DoS(100,error("SPOS_Error CheckSPOSBlock():incorrect index value,height:%d, invalid index:%d,blockTime:%lld,startLoopTime:%lld"
+                                       ,nHeight,nIndex,block.GetBlockTime(),nStartNewLoopTime),REJECT_INVALID,"bad-index",true);
+        mnTemp = g_vecResultMasternodes[nIndex];
+    }
+
+    CKeyID mnkeyID = mnTemp.pubKeyMasternode.GetID();
+
+    if (keyID != mnkeyID)
+        return state.DoS(100, error("SPOS_Warning CheckSPOSBlock():the keyID in out.vReserve is not equal to the keyid of the index master node, height:%d,"
+                                    "remote keyID:%s,local mnkeyID:%s,local nIndex:%d,ip:%s,blocktime:%lld,startlooptime:%lld\n",nHeight,keyID.ToString()
+                                    ,mnkeyID.ToString(),nIndex,mnTemp.addr.ToStringIP(),block.GetBlockTime(),nStartNewLoopTime), REJECT_INVALID
+                                    ,"bad-blockaddress", true);
+
+    uint32_t tempMnActiveTime = mnTemp.getCanbeSelectTime(nHeight);
+    if (block.nNonce <= g_nMasternodeCanBeSelectedTime)
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():the block.nNonce(%d) is less than can be selected time(%d),height:%d\n",
+                                   block.nNonce, g_nMasternodeCanBeSelectedTime,nHeight), REJECT_INVALID,"bad-nNonce", true);
+
+    if (block.nNonce > tempMnActiveTime)
+        return state.DoS(100,error("SPOS_Error CheckSPOSBlock():the block.nNonce(%d) is bigger than real active time(%d),height:%d\n",
+                                   block.nNonce,tempMnActiveTime,nHeight), REJECT_INVALID,"bad-nNonce", true);
+
+    if(fCheckPOW)
+    {
+        int64_t nBlockTime = block.GetBlockTime();
+        string strBlockTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nBlockTime);
+        string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
+        LogPrintf("SPOS_Message:check spos block succ,height:%d,index:%d,ip:%s,blockTime:%lld(%s),nStartNewLoopTime:%lld(%s),mnSize:%d,nPushForwardTime:%d,"
+                  "strKeyID:%s\n",nHeight,nIndex,mnTemp.addr.ToStringIP(),nBlockTime,strBlockTime,nStartNewLoopTime/1000,strStartNewLoopTime,mnSize,
+                  g_nPushForwardTime,keyID.ToString());
+    }
     return true;
 }
 
@@ -5364,10 +6010,26 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (block.fChecked)
         return true;
 
+     // First transaction must be coinbase, the rest must not be
+    if (block.vtx.empty() || !block.vtx[0].IsCoinBase())
+        return state.DoS(100, error("CheckBlock(): first tx is not coinbase"),
+                         REJECT_INVALID, "bad-cb-missing");
+    for (unsigned int i = 1; i < block.vtx.size(); i++)
+        if (block.vtx[i].IsCoinBase())
+            return state.DoS(100, error("CheckBlock(): more than one coinbase"),
+                             REJECT_INVALID, "bad-cb-multiple");
+
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
     if (!CheckBlockHeader(block, state, fCheckPOW))
         return false;
+
+    if (nHeight >= g_nStartSPOSHeight)
+    {
+        LOCK(cs_spos);
+        if (!CheckSPOSBlock(block, state,nHeight,fCheckPOW))
+            return false;
+    }
 
     // Check the merkle root.
     if (fCheckMerkleRoot) {
@@ -5393,15 +6055,6 @@ bool CheckBlock(const CBlock& block, const int& nHeight, CValidationState& state
     if (block.vtx.empty() || block.vtx.size() > MaxBlockSize(true) || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION) > MaxBlockSize(true))
         return state.DoS(100, error("%s: size limits failed", __func__),
                          REJECT_INVALID, "bad-blk-length");
-
-    // First transaction must be coinbase, the rest must not be
-    if (block.vtx.empty() || !block.vtx[0].IsCoinBase())
-        return state.DoS(100, error("CheckBlock(): first tx is not coinbase"),
-                         REJECT_INVALID, "bad-cb-missing");
-    for (unsigned int i = 1; i < block.vtx.size(); i++)
-        if (block.vtx[i].IsCoinBase())
-            return state.DoS(100, error("CheckBlock(): more than one coinbase"),
-                             REJECT_INVALID, "bad-cb-multiple");
 
 
     // SAFE : CHECK TRANSACTIONS FOR INSTANTSEND
@@ -5473,23 +6126,31 @@ static bool CheckIndexAgainstCheckpoint(const CBlockIndex* pindexPrev, CValidati
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex * const pindexPrev)
 {
     const Consensus::Params& consensusParams = Params().GetConsensus();
+#if SCN_CURRENT == SCN__main
     int nHeight = pindexPrev->nHeight + 1;
-    // Check proof of work
-    if(Params().NetworkIDString() == CBaseChainParams::MAIN && nHeight <= 68589){
-        // architecture issues with DGW v1 and v2)
-        unsigned int nBitsNext = GetNextWorkRequired(pindexPrev, &block, consensusParams);
-        double n1 = ConvertBitsToDouble(block.nBits);
-        double n2 = ConvertBitsToDouble(nBitsNext);
+    if (nHeight < g_nStartSPOSHeight)
+    {
+        // Check proof of work
+        if(Params().NetworkIDString() == CBaseChainParams::MAIN && nHeight <= 68589){
+            // architecture issues with DGW v1 and v2)
+            unsigned int nBitsNext = GetNextWorkRequired(pindexPrev, &block, consensusParams);
+            double n1 = ConvertBitsToDouble(block.nBits);
+            double n2 = ConvertBitsToDouble(nBitsNext);
 
-        if (abs(n1-n2) > n1*0.5)
-            return state.DoS(100, error("%s : incorrect proof of work (DGW pre-fork) - %f %f %f at %d", __func__, abs(n1-n2), n1, n2, nHeight),
-                            REJECT_INVALID, "bad-diffbits");
-    } else {
-        if (!CheckCriticalBlock(block) && block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
-            return state.DoS(100, error("%s : incorrect proof of work at %d", __func__, nHeight),
-                            REJECT_INVALID, "bad-diffbits");
+            if (abs(n1-n2) > n1*0.5)
+                return state.DoS(100, error("%s : incorrect proof of work (DGW pre-fork) - %f %f %f at %d", __func__, abs(n1-n2), n1, n2, nHeight),
+                                REJECT_INVALID, "bad-diffbits");
+        } else {
+            if (!CheckCriticalBlock(block) && block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
+                return state.DoS(100, error("%s : incorrect proof of work at %d", __func__, nHeight),
+                                REJECT_INVALID, "bad-diffbits");
+        }
     }
-
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    //do nothing
+#else
+#error unsupported <safe chain name>
+#endif
     // Check timestamp against prev
     if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast())
         return state.Invalid(error("%s: block's timestamp is too early", __func__),
@@ -5605,6 +6266,17 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
         if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, hash))
             return error("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
 
+        if (pindexPrev->nHeight + 1 > g_nStartSPOSHeight)
+        {
+            if (block.GetBlockTime() - pindexPrev->nTime < g_nAdjacentBlockInterval)
+                return state.DoS(100, error("SPOS_Warning AcceptBlockHeader():Adjacent block interval invalid, nHeight:%d, blocktime:%lld, pindexPrevblocktime:%lld, g_nAdjacentBlockInterval:%d\n",
+                                 pindexPrev->nHeight + 1, block.GetBlockTime(), pindexPrev->nTime, g_nAdjacentBlockInterval), REJECT_INVALID ,"bad-prevblk");
+
+            // Check that the block satisfies synchronized checkpoint
+            if (!Checkpoints::CheckSync(pindexPrev->nHeight + 1))
+                return state.DoS(10, error("%s: SPOS_Error AcceptBlockHeader(): checksync fail, block height:%d, chain active height:%d", __func__, pindexPrev->nHeight + 1, chainActive.Height()), REJECT_INVALID, "bad-prevblk");
+        }
+
         if (!ContextualCheckBlockHeader(block, state, pindexPrev))
             return false;
     }
@@ -5653,7 +6325,22 @@ static bool AcceptBlock(const CBlock& block, CValidationState& state, const CCha
     // process an unrequested block if it's new and has enough work to
     // advance our tip, and isn't too many blocks ahead.
     bool fAlreadyHave = pindex->nStatus & BLOCK_HAVE_DATA;
-    bool fHasMoreWork = (chainActive.Tip() ? pindex->nChainWork > chainActive.Tip()->nChainWork : true);
+    bool fHasMoreWork = false;
+    if (chainActive.Tip())
+    {
+        if (IsStartSPosHeight(pindex->nHeight))
+        {
+            if (CompareBestChainActiveTime (pindex, chainActive.Tip()))
+                fHasMoreWork = true;
+        }
+        else
+        {
+            if (pindex->nChainWork > chainActive.Tip()->nChainWork)
+                fHasMoreWork = true;
+        }
+    }
+    else
+        fHasMoreWork = true;
     // Blocks that are too out-of-order needlessly limit the effectiveness of
     // pruning, because pruning will not delete block files that contain any
     // blocks which are too close in height to the tip.  Apply this test
@@ -5752,6 +6439,8 @@ bool ProcessNewBlock(const CChainParams& chainparams, const CBlock* pblock, bool
 bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams, const CBlock& block, CBlockIndex* pindexPrev, bool fCheckPOW, bool fCheckMerkleRoot)
 {
     AssertLockHeld(cs_main);
+    if(pindexPrev != chainActive.Tip())
+        LogPrintf("SPOS_Error:pindexPrev != chainActive.Tip(),%s\n",pindexPrev->ToString());
     assert(pindexPrev && pindexPrev == chainActive.Tip());
     if (fCheckpointsEnabled && !CheckIndexAgainstCheckpoint(pindexPrev, state, chainparams, block.GetHash()))
         return error("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
@@ -5967,7 +6656,14 @@ bool static LoadBlockIndexDB()
     BOOST_FOREACH(const PAIRTYPE(int, CBlockIndex*)& item, vSortedByHeight)
     {
         CBlockIndex* pindex = item.second;
-        pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + GetBlockProof(*pindex);
+        if (IsStartSPosHeight(pindex->nHeight))
+        {
+            pindex->nActiveTime = (pindex->pprev ? pindex->pprev->nActiveTime : 0) + pindex->nNonce;
+        }
+        else
+        {
+            pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + GetBlockProof(*pindex);
+        }
         // We can link the chain of blocks for which we've received transactions at some point.
         // Pruned nodes may have deleted the block.
         if (pindex->nTx > 0) {
@@ -5984,8 +6680,18 @@ bool static LoadBlockIndexDB()
         }
         if (pindex->IsValid(BLOCK_VALID_TRANSACTIONS) && (pindex->nChainTx || pindex->pprev == NULL))
             setBlockIndexCandidates.insert(pindex);
-        if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nChainWork > pindexBestInvalid->nChainWork))
-            pindexBestInvalid = pindex;
+
+        if (IsStartSPosHeight(pindex->nHeight))
+        {
+            if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || CompareBestChainActiveTime(pindex, pindexBestInvalid)))
+                pindexBestInvalid = pindex;
+        }
+        else
+        {
+            if (pindex->nStatus & BLOCK_FAILED_MASK && (!pindexBestInvalid || pindex->nChainWork > pindexBestInvalid->nChainWork))
+                pindexBestInvalid = pindex;
+        }
+
         if (pindex->pprev)
             pindex->BuildSkip();
         if (pindex->IsValid(BLOCK_VALID_TREE) && (pindexBestHeader == NULL || CBlockIndexWorkComparator()(pindexBestHeader, pindex)))
@@ -6437,7 +7143,10 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
         assert((pindexFirstNeverProcessed != NULL) == (pindex->nChainTx == 0)); // nChainTx != 0 is used to signal that all parent blocks have been processed (but may have been pruned).
         assert((pindexFirstNotTransactionsValid != NULL) == (pindex->nChainTx == 0));
         assert(pindex->nHeight == nHeight); // nHeight must be consistent.
-        assert(pindex->pprev == NULL || pindex->nChainWork >= pindex->pprev->nChainWork); // For every block except the genesis block, the chainwork must be larger than the parent's.
+        if (IsStartSPosHeight(pindex->nHeight))
+            assert(pindex->pprev == NULL || CompareBestChainActiveTime(pindex, pindex->pprev, true));
+        else
+            assert(pindex->pprev == NULL || pindex->nChainWork >= pindex->pprev->nChainWork); // For every block except the genesis block, the chainwork must be larger than the parent's.
         assert(nHeight < 2 || (pindex->pskip && (pindex->pskip->nHeight < nHeight))); // The pskip pointer must point back for all but the first 2 blocks.
         assert(pindexFirstNotTreeValid == NULL); // All mapBlockIndex entries must at least be TREE valid
         if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_TREE) assert(pindexFirstNotTreeValid == NULL); // TREE valid implies all parents are TREE valid
@@ -6924,56 +7633,115 @@ bool GetAssetListInfo(std::vector<uint256> &vAssetId, const bool fWithMempool)
 
     return vAssetId.size();
 }
+//
+//CAmount GetAddedAmountByAssetId(const uint256& assetId, const bool fWithMempool)
+//{
+//    if (assetId.IsNull())
+//        return 0;
+//
+//    CAmount value = 0;
+//    vector<COutPoint> tempvOut;
+//    GetTxInfoByAssetIdTxClass(assetId, ADD_ISSUE_TXOUT, tempvOut, fWithMempool);
+//    if (tempvOut.empty())
+//        return 0;
+//
+//    std::vector<uint256> vTx;
+//    BOOST_FOREACH(const COutPoint& out, tempvOut)
+//    {
+//        if (find(vTx.begin(), vTx.end(), out.hash) == vTx.end())
+//            vTx.push_back(out.hash);
+//    }
+//
+//    std::vector<uint256>::iterator it = vTx.begin();
+//    for (; it != vTx.end(); it++)
+//    {
+//        CTransaction txTmp;
+//        uint256 hashBlock;
+//        if (GetTransaction(*it, txTmp, Params().GetConsensus(), hashBlock, true))
+//        {
+//            BOOST_FOREACH(const CTxOut& txout, txTmp.vout)
+//            {
+//                if (!txout.IsAsset())
+//                    continue;
+//
+//                CAppHeader header;
+//                vector<unsigned char> vData;
+//                if (ParseReserve(txout.vReserve, header, vData))
+//                {
+//                    if (header.nAppCmd == ADD_ASSET_CMD)
+//                    {
+//                        CCommonData commonData;
+//                        if (ParseCommonData(vData, commonData))
+//                        {
+//                            if (assetId == commonData.assetId)
+//                                value += commonData.nAmount;
+//                        }
+//                    }
+//                }
+//           }
+//        }
+//    }
+//
+//    return value;
+//}
+
 
 CAmount GetAddedAmountByAssetId(const uint256& assetId, const bool fWithMempool)
 {
-    if (assetId.IsNull())
-        return 0;
+	if (assetId.IsNull() || NULL == pwalletMain)
+		return 0;
 
-    CAmount value = 0;
-    vector<COutPoint> tempvOut;
-    GetTxInfoByAssetIdTxClass(assetId, ADD_ISSUE_TXOUT, tempvOut, fWithMempool);
-    if (tempvOut.empty())
-        return 0;
+	CAmount value = 0;
+	vector<COutPoint> tempvOut;
+	GetTxInfoByAssetIdTxClass(assetId, ADD_ISSUE_TXOUT, tempvOut, fWithMempool);
+	if (tempvOut.empty())
+		return 0;
 
-    std::vector<uint256> vTx;
-    BOOST_FOREACH(const COutPoint& out, tempvOut)
-    {
-        if (find(vTx.begin(), vTx.end(), out.hash) == vTx.end())
-            vTx.push_back(out.hash);
-    }
+	std::vector<uint256> vTx;
+	BOOST_FOREACH(const COutPoint& out, tempvOut)
+	{
+		if (find(vTx.begin(), vTx.end(), out.hash) == vTx.end())
+			vTx.push_back(out.hash);
+	}
 
-    std::vector<uint256>::iterator it = vTx.begin();
-    for (; it != vTx.end(); it++)
-    {
-        CTransaction txTmp;
-        uint256 hashBlock;
-        if (GetTransaction(*it, txTmp, Params().GetConsensus(), hashBlock, true))
-        {
-            BOOST_FOREACH(const CTxOut& txout, txTmp.vout)
-            {
-                if (!txout.IsAsset())
-                    continue;
+	std::vector<uint256>::iterator it = vTx.begin();
+	for (; it != vTx.end(); it++)
+	{
+		std::map<uint256, CWalletTx>::iterator itTx;
 
-                CAppHeader header;
-                vector<unsigned char> vData;
-                if (ParseReserve(txout.vReserve, header, vData))
-                {
-                    if (header.nAppCmd == ADD_ASSET_CMD)
-                    {
-                        CCommonData commonData;
-                        if (ParseCommonData(vData, commonData))
-                        {
-                            if (assetId == commonData.assetId)
-                                value += commonData.nAmount;
-                        }
-                    }
-                }
-           }
-        }
-    }
+		{
+			LOCK(pwalletMain->cs_wallet);
+			itTx = pwalletMain->mapWallet.find(*it);
+			if (itTx == pwalletMain->mapWallet.end())
+			{
+				continue;
+			}
+		}
 
-    return value;
+
+		BOOST_FOREACH(const CTxOut& txout, itTx->second.vout)
+		{
+			if (!txout.IsAsset())
+				continue;
+
+			CAppHeader header;
+			vector<unsigned char> vData;
+			if (ParseReserve(txout.vReserve, header, vData))
+			{
+				if (header.nAppCmd == ADD_ASSET_CMD)
+				{
+					CCommonData commonData;
+					if (ParseCommonData(vData, commonData))
+					{
+						if (assetId == commonData.assetId)
+							value += commonData.nAmount;
+					}
+				}
+			}
+		}
+	}
+
+	return value;
 }
 
 bool GetRangeChangeHeight(const int nCandyHeight, vector<int>& vChangeHeight)
@@ -7003,8 +7771,27 @@ bool GetAddressAmountByHeight(const int& nHeight, const std::string& strAddress,
     std::lock_guard<std::mutex> lock(g_mutexChangeFile);
 
     uint64_t nDetailFileSize = boost::filesystem::file_size(GetDataDir() / "height/detail.dat");
-    if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * BLOCKS_PER_MONTH)
-        return error("%s: cannot get address amount out of 3 months", __func__);
+
+    if (nHeight >= g_nStartSPOSHeight)
+    {
+        if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * SPOS_BLOCKS_PER_MONTH)
+            return error("%s: cannot get address amount out of 3 months", __func__);
+    }
+    else
+    {
+        if (nHeight + 3 * BLOCKS_PER_MONTH >= g_nStartSPOSHeight)
+        {
+            int nSPOSLaveHeight = (nHeight + 3 * BLOCKS_PER_MONTH - g_nStartSPOSHeight) * ConvertBlockHeight(Params().GetConsensus());
+            int nTrueThreeMonthBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+            if (nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > nTrueThreeMonthBlockHeight)
+                return error("%s: cannot get address amount out of 3 months", __func__);
+        }
+        else
+        {
+            if(nDetailFileSize / sizeof(CBlockDetail) + g_nCriticalHeight - 1 - nHeight > 3 * BLOCKS_PER_MONTH)
+                return error("%s: cannot get address amount out of 3 months", __func__);
+        }
+    }
 
     vector<int> vChangeHeight;
     if(!GetRangeChangeHeight(nHeight, vChangeHeight))
@@ -7062,6 +7849,7 @@ bool GetIssueAssetInfo(std::map<uint256, CAssetData>& mapissueassetinfo)
     map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin();
     for (; it != pwalletMain->mapWallet.end(); it++)
     {
+        boost::this_thread::interruption_point();
         const CWalletTx* pcoin = &(*it).second;
         if (!CheckFinalTx(*pcoin))
             continue;
@@ -7070,6 +7858,7 @@ bool GetIssueAssetInfo(std::map<uint256, CAssetData>& mapissueassetinfo)
 
         for (unsigned int i = 0; i < pcoin->vout.size(); i++)
         {
+            boost::this_thread::interruption_point();
             if (!pcoin->vout[i].IsAsset())
                 continue;
 
@@ -7174,8 +7963,26 @@ static bool GetAllCandyInfo()
 
         int64_t nTimeBegin = mapBlockIndex[candyInfoValue.blockHash]->GetBlockTime();
 
-        if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
-            continue;
+        if (nTxHeight >= g_nStartSPOSHeight)
+        {
+            if (candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight - 3 * SPOS_BLOCKS_PER_DAY < nCurrentHeight)
+                continue;
+        }
+        else
+        {
+            if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueBlockHeight < nCurrentHeight)
+                    continue;
+            }
+            else
+            {
+                if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                    continue;
+            }
+        }
 
         CAmount nTotalSafe = 0;
         if(!GetTotalAmountByHeight(nTxHeight, nTotalSafe))
@@ -7217,7 +8024,7 @@ static bool GetAllCandyInfo()
 
             icounter++;
             if (icounter <= nCandyPageCount && fHaveGUI)
-                uiInterface.CandyVecPut();
+				uiInterface.CandyVecPut();
 
             {
                 std::lock_guard<std::mutex> lock(g_mutexAllCandyInfo);
@@ -7235,12 +8042,12 @@ static bool GetAllCandyInfo()
         if(vecSize>0&&vecSize<nCandyPageCount)
             sendToFirstPage = true;
         int64_t lastBlockTime = 0;
-        int lastBlockIndex = vecSize-1;
+        int lastBlockIndex = 0;
         if(vecSize>0)
         {
-            lastBlockTime = gAllCandyInfoVec[vecSize-1].blocktime;
+            lastBlockTime = gAllCandyInfoVec[0].blocktime;
             bool foundIndex = false;
-            for(int i = lastBlockIndex;i>=0;i--)
+            for(unsigned int i = lastBlockIndex;i<vecSize;i++)
             {
                 if(lastBlockTime!=gAllCandyInfoVec[i].blocktime)
                 {
@@ -7249,8 +8056,6 @@ static bool GetAllCandyInfo()
                     break;
                 }
             }
-            if(!foundIndex)
-                lastBlockIndex = 0;
         }
         if(gTmpAllCandyInfoVec.size()>0 && fRet)
         {
@@ -7263,7 +8068,7 @@ static bool GetAllCandyInfo()
                 if(tmpInfo.blocktime==lastBlockTime)
                 {
                     //compare exists
-                    for(unsigned int i=lastBlockIndex;i<gAllCandyInfoVec.size();i++)
+                    for(unsigned int i=0;i<=lastBlockIndex;i++)
                     {
                         CCandy_BlockTime_Info& info = gAllCandyInfoVec[i];
                         if(info.assetId==tmpInfo.assetId&&info.outpoint==tmpInfo.outpoint&&info.candyinfo==tmpInfo.candyinfo
@@ -7275,12 +8080,12 @@ static bool GetAllCandyInfo()
                     }
                 }
                 if(!exist)
-                    gAllCandyInfoVec.push_back(gTmpAllCandyInfoVec[i]);
+                    gAllCandyInfoVec.insert(gAllCandyInfoVec.begin(),gTmpAllCandyInfoVec[i]);
             }
         }
 
         if(sendToFirstPage && fHaveGUI)
-            uiInterface.CandyVecPut();
+			uiInterface.CandyVecPut();
     }
 
     return fRet;
@@ -7288,30 +8093,30 @@ static bool GetAllCandyInfo()
 
 void ThreadGetAllCandyInfo()
 {
-    SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
-    RenameThread("safe-get-allcandy");
+	SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
+	RenameThread("safe-get-allcandy");
 
-    static bool fOneThread;
-    if (fOneThread)
-        return;
-    fOneThread = true;
+	static bool fOneThread;
+	if (fOneThread)
+		return;
+	fOneThread = true;
 
-    while(true)
-    {
-        boost::this_thread::interruption_point();
-        if(!fGetCandyInfoStart)
-        {
-            MilliSleep(100);
-            continue;
-        }
-        if(GetAllCandyInfo())
-        {
-            fUpdateAllCandyInfoFinished = true;
-            LogPrintf("Message:GetAllCandyInfo finished\n");
-            break;
-        }
-        MilliSleep(1000);
-    }
+	while (true)
+	{
+		boost::this_thread::interruption_point();
+		if (!fGetCandyInfoStart)
+		{
+			MilliSleep(100);
+			continue;
+		}
+		if (GetAllCandyInfo())
+		{
+			fUpdateAllCandyInfoFinished = true;
+			LogPrintf("Message:GetAllCandyInfo finished\n");
+			break;
+		}
+		MilliSleep(1000);
+	}
 }
 
 bool LoadCandyHeightToList()
@@ -7756,8 +8561,26 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
             COutPoint out(tx.GetHash(), i);
             CCandy_BlockTime_Info candyblocktimeinfo(assetId, assetInfo.assetData, CCandyInfo(candyData.nAmount, candyData.nExpired),out , candyBlock.nTime, nCandyHeight);
 
-            if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
-                continue;
+            if (nCandyHeight >= g_nStartSPOSHeight)
+            {
+                if (candyData.nExpired * SPOS_BLOCKS_PER_MONTH + nCandyHeight - 3 * SPOS_BLOCKS_PER_DAY< nCurrentHeight)
+                    continue;
+            }
+            else
+            {
+                if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight >= g_nStartSPOSHeight)
+                {
+                    int nSPOSLaveHeight = (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                    int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                    if (nTrueBlockHeight < nCurrentHeight)
+                        continue;
+                }
+                else
+                {
+                    if (candyData.nExpired * BLOCKS_PER_MONTH + nCandyHeight < nCurrentHeight)
+                        continue;
+                }
+            }
 
             if(nCandyHeight > nCurrentHeight)
                 continue;
@@ -7790,7 +8613,7 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
                 if(gAllCandyInfoVec.size()<nCandyPageCount)
                     fUpdateUI = true;
                 std::lock_guard<std::mutex> lock(g_mutexAllCandyInfo);
-                gAllCandyInfoVec.push_back(candyblocktimeinfo);
+                gAllCandyInfoVec.insert(gAllCandyInfoVec.begin(),candyblocktimeinfo);
             }
             else
             {
@@ -7800,36 +8623,36 @@ static bool GetHeightAddressAmount(const int& nCandyHeight)
         }
     }
     if(fUpdateUI && fHaveGUI)
-        uiInterface.CandyVecPut();
+		uiInterface.CandyVecPut();
 
     return true;
 }
 
 void ThreadCalculateAddressAmount()
 {
-    SetThreadPriority(THREAD_PRIORITY_NORMAL);
-    RenameThread("safe-calculate-amount");
+	SetThreadPriority(THREAD_PRIORITY_NORMAL);
+	RenameThread("safe-calculate-amount");
 
-    while (true)
-    {
-        boost::this_thread::interruption_point();
-        int nCandyHeight = 0;
-        if (GetCandyHeightFromList(nCandyHeight))
-        {
-            while(true)
-            {
-                boost::this_thread::interruption_point();
-                if(GetHeightAddressAmount(nCandyHeight))
-                {
-                    MilliSleep(100);
-                    break;
-                }
-                MilliSleep(1000);
-            }
-        }
-        else
-            MilliSleep(1000);
-    }
+	while (true)
+	{
+		boost::this_thread::interruption_point();
+		int nCandyHeight = 0;
+		if (GetCandyHeightFromList(nCandyHeight))
+		{
+			while (true)
+			{
+				boost::this_thread::interruption_point();
+				if (GetHeightAddressAmount(nCandyHeight))
+				{
+					MilliSleep(100);
+					break;
+				}
+				MilliSleep(1000);
+			}
+		}
+		else
+			MilliSleep(1000);
+	}
 }
 
 static bool CheckDetailFile(FILE* pFile, const int& nHeight, int& nLastCandyHeight, bool& fValid)
@@ -8074,7 +8897,12 @@ bool LoadChangeInfoToList()
         if(CheckCriticalBlock(block))
             blockReward = g_nCriticalReward;
         else
-            blockReward = GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, Params().GetConsensus());
+        {
+            if (pindex->nHeight >= g_nStartSPOSHeight)
+                blockReward = GetSPOSBlockSubsidy(pindex->pprev->nHeight, Params().GetConsensus());
+            else
+                blockReward = GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, Params().GetConsensus());
+        }
 
         g_listChangeInfo.push_back(CChangeInfo(pindex->nHeight, g_nLastCandyHeight, blockReward, bExistCandy, mapAddressAmount));
 
@@ -8315,7 +9143,20 @@ static bool WriteChangeInfo(const CChangeInfo& changeInfo)
     // 5. remove change file before 3 month
     if(nStep == 4)
     {
-        int nEndHeight = changeInfo.nHeight - 3 * BLOCKS_PER_MONTH;
+        int nEndHeight = 0;
+        if (changeInfo.nHeight >= g_nStartSPOSHeight)
+            nEndHeight = changeInfo.nHeight - 3 * SPOS_BLOCKS_PER_MONTH;
+        else
+        {
+            if (changeInfo.nHeight + 3 * BLOCKS_PER_MONTH >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (changeInfo.nHeight + 3 * BLOCKS_PER_MONTH - g_nStartSPOSHeight) * ConvertBlockHeight(Params().GetConsensus());
+                int nTrueThreeMonthBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                nEndHeight = changeInfo.nHeight - nTrueThreeMonthBlockHeight;
+            }
+            else
+                nEndHeight = changeInfo.nHeight - 3 * BLOCKS_PER_MONTH;
+        }
         if(nEndHeight >= changeInfo.nLastCandyHeight)
             nEndHeight = changeInfo.nLastCandyHeight;
         DeleteFilesToHeight(nEndHeight);
@@ -8327,26 +9168,26 @@ static bool WriteChangeInfo(const CChangeInfo& changeInfo)
 
 void ThreadWriteChangeInfo()
 {
-    SetThreadPriority(THREAD_PRIORITY_NORMAL);
-    RenameThread("safe-change");
+	SetThreadPriority(THREAD_PRIORITY_NORMAL);
+	RenameThread("safe-change");
 
-    while(true)
-    {
-        boost::this_thread::interruption_point();
-        CChangeInfo changeInfo;
-        if(GetChangeInfoFromList(changeInfo))
-        {
-            while(true)
-            {
-                boost::this_thread::interruption_point();
-                if(WriteChangeInfo(changeInfo))
-                    break;
-                MilliSleep(100);
-            }
-        }
-        else
-            MilliSleep(10);
-    }
+	while (true)
+	{
+		boost::this_thread::interruption_point();
+		CChangeInfo changeInfo;
+		if (GetChangeInfoFromList(changeInfo))
+		{
+			while (true)
+			{
+				boost::this_thread::interruption_point();
+				if (WriteChangeInfo(changeInfo))
+					break;
+				MilliSleep(100);
+			}
+		}
+		else
+			MilliSleep(10);
+	}
 }
 
 void resetNumA(std::string numAStr)
@@ -8630,7 +9471,7 @@ bool CompareGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAsse
         {
             nmapgetcandyamount = nCandyAmount + ntempmapgetcandyamount;
             return false;
-        }    
+        }
 
         mapAssetGetCandy[key] = ntempmapgetcandyamount + nCandyAmount;
     }
@@ -8671,4 +9512,543 @@ bool CompareDBGetCandyPutCandyTotal(std::map<CPutCandy_IndexKey, CAmount> &mapAs
     }
 
     return true;
+}
+
+
+void GetAllPayeeInfoMap(std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo)
+{
+    std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
+
+    for (auto& Payeepair : gAllPayeeInfoMap)
+    {
+        mapAllPayeeInfo[Payeepair.first] = Payeepair.second;
+    }
+}
+
+void CalculateIncreaseMasternode(int& nRemainNum,int& nIncrease,unsigned int vecSize,unsigned int nPercentCnt)
+{
+    if(nRemainNum > 0)
+    {
+        int canUseCnt = vecSize - nPercentCnt;
+        if(canUseCnt>=nRemainNum)
+            nIncrease = nRemainNum;
+        else
+            nIncrease = canUseCnt;
+        nRemainNum = nRemainNum - nIncrease;
+    }
+}
+
+void SortMasternodeByScore(std::map<COutPoint, CMasternode> &mapMasternodes, std::vector<CMasternode>& vecResultMasternodes,uint32_t nScoreTime,
+                           std::string strArrName,std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo)
+{
+    //sort by score
+    std::map<uint256, CMasternode> scoreMasternodes;
+    for (std::map<COutPoint, CMasternode>::const_reverse_iterator mnpair = mapMasternodes.rbegin(); mnpair != mapMasternodes.rend(); ++mnpair)
+    {
+        const CMasternode& mn = (*mnpair).second;
+
+        uint256 hash = mn.pubKeyCollateralAddress.GetHash();
+        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+        ss << hash;
+        ss << nScoreTime;
+        uint256 score = ss.GetHash();
+        scoreMasternodes[score] = mn;
+    }
+
+    int logErrorCnt = 0, logNormalCnt = 0;
+    LogPrintf("SPOS_Message:%s(size:%d) after sort:\n",strArrName,scoreMasternodes.size());
+    for (auto& mnpair : scoreMasternodes)
+    {
+        std::string strPubKeyCollateralAddress = mnpair.second.pubKeyCollateralAddress.GetID().ToString();
+        std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(strPubKeyCollateralAddress);
+        logErrorCnt++;
+        logNormalCnt++;
+        if (tempit == mapAllPayeeInfo.end())
+        {
+            if(logErrorCnt<=g_nLogMaxCnt)
+            {
+                LogPrintf("SPOS_Error:SortMasternodeByScore,payee not found,ip:%s,strPubKeyCollateralAddress:%s\n",
+                      mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
+            }else
+            {
+                LogPrint("sposinfo","SPOS_Error:extra SortMasternodeByScore,payee not found,ip:%s,strPubKeyCollateralAddress:%s\n",
+                      mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress);
+            }
+        }else
+        {
+            if(logNormalCnt<=g_nLogMaxCnt)
+            {
+                LogPrintf("SPOS_Info:%s[%d]:ip:%s,collateralAddress:%s,nScoreTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
+                          "lastHeight:%d,nState:%d\n",strArrName,logErrorCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
+                          nScoreTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
+                          mnpair.second.nActiveState);
+            }else
+            {
+                LogPrint("sposinfo","SPOS_Info:extra %s[%d]:ip:%s,collateralAddress:%s,nScoreTime:%d,nPayeeBlockTime:%d,nPayeeTimes:%d,"
+                                    "lastHeight:%d,nState:%d\n",strArrName,logErrorCnt-1,mnpair.second.addr.ToStringIP(),strPubKeyCollateralAddress,
+                                    nScoreTime,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight,
+                                    mnpair.second.nActiveState);
+            }
+        }
+    }
+
+    for (auto& mnpair : scoreMasternodes)
+    {
+        CMasternode& mn = mnpair.second;
+        vecResultMasternodes.push_back(mn);
+    }
+
+    //random the master node
+    uint64_t now_hi = uint64_t(nScoreTime) << 32;
+    for( uint32_t i = 0; i < vecResultMasternodes.size(); ++i )
+    {
+        /// High performance random generator
+        /// http://xorshift.di.unimi.it/
+        uint64_t k = now_hi + uint64_t(i)*2685821657736338717ULL;
+        k ^= (k >> 12);
+        k ^= (k << 25);
+        k ^= (k >> 27);
+        k *= 2685821657736338717ULL;
+
+        uint32_t jmax = vecResultMasternodes.size() - i;
+        uint32_t j = i + k%jmax;
+        std::swap(vecResultMasternodes[i], vecResultMasternodes[j]);
+    }
+}
+
+void UpdateMasternodeGlobalData(const std::vector<CMasternode>& tmpVecMasternodes,bool bClearVec,int selectMasterNodeRet,int nSposGeneratedIndex
+                          ,int64_t nStartNewLoopTime)
+{
+    LOCK(cs_spos);
+    if(bClearVec||!tmpVecMasternodes.empty())
+    {
+        g_vecResultMasternodes.clear();
+        std::vector<CMasternode>().swap(g_vecResultMasternodes);
+        for(auto& mn:tmpVecMasternodes)
+            g_vecResultMasternodes.push_back(mn);
+    }
+    if(selectMasterNodeRet!=g_nSelectGlobalDefaultValue)
+        g_nSelectMasterNodeRet = selectMasterNodeRet;
+    if(nSposGeneratedIndex!=g_nSelectGlobalDefaultValue)
+        g_nSposGeneratedIndex = nSposGeneratedIndex;
+    if(nStartNewLoopTime!=g_nSelectGlobalDefaultValue)
+        g_nStartNewLoopTimeMS = nStartNewLoopTime;
+}
+
+void UpdateGlobalTimeoutCount(int nTimeoutCount)
+{
+    LOCK(cs_spos);
+    g_nTimeoutCount = nTimeoutCount;
+}
+
+void UpdateGlobalReceiveBlock(bool fReceiveBlock)
+{
+    LOCK(cs_spos);
+    g_fReceiveBlock = fReceiveBlock;
+}
+
+void UpdateGlobalPushforwardTime(int nCurrBlockHeight)
+{
+    LOCK(cs_spos);
+    if(g_nPushForwardTime==0&&nCurrBlockHeight-g_nPushForwardHeight>g_nStartSPOSHeight){
+        g_nPushForwardTime = g_nPushForwardHeight * Params().GetConsensus().nSPOSTargetSpacing;
+    }
+}
+
+void SelectMasterNodeByPayee(int nCurrBlockHeight, uint32_t nTime,uint32_t nScoreTime, const bool bSpork, const bool bProcessSpork,std::vector<CMasternode>& tmpVecResultMasternodes
+                                   ,bool& bClearVec,int& nSelectMasterNodeRet,int& nSposGeneratedIndex,int64_t& nStartNewLoopTime,bool fTimeoutReselect,const unsigned int& nMasternodeSPosCount, 
+                                   SPORK_SELECT_LOOP nSporkSelectLoop, bool fRemoveOfficialMasternode)
+{
+    if(!masternodeSync.IsSynced()&&g_vecResultMasternodes.empty())
+        return;
+
+    if (!bProcessSpork)
+    {
+        if(g_nLastSelectMasterNodeHeight == nCurrBlockHeight)
+        {
+            LogPrintf("SPOS_Message:g_nLastSelectMasterNodeHeight equal to nNewBlockHeight %d,not SelectMasterNodeByPayee\n",nCurrBlockHeight);
+            return;
+        }
+
+        int ret = nCurrBlockHeight % g_nMasternodeSPosCount;
+        if(ret != 0 )
+        {
+            if((nCurrBlockHeight+1) == g_nStartSPOSHeight)
+                LogPrintf("SPOS_Warning:error g_nStartSPOSHeight config,please check config\n");
+            return;
+        }
+
+        if (masternodeSync.IsSynced() && g_nAllowMasterNodeSyncErrorTime != 0 && g_nFirstSelectMasterNodeTime == 0)
+        {
+            g_nFirstSelectMasterNodeTime = GetTime();
+            return;
+        }
+
+    }
+
+    if(!masternodeSync.IsSynced())
+    {
+        bClearVec = true;
+        nSelectMasterNodeRet = g_nSelectMasterNodeReset;//reset ret
+        LogPrintf("SPOS_Warning:masternode is syncing,reset g_nSelectMasterNodeRet,wait next loop to select masternode\n");
+        return;
+    }
+
+    if(nCurrBlockHeight-g_nLocalStartSavePayeeHeight<g_nCanSelectMasternodeHeight && g_nLocalStartSavePayeeHeight != g_nSaveMasternodePayeeHeight)
+    {
+        LogPrintf("SPOS_Warning:local start save masternode height(%d) minus curr height(%d) less than masternode can be select height(%d),default save masternode payee height:%d\n",
+                  g_nLocalStartSavePayeeHeight,nCurrBlockHeight,g_nCanSelectMasternodeHeight,g_nSaveMasternodePayeeHeight);
+        return;
+    }
+
+    LogPrintf("SPOS_Info:--------------------------------------------------------\n");
+    LogPrintf("SPOS_Message:start select masternode,nCurrHeight:%d,fTimeoutReselect:%s,g_nTimeoutCount:%d.\n",nCurrBlockHeight,
+              fTimeoutReselect?"true":"false",g_nTimeoutCount);
+    std::map<COutPoint, CMasternode> mapMeetedMasternodes;
+    bool fFilterSpent = true;
+    std::map<std::string,CMasternodePayee_IndexValue> mapAllPayeeInfo;
+    int nFullMasternodeSize = mnodeman.size();
+    GetAllPayeeInfoMap(mapAllPayeeInfo);
+    if (bSpork)
+    {
+        LogPrintf("SPOS_Message:Spork message select official master node\n");
+        std::map<COutPoint, CMasternode> fullmapMasternodes;
+        mnodeman.GetFullMasternodeData(fullmapMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight, true);
+
+        const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
+        std::vector<COutPointData>::const_iterator it = vtempOutPointData.begin();
+        for (;it != vtempOutPointData.end(); it++)
+        {
+            COutPointData tempcoutpointdata = *it;
+            COutPoint tempcoutpoint;
+            tempcoutpoint.hash = tempcoutpointdata.hash;
+            tempcoutpoint.n = tempcoutpointdata.n;
+             std::map<COutPoint, CMasternode>::iterator tempit = fullmapMasternodes.find(tempcoutpoint);
+            if (tempit != fullmapMasternodes.end())
+                mapMeetedMasternodes[tempcoutpoint] = tempit->second;
+        }
+    }
+    else
+    {
+        mnodeman.GetFullMasternodeData(mapMeetedMasternodes,mapAllPayeeInfo,fFilterSpent,nCurrBlockHeight, false);
+        if (fRemoveOfficialMasternode)
+        {
+            const std::vector<COutPointData> &vectempOutPointData = Params().COutPointDataS();
+            std::vector<COutPointData>::const_iterator it = vectempOutPointData.begin();
+            for (;it != vectempOutPointData.end(); it++)
+            {
+                COutPointData tempcoutpointdata = *it;
+                COutPoint tempcoutpoint;
+                tempcoutpoint.hash = tempcoutpointdata.hash;
+                tempcoutpoint.n = tempcoutpointdata.n;
+                 std::map<COutPoint, CMasternode>::iterator tempit = mapMeetedMasternodes.find(tempcoutpoint);
+                if (tempit != mapMeetedMasternodes.end())
+                    mapMeetedMasternodes.erase(tempit);
+            }
+        }
+    }
+
+    if(!g_vecResultMasternodes.empty()){
+        bClearVec = true;
+    }
+
+    //1.3.3
+    nStartNewLoopTime = (int64_t)nTime*1000;
+    nSposGeneratedIndex = -2;
+    nSelectMasterNodeRet = g_nSelectMasterNodeSucc;
+    string strStartNewLoopTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nStartNewLoopTime/1000);
+
+    UpdateGlobalPushforwardTime(nCurrBlockHeight);
+
+    if(mapMeetedMasternodes.empty())
+    {
+        LogPrintf("SPOS_Error:meeted mapMasternodes is empty,actual masternode map size:%d\n",mnodeman.GetFullMasternodeMap().size());
+        nSelectMasterNodeRet = g_nSelectMasterNodeFail;
+        return;
+    }
+
+    if (nSporkSelectLoop==SPORK_SELECT_LOOP_1||nSporkSelectLoop==SPORK_SELECT_LOOP_OVER_TIMEOUT_LIMIT)
+    {
+        std::vector<CMasternode> vecResultAllOfficialMasternodes;
+        SortMasternodeByScore(mapMeetedMasternodes, vecResultAllOfficialMasternodes, nScoreTime, "Official", mapAllPayeeInfo);
+        
+        uint32_t nAllOfficialMasternodecount = vecResultAllOfficialMasternodes.size();
+        for (uint32_t i = 0; i < nAllOfficialMasternodecount; ++i)
+        {
+            if (i == nMasternodeSPosCount)
+                break;
+
+            tmpVecResultMasternodes.push_back(vecResultAllOfficialMasternodes[i]);
+            const CMasternode& mn = vecResultAllOfficialMasternodes[i];
+
+            std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(mn.pubKeyCollateralAddress.GetID().ToString());
+            if (tempit == mapAllPayeeInfo.end())
+            {
+                LogPrintf("SPOS_Error:Official masterNodeIP[%d] not fount payeeinfo:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,currHeight:%d\n",
+                          i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nCurrBlockHeight);
+            }else
+            {
+                LogPrintf("SPOS_Message:Official masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,currHeight:%d,nPayeeBlockTime:%d,"
+                          "nPayeeTimes:%d,lastHeight:%d\n", i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,
+                          mn.sigTime,nCurrBlockHeight,tempit->second.blockTime,tempit->second.nPayeeTimes,tempit->second.nHeight);
+            }
+        }
+
+        if (nMasternodeSPosCount == g_nMasternodeSPosCount)
+        {
+//            if(!fTimeoutReselect){
+//                UpdateGlobalTimeoutCount(0);
+//            }
+            unsigned int tmpSize = tmpVecResultMasternodes.size();
+            if (tmpSize < g_nMasternodeMinCount)
+            {
+                LogPrintf("SPOS_Error: tmpVecResultMasternodes size less than masternode min count,tmpVecResultMasternodes size:%d,g_nMasternodeMinCount:%d\n",
+                         tmpSize, g_nMasternodeMinCount);
+                nSelectMasterNodeRet = g_nSelectMasterNodeFail;
+            }
+        }
+
+        return;
+    }
+
+    //4.1
+    unsigned int nMeetedMasternodeSize = mapMeetedMasternodes.size();
+    unsigned int intervalHeight = nMeetedMasternodeSize / 2;
+
+    std::map<COutPoint, CMasternode> mapMasternodesL1,mapMasternodesL2,mapMasternodesL3;
+
+    std::map<COutPoint, CMasternode>::iterator it = mapMeetedMasternodes.begin();
+    for (; it != mapMeetedMasternodes.end(); it++)
+    {
+        const CMasternode& mn = it->second;
+        std::string strPubKeyCollateralAddress = mn.pubKeyCollateralAddress.GetID().ToString();
+        std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(strPubKeyCollateralAddress);
+        if (tempit == mapAllPayeeInfo.end())
+        {
+            LogPrintf("SPOS_Error:payee not found,GetFullMasternodeData have already checked the payee,ip:%s,strPubKeyCollateralAddress:%s\n",
+                      mn.addr.ToStringIP(),strPubKeyCollateralAddress);
+        }else
+        {
+            uint32_t nIntervalHeight = nCurrBlockHeight - tempit->second.nHeight;
+            if (nIntervalHeight <= intervalHeight)
+                mapMasternodesL1[it->first] = it->second;
+            else if (nIntervalHeight > intervalHeight && nIntervalHeight <=  2 *intervalHeight)
+                mapMasternodesL2[it->first] = it->second;
+            else
+                mapMasternodesL3[it->first] = it->second;
+        }
+    }
+
+    std::vector<CMasternode> vecResultMasternodesL1,vecResultMasternodesL2,vecResultMasternodesL3;
+    SortMasternodeByScore(mapMasternodesL1, vecResultMasternodesL1, nScoreTime, "L1", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL2, vecResultMasternodesL2, nScoreTime, "L2", mapAllPayeeInfo);
+    SortMasternodeByScore(mapMasternodesL3, vecResultMasternodesL3, nScoreTime, "L3", mapAllPayeeInfo);
+
+    //5
+    unsigned int vec1Size = vecResultMasternodesL1.size();
+    unsigned int vec2Size = vecResultMasternodesL2.size();
+    unsigned int vec3Size = vecResultMasternodesL3.size();
+    unsigned int nP1 = ((double)vec1Size / nMeetedMasternodeSize) * nMasternodeSPosCount;
+    unsigned int nP2 = ((double)vec2Size / nMeetedMasternodeSize) * nMasternodeSPosCount;
+    unsigned int nP3 = ((double)vec3Size / nMeetedMasternodeSize) * nMasternodeSPosCount;
+
+    unsigned int nMnSize = vec1Size + vec2Size + vec3Size;
+    unsigned int nSporkLoop1Size = 0;
+    if(nSporkSelectLoop==SPORK_SELECT_LOOP_2)
+        nSporkLoop1Size = tmpVecResultMasternodes.size();
+
+    if (nMnSize + nSporkLoop1Size < g_nMasternodeMinCount)
+    {
+        LogPrintf("SPOS_Error:mnSize less than masternode min count,mnSize:%d,nSporkLoop1Size:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,"
+                  "payeeInfoCount:%d,nP1:%d,nP2:%d,nP3:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,mapMasternodesL3:%d\n",
+                  nMnSize,nSporkLoop1Size,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),nP1,nP2,nP3,
+                  mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size());
+        nSelectMasterNodeRet = g_nSelectMasterNodeFail;
+        return;
+    }
+
+    unsigned int nSelectTotal = nP1 + nP2 + nP3;
+    int nRemainNum = nMasternodeSPosCount - nSelectTotal;
+    int nP1Increase = 0,nP2Increase = 0,nP3Increase = 0;
+    CalculateIncreaseMasternode(nRemainNum,nP1Increase,vec1Size,nP1);
+    CalculateIncreaseMasternode(nRemainNum,nP2Increase,vec2Size,nP2);
+    CalculateIncreaseMasternode(nRemainNum,nP3Increase,vec3Size,nP3);
+
+//    LogPrintf("SPOS_Message:calmnSize:%d,g_nMasternodeMinCount:%d,nTotalMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
+//              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d)\n",nMnSize,g_nMasternodeMinCount,
+//              nTotalMasternode,mapAllPayeeInfo.size(),mapMasternodesL1.size(),mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,
+//              nP1Increase,nP2,nP2Increase,nP3,nP3Increase);
+
+    unsigned int nP1Total = nP1+nP1Increase;
+    if(nP1Total>vec1Size)
+        LogPrintf("SPOS_Error:nP1:%d,nP1Increase:%d,vec1Size:%d\n",nP1,nP1Increase,nP1Total);
+    for (unsigned int i = 0; i < nP1Total && i < vec1Size; i++)
+        tmpVecResultMasternodes.push_back(vecResultMasternodesL1[i]);
+
+    unsigned int nP2Total = nP2+nP2Increase;
+    if(nP2Total>vec2Size)
+        LogPrintf("SPOS_Error:nP2:%d,nP2Increase:%d,vec2Size:%d\n",nP2,nP2Increase,nP2Total);
+    for (unsigned int j = 0; j < nP2Total && j < vec2Size; j++)
+        tmpVecResultMasternodes.push_back(vecResultMasternodesL2[j]);
+
+    unsigned int nP3Total = nP3 + nP3Increase;
+    if(nP3Total>vec3Size)
+        LogPrintf("SPOS_Error:nP2:%d,nP2Increase:%d,vec2Size:%d\n",nP3,nP3Increase,nP3Total);
+    for (unsigned int k = 0; k < nP3Total && k < vec3Size; k++)
+        tmpVecResultMasternodes.push_back(vecResultMasternodesL3[k]);
+
+    if (!bProcessSpork)
+        g_nLastSelectMasterNodeHeight = nCurrBlockHeight;
+
+    string localIpPortInfo = activeMasternode.service.ToString();
+    uint32_t size = tmpVecResultMasternodes.size();
+
+//    if(!fTimeoutReselect){
+//        UpdateGlobalTimeoutCount(0);
+//    }
+
+    //no \n,connect two log str
+    LogPrintf("SPOS_Message:start new loop,local info:%s,currHeight:%d,startNewLoopTime:%lld(%s),select %d masternode,min online masternode count:%d,"
+              "nRemainNum:%d,intervalHeight:%d,",localIpPortInfo,nCurrBlockHeight,nStartNewLoopTime/1000,strStartNewLoopTime,size,
+              g_nMasternodeMinCount,nRemainNum,intervalHeight);
+
+    LogPrintf("mnSize:%d,g_nMasternodeMinCount:%d,nFullMasternode:%d,nMeetedMasternode:%d,payeeInfoCount:%d,mapMasternodesL1:%d,mapMasternodesL2:%d,"
+              "mapMasternodesL3:%d,nP1:%d(nP1Increase:%d),nP2:%d(nP2Increase:%d),nP3:%d(nP3Increase:%d),g_nTimeoutCount:%d,g_nPushForwardTime:%d\n"
+              ,nMnSize,g_nMasternodeMinCount,nFullMasternodeSize,nMeetedMasternodeSize,mapAllPayeeInfo.size(),mapMasternodesL1.size()
+              ,mapMasternodesL2.size(),mapMasternodesL3.size(),nP1,nP1Increase,nP2,nP2Increase,nP3,nP3Increase,g_nTimeoutCount,g_nPushForwardTime);
+    for( uint32_t i = 0; i < size; ++i )
+    {
+        string nPStr = "P3";
+        if(i<nP1Total)
+            nPStr = "P1";
+        else if(i< (nP1Total + nP2Total))
+            nPStr = "P2";
+        const CMasternode& mn = tmpVecResultMasternodes[i];
+        if(i>=nSporkLoop1Size)
+        {
+            std::map<std::string,CMasternodePayee_IndexValue>::iterator tempit = mapAllPayeeInfo.find(mn.pubKeyCollateralAddress.GetID().ToString());
+            if (tempit == mapAllPayeeInfo.end())
+            {
+                LogPrintf("SPOS_Error:General masterNodeIP[%d] not fount payeeinfo:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s,currHeight:%d\n",
+                          i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),mn.lastPing.sigTime,mn.sigTime,nPStr,nCurrBlockHeight);
+            }else
+            {
+                LogPrintf("SPOS_Message:General masterNodeIP[%d]:%s(spos_select),keyid:%s,pingTime:%lld,sigTime:%lld,location:%s,currHeight:%d,"
+                          "nPayeeBlockTime:%d,nPayeeTimes:%d,lastHeight:%d\n", i, mn.addr.ToStringIP(),mn.pubKeyMasternode.GetID().ToString(),
+                          mn.lastPing.sigTime,mn.sigTime,nPStr,nCurrBlockHeight,tempit->second.blockTime,tempit->second.nPayeeTimes,
+                          tempit->second.nHeight);
+            }
+        }
+    }
+}
+
+int ConvertBlockHeight(const Consensus::Params& consensusParams)
+{
+    return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
+}
+
+int ConvertBlockParameterByHeight(const int &nHeight, const Consensus::Params& consensusParams)
+{
+    if (IsStartSPosHeight(nHeight))
+        return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
+    else
+        return 1;
+}
+
+int ConvertBlockConfirmationsByHeight(const int&nHeight)
+{
+    const Consensus::Params& consensusParams = Params().GetConsensus();
+
+    if (IsStartSPosHeight(nHeight))
+        return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
+    else
+        return 1;
+}
+
+int ConvertBlockNum()
+{
+     const Consensus::Params& consensusParams = Params().GetConsensus();
+     return consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing;
+}
+
+bool CompareBestChainActiveTime(const CBlockIndex *pCurrentBlockIndex, const CBlockIndex *pBestBlockIndex, const bool fComEquals)
+{
+    if (fComEquals)
+    {
+        if (pCurrentBlockIndex->nActiveTime >= pBestBlockIndex->nActiveTime)
+            return true;
+        else
+            return false;
+    }
+    else
+    {
+        if (pCurrentBlockIndex->nActiveTime > pBestBlockIndex->nActiveTime)
+            return true;
+        else
+            return false;
+    }
+}
+
+int ConvertMasternodeConfirmationsByHeight(const int &nHeight, const Consensus::Params& consensusParams)
+{
+    if (IsStartSPosHeight(nHeight))
+        return consensusParams.nMasternodeMinimumConfirmations * (consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing);
+    else
+    {
+        if (IsStartSPosHeight(nHeight + consensusParams.nMasternodeMinimumConfirmations))
+            return consensusParams.nMasternodeMinimumConfirmations * (consensusParams.nPowTargetSpacing / consensusParams.nSPOSTargetSpacing);
+        else
+            return consensusParams.nMasternodeMinimumConfirmations;
+    }
+}
+
+void updateForwardHeightAndScoreHeight(int nCurrBlockHeight, int &nForwardHeight, int &nScoreHeight)
+{
+    LOCK(cs_spos);
+    if(nCurrBlockHeight-g_nPushForwardHeight>g_nStartSPOSHeight)
+    {
+        nForwardHeight = nCurrBlockHeight-g_nPushForwardHeight;
+        if(nForwardHeight<0){
+            nForwardHeight = 0;
+        }
+        nScoreHeight = nForwardHeight;
+    }else
+    {
+        nForwardHeight = nCurrBlockHeight;//first spos g_nPushForwardHeight block not push
+        nScoreHeight = nCurrBlockHeight;
+    }
+    if(g_nTimeoutCount>0)
+    {
+        nScoreHeight = nCurrBlockHeight-g_nTimeoutPushForwardHeight*g_nTimeoutCount;
+        if(nScoreHeight<0){
+            nScoreHeight = 0;
+        }
+    }
+    LogPrintf("SPOS_Message:forwardHeight:%d,scoreHeight:%d,nCurrBlockHeight:%d,g_nTimeoutCount:%d,g_nPushForwardTime:%d\n"
+              ,nForwardHeight,nScoreHeight,nCurrBlockHeight,g_nTimeoutCount,g_nPushForwardTime);
+}
+
+int ConvertSuperblockCycle(const int& nHeight)
+{
+    const Consensus::Params& consensusParams = Params().GetConsensus();
+    int nTempSuperBlockCycle = 0;
+    int nOffset = 0;
+    int nTmpOffset = nPOWAfterSPOSfirstSuperblock - g_nStartSPOSHeight;
+    if (nTmpOffset >= 0)
+        nOffset = nTmpOffset;
+    int nReallyHeight = g_nStartSPOSHeight + nOffset * ConvertBlockHeight(consensusParams);
+
+    if (nHeight > nReallyHeight)
+    {
+        nTempSuperBlockCycle = consensusParams.nSuperblockCycle * ConvertBlockHeight(consensusParams);
+    }
+    else
+    {
+        if (nHeight < g_nStartSPOSHeight)
+            nTempSuperBlockCycle = consensusParams.nSuperblockCycle;
+        else
+            nTempSuperBlockCycle = g_nStartSPOSHeight - nPOWBeforeSPOSLastSuperblock + nOffset * ConvertBlockHeight(consensusParams);
+    }
+
+    return nTempSuperBlockCycle;
 }

@@ -7,6 +7,7 @@
 
 #include "paymentrequestplus.h"
 #include "walletmodeltransaction.h"
+#include "updateTransaction.h"
 
 #include "wallet/wallet.h"
 #include "support/allocators/secure.h"
@@ -25,6 +26,7 @@ class TransactionTableModel;
 class WalletModelTransaction;
 class AssetsDisplayInfo;
 class UpdateConfirmWorker;
+class WalletView;
 
 class CCoinControl;
 class CKeyID;
@@ -172,13 +174,23 @@ public:
         Unlocked,               // wallet->IsCrypted() && !wallet->IsLocked()
     };
 
+	enum PageType
+	{
+		NonePage,
+		TransactionPage,
+		LockPage,
+		CandyPage,
+		AssetPage,
+		AppPage
+	};
+
     OptionsModel *getOptionsModel();
     AddressTableModel *getAddressTableModel();
     TransactionTableModel *getTransactionTableModel();
     TransactionTableModel *getLockedTransactionTableModel();
     TransactionTableModel *getCandyTableModel();
     TransactionTableModel *getAssetsDistributeTableModel();
-    TransactionTableModel *getAssetsRegistTableModel();
+    TransactionTableModel *getApplicationRegistTableModel();
     RecentRequestsTableModel *getRecentRequestsTableModel();
 
     CAmount getBalance(const CCoinControl *coinControl = NULL,const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
@@ -192,11 +204,6 @@ public:
     CAmount getWatchImmatureBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
     CAmount getWatchLockedBalance(const bool fAsset=false, const uint256* pAssetId=NULL, const CBitcoinAddress* pAddress=NULL,bool bLock=true) const;
     EncryptionStatus getEncryptionStatus() const;
-
-    void getAssetsNames(bool needInMainChain,QStringList& lst);
-
-    //assets name
-    QMap<QString,AssetsDisplayInfo>& getAssetsNamesUnits();
 
     // Check address for validity
     bool validateAddress(const QString &address);
@@ -269,6 +276,21 @@ public:
 
     bool hdEnabled() const;
 
+	void setWalletView(WalletView *walletView);
+
+	CWallet *getWallet() { return wallet; }
+
+	void ShowHistoryPage();
+
+	CUpdateTransaction *getUpdateTransaction();
+
+	void startUpdate();
+
+	/* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
+	void pollBalanceChanged(bool checkIncrease);
+
+	void loadHistroyData();
+
 private:
     CWallet *wallet;
     bool fHaveWatchOnly;
@@ -277,9 +299,6 @@ private:
     // Wallet has an options model for wallet-specific options
     // (transaction fee, for example)
     OptionsModel *optionsModel;
-
-    //assets name
-    QMap<QString,AssetsDisplayInfo> assetsNamesInfo;
 
     AddressTableModel *addressTableModel;
     TransactionTableModel *transactionTableModel;
@@ -303,10 +322,21 @@ private:
     int cachedNumBlocks;
     int cachedTxLocks;
     int cachedPrivateSendRounds;
+    int nCheckIncrease;
+
+	WalletView *pWalletView;
+	CUpdateTransaction *pUpdateTransaction;
+	QMap<uint256, QList<TransactionRecord> > mapDecTransaction;
+	QMap<uint256, NewTxData> mapTransactionStatus;
+	QTimer *pTimer;
 
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
-    void checkBalanceChanged(bool copyTmp=false);
+    void checkBalanceChanged(bool checkIncrease=false);
+
+	void updateAllBalanceChanged(bool checkIncrease = false);
+
+	void updateConfirmations();
 
 Q_SIGNALS:
     // Signal that balance in wallet changed
@@ -335,6 +365,8 @@ Q_SIGNALS:
 
     void updateConfirm();
 
+	void loadWalletFinish();
+
 public Q_SLOTS:
     /* Wallet status might have changed */
     void updateStatus();
@@ -344,9 +376,10 @@ public Q_SLOTS:
     void updateAddressBook(const QString &address, const QString &label, bool isMine, const QString &purpose, int status);
     /* Watch-only added */
     void updateWatchOnlyFlag(bool fHaveWatchonly);
-    /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
-    void pollBalanceChanged();
-    void updateAllBalanceChanged(bool copyTmp=false);
+
+	void updateAllTransaction_slot(const QMap<uint256, QList<TransactionRecord> > &mapDecTransaction, const QMap<uint256, NewTxData> &mapTransactionStatus);
+
+	void refreshTransaction_slot();
 };
 
 class EncryptWorker: public QObject {

@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -527,6 +527,11 @@ UniValue masternodelist(const UniValue& params, bool fHelp)
                 obj.push_back(Pair(strOutpoint, strAddress));
             } else if (strMode == "full") {
                 std::ostringstream streamFull;
+                CBlockIndex* pindex = NULL;
+                {
+                    LOCK(cs_main);
+                    pindex = chainActive.Tip();
+                }
                 streamFull << std::setw(18) <<
                                mn.GetStatus() << " " <<
                                mn.nProtocolVersion << " " <<

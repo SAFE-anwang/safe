@@ -1,9 +1,13 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+#if defined(HAVE_CONFIG_H)
+#include "config/safe-chain.h"
+#endif
 
 #include "base58.h"
 #include "clientversion.h"
@@ -32,6 +36,8 @@
 #include <univalue.h>
 
 using namespace std;
+
+extern int g_nStartSPOSHeight;
 
 /**
  * @note Do not add or change anything in the information returned by this
@@ -88,7 +94,15 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     GetProxy(NET_IPV4, proxy);
 
     UniValue obj(UniValue::VOBJ);
+
+#if SCN_CURRENT == SCN__main
     obj.push_back(Pair("version", CLIENT_VERSION));
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    obj.push_back(Pair("version", 2050031));
+#else
+#error unsupported <safe chain name>
+#endif
+
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
 #ifdef ENABLE_WALLET
     if (pwalletMain) {
@@ -253,6 +267,10 @@ UniValue spork(const UniValue& params, bool fHelp)
 
         // SPORK VALUE
         int64_t nValue = params[1].get_int64();
+
+        std::string strErrMessage = "";
+        if (!sporkManager.CheckSPORK_6_SPOSValue(nSporkID, nValue, strErrMessage))
+            return strErrMessage;
 
         //broadcast new spork
         if(sporkManager.UpdateSpork(nSporkID, nValue, *g_connman)){
@@ -908,9 +926,6 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
             if(temptxout.nUnlockedHeight <= 0)
                 continue;
 
-            if(temptxout.nUnlockedHeight <= g_nChainHeight)
-                continue;
-
             int nTxHeight = g_nChainHeight + 1;
             if(!hashBlock.IsNull())
             {
@@ -919,8 +934,38 @@ UniValue getaddressbalance(const UniValue& params, bool fHelp)
                     nTxHeight = (*mi).second->nHeight;
             }
 
+            if (tx.nVersion >= SAFE_TX_VERSION_3)
+            {
+                if(temptxout.nUnlockedHeight <= g_nChainHeight)
+                    continue;
+            }
+            else
+            {
+                if (nTxHeight >= g_nStartSPOSHeight)
+                {
+                    int64_t nTrueUnlockedHeight = temptxout.nUnlockedHeight * ConvertBlockNum();
+                    if (nTrueUnlockedHeight <= g_nChainHeight)
+                        continue;
+                }
+                else
+                {
+                    if (temptxout.nUnlockedHeight >= g_nStartSPOSHeight)
+                    {
+                        int nSPOSLaveHeight = (temptxout.nUnlockedHeight - g_nStartSPOSHeight) * ConvertBlockNum();
+                        int nTrueUnlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                        if (nTrueUnlockHeight <= g_nChainHeight)
+                            continue;
+                    }
+                    else
+                    {
+                        if(temptxout.nUnlockedHeight <= g_nChainHeight)
+                            continue;
+                    }
+                }
+            }
+
             int64_t nOffset = temptxout.nUnlockedHeight - nTxHeight;
-            if(nOffset <= 28 * BLOCKS_PER_DAY || nOffset > 120 * BLOCKS_PER_MONTH) // invalid
+            if (!CheckUnlockedHeight(tx.nVersion, nOffset))
                 continue;
 
             lockamount += it->second;

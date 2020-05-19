@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2015 The Bitcoin Core developers
+﻿// Copyright (c) 2011-2015 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -335,7 +335,9 @@ CAmount BitcoinAmountField::value(bool *valid_out) const
 QString BitcoinAmountField::textValue()const
 {
     QString str = amount->textValue().trimmed();
-    return str.split(" ").join("");
+    QStringList list = str.split(" ");
+
+	return list.join("");
 }
 
 void BitcoinAmountField::setValue(const CAmount& value)

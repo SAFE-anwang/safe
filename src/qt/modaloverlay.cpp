@@ -8,6 +8,8 @@
 #include "guiutil.h"
 
 #include "chainparams.h"
+#include "main.h"
+#include "validation.h"
 
 #include <QResizeEvent>
 #include <QPropertyAnimation>
@@ -131,7 +133,11 @@ void ModalOverlay::tipUpdate(int count, const QDateTime& blockDate, double nVeri
 
     // estimate the number of headers left based on nPowTargetSpacing
     // and check if the gui is not aware of the the best header (happens rarely)
-    int estimateNumHeadersLeft = bestHeaderDate.secsTo(currentDate) / Params().GetConsensus().nPowTargetSpacing;
+    int estimateNumHeadersLeft = 0;
+    if (chainActive.Height() >= g_nStartSPOSHeight)
+        estimateNumHeadersLeft = bestHeaderDate.secsTo(currentDate) / Params().GetConsensus().nSPOSTargetSpacing;
+    else
+        estimateNumHeadersLeft = bestHeaderDate.secsTo(currentDate) / Params().GetConsensus().nPowTargetSpacing;
     bool hasBestHeader = bestHeaderHeight >= count;
 
     // show remaining number of blocks

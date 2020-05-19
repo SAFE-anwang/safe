@@ -13,6 +13,7 @@
 
 #define SAFE_TX_VERSION_1       101
 #define SAFE_TX_VERSION_2       102
+#define SAFE_TX_VERSION_3       103
 
 #define TXOUT_RESERVE_MIN_SIZE  4
 #define TXOUT_RESERVE_MAX_SIZE  3000
@@ -223,8 +224,29 @@ public:
         return (nValue == -1);
     }
 
+    bool IsSPOSSafeOnly() const
+    {
+        unsigned int nFixedLen = TXOUT_RESERVE_MIN_SIZE + 4 + sizeof(uint16_t) + 20;
+        if (vReserve.size() <= nFixedLen)
+            return false;
+    
+        unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE;
+    
+        std::vector<unsigned char> vchConAlg;
+        for(unsigned int k = 0; k < 4; k++)
+            vchConAlg.push_back(vReserve[nOffset++]);
+    
+        if (vchConAlg[0] != 's' || vchConAlg[1] != 'p' || vchConAlg[2] != 'o' || vchConAlg[3] != 's')
+            return false;
+    
+        return true;
+    }
+
     bool IsAsset(uint32_t* pAppCmd = NULL) const
     {
+        if (IsSPOSSafeOnly())
+            return false;
+
         unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
         if(vReserve.size() < nOffset + sizeof(uint32_t))
             return false;
@@ -238,6 +260,9 @@ public:
 
     bool IsApp(uint32_t* pAppCmd = NULL) const
     {
+        if (IsSPOSSafeOnly())
+            return false;
+
         unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
         if(vReserve.size() < nOffset + sizeof(uint32_t))
             return false;
@@ -251,6 +276,9 @@ public:
 
     bool IsSafeOnly(uint32_t* pAppCmd = NULL) const
     {
+        if (IsSPOSSafeOnly())
+            return true;
+    
         unsigned int nOffset = TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32;
         if(vReserve.size() < nOffset + sizeof(uint32_t))
             return true;
@@ -316,13 +344,13 @@ private:
 
 public:
     // Default transaction version.
-    static const int32_t CURRENT_VERSION=SAFE_TX_VERSION_2;
+    static const int32_t CURRENT_VERSION = SAFE_TX_VERSION_3;
 
     // Changing the default transaction version requires a two step process: first
     // adapting relay policy by bumping MAX_STANDARD_VERSION, and then later date
     // bumping the default CURRENT_VERSION at which point both CURRENT_VERSION and
     // MAX_STANDARD_VERSION will be equal.
-    static const int32_t MAX_STANDARD_VERSION=SAFE_TX_VERSION_2;
+    static const int32_t MAX_STANDARD_VERSION = SAFE_TX_VERSION_3;
 
     // The local variables are made const to prevent unintended modification
     // without updating the cached hash value. However, CTransaction is not

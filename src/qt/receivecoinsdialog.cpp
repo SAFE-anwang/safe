@@ -28,8 +28,77 @@
 #include <QTextDocument>
 #include <QCompleter>
 #include <boost/foreach.hpp>
+#include <boost/thread.hpp>
+
 using std::string;
 extern QString gStrSafe;
+extern boost::thread_group *g_threadGroup;
+
+CCriticalSection cs_receive;
+
+
+void RefreshReceiveCoinsData(ReceiveCoinsDialog* receiveCoinsDialog)
+{
+	SetThreadPriority(THREAD_PRIORITY_LOWEST);
+	RenameThread("RefreshReceiveCoinsData");
+	while (true)
+	{
+		boost::this_thread::interruption_point();
+
+		std::vector<uint256>  assetIdVec;
+		if (receiveCoinsDialog->bFirstInit)
+		{
+			receiveCoinsDialog->bFirstInit = false;
+			GetAssetListInfo(assetIdVec);
+		}
+
+		{
+			LOCK(cs_receive);
+
+			while (!receiveCoinsDialog->assetToUpdate.isEmpty())
+			{
+				uint256 assetId = receiveCoinsDialog->assetToUpdate.pop();
+				assetIdVec.push_back(assetId);
+			}
+		}
+
+		if (assetIdVec.size() <= 0)
+		{
+			MilliSleep(1000);
+			continue;
+		}
+
+		QMap<QString, CAssetId_AssetInfo_IndexValue> mapAssetInfo;
+
+		BOOST_FOREACH(const uint256& assetId, assetIdVec)
+		{
+			boost::this_thread::interruption_point();
+			if (assetId.IsNull())
+			{
+				continue;
+			}
+
+			CAssetId_AssetInfo_IndexValue assetInfo;
+			if (!GetAssetInfoByAssetId(assetId, assetInfo))
+			{
+				continue;
+			}
+
+			QString assetName = QString::fromStdString(assetInfo.assetData.strAssetName);
+			mapAssetInfo.insert(assetName, assetInfo);
+		}
+
+		assetIdVec.clear();
+		Q_EMIT receiveCoinsDialog->refreshAssetsInfo(mapAssetInfo);
+
+		MilliSleep(1000);
+	}
+}
+
+static void AssetFound(ReceiveCoinsDialog* receive, const std::vector<uint256> &vtNewAssetId)
+{
+	QMetaObject::invokeMethod(receive, "updateAssetsFound", Qt::QueuedConnection,	Q_ARG(std::vector<uint256>, vtNewAssetId));
+}
 
 ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidget *parent) :
     QDialog(parent),
@@ -68,6 +137,8 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     contextMenu->addAction(copyAmountAction);
     contextMenu->setStyleSheet("font-size:12px;");
 
+    //addSafeToCombox();
+
     // context menu signals
     connect(ui->recentRequestsView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showMenu(QPoint)));
     connect(copyURIAction, SIGNAL(triggered()), this, SLOT(copyURI()));
@@ -75,16 +146,17 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     connect(copyMessageAction, SIGNAL(triggered()), this, SLOT(copyMessage()));
     connect(copyAmountAction, SIGNAL(triggered()), this, SLOT(copyAmount()));
 
-    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
     connect(ui->clearButton, SIGNAL(clicked()), this, SLOT(clear()));
     connect(ui->reqLabel, SIGNAL(textChanged(QString)), this, SLOT(on_reqLabel_textChanged(QString)));
     connect(ui->reqMessage, SIGNAL(textChanged(QString)), this, SLOT(on_reqMessage_textChanged(QString)));
     fAssets = false;
     assetDecimal = 0;
     strAssetUnit = "";
+	bFirstInit = true;
 
     completer = new QCompleter;
     stringListModel = new QStringListModel;
+
     completer->setCaseSensitivity(Qt::CaseInsensitive);
     completer->setCompletionMode(QCompleter::PopupCompletion);
     completer->setModel(stringListModel);
@@ -104,6 +176,16 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle *platformStyle, QWidg
     regExpReqMessageEdit.setPattern("[a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9-+*/。，$%^&*,!?.()#_\u4e00-\u9fa5 ]{1,150}");
     ui->reqMessage->setValidator (new QRegExpValidator(regExpReqMessageEdit, this));
     initWidget();
+
+	qRegisterMetaType<QMap<QString, CAssetId_AssetInfo_IndexValue> >("QMap<QString, CAssetId_AssetInfo_IndexValue>");
+    qRegisterMetaType<std::vector<uint256> >("std::vector<uint256>");
+
+    connect(this,SIGNAL(refreshAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue>)),this,SLOT(updateAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue>)));
+    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
+    if(g_threadGroup)
+        g_threadGroup->create_thread(boost::bind(&RefreshReceiveCoinsData, this));
+
+	uiInterface.AssetFound.connect(boost::bind(AssetFound, this, _1));
 }
 
 void ReceiveCoinsDialog::initWidget()
@@ -116,12 +198,13 @@ void ReceiveCoinsDialog::initWidget()
 
 ReceiveCoinsDialog::~ReceiveCoinsDialog()
 {
+	uiInterface.AssetFound.disconnect(boost::bind(AssetFound, this, _1));
+
     delete ui;
 }
 
 void ReceiveCoinsDialog::updateCurrentAsset(const QString &currText)
 {
-    LOCK2(cs_main, pwalletMain->cs_wallet);
     if(currText==gStrSafe)
     {
         fAssets = false;
@@ -145,59 +228,44 @@ void ReceiveCoinsDialog::updateCurrentAsset(const QString &currText)
     ui->reqAmount->updateAssetUnit(strAssetUnit,fAssets,assetDecimal);
 }
 
-void ReceiveCoinsDialog::updateAssetsFound(const QString &assetName)
+void ReceiveCoinsDialog::updateAssetsFound(std::vector<uint256> vtNewAssetId)
 {
-    updateAssetsInfo(assetName);
+    LOCK(cs_receive);
+	for (int i = 0; i < vtNewAssetId.size(); i++)
+	{
+		assetToUpdate.push_back(vtNewAssetId[i]);
+	}
 }
 
-void ReceiveCoinsDialog::updateAssetsInfo(const QString &assetName)
+void ReceiveCoinsDialog::updateAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue> mapAssetInfo)
 {
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-    bool addOneAsset = !assetName.isEmpty();
-    std::vector<uint256>  assetIdVec;
-    if(addOneAsset)
-    {
-        uint256 assetId;
-        if(!GetAssetIdByAssetName(assetName.toStdString(),assetId))
-            return;
-        assetIdVec.push_back(assetId);
-    }else
-    {
-        if (!GetAssetListInfo(assetIdVec))
-            return;
-    }
+	QMap<QString, CAssetId_AssetInfo_IndexValue>::iterator it = mapAssetInfo.begin();
+	while (it != mapAssetInfo.end())
+	{
+		if (!assetDataMap.contains(it.key()))
+		{
+			assetDataMap.insert(it.key(), it.value().assetData);
+		}
 
-    BOOST_FOREACH(const uint256& assetId,assetIdVec)
-    {
-        if(assetId.IsNull()){
-            continue;
-        }
-        CAssetId_AssetInfo_IndexValue assetInfo;
-        if(!GetAssetInfoByAssetId(assetId, assetInfo)){
-            return;
-        }
-        QString assetName = QString::fromStdString(assetInfo.assetData.strAssetName);
-        if(!assetDataMap.contains(assetName))
-            assetDataMap[assetName] = assetInfo.assetData;
-    }
+		it++;
+	}
 
-    disconnect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
-    QString currText = ui->assetsComboBox->currentText();
-    ui->assetsComboBox->clear();
-    QStringList stringList;
-    stringList.append(gStrSafe);
-    //QMap<QString,QString>& assetNamesUnits = model->getAssetsNamesUnits();
-    stringList.append(assetDataMap.keys());
+	QStringList listTemp;
+	const QStringList &listNew = mapAssetInfo.keys();
 
-    stringListModel->setStringList(stringList);
-    completer->setModel(stringListModel);
-    completer->popup()->setStyleSheet("font: 12px;");
-    ui->assetsComboBox->addItems(stringList);
-    ui->assetsComboBox->setCompleter(completer);
+	for (int i = 0; i < listNew.count(); i++)
+	{
+		if (ui->assetsComboBox->findText(listNew[i]) < 0)
+		{
+			listTemp.push_back(listNew[i]);
+		}
+	}
 
-    if(assetDataMap.contains(currText))
-        ui->assetsComboBox->setCurrentText(currText);
-    connect(ui->assetsComboBox,SIGNAL(currentIndexChanged(const QString&)),this,SLOT(updateCurrentAsset(const QString&)));
+	if (listTemp.count() > 0)
+	{
+		stringListModel->setStringList(listTemp);
+		ui->assetsComboBox->addItems(listTemp);
+	}
 }
 
 void ReceiveCoinsDialog::setModel(WalletModel *model)
@@ -232,9 +300,6 @@ void ReceiveCoinsDialog::setModel(WalletModel *model)
 void ReceiveCoinsDialog::setClientModel(ClientModel *clientModel)
 {
     this->clientModel = clientModel;
-    if(clientModel){
-        connect(clientModel,SIGNAL(assetFound(QString)),this,SLOT(updateAssetsFound(QString)));
-    }
 }
 
 void ReceiveCoinsDialog::clear()
@@ -471,4 +536,18 @@ void ReceiveCoinsDialog::copyMessage()
 void ReceiveCoinsDialog::copyAmount()
 {
     copyColumnToClipboard(RecentRequestsTableModel::Amount);
+}
+
+void ReceiveCoinsDialog::addSafeToCombox()
+{
+	QStringList stringList;
+	stringList.append(gStrSafe);
+
+	stringListModel->setStringList(stringList);
+	ui->assetsComboBox->addItems(stringList);
+}
+
+void ReceiveCoinsDialog::clearData()
+{
+	bFirstInit = true;
 }

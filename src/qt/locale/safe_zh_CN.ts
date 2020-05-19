@@ -2736,6 +2736,10 @@ http://www.anwang.com/</translation>
 <context>
     <name>CandyPage</name>
     <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>该功能在区块高度为 %1 时启用</translation>
+    </message>
+    <message>
         <source>Failed to get the number of candy already received</source>
         <translation>获取已领糖果数量失败</translation>
     </message>
@@ -4432,6 +4436,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>The transaction was rejected! The transaction (partial) amount has been sealed.</source>
         <translation>交易被拒绝，该笔交易（部分）金额已被封存</translation>
+    </message>
+    <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>该功能在区块高度为 %1 时启用</translation>
     </message>
     <message>
         <source>Invalid asset name</source>
@@ -6363,6 +6371,10 @@ http://www.anwang.com/</translation>
         <translation>选择总额:</translation>
     </message>
     <message>
+        <source>Only display %1 recent record</source>
+        <translation>启动时只加载最近%1条记录</translation>
+    </message>
+    <message>
         <source>Backup Wallet</source>
         <translation>备份钱包</translation>
     </message>
@@ -6389,6 +6401,10 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>safe-core</name>
+    <message>
+        <source>This feature is enabled when the block height is %d</source>
+        <translation>该功能在区块高度为 %d 时启用</translation>
+    </message>
     <message>
         <source>Reach the current change limit,please try again later.</source>
         <translation>达到当前SAFE零钱使用上限,请稍后再试。</translation>
@@ -6540,6 +6556,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Done loading</source>
         <translation>读取完成</translation>
+    </message>
+    <message>
+        <source>Analyzing transactions,please wait...</source>
+        <translation>正在解析交易,请稍等...</translation>
     </message>
     <message>
         <source>Entries are full.</source>

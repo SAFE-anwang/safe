@@ -1,6 +1,6 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -89,7 +89,7 @@ void OverViewEntry::replyFinished(QNetworkReply *reply)
     }
 }
 
-void OverViewEntry::setAssetsInfo(CAmount &amount, CAmount &unconfirmAmount, CAmount &lockedAmount, int &nDecimals, QString &strUnit)
+void OverViewEntry::setAssetsInfo(const CAmount& amount, const CAmount& unconfirmAmount, const CAmount& lockedAmount, int nDecimals, const QString strUnit)
 {
     this->balance = amount;
     this->unconfirmedBalance = unconfirmAmount;
@@ -139,18 +139,6 @@ void OverViewEntry::deleteClicked()
 void OverViewEntry::clear()
 {
 
-}
-
-QWidget *OverViewEntry::setupTabChain(QWidget *prev)
-{
-//    QWidget::setTabOrder(prev, ui->payTo);
-//    QWidget::setTabOrder(ui->payTo, ui->addAsLabel);
-//    QWidget *w = ui->payAmount->setupTabChain(ui->addAsLabel);
-//    QWidget::setTabOrder(w, ui->checkboxSubtractFeeFromAmount);
-//    QWidget::setTabOrder(ui->checkboxSubtractFeeFromAmount, ui->addressBookButton);
-//    QWidget::setTabOrder(ui->addressBookButton, ui->pasteButton);
-//    QWidget::setTabOrder(ui->pasteButton, ui->deleteButton);
-//    return ui->deleteButton;
 }
 
 void OverViewEntry::setFocus()

@@ -1,6 +1,6 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -86,6 +86,9 @@ Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin);
 // Declare meta types used for QMetaObject::invokeMethod
 Q_DECLARE_METATYPE(bool*)
 Q_DECLARE_METATYPE(CAmount)
+
+boost::thread_group *g_threadGroup = NULL;
+int g_nMaxDisplayTxCount = 10000;
 
 static void InitMessage(const std::string &message)
 {
@@ -182,7 +185,6 @@ public Q_SLOTS:
     void initialize();
     void shutdown();
     void restart(QStringList args);
-    void updateBalanceChanged();
 
 Q_SIGNALS:
     void initializeResult(int retval);
@@ -246,7 +248,6 @@ Q_SIGNALS:
     void requestedShutdown();
     void stopThread();
     void splashFinished(QWidget *window);
-    void updateBalanceChanged();
 
 private:
     QThread *coreThread;
@@ -284,6 +285,7 @@ void BitcoinCore::initialize()
 
     try
     {
+		g_threadGroup = &threadGroup;
         qDebug() << __func__ << ": Running AppInit2 in thread";
         int rv = AppInit2(threadGroup, scheduler,true);
         Q_EMIT initializeResult(rv);
@@ -316,29 +318,6 @@ void BitcoinCore::restart(QStringList args)
             handleRunawayException(NULL);
         }
     }
-}
-
-void ThreadUpdateBalanceChanged(BitcoinApplication* app)
-{
-    static bool fOneThread;
-    if(fOneThread) return;
-    fOneThread = true;
-
-    RenameThread("updateBalanceChangedThread");
-    while(true)
-    {
-        boost::this_thread::interruption_point();
-        WalletModel* wm = app->getWalletModel();
-        if(wm!=NULL)
-            wm->updateAllBalanceChanged(true);
-        MilliSleep(MODEL_UPDATE_DELAY);
-    }
-}
-
-void BitcoinCore::updateBalanceChanged()
-{
-    BitcoinApplication* app = (BitcoinApplication*)sender();
-    threadGroup.create_thread(boost::bind(&ThreadUpdateBalanceChanged, app));
 }
 
 void BitcoinCore::shutdown()
@@ -458,7 +437,6 @@ void BitcoinApplication::startThread()
     connect(this, SIGNAL(requestedInitialize()), executor, SLOT(initialize()));
     connect(this, SIGNAL(requestedShutdown()), executor, SLOT(shutdown()));
     connect(window, SIGNAL(requestedRestart(QStringList)), executor, SLOT(restart(QStringList)));
-    connect(this,SIGNAL(updateBalanceChanged()),executor,SLOT(updateBalanceChanged()));
     /*  make sure executor object is deleted in its own thread */
     connect(this, SIGNAL(stopThread()), executor, SLOT(deleteLater()));
     connect(this, SIGNAL(stopThread()), coreThread, SLOT(quit()));
@@ -492,16 +470,19 @@ void BitcoinApplication::requestShutdown()
     window->setClientModel(0);
     pollShutdownTimer->stop();
 
+    MilliSleep(1000);
+    // Request shutdown from core thread
+    // ui also has some thread to shutdown
 #ifdef ENABLE_WALLET
-    window->removeAllWallets();
+	window->disconnectSign(BitcoinGUI::DEFAULT_WALLET);
+	window->removeAllWallets();
     delete walletModel;
     walletModel = 0;
 #endif
+
+    Q_EMIT requestedShutdown();
     delete clientModel;
     clientModel = 0;
-
-    // Request shutdown from core thread
-    Q_EMIT requestedShutdown();
 }
 
 void BitcoinApplication::initializeResult(int retval)
@@ -518,6 +499,9 @@ void BitcoinApplication::initializeResult(int retval)
         paymentServer->setOptionsModel(optionsModel);
 #endif
 
+		// maximum display transactions count, if value is 0, display all transactions
+		g_nMaxDisplayTxCount = GetArg("-maxdisplaytxcount", 10000);
+
         clientModel = new ClientModel(optionsModel);
         window->setClientModel(clientModel);
 
@@ -533,6 +517,16 @@ void BitcoinApplication::initializeResult(int retval)
                              paymentServer, SLOT(fetchPaymentACK(CWallet*,const SendCoinsRecipient&,QByteArray)));
         }
 #endif
+        uiInterface.InitMessage(_("Analyzing transactions,please wait..."));
+
+        int i = 0;
+        while(i<5)
+        {
+            QApplication::processEvents();
+            i++;
+        }
+
+        window->ShowHistoryPage(BitcoinGUI::DEFAULT_WALLET);
 
         // If -min option passed, start window minimized.
         if(GetBoolArg("-min", false))
@@ -554,9 +548,7 @@ void BitcoinApplication::initializeResult(int retval)
                          paymentServer, SLOT(handleURIOrFile(QString)));
         connect(paymentServer, SIGNAL(message(QString,QString,unsigned int)),
                          window, SLOT(message(QString,QString,unsigned int)));
-        QTimer::singleShot(100, paymentServer, SLOT(uiReady()));
-
-        Q_EMIT updateBalanceChanged();
+        QTimer::singleShot(100, paymentServer, SLOT(uiReady()));	
 #endif
     } else {
         quit(); // Exit main loop

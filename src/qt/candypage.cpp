@@ -18,6 +18,8 @@
 #include <vector>
 #include <QPushButton>
 #include <QCompleter>
+#include <boost/thread.hpp>
+
 using std::string;
 using std::map;
 using std::vector;
@@ -26,6 +28,12 @@ extern bool gInitByDefault;
 extern std::vector<CCandy_BlockTime_Info> gAllCandyInfoVec;
 extern std::mutex g_mutexAllCandyInfo;
 extern unsigned int nCandyPageCount;
+
+
+static void CandyVecPut(CandyPage* candyPage)
+{
+	QMetaObject::invokeMethod(candyPage, "updateGetCandyList", Qt::QueuedConnection);
+}
 
 CandyPage::CandyPage():
     ui(new Ui::CandyPage)
@@ -79,7 +87,7 @@ CandyPage::CandyPage():
     ui->candyValueLabel->setVisible(true);
 
     ui->tableWidgetGetCandy->setSortingEnabled(false);
-    updateAssetsInfo();
+    //setThreadNoticeSlot(true);
     //test
     if(gInitByDefault)
     {
@@ -97,10 +105,14 @@ CandyPage::CandyPage():
     connect(getCandyThread, &QThread::finished, candyWorker, &QObject::deleteLater);
     connect(this, SIGNAL(stopThread()), getCandyThread, SLOT(quit()));
     connect(candyWorker, SIGNAL(resultReady(bool, QString, int, CAmount)), this, SLOT(handlerGetCandyResult(bool, QString, int, CAmount)));
+    connect(this,SIGNAL(refreshAssetsInfo()),this,SLOT(updateAssetsInfo()));
+
+	uiInterface.CandyVecPut.connect(boost::bind(CandyVecPut, this));
 }
 
 CandyPage::~CandyPage()
 {
+	uiInterface.CandyVecPut.disconnect(boost::bind(CandyVecPut, this));
     Q_EMIT stopThread();
     getCandyThread->wait();
 }
@@ -263,10 +275,30 @@ void CandyPage::getCandy(QPushButton *btn)
         QMessageBox::warning(this, strGetCandy,tr("Get candy transaction height fail"),tr("Ok"));
         return;
     }
-    int neededHeight = nTxHeight + BLOCKS_PER_DAY;
+
+    int neededHeight = 0;
+    if (nTxHeight >= g_nStartSPOSHeight)
+    {
+        neededHeight = nTxHeight + SPOS_BLOCKS_PER_DAY;
+    }
+    else
+    {
+        if (nTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
+        {
+            int nSPOSLaveHeight = (nTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+            neededHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+        }
+        else
+            neededHeight = nTxHeight + BLOCKS_PER_DAY;
+    }
+
     if(nCurrentHeight < neededHeight)
     {
-        int seconds = (neededHeight-nCurrentHeight)*Params().GetConsensus().nPowTargetSpacing;
+        int seconds = 0;
+        if (neededHeight >= g_nStartSPOSHeight)
+            seconds = (neededHeight-nCurrentHeight)*Params().GetConsensus().nSPOSTargetSpacing;
+        else
+            seconds = (neededHeight-nCurrentHeight)*Params().GetConsensus().nPowTargetSpacing;
         int hour = seconds / 3600;
         int minute = seconds % 3600 / 60;
         if (hour == 0 && minute != 0)
@@ -278,11 +310,37 @@ void CandyPage::getCandy(QPushButton *btn)
         return;
     }
 
-    if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+    if (nTxHeight >= g_nStartSPOSHeight)
     {
-        QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
-        updateCurrentPage();
-        return;
+        if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight - 3 * SPOS_BLOCKS_PER_DAY < nCurrentHeight)
+        {
+            QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
+            updateCurrentPage();
+            return;
+        }
+    }
+    else
+    {
+        if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight >= g_nStartSPOSHeight)
+        {
+            int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+            int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+            if (nTrueBlockHeight < nCurrentHeight)
+            {
+                QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
+                updateCurrentPage();
+                return;
+            }
+        }
+        else
+        {
+            if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+            {
+                QMessageBox::warning(this, strGetCandy,tr("Candy expired"),tr("Ok"));
+                updateCurrentPage();
+                return;
+            }
+        }
     }
 
     CAmount nTotalSafe = 0;
@@ -569,11 +627,6 @@ void CandyPage::setGetHistoryTabLayout(QVBoxLayout *layout)
 void CandyPage::setClientModel(ClientModel *model)
 {
     this->clientModel = model;
-    if(model)
-    {
-        connect(model,SIGNAL(candyPut(QString,QString,quint8,qint64,quint16,QString,QString,quint32)),this,SLOT(updateCandyListWidget(QString,QString,quint8,qint64,quint16,QString,QString,quint32)));
-        connect(model,SIGNAL(candyPutVec()),this,SLOT(updateGetCandyList()));
-    }
 }
 
 void CandyPage::setModel(WalletModel *model)
@@ -581,51 +634,25 @@ void CandyPage::setModel(WalletModel *model)
     this->model = model;
 }
 
-void CandyPage::updateAssetsInfo()
+WalletModel *CandyPage::getModel()
 {
-    disconnect(ui->assetsComboBox,SIGNAL(currentTextChanged(QString)),this,SLOT(updateCandyInfo(QString)));
-    std::map<uint256, CAssetData> issueAssetMap;
-    std::vector<std::string> assetNameVec;
-    if(GetIssueAssetInfo(issueAssetMap))
-    {
-        for(std::map<uint256, CAssetData>::iterator iter = issueAssetMap.begin();iter != issueAssetMap.end();++iter)
-        {
-            uint256 assetId = (*iter).first;
-            CAssetData& assetData = (*iter).second;
+	return model;
+}
 
-            int memoryPutCandyCount = mempool.get_PutCandy_count(assetId);
-            int dbPutCandyCount = 0;
-            map<COutPoint, CCandyInfo> mapCandyInfo;
-            if(GetAssetIdCandyInfo(assetId, mapCandyInfo))
-                dbPutCandyCount = mapCandyInfo.size();
-            int putCandyCount = memoryPutCandyCount + dbPutCandyCount;
-            if(putCandyCount<MAX_PUTCANDY_VALUE){
-                assetNameVec.push_back(assetData.strAssetName);
-            }
-        }
-        std::sort(assetNameVec.begin(),assetNameVec.end());
-    }
+void CandyPage::updateAssetsInfo(QStringList listAsset)
+{
+	QStringList listTemp;
+	for (int i = 0; i < listAsset.size(); i++)
+	{
+		if (ui->assetsComboBox->findText(listAsset[i]) < 0)
+		{
+			listTemp.push_back(listAsset[i]);
+		}
+	}
 
-    QString currText = ui->assetsComboBox->currentText();
-    ui->assetsComboBox->clear();
-
-    QStringList stringList;
-    for(unsigned int i=0;i<assetNameVec.size();i++)
-    {
-        QString assetName = QString::fromStdString(assetNameVec[i]);
-        stringList.append(assetName);
-    }
-
-    stringListModel->setStringList(stringList);
-    completer->setModel(stringListModel);
-    completer->popup()->setStyleSheet("font: 12px;");
-    ui->assetsComboBox->addItems(stringList);
-    ui->assetsComboBox->setCompleter(completer);
-
-    if(stringList.contains(currText))
-        ui->assetsComboBox->setCurrentText(currText);
-    updateCandyInfo(ui->assetsComboBox->currentText());
-    connect(ui->assetsComboBox,SIGNAL(currentTextChanged(QString)),this,SLOT(updateCandyInfo(QString)));
+	ui->assetsComboBox->addItems(listTemp);
+	stringListModel->setStringList(listTemp);
+	updateCandyInfo(ui->assetsComboBox->currentText());
 }
 
 bool CandyPage::amountFromString(const std::string &valueStr, const QString &msgboxTitle, int decimal, CAmount &amount)
@@ -696,7 +723,7 @@ void CandyPage::updateCandyInfo(const QString &text)
 {
     if (!pwalletMain)
         return;
-    LOCK(cs_main);
+ //   LOCK(cs_main);
     std::string strAssetName = text.trimmed().toStdString();
     uint256 assetId;
     if(!GetAssetIdByAssetName(strAssetName,assetId)){
@@ -752,6 +779,7 @@ bool CandyPage::putCandy()
         QMessageBox::warning(this, strPutCandy,tr("Synchronizing block data"),tr("Ok"));
         return false;
     }
+
     std::string strAssetName = ui->assetsComboBox->currentText().trimmed().toStdString();
     uint256 assetId;
     if(ui->assetsComboBox->currentText().toStdString().empty())
@@ -774,7 +802,6 @@ bool CandyPage::putCandy()
     if(putCandyCount>=MAX_PUTCANDY_VALUE)
     {
         QMessageBox::warning(this, strPutCandy,tr("Put candy times used up"),tr("Ok"));
-        updateAssetsInfo();
         return false;
     }
 
@@ -883,15 +910,27 @@ bool CandyPage::putCandy()
         return false;
     }
 
-    if(MAX_PUTCANDY_VALUE-putCandyCount==1)
-        updateAssetsInfo();
+    if(MAX_PUTCANDY_VALUE-putCandyCount==1){	
+		QStringList listTemp = stringListModel->stringList();
+		int nIndex = listTemp.indexOf(QString::fromStdString(strAssetName));
+		if (nIndex != -1)
+		{
+			stringListModel->removeRow(nIndex);
+		}
+
+		ui->assetsComboBox->removeItem(ui->assetsComboBox->currentIndex());
+		//updateCandyInfo(ui->assetsComboBox->currentText());
+    }
     return true;
 }
 
 void CandyPage::copyVec()
 {
-    tmpAllCandyInfoVec.clear();
-    std::vector<CCandy_BlockTime_Info>().swap(tmpAllCandyInfoVec);
+	{
+		tmpAllCandyInfoVec.clear();
+		std::vector<CCandy_BlockTime_Info>().swap(tmpAllCandyInfoVec);
+	}
+
     int candyInfoVecSize = gAllCandyInfoVec.size();
     int nCurrentHeight = g_nChainHeight;
     for(int i=0;i<candyInfoVecSize;i++)
@@ -901,8 +940,26 @@ void CandyPage::copyVec()
         if(displayHeight>nCurrentHeight)
             continue;
 
-        if(info.candyinfo.nExpired * BLOCKS_PER_MONTH + info.nHeight < nCurrentHeight)
-            continue;
+        if (info.nHeight >= g_nStartSPOSHeight)
+        {
+            if(info.candyinfo.nExpired * SPOS_BLOCKS_PER_MONTH + info.nHeight  - 3 * SPOS_BLOCKS_PER_DAY < nCurrentHeight)
+                continue;
+        }
+        else
+        {
+            if (info.candyinfo.nExpired * BLOCKS_PER_MONTH + info.nHeight >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (info.candyinfo.nExpired * BLOCKS_PER_MONTH + info.nHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueBlockHeight < nCurrentHeight)
+                    continue;
+            }
+            else
+            {
+                if(info.candyinfo.nExpired * BLOCKS_PER_MONTH + info.nHeight < nCurrentHeight)
+                    continue;
+            }
+        }
 
         tmpAllCandyInfoVec.push_back(info);
     }

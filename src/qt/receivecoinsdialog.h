@@ -7,6 +7,7 @@
 
 #include "guiutil.h"
 #include "app/app.h"
+#include "validation.h"
 
 #include <QDialog>
 #include <QHeaderView>
@@ -18,6 +19,7 @@
 #include <QTimer>
 #include <QCompleter>
 #include <QStringListModel>
+#include <QStack>
 
 class OptionsModel;
 class PlatformStyle;
@@ -51,18 +53,28 @@ public:
     void setModel(WalletModel *model);
     void setClientModel(ClientModel* clientModel);
 
+	void clearData();
+
+Q_SIGNALS:
+    void refreshAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue> mapAssetInfo);
+
 public Q_SLOTS:
     void clear();
     void reject();
     void accept();
-    void updateAssetsInfo(const QString&assetName = "");
-    void updateAssetsFound(const QString& assetName);
+    void updateAssetsInfo(QMap<QString, CAssetId_AssetInfo_IndexValue> mapAssetInfo);
+    void updateAssetsFound(std::vector<uint256> vtNewAssetId);
 
     void on_reqLabel_textChanged(const QString &address);
     void on_reqMessage_textChanged(const QString &address);
 
 protected:
     virtual void keyPressEvent(QKeyEvent *event);
+
+public:
+    QStack<uint256> assetToUpdate;
+    QMap<QString,CAssetData> assetDataMap;
+	bool bFirstInit;
 
 private:
     Ui::ReceiveCoinsDialog *ui;
@@ -71,7 +83,6 @@ private:
     WalletModel *model;
     QMenu *contextMenu;
     const PlatformStyle *platformStyle;
-    QMap<QString,CAssetData> assetDataMap;
     bool fAssets;
     int assetDecimal;
     QString strAssetUnit;
@@ -82,6 +93,8 @@ private:
     void copyColumnToClipboard(int column);
     virtual void resizeEvent(QResizeEvent *event);
     void initWidget();
+
+	void addSafeToCombox();
 
 private Q_SLOTS:
     void on_receiveButton_clicked();

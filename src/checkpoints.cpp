@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -10,10 +10,16 @@
 #include "chainparams.h"
 #include "validation.h"
 #include "uint256.h"
+#include "validation.h"
+
 
 #include <stdint.h>
 
 #include <boost/foreach.hpp>
+
+
+static const int nCheckpointSpan = 100;
+
 
 namespace Checkpoints {
 
@@ -70,5 +76,29 @@ namespace Checkpoints {
         }
         return NULL;
     }
+
+    // Automatically select a suitable sync-checkpoint 
+    const CBlockIndex* AutoSelectSyncCheckpoint()
+    {
+        const CBlockIndex *pindex = chainActive.Tip();
+        // Search backward for a block within max span and maturity window
+        while (pindex->pprev && pindex->nHeight + nCheckpointSpan > chainActive.Height())
+            pindex = pindex->pprev;
+        return pindex;
+    }
+
+    // Check against synchronized checkpoint
+    bool CheckSync(int nHeight)
+    {
+        const CBlockIndex* pindexSync = AutoSelectSyncCheckpoint();
+
+        if (nHeight <= pindexSync->nHeight)
+        {
+            LogPrintf("SPOS_ERROR:nHeight:%d, pindexSync->nHeight:%d, chain active height:%d\n", nHeight, pindexSync->nHeight, chainActive.Height());
+            return false;
+        }
+        return true;
+    }
+
 
 } // namespace Checkpoints

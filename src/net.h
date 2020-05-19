@@ -719,6 +719,8 @@ public:
 
     std::atomic_bool fPauseRecv;
     std::atomic_bool fPauseSend;
+    bool fFirstStartRequestAllMasternodes = true;
+    bool fFirstStartRequestOneMasternode = true;
 protected:
 
     mapMsgCmdSize mapSendBytesPerMsgCmd;

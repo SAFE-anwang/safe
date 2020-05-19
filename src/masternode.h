@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -9,6 +9,7 @@
 #include "key.h"
 #include "validation.h"
 #include "spork.h"
+#include "clientversion.h"
 
 class CMasternode;
 class CMasternodeBroadcast;
@@ -29,6 +30,8 @@ static const int MASTERNODE_POSE_BAN_MAX_SCORE          = 5;
 
 // sentinel version before sentinel ping implementation
 #define DEFAULT_SENTINEL_VERSION 0x010001
+
+extern int64_t g_nStartUpTime;
 
 class CMasternodePing
 {
@@ -97,7 +100,7 @@ struct masternode_info_t
     masternode_info_t(masternode_info_t const&) = default;
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime) :
-        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime} {}
+        nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime}{}
 
     masternode_info_t(int activeState, int protoVer, int64_t sTime,
                       COutPoint const& outpoint, CService const& addr,
@@ -106,7 +109,7 @@ struct masternode_info_t
         nActiveState{activeState}, nProtocolVersion{protoVer}, sigTime{sTime},
         vin{outpoint}, addr{addr},
         pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
-        nTimeLastWatchdogVote{tWatchdogV} {}
+        nTimeLastWatchdogVote{tWatchdogV}{}
 
     int nActiveState = 0;
     int nProtocolVersion = 0;
@@ -123,6 +126,7 @@ struct masternode_info_t
     int64_t nTimeLastPaid = 0;
     int64_t nTimeLastPing = 0; //* not in CMN
     bool fInfoValid = false; //* not in CMN
+    int nTxHeight = -1;
 };
 
 //
@@ -282,6 +286,8 @@ public:
 
     void UpdateWatchdogVoteTime(uint64_t nVoteTime = 0);
 
+    uint32_t getCanbeSelectTime(int nHeight)const;
+
     CMasternode& operator=(CMasternode const& from)
     {
         static_cast<masternode_info_t&>(*this)=from;
@@ -294,6 +300,7 @@ public:
         fAllowMixingTx = from.fAllowMixingTx;
         fUnitTest = from.fUnitTest;
         mapGovernanceObjectsVotedOn = from.mapGovernanceObjectsVotedOn;
+        nTxHeight = from.nTxHeight;
         return *this;
     }
 };

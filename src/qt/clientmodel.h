@@ -1,12 +1,13 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef BITCOIN_QT_CLIENTMODEL_H
 #define BITCOIN_QT_CLIENTMODEL_H
 
+#include "uint256.h"
 #include <QObject>
 #include <QDateTime>
 
@@ -120,10 +121,6 @@ Q_SIGNALS:
     // Show progress dialog e.g. for verifychain
     void showProgress(const QString &title, int nProgress);
 
-    void assetFound(const QString& strAssetName);
-
-    void candyPut(const QString& strAssetId, const QString& strAssetName, const quint8& nAssetDecimals, const qint64& nCandyAmount, const quint16& nCandyExpired, const QString& strTime, const QString& strTxId, const quint32& nIndex);
-    void candyPutVec();
     void updateForbitChanged(bool updateAsset);
 
 public Q_SLOTS:
@@ -133,9 +130,7 @@ public Q_SLOTS:
     void updateNetworkActive(bool networkActive);
     void updateAlert(const QString &hash, int status);
     void updateBanlist();
-    void updateAsset(const QString& strAssetName);
     void updateForbit();
-    void updateCandyPutVec();
 };
 
 #endif // BITCOIN_QT_CLIENTMODEL_H

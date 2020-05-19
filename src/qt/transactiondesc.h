@@ -65,7 +65,7 @@ class TransactionDesc: public QObject
         DescGetCandyAssetId,
         DescGetCandyAddress,
         DescGetCandyAmount,
-        DescGetCandyRemark
+        DescPutCandyRemark,
     };
 
 public:

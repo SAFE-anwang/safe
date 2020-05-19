@@ -79,6 +79,12 @@ QVariant ApplicationsRegistRecordModel::data(const QModelIndex &index, int role)
             return (rec->involvesWatchAddress ? 1 : 0);
         case ApplicationsRegistRecordModel::ApplicationsRegistColumnDate:
             return rec->time;
+        case ApplicationsRegistRecordModel::ApplicationsRegistColumnApplicationName:
+            return QString::fromStdString(rec->appData.strAppName);
+        case ApplicationsRegistRecordModel::ApplicationsRegistColumnApplicationId:
+            return QString::fromStdString(rec->appData.GetHash().GetHex());
+        case ApplicationsRegistRecordModel::ApplicationsRegistColumnManagerAddress:
+            return formatTxToAddress(rec, false);
         }
         break;
     }
@@ -178,11 +184,17 @@ QVariant ApplicationsRegistRecordModel::headerData(int section, Qt::Orientation 
     {
         if(role == Qt::DisplayRole)
         {
-            return columns[section];
+			if (section >= 0 && section < columns.size())
+			{
+				return columns[section];
+			}
         }
         else if (role == Qt::TextAlignmentRole)
         {
-            return column_alignments_for_applications_regist[section];
+			if (section >= 0 && section < sizeof(column_alignments_for_applications_regist) / sizeof(int))
+			{
+				return column_alignments_for_applications_regist[section];
+			}
         }
         else if (role == Qt::ToolTipRole)
         {

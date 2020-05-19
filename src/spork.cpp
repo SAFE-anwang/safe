@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -9,6 +9,7 @@
 #include "net_processing.h"
 #include "spork.h"
 
+
 #include <boost/lexical_cast.hpp>
 
 class CSporkMessage;
@@ -17,6 +18,10 @@ class CSporkManager;
 CSporkManager sporkManager;
 
 std::map<uint256, CSporkMessage> mapSporks;
+extern int g_nSelectGlobalDefaultValue;
+extern int g_nPushForwardHeight;
+extern unsigned int g_nMasternodeSPosCount;
+extern unsigned int g_nMasternodeMinCount;
 
 void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv, CConnman& connman)
 {
@@ -33,11 +38,36 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
         {
             LOCK(cs_main);
             pfrom->setAskFor.erase(hash);
-            if(!chainActive.Tip()) return;
+            if(!chainActive.Tip()) 
+            {
+                LogPrintf("CSporkManager::ProcessSpork chainActive.Tip() is NULL\n");
+                return;
+            }
+
             strLogMsg = strprintf("SPORK -- hash: %s id: %d value: %10d bestHeight: %d peer=%d", hash.ToString(), spork.nSporkID, spork.nValue, chainActive.Height(), pfrom->id);
         }
 
-        if(mapSporksActive.count(spork.nSporkID)) {
+        bool fCheckAndSelectMaster = false;
+        if (mapSporksActive.count(spork.nSporkID)) {
+            if (spork.nSporkID == SPORK_6_SPOS_ENABLED)
+            {
+                if (!spork.CheckSignature()) {
+                    LogPrintf("CSporkManager::ProcessSpork -- invalid signature\n");
+                    Misbehaving(pfrom->GetId(), 100);
+                    return;
+                }
+
+                std::string strErrMessage = "";
+                if (!CheckSPORK_6_SPOSValue(spork.nSporkID, spork.nValue, strErrMessage))
+                {
+                    LogPrintf("SPOS_Warning: strErrMessage:%s, spork.nSporkID:%d, spork.nValue:%lld\n", strErrMessage, spork.nSporkID, spork.nValue);
+                    return;
+                }
+
+                SelectMasterNodeForSpork(spork.nSporkID, spork.nValue);
+                fCheckAndSelectMaster = true;
+            }
+        
             if (mapSporksActive[spork.nSporkID].nTimeSigned >= spork.nTimeSigned) {
                 LogPrint("spork", "%s seen\n", strLogMsg);
                 return;
@@ -48,9 +78,19 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
             LogPrintf("%s new\n", strLogMsg);
         }
 
-        if(!spork.CheckSignature()) {
-            LogPrintf("CSporkManager::ProcessSpork -- invalid signature\n");
-            Misbehaving(pfrom->GetId(), 100);
+        if (!fCheckAndSelectMaster)
+        {
+            if(!spork.CheckSignature()) {
+                LogPrintf("CSporkManager::ProcessSpork -- invalid signature\n");
+                Misbehaving(pfrom->GetId(), 100);
+                return;
+            }
+        }
+
+        std::string strErrMessage = "";
+        if (!CheckSPORK_6_SPOSValue(spork.nSporkID, spork.nValue, strErrMessage))
+        {
+            LogPrintf("SPOS_Warning: strErrMessage:%s, spork.nSporkID:%d, spork.nValue:%lld\n", strErrMessage, spork.nSporkID, spork.nValue);
             return;
         }
 
@@ -58,9 +98,11 @@ void CSporkManager::ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStr
         mapSporksActive[spork.nSporkID] = spork;
         spork.Relay(connman);
 
+        if (!fCheckAndSelectMaster)
+            SelectMasterNodeForSpork(spork.nSporkID, spork.nValue);
+
         //does a task if needed
         ExecuteSpork(spork.nSporkID, spork.nValue);
-
     } else if (strCommand == NetMsgType::GETSPORKS) {
 
         std::map<int, CSporkMessage>::iterator it = mapSporksActive.begin();
@@ -104,7 +146,6 @@ void CSporkManager::ExecuteSpork(int nSporkID, int nValue)
 
 bool CSporkManager::UpdateSpork(int nSporkID, int64_t nValue, CConnman& connman)
 {
-
     CSporkMessage spork = CSporkMessage(nSporkID, nValue, GetAdjustedTime());
 
     if(spork.Sign(strMasterPrivKey)) {
@@ -129,6 +170,7 @@ bool CSporkManager::IsSporkActive(int nSporkID)
             case SPORK_2_INSTANTSEND_ENABLED:               r = SPORK_2_INSTANTSEND_ENABLED_DEFAULT; break;
             case SPORK_3_INSTANTSEND_BLOCK_FILTERING:       r = SPORK_3_INSTANTSEND_BLOCK_FILTERING_DEFAULT; break;
             case SPORK_5_INSTANTSEND_MAX_VALUE:             r = SPORK_5_INSTANTSEND_MAX_VALUE_DEFAULT; break;
+            case SPORK_6_SPOS_ENABLED:                      r = SPORK_6_SPOS_ENABLEDE_DEFAULT; break;
             case SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT:    r = SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT; break;
             case SPORK_9_SUPERBLOCKS_ENABLED:               r = SPORK_9_SUPERBLOCKS_ENABLED_DEFAULT; break;
             case SPORK_10_MASTERNODE_PAY_UPDATED_NODES:     r = SPORK_10_MASTERNODE_PAY_UPDATED_NODES_DEFAULT; break;
@@ -160,6 +202,7 @@ int64_t CSporkManager::GetSporkValue(int nSporkID)
         case SPORK_2_INSTANTSEND_ENABLED:               return SPORK_2_INSTANTSEND_ENABLED_DEFAULT;
         case SPORK_3_INSTANTSEND_BLOCK_FILTERING:       return SPORK_3_INSTANTSEND_BLOCK_FILTERING_DEFAULT;
         case SPORK_5_INSTANTSEND_MAX_VALUE:             return SPORK_5_INSTANTSEND_MAX_VALUE_DEFAULT;
+        case SPORK_6_SPOS_ENABLED:                      return SPORK_6_SPOS_ENABLEDE_DEFAULT;
         case SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT:    return SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT;
         case SPORK_9_SUPERBLOCKS_ENABLED:               return SPORK_9_SUPERBLOCKS_ENABLED_DEFAULT;
         case SPORK_10_MASTERNODE_PAY_UPDATED_NODES:     return SPORK_10_MASTERNODE_PAY_UPDATED_NODES_DEFAULT;
@@ -183,6 +226,7 @@ int CSporkManager::GetSporkIDByName(std::string strName)
     if (strName == "SPORK_2_INSTANTSEND_ENABLED")               return SPORK_2_INSTANTSEND_ENABLED;
     if (strName == "SPORK_3_INSTANTSEND_BLOCK_FILTERING")       return SPORK_3_INSTANTSEND_BLOCK_FILTERING;
     if (strName == "SPORK_5_INSTANTSEND_MAX_VALUE")             return SPORK_5_INSTANTSEND_MAX_VALUE;
+    if (strName == "SPORK_6_SPOS_ENABLED")                      return SPORK_6_SPOS_ENABLED;
     if (strName == "SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT")    return SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT;
     if (strName == "SPORK_9_SUPERBLOCKS_ENABLED")               return SPORK_9_SUPERBLOCKS_ENABLED;
     if (strName == "SPORK_10_MASTERNODE_PAY_UPDATED_NODES")     return SPORK_10_MASTERNODE_PAY_UPDATED_NODES;
@@ -205,6 +249,7 @@ std::string CSporkManager::GetSporkNameByID(int nSporkID)
         case SPORK_2_INSTANTSEND_ENABLED:               return "SPORK_2_INSTANTSEND_ENABLED";
         case SPORK_3_INSTANTSEND_BLOCK_FILTERING:       return "SPORK_3_INSTANTSEND_BLOCK_FILTERING";
         case SPORK_5_INSTANTSEND_MAX_VALUE:             return "SPORK_5_INSTANTSEND_MAX_VALUE";
+        case SPORK_6_SPOS_ENABLED:                      return "SPORK_6_SPOS_ENABLED";
         case SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT:    return "SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT";
         case SPORK_9_SUPERBLOCKS_ENABLED:               return "SPORK_9_SUPERBLOCKS_ENABLED";
         case SPORK_10_MASTERNODE_PAY_UPDATED_NODES:     return "SPORK_10_MASTERNODE_PAY_UPDATED_NODES";
@@ -236,6 +281,87 @@ bool CSporkManager::SetPrivKey(std::string strPrivKey)
     } else {
         return false;
     }
+}
+
+void CSporkManager::SelectMasterNodeForSpork(int nSporkID, int64_t nValue)
+{
+    if (nSporkID == SPORK_6_SPOS_ENABLED && IsSporkActive(SPORK_6_SPOS_ENABLED))
+    {
+        std::string strSporkValue = boost::lexical_cast<std::string>(nValue);
+        std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
+        std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
+        int nHeight = boost::lexical_cast<int>(strHeight);
+        int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
+        LogPrintf("SPOS_Message: SelectMasterNodeForSpork() strHeight:%s---strOfficialMasterNodeCount:%s---nHeight:%d--nOfficialMasterNodeCount:%d--chainActive.Height:%d\n",
+                  strHeight, strOfficialMasterNodeCount, nHeight, nOfficialMasterNodeCount, chainActive.Height());
+
+        if (chainActive.Height() == nHeight)
+        {
+            std::vector<CMasternode> vecMasternodes;
+            bool bClearVec=false;
+            int nSelectMasterNodeRet=g_nSelectGlobalDefaultValue,nSposGeneratedIndex=g_nSelectGlobalDefaultValue;
+            int64_t nStartNewLoopTime=g_nSelectGlobalDefaultValue;
+            int64_t nGeneralStartNewLoopTime = g_nSelectGlobalDefaultValue;
+            SPORK_SELECT_LOOP nSporkSelectLoop = NO_SPORK_SELECT_LOOP;
+            int nForwardHeight = 0,nScoreHeight = 0;
+            updateForwardHeightAndScoreHeight(chainActive.Height(),nForwardHeight,nScoreHeight);
+            CBlockIndex* forwardIndex = chainActive[nForwardHeight];
+            if(forwardIndex==NULL)
+            {
+                LogPrintf("SPOS_Warning:spork forwardIndex is NULL,height:%d\n",nForwardHeight);
+                return;
+            }
+            CBlockIndex* scoreIndex = chainActive[nScoreHeight];
+            if(scoreIndex==NULL)
+            {
+                LogPrintf("SPOS_Warning:spork scoreIndex is NULL,height:%d\n",nScoreHeight);
+                return;
+            }
+
+            if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > g_nMasternodeSPosCount)
+            {
+                LogPrintf("SPOS_Warning: SelectMasterNodeForSpork() nOfficialMasterNodeCount is error,height:%d, nOfficialMasterNodeCount:%d, g_nMasternodeSPosCount:%d\n",nHeight, nOfficialMasterNodeCount, g_nMasternodeSPosCount);
+                return;
+            }
+            nSporkSelectLoop = SPORK_SELECT_LOOP_1;
+            SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,scoreIndex->nTime, true, true,vecMasternodes, bClearVec
+                                        ,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime, false, nOfficialMasterNodeCount, nSporkSelectLoop, false);
+
+            nSporkSelectLoop = SPORK_SELECT_LOOP_2;
+            if (g_nMasternodeSPosCount - nOfficialMasterNodeCount > 0 && nSelectMasterNodeRet > 0)
+                SelectMasterNodeByPayee(chainActive.Height(), forwardIndex->nTime,scoreIndex->nTime, false, true,vecMasternodes,bClearVec
+                                    ,nSelectMasterNodeRet,nSposGeneratedIndex,nGeneralStartNewLoopTime, false, g_nMasternodeSPosCount - nOfficialMasterNodeCount, nSporkSelectLoop, true);
+
+            UpdateMasternodeGlobalData(vecMasternodes,bClearVec,nSelectMasterNodeRet,nSposGeneratedIndex,nStartNewLoopTime);
+        }
+    }
+}
+
+bool CSporkManager::CheckSPORK_6_SPOSValue(const int& nSporkID, const int64_t& nValue, std::string &strErrMessage)
+{
+    if (nSporkID == SPORK_6_SPOS_ENABLED)
+    {
+        if (nValue == SPORK_6_SPOS_ENABLEDE_DEFAULT)
+            return true;
+        else
+        {
+            std::string strSporkValue = boost::lexical_cast<std::string>(nValue);
+            std::string strHeight = strSporkValue.substr(0, strSporkValue.length() - 1);
+            std::string strOfficialMasterNodeCount = strSporkValue.substr(strSporkValue.length() - 1);
+            int nHeight = boost::lexical_cast<int>(strHeight);
+            int nOfficialMasterNodeCount = boost::lexical_cast<int>(strOfficialMasterNodeCount);
+
+            const std::vector<COutPointData> &vtempOutPointData = Params().COutPointDataS();
+
+            if (nOfficialMasterNodeCount <= 0 || nOfficialMasterNodeCount > vtempOutPointData.size())
+            {
+                strErrMessage = "value less than or equal to 0 or greater than the total number of official master nodes";
+                return false;
+            }            
+        }
+    }
+
+    return true;
 }
 
 bool CSporkMessage::Sign(std::string strSignKey)

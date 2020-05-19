@@ -102,7 +102,8 @@ QT_MOC_CPP = \
   qt/moc_customlineedit.cpp \
   qt/moc_lockedtransactiontablemodel.cpp \
   qt/moc_applicationspage.cpp \
-  qt/moc_assetspage.cpp	
+  qt/moc_assetspage.cpp	\
+  qt/moc_updateTransaction.cpp
 
 BITCOIN_MM = \
   qt/macdockiconhandler.mm \
@@ -200,7 +201,8 @@ BITCOIN_QT_H = \
   qt/customlineedit.h \
   qt/lockedtransactiontablemodel.h \
   qt/customdoublevalidator.h \
-  qt/winshutdownmonitor.h
+  qt/winshutdownmonitor.h \
+  qt/updateTransaction.h 
 
 RES_ICONS = \
   qt/res/icons/bitcoin.ico \
@@ -502,7 +504,8 @@ BITCOIN_QT_CPP += \
   qt/customslider.cpp \
   qt/customlineedit.cpp \
   qt/lockedtransactiontablemodel.cpp \
-  qt/walletview.cpp
+  qt/walletview.cpp \
+  qt/updateTransaction.cpp
 endif
 
 RES_IMAGES = \

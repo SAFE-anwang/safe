@@ -125,7 +125,7 @@ QVariant RecentRequestsTableModel::headerData(int section, Qt::Orientation orien
 {
     if(orientation == Qt::Horizontal)
     {
-        if(role == Qt::DisplayRole && section < columns.size())
+        if(role == Qt::DisplayRole && section>=0 && section<columns.size())
         {
             return columns[section];
         }

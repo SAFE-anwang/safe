@@ -7,8 +7,11 @@
 
 #include "amount.h"
 #include "masternodelist.h"
+#include "transactionrecord.h"
+#include "overviewpage.h"
 
 #include <QStackedWidget>
+#include <qmap.h>
 
 class BitcoinGUI;
 class ClientModel;
@@ -27,6 +30,7 @@ class AssetsPage;
 class ApplicationsPage;
 class AssetsDistributeRecordView;
 class ApplicationsRegistRecordView;
+class TransactionTableModel;
 
 QT_BEGIN_NAMESPACE
 class QLabel;
@@ -63,6 +67,24 @@ public:
 
     void showOutOfSyncWarning(bool fShow);
 
+	int getPageType();
+
+	WalletModel *getWalletMode();
+
+	void ShowHistoryPage();
+
+	void disconnectSign();
+
+	void refreshTransactionView();
+
+	void refreshLockTransactionView();
+
+	void refreshCandyTransactionView();
+
+	void refreshAssetTransactionView();
+
+	void refreshAppTransactionView();
+
 private:
     ClientModel *clientModel;
     WalletModel *walletModel;
@@ -91,6 +113,12 @@ private:
     QLabel *assetsTransactionSum;
     QLabel *candyTransactionSum;
     const PlatformStyle *platformStyle;
+
+	bool bRefreshTransactionView;
+	bool bRefreshAssetTxView;
+	bool bRefreshLockTxView;
+	bool bRefreshAppTxView;
+	bool bRefreshCandyTxView;
 
 public Q_SLOTS:
     /** Switch to overview (home) page */
@@ -121,7 +149,7 @@ public Q_SLOTS:
 
         The new items are those between start and end inclusive, under the given parent item.
     */
-    void processNewTransaction(const QModelIndex& parent, int start, int /*end*/);
+    void processNewTransaction(int start, int /*end*/);
     /** Encrypt the wallet */
     void encryptWallet(bool status);
     /** Backup the wallet */
@@ -160,10 +188,10 @@ public Q_SLOTS:
     /** Update selected Candy amount from candytransactionview */
     void candyTrxAmount(QString amount);
 
-    /** Update assets names*/
-    void updateAssetsInfo(int showType,bool bConfirmedNewAssets=false,const QString& strAssetName="");
-
     void updateAssetsDisplay(bool updateAsset=true);
+
+	void loadWalletFinish_slot();
+
 Q_SIGNALS:
     /** Signal that we want to show the main window */
     void showNormalIfMinimized();

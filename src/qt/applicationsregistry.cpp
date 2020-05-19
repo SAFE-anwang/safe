@@ -311,13 +311,6 @@ bool ApplicationsRegistry::applicationRegist()
         return false;
     }
 
-    int nOffset = g_nChainHeight - g_nProtocolV2Height;
-    if (nOffset < 0)
-    {
-        QMessageBox::warning(applicationPage,tr("Application registry"), tr("This feature is enabled when the block height is %1").arg(g_nProtocolV2Height),tr("Ok"));
-        return false;
-    }
-
     CAmount nCancelledValue = GetCancelledAmount(g_nChainHeight);
     if(!IsCancelledRange(nCancelledValue))
     {

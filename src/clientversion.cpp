@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "config/safe-chain.h"
 #include "clientversion.h"
 
 #include "tinyformat.h"
@@ -18,8 +19,15 @@ const std::string CLIENT_NAME("Safe Core");
 /**
  * Client version number
  */
+#if SCN_CURRENT == SCN__main
 #define CLIENT_VERSION_SUFFIX ""
-
+#elif SCN_CURRENT == SCN__dev
+#define CLIENT_VERSION_SUFFIX "-Dev"
+#elif SCN_CURRENT == SCN__test
+#define CLIENT_VERSION_SUFFIX "-Test"
+#else
+#error unsupported <safe chain name>
+#endif
 
 /**
  * The following part of the code determines the CLIENT_BUILD variable.
@@ -42,10 +50,11 @@ const std::string CLIENT_NAME("Safe Core");
 #include "build.h"
 #endif
 
-//! git will put "#define GIT_ARCHIVE 1" on the next line inside archives. $Format:%n#define GIT_ARCHIVE 1$
+//! git will put "#define GIT_ARCHIVE 1" on the next line inside archives. 
+#define GIT_ARCHIVE 1
 #ifdef GIT_ARCHIVE
-#define GIT_COMMIT_ID "$Format:%h$"
-#define GIT_COMMIT_DATE "$Format:%cD$"
+#define GIT_COMMIT_ID "284d04e"
+#define GIT_COMMIT_DATE "Fri, 14 Jun 2019 10:53:31 +0800"
 #endif
 
 #define BUILD_DESC_WITH_SUFFIX(maj, min, rev, build, suffix) \
@@ -74,6 +83,12 @@ const std::string CLIENT_NAME("Safe Core");
 #define BUILD_DATE __DATE__ ", " __TIME__
 #endif
 #endif
+
+/*
+#pragma message(STRINGIZE(BUILD_SUFFIX))
+#pragma message(STRINGIZE(BUILD_DESC))
+#pragma message(STRINGIZE(CLIENT_VERSION_SUFFIX))
+*/
 
 const std::string CLIENT_BUILD(BUILD_DESC CLIENT_VERSION_SUFFIX);
 const std::string CLIENT_DATE(BUILD_DATE);
@@ -109,4 +124,12 @@ std::string FormatSubVersion(const std::string& name, int nClientVersion, const 
     }
     ss << "/";
     return ss.str();
+}
+
+std::string FormatFullBuildInfo()
+{
+    return (
+        std::string(STRINGIZE(BUILD_SUFFIX)) + "@[" + 
+        std::string(BUILD_DATE) + "]"
+    );
 }

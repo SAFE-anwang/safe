@@ -1,10 +1,11 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "walletmodel.h"
+#include "walletview.h"
 
 #include "addresstablemodel.h"
 #include "guiconstants.h"
@@ -16,6 +17,7 @@
 #include "candytablemodel.h"
 #include "assetsdistributerecordmodel.h"
 #include "applicationsregistrecordmodel.h"
+#include "masternode-sync.h"
 
 #include "base58.h"
 #include "keystore.h"
@@ -43,6 +45,10 @@
 #include <QApplication>
 #include <QThread>
 #include <boost/foreach.hpp>
+#include <boost/thread.hpp>
+
+extern boost::thread_group* g_threadGroup;
+extern int g_nMaxDisplayTxCount;
 
 WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet), optionsModel(optionsModel), addressTableModel(0),
@@ -64,12 +70,12 @@ WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, Op
     cachedEncryptionStatus(Unencrypted),
     cachedNumBlocks(0),
     cachedTxLocks(0),
-    cachedPrivateSendRounds(0)
+    cachedPrivateSendRounds(0),
+    nCheckIncrease(0)
 {
     fHaveWatchOnly = wallet->HaveWatchOnly();
     fForceCheckBalanceChanged = false;
-
-    assetsNamesInfo.clear();
+	pWalletView = 0;
 
     addressTableModel = new AddressTableModel(wallet, this);
     transactionTableModel = new TransactionTableModel(platformStyle, wallet, SHOW_TX, this);
@@ -80,10 +86,39 @@ WalletModel::WalletModel(const PlatformStyle *platformStyle, CWallet *wallet, Op
     recentRequestsTableModel = new RecentRequestsTableModel(wallet, this);
 
     subscribeToCoreSignals();
+
+	pTimer = new QTimer(this);
+	connect(pTimer, SIGNAL(timeout()), this, SLOT(refreshTransaction_slot()));
+	
+	qRegisterMetaType<QList<TransactionRecord> >("QList<TransactionRecord>");
+	qRegisterMetaType<uint256>("uint256");
+	qRegisterMetaType<QMap<uint256, QList<TransactionRecord>> >("QMap<uint256, QList<TransactionRecord>>");
+	qRegisterMetaType<QMap<uint256, NewTxData> >("QMap<uint256, NewTxData>");	
+
+	pUpdateTransaction = new CUpdateTransaction();
+	connect(pUpdateTransaction, 
+		SIGNAL(updateAllTransaction(const QMap<uint256, QList<TransactionRecord> >, const QMap<uint256, NewTxData>)),
+		this, 
+		SLOT(updateAllTransaction_slot(const QMap<uint256, QList<TransactionRecord> >, const QMap<uint256, NewTxData>)));
+	pUpdateTransaction->init(this, wallet);
 }
 
 WalletModel::~WalletModel()
 {
+	pTimer->stop();
+	disconnect(pTimer, SIGNAL(timeout()), this, SLOT(refresh_slot()));
+	
+	disconnect(pUpdateTransaction,
+		SIGNAL(updateAllTransaction(const QMap<uint256, QList<TransactionRecord> >, const QMap<uint256, NewTxData>)),
+		this,
+		SLOT(updateAllTransaction_slot(const QMap<uint256, QList<TransactionRecord> >, const QMap<uint256, NewTxData>)));
+	
+	if (pUpdateTransaction != NULL)
+	{
+		delete pUpdateTransaction;
+		pUpdateTransaction = NULL;
+	}
+
     unsubscribeFromCoreSignals();
 }
 
@@ -158,65 +193,123 @@ void WalletModel::updateStatus()
         Q_EMIT encryptionStatusChanged(newEncryptionStatus);
 }
 
-void WalletModel::updateAllBalanceChanged(bool copyTmp)
+void WalletModel::updateAllBalanceChanged(bool checkIncrease)
 {
-    if(fForceCheckBalanceChanged || chainActive.Height() != cachedNumBlocks || privateSendClient.nPrivateSendRounds != cachedPrivateSendRounds || cachedTxLocks != nCompleteTXLocks)
+    bool fPrivateSendRounds = privateSendClient.nPrivateSendRounds != cachedPrivateSendRounds;
+    if(fForceCheckBalanceChanged || fPrivateSendRounds || cachedTxLocks != nCompleteTXLocks)
     {
-        fForceCheckBalanceChanged = false;
+        if(nCheckIncrease%5==0||fForceCheckBalanceChanged)
+        {
+            checkIncrease = false;
+            nCheckIncrease = 1;
+        }
+		else
+        {
+            nCheckIncrease++;
+        }
 
-        // Balance and number of transactions might have changed
-        cachedNumBlocks = chainActive.Height();
-        cachedPrivateSendRounds = privateSendClient.nPrivateSendRounds;
-
-        checkBalanceChanged(copyTmp);
-        if(transactionTableModel)
-            transactionTableModel->updateConfirmations();
-        if(lockedTransactionTableModel)
-            lockedTransactionTableModel->updateConfirmations();
-        if(candyTableModel)
-            candyTableModel->updateConfirmations();
-        if(assetsDistributeTableModel)
-            assetsDistributeTableModel->updateConfirmations();
-        if(applicationsRegistTableModel)
-            applicationsRegistTableModel->updateConfirmations();
+		// Balance and number of transactions might have changed
+		
+		cachedPrivateSendRounds = privateSendClient.nPrivateSendRounds;
+		fForceCheckBalanceChanged = false;
+		
+		checkBalanceChanged(checkIncrease);
     }
 }
 
-void WalletModel::pollBalanceChanged()
+void WalletModel::updateConfirmations()
+{
+	bool fCachedNumBlocks = chainActive.Height() != cachedNumBlocks;
+
+	if (fCachedNumBlocks)
+	{
+		cachedNumBlocks = chainActive.Height();
+
+		WalletModel::PageType pageType = WalletModel::NonePage;
+		if (pWalletView)
+		{
+			pageType = (WalletModel::PageType)pWalletView->getPageType();
+		}
+
+		if (transactionTableModel && pageType == WalletModel::TransactionPage)
+			transactionTableModel->updateConfirmations();
+
+		if (lockedTransactionTableModel && pageType == WalletModel::LockPage)
+			lockedTransactionTableModel->updateConfirmations();
+
+		if (candyTableModel && pageType == WalletModel::CandyPage)
+			candyTableModel->updateConfirmations();
+
+		if (assetsDistributeTableModel && pageType == WalletModel::AssetPage)
+			assetsDistributeTableModel->updateConfirmations();
+
+		if (applicationsRegistTableModel && pageType == WalletModel::AppPage)
+			applicationsRegistTableModel->updateConfirmations();
+	}
+}
+
+void WalletModel::pollBalanceChanged(bool checkIncrease)
 {
     // Get required locks upfront. This avoids the GUI from getting stuck on
     // periodical polls if the core is holding the locks for a longer time -
     // for example, during a wallet rescan.
-    TRY_LOCK(cs_main, lockMain);
-    if(!lockMain)
-        return;
-    TRY_LOCK(wallet->cs_wallet, lockWallet);
-    if(!lockWallet)
-        return;
+	bool fPrivateSendRounds = privateSendClient.nPrivateSendRounds != cachedPrivateSendRounds;
+	if (fForceCheckBalanceChanged || fPrivateSendRounds || cachedTxLocks != nCompleteTXLocks)
+	{
+		TRY_LOCK(cs_main, lockMain);
+		if (!lockMain)
+			return;
+		TRY_LOCK(wallet->cs_wallet, lockWallet);
+		if (!lockWallet)
+			return;
 
-    updateAllBalanceChanged();
+		updateAllBalanceChanged(checkIncrease);
+	}
+
+	updateConfirmations();
 }
 
-void WalletModel::checkBalanceChanged(bool copyTmp)
+void WalletModel::checkBalanceChanged(bool checkIncrease)
 {
-    if(copyTmp)
+    if(!wallet->mapWallet_tmp.empty())
     {
-        LOCK2(cs_main, wallet->cs_wallet);
         wallet->mapWallet_tmp.clear();
         std::map<uint256, CWalletTx>().swap(wallet->mapWallet_tmp);
+    }
+
+    {
+        LOCK2(cs_main, wallet->cs_wallet);
         for (std::map<uint256, CWalletTx>::const_iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
-            wallet->mapWallet_tmp[(*it).first] = (*it).second;
+        {
+            if(wallet->mapWallet_bk.count((*it).first)==0)
+            {
+                wallet->mapWallet_bk[(*it).first] = 1;
+                wallet->mapWallet_tmp[(*it).first] = (*it).second;
+            }
+        }
+    }
+
+    if(checkIncrease)
+    {
+        //no update,return
+        if(wallet->mapWallet_tmp.empty())
+            return;
     }
     CAmount newLockedBalance = 0;
     CAmount newWatchLockedBalance = 0;
-    newLockedBalance = getLockedBalance(false,NULL,NULL,!copyTmp);
-    newWatchLockedBalance = getWatchLockedBalance(false,NULL,NULL,!copyTmp);
-    if(cachedLockedBalance !=newLockedBalance || cachedWatchLockedBalance != newWatchLockedBalance)
+    newLockedBalance = getLockedBalance(false,NULL,NULL,!checkIncrease);
+    newWatchLockedBalance = getWatchLockedBalance(false,NULL,NULL,!checkIncrease);
+    if(checkIncrease)
+    {
+        if(0 != newLockedBalance || 0 != newWatchLockedBalance)
+            wallet->MarkDirty();
+    }else if(cachedLockedBalance !=newLockedBalance || cachedWatchLockedBalance != newWatchLockedBalance)
+    {
         wallet->MarkDirty();
-
-    CAmount newBalance = getBalance(NULL,false,NULL,NULL,!copyTmp);
-    CAmount newUnconfirmedBalance = getUnconfirmedBalance(false,NULL,NULL,!copyTmp);
-    CAmount newImmatureBalance = getImmatureBalance(false,NULL,NULL,!copyTmp);
+    }
+    CAmount newBalance = getBalance(NULL,false,NULL,NULL,!checkIncrease);
+    CAmount newUnconfirmedBalance = getUnconfirmedBalance(false,NULL,NULL,!checkIncrease);
+    CAmount newImmatureBalance = getImmatureBalance(false,NULL,NULL,!checkIncrease);
 
     CAmount newAnonymizedBalance = getAnonymizedBalance();
     CAmount newWatchOnlyBalance = 0;
@@ -230,22 +323,44 @@ void WalletModel::checkBalanceChanged(bool copyTmp)
         newWatchImmatureBalance = getWatchImmatureBalance();
     }
 
-    if(cachedBalance != newBalance || cachedUnconfirmedBalance != newUnconfirmedBalance || cachedImmatureBalance != newImmatureBalance || cachedLockedBalance != newLockedBalance ||
-        cachedAnonymizedBalance != newAnonymizedBalance || cachedTxLocks != nCompleteTXLocks ||
-        cachedWatchOnlyBalance != newWatchOnlyBalance || cachedWatchUnconfBalance != newWatchUnconfBalance || cachedWatchImmatureBalance != newWatchImmatureBalance || cachedWatchLockedBalance != newWatchLockedBalance)
+    if(checkIncrease)
     {
-        cachedBalance = newBalance;
-        cachedUnconfirmedBalance = newUnconfirmedBalance;
-        cachedImmatureBalance = newImmatureBalance;
-        cachedLockedBalance = newLockedBalance;
-        cachedAnonymizedBalance = newAnonymizedBalance;
-        cachedTxLocks = nCompleteTXLocks;
-        cachedWatchOnlyBalance = newWatchOnlyBalance;
-        cachedWatchUnconfBalance = newWatchUnconfBalance;
-        cachedWatchImmatureBalance = newWatchImmatureBalance;
-        cachedWatchLockedBalance = newWatchLockedBalance;
-        Q_EMIT balanceChanged(newBalance, newUnconfirmedBalance, newImmatureBalance, newLockedBalance, newAnonymizedBalance,
-                            newWatchOnlyBalance, newWatchUnconfBalance, newWatchImmatureBalance, newWatchLockedBalance);
+        if(0 != newBalance || 0 != newUnconfirmedBalance || 0 != newImmatureBalance || 0 != newLockedBalance ||
+            0 != newAnonymizedBalance || 0 != nCompleteTXLocks ||
+            0 != newWatchOnlyBalance || 0 != newWatchUnconfBalance || 0 != newWatchImmatureBalance || 0 != newWatchLockedBalance)
+        {
+            cachedBalance += newBalance;
+            cachedUnconfirmedBalance += newUnconfirmedBalance;
+            cachedImmatureBalance += newImmatureBalance;
+            cachedLockedBalance += newLockedBalance;
+            cachedAnonymizedBalance += newAnonymizedBalance;
+            cachedTxLocks += nCompleteTXLocks;
+            cachedWatchOnlyBalance += newWatchOnlyBalance;
+            cachedWatchUnconfBalance += newWatchUnconfBalance;
+            cachedWatchImmatureBalance += newWatchImmatureBalance;
+            cachedWatchLockedBalance += newWatchLockedBalance;
+            Q_EMIT balanceChanged(cachedBalance, cachedUnconfirmedBalance, cachedImmatureBalance, cachedLockedBalance, cachedAnonymizedBalance,
+                                cachedWatchOnlyBalance, cachedWatchUnconfBalance, cachedWatchImmatureBalance, cachedWatchLockedBalance);
+        }
+    }else
+    {
+        if(cachedBalance != newBalance || cachedUnconfirmedBalance != newUnconfirmedBalance || cachedImmatureBalance != newImmatureBalance || cachedLockedBalance != newLockedBalance ||
+            cachedAnonymizedBalance != newAnonymizedBalance || cachedTxLocks != nCompleteTXLocks ||
+            cachedWatchOnlyBalance != newWatchOnlyBalance || cachedWatchUnconfBalance != newWatchUnconfBalance || cachedWatchImmatureBalance != newWatchImmatureBalance || cachedWatchLockedBalance != newWatchLockedBalance)
+        {
+            cachedBalance = newBalance;
+            cachedUnconfirmedBalance = newUnconfirmedBalance;
+            cachedImmatureBalance = newImmatureBalance;
+            cachedLockedBalance = newLockedBalance;
+            cachedAnonymizedBalance = newAnonymizedBalance;
+            cachedTxLocks = nCompleteTXLocks;
+            cachedWatchOnlyBalance = newWatchOnlyBalance;
+            cachedWatchUnconfBalance = newWatchUnconfBalance;
+            cachedWatchImmatureBalance = newWatchImmatureBalance;
+            cachedWatchLockedBalance = newWatchLockedBalance;
+            Q_EMIT balanceChanged(newBalance, newUnconfirmedBalance, newImmatureBalance, newLockedBalance, newAnonymizedBalance,
+                                newWatchOnlyBalance, newWatchUnconfBalance, newWatchImmatureBalance, newWatchLockedBalance);
+        }
     }
 }
 
@@ -517,8 +632,17 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
         if(!wallet->CommitTransaction(*newTx, *keyChange, g_connman.get(), recipients[0].fUseInstantSend ? NetMsgType::TXLOCKREQUEST : NetMsgType::TX))
         {
             std::vector<int> prevheights;
-            BOOST_FOREACH(const CTxIn &txin, newTx->vin)
-                prevheights.push_back(GetTxHeight(txin.prevout.hash));
+			/*BOOST_FOREACH(const CTxIn &txin, newTx->vin)
+				prevheights.push_back(GetTxHeight(txin.prevout.hash));*/
+
+			BOOST_FOREACH(const CTxIn &txin, newTx->vin)
+			{
+				std::map<uint256, CWalletTx>::iterator it = wallet->mapWallet.find(txin.prevout.hash);
+				if (it != wallet->mapWallet.end())
+				{
+					prevheights.push_back(it->second.nTxHeight);
+				}
+			}
 
             if(ExistForbidTxin((uint32_t)g_nChainHeight + 1, prevheights))
                 return TransactionAmountSealed;
@@ -561,7 +685,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
         }
         Q_EMIT coinsSent(wallet, rcp, transaction_array);
     }
-    checkBalanceChanged(); // update balance immediately, otherwise there could be a short noticeable delay until pollBalanceChanged hits
+    //checkBalanceChanged(); // update balance immediately, otherwise there could be a short noticeable delay until pollBalanceChanged hits
 
     return SendCoinsReturn(OK);
 }
@@ -638,7 +762,7 @@ WalletModel::SendCoinsReturn WalletModel::sendAssets(WalletModelTransaction &tra
         Q_EMIT coinsSent(wallet, rcp, transaction_array);
     }
 
-    checkBalanceChanged(); // update balance immediately, otherwise there could be a short noticeable delay until pollBalanceChanged hits
+    //checkBalanceChanged(); // update balance immediately, otherwise there could be a short noticeable delay until pollBalanceChanged hits
 
     return SendCoinsReturn(OK);
 }
@@ -673,7 +797,7 @@ TransactionTableModel *WalletModel::getAssetsDistributeTableModel()
     return assetsDistributeTableModel;
 }
 
-TransactionTableModel *WalletModel::getAssetsRegistTableModel()
+TransactionTableModel *WalletModel::getApplicationRegistTableModel()
 {
     return applicationsRegistTableModel;
 }
@@ -703,22 +827,6 @@ WalletModel::EncryptionStatus WalletModel::getEncryptionStatus() const
     }
 }
 
-void WalletModel::getAssetsNames(bool needInMainChain, QStringList &lst)
-{
-    QMap<QString, AssetsDisplayInfo>::const_iterator iter;
-    for(iter = assetsNamesInfo.constBegin(); iter != assetsNamesInfo.constEnd(); ++iter)
-    {
-        const AssetsDisplayInfo& info = iter.value();
-        if(needInMainChain&&!info.bInMainChain)
-            continue;
-        lst.push_back(iter.key());
-    }
-}
-
-QMap<QString,AssetsDisplayInfo>& WalletModel::getAssetsNamesUnits()
-{
-    return assetsNamesInfo;
-}
 
 bool WalletModel::setWalletEncrypted(bool encrypted, const SecureString &passphrase)
 {
@@ -1021,6 +1129,11 @@ bool WalletModel::hdEnabled() const
     return wallet->IsHDEnabled();
 }
 
+void WalletModel::setWalletView(WalletView *walletView)
+{
+	pWalletView = walletView;
+}
+
 void EncryptWorker::doEncrypt()
 {
     // Encrypt
@@ -1028,4 +1141,334 @@ void EncryptWorker::doEncrypt()
     bool ret = model->setWalletEncrypted(true, passphrase);
 //    QApplication::restoreOverrideCursor();
     Q_EMIT resultReady(ret);
+}
+
+void WalletModel::loadHistroyData()
+{
+	QList<AssetsDisplayInfo> listMyAsset;
+	QList<TransactionRecord> listTransaction;
+	QList<CAssetData> listIssueAsset;
+
+	{
+		LOCK2(cs_main, wallet->cs_wallet);
+		for (std::map<uint256, CWalletTx>::iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
+		{
+			boost::this_thread::interruption_point();
+			if (TransactionRecord::showTransaction(it->second))
+			{
+				TransactionRecord::decomposeTransaction(wallet, it->second, listTransaction, listMyAsset, listIssueAsset);
+			}
+		}
+	}
+
+	qSort(listTransaction.begin(), listTransaction.end(), TRTimeLessCompartor);
+
+	int nTxStart = 0, nTxCount = 0;
+	int nAssetStart = 0, nAssetCount = 0;
+	int nAppStart = 0, nAppCount = 0;
+	int nCandyStart = 0, nCandyCount = 0;
+	int nLockStart = 0, nLockCount = 0;
+
+	for (int i = 0; i < listTransaction.size(); i++)
+	{
+		boost::this_thread::interruption_point();
+		for (int j = 0; j < listTransaction[i].vtShowType.size(); j++)
+		{
+			if (listTransaction[i].vtShowType[j] == SHOW_TX)
+			{
+				nTxCount++;
+			}
+			else if (listTransaction[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
+			{
+				nAssetCount++;
+			}
+			else if (listTransaction[i].vtShowType[j] == SHOW_APPLICATION_REGIST)
+			{
+				nAppCount++;
+			}
+			else if (listTransaction[i].vtShowType[j] == SHOW_CANDY_TX)
+			{
+				nCandyCount++;
+			}
+			else if (listTransaction[i].vtShowType[j] == SHOW_LOCKED_TX)
+			{
+				nLockCount++;
+			}
+		}
+	}
+
+	if (g_nMaxDisplayTxCount > 0)
+	{
+		if (nTxCount > g_nMaxDisplayTxCount)
+		{
+			nTxStart = nTxCount - g_nMaxDisplayTxCount;
+		}
+
+		if (nAssetCount > g_nMaxDisplayTxCount)
+		{
+			nAssetStart = nAssetCount - g_nMaxDisplayTxCount;
+		}
+
+		if (nAppCount > g_nMaxDisplayTxCount)
+		{
+			nAppStart = nAppCount - g_nMaxDisplayTxCount;
+		}
+
+		if (nCandyCount > g_nMaxDisplayTxCount)
+		{
+			nCandyStart = nCandyCount - g_nMaxDisplayTxCount;
+		}
+
+		if (nLockCount > g_nMaxDisplayTxCount)
+		{
+			nLockStart = nLockCount - g_nMaxDisplayTxCount;
+		}
+	}
+
+
+	for (int i = 0; i < listTransaction.size(); i++)
+	{
+		boost::this_thread::interruption_point();
+		for (int j = 0; j < listTransaction[i].vtShowType.size(); j++)
+		{
+			if (listTransaction[i].vtShowType[j] == SHOW_TX)
+			{
+				if (i >= nTxStart)
+				{
+					transactionTableModel->insertTransaction(listTransaction[i]);
+				}
+			}
+			else if (listTransaction[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
+			{
+				if (i >= nAssetStart)
+				{
+					assetsDistributeTableModel->insertTransaction(listTransaction[i]);
+				}
+			}
+			else if (listTransaction[i].vtShowType[j] == SHOW_APPLICATION_REGIST)
+			{
+				if (i >= nAppStart)
+				{
+					applicationsRegistTableModel->insertTransaction(listTransaction[i]);
+				}
+			}
+			else if (listTransaction[i].vtShowType[j] == SHOW_CANDY_TX)
+			{
+				if (i >= nCandyStart)
+				{
+					candyTableModel->insertTransaction(listTransaction[i]);
+				}
+			}
+			else if (listTransaction[i].vtShowType[j] == SHOW_LOCKED_TX)
+			{
+				if (i >= nLockStart)
+				{
+					lockedTransactionTableModel->insertTransaction(listTransaction[i]);
+				}
+			}
+		}
+	}
+
+	transactionTableModel->sortData();
+	assetsDistributeTableModel->sortData();
+	applicationsRegistTableModel->sortData();
+	candyTableModel->sortData();
+	lockedTransactionTableModel->sortData();
+
+	if (listMyAsset.size() > 0)
+	{
+		Q_EMIT pUpdateTransaction->updateAssetDisplayInfo(listMyAsset);
+		pUpdateTransaction->RefreshOverviewPageData(listMyAsset);
+	}
+
+	if (listIssueAsset.size() > 0)
+	{
+		pUpdateTransaction->RefreshAssetData(listIssueAsset);
+		pUpdateTransaction->RefreshCandyPageData(listIssueAsset);
+	}
+
+	Q_EMIT loadWalletFinish();
+}
+
+
+void ThreadUpdateBalanceChanged(WalletModel* walletModel)
+{
+	static bool fOneThread = false;
+	if (fOneThread) {
+		return;
+	}
+
+	fOneThread = true;
+	if (NULL == walletModel) {
+		return;
+	}
+
+	RenameThread("updateBalanceChangedThread");
+	LogPrintf("guidebug_message:ThreadUpdateBalanceChanged is start\n");
+	while (true) {
+		boost::this_thread::interruption_point();
+		walletModel->pollBalanceChanged(true);
+		MilliSleep(MODEL_UPDATE_DELAY);
+	}
+}
+
+void WalletModel::ShowHistoryPage()
+{
+	loadHistroyData();
+}
+
+CUpdateTransaction *WalletModel::getUpdateTransaction()
+{
+	return pUpdateTransaction;
+}
+
+void WalletModel::startUpdate()
+{
+	g_threadGroup->create_thread(boost::bind(&ThreadUpdateBalanceChanged, this));
+	pUpdateTransaction->startMonitor();
+}
+
+void WalletModel::updateAllTransaction_slot(const QMap<uint256, QList<TransactionRecord> > &mapDecTransaction, const QMap<uint256, NewTxData> &mapTransactionStatus)
+{
+	QMap<uint256, QList<TransactionRecord> >::const_iterator itTx = mapDecTransaction.begin();
+	while (itTx != mapDecTransaction.end())
+	{
+		this->mapDecTransaction.insert(itTx.key(), itTx.value());
+		itTx++;
+	}
+
+	QMap<uint256, NewTxData>::const_iterator itStatus = mapTransactionStatus.begin();
+	while (itStatus != mapTransactionStatus.end())
+	{
+		this->mapTransactionStatus.insert(itStatus.key(), itStatus.value());
+		itStatus++;
+	}
+
+	if (!pTimer->isActive())
+	{
+		pTimer->start(250);
+	}
+}
+
+void WalletModel::refreshTransaction_slot()
+{
+	bool bTxRefresh = false;
+	bool bAssetRefresh = false;
+	bool bAppRefresh = false;
+	bool bLockRefresh = false;
+	bool bCandyRefresh = false;
+
+	QString strDebug = "WalletModel::refreshTransaction_slot, ---start---, txCount: " + QString::number(mapDecTransaction.size());
+	qDebug() << strDebug;
+
+	QMap<uint256, QList<TransactionRecord> >::iterator itTx = mapDecTransaction.begin();
+	for (; itTx != mapDecTransaction.end(); itTx++)
+	{
+		QList<TransactionRecord> listTx;
+		QList<TransactionRecord> listAssetTx;
+		QList<TransactionRecord> listAppTx;
+		QList<TransactionRecord> listCandyTx;
+		QList<TransactionRecord> listLockTx;
+		const QList<TransactionRecord> &listToInsert = itTx.value();
+
+		for (int i = 0; i < listToInsert.size(); i++)
+		{
+			for (int j = 0; j < listToInsert[i].vtShowType.size(); j++)
+			{
+				if (listToInsert[i].vtShowType[j] == SHOW_TX)
+				{
+					listTx.push_back(listToInsert[i]);
+				}
+				else if (listToInsert[i].vtShowType[j] == SHOW_ASSETS_DISTRIBUTE)
+				{
+					listAssetTx.push_back(listToInsert[i]);
+				}
+				else if (listToInsert[i].vtShowType[j] == SHOW_APPLICATION_REGIST)
+				{
+					listAppTx.push_back(listToInsert[i]);
+				}
+				else if (listToInsert[i].vtShowType[j] == SHOW_CANDY_TX)
+				{
+					listCandyTx.push_back(listToInsert[i]);
+				}
+				else if (listToInsert[i].vtShowType[j] == SHOW_LOCKED_TX)
+				{
+					listLockTx.push_back(listToInsert[i]);
+				}
+			}
+		}
+
+
+		QMap<uint256, NewTxData>::iterator itNew = mapTransactionStatus.find(itTx.key());
+		if (itNew == mapTransactionStatus.end())
+		{
+			continue;
+		}
+
+		uint256 hash = itNew.key();
+		const NewTxData &stTxData = itNew.value();
+
+		if (listTx.size() > 0)
+		{
+			transactionTableModel->updateTransaction(hash, listTx, stTxData.nStatus, stTxData.bShowTx, bTxRefresh);
+		}
+
+		if (listAssetTx.size() > 0)
+		{
+			assetsDistributeTableModel->updateTransaction(hash, listAssetTx, stTxData.nStatus, stTxData.bShowTx, bAssetRefresh);
+		}
+
+		if (listAppTx.size() > 0)
+		{
+			applicationsRegistTableModel->updateTransaction(hash, listAppTx, stTxData.nStatus, stTxData.bShowTx, bAppRefresh);
+		}
+
+		if (listCandyTx.size() > 0)
+		{
+			candyTableModel->updateTransaction(hash, listCandyTx, stTxData.nStatus, stTxData.bShowTx, bCandyRefresh);
+		}
+
+		if (listLockTx.size() > 0)
+		{
+			lockedTransactionTableModel->updateTransaction(hash, listLockTx, stTxData.nStatus, stTxData.bShowTx, bLockRefresh);
+		}
+	}
+
+	mapDecTransaction.clear();
+	mapTransactionStatus.clear();
+
+	if (bTxRefresh)
+	{
+		pWalletView->refreshTransactionView();
+	}
+
+	if (bAssetRefresh)
+	{
+		pWalletView->refreshAssetTransactionView();
+	}
+
+	if (bAppRefresh)
+	{
+		pWalletView->refreshAppTransactionView();
+	}
+
+	if (bCandyRefresh)
+	{
+		pWalletView->refreshCandyTransactionView();
+	}
+
+	if (bLockRefresh)
+	{
+		pWalletView->refreshLockTransactionView();
+	}
+
+	pTimer->stop();
+
+	strDebug = "WalletModel::refreshTransaction_slot, ---end---, ";
+	strDebug += "bTxRefresh: " + QString::number(bTxRefresh) + ", ";
+	strDebug += "bAssetRefresh: " + QString::number(bAssetRefresh) + ", ";
+	strDebug += "bAppRefresh: " + QString::number(bAppRefresh) + ", ";
+	strDebug += "bCandyRefresh: " + QString::number(bCandyRefresh) + ", ";
+	strDebug += "bLockRefresh: " + QString::number(bLockRefresh);
+	qDebug() << strDebug;
 }

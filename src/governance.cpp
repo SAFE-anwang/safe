@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -14,8 +14,14 @@
 #include "messagesigner.h"
 #include "netfulfilledman.h"
 #include "util.h"
+#include "main.h"
+#include "validation.h"
+
 
 CGovernanceManager governance;
+
+extern int g_nStartSPOSHeight;
+
 
 int nSubmittedFinalBudget;
 
@@ -529,7 +535,12 @@ void CGovernanceManager::UpdateCachesAndClean()
                 }
             }
 
-            int64_t nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
+            int64_t nSuperblockCycleSeconds = 0;
+            int nTempSuperblockCycle = ConvertSuperblockCycle(chainActive.Height());
+            if (chainActive.Height() >= g_nStartSPOSHeight)
+                nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nSPOSTargetSpacing;
+            else
+                nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
             int64_t nTimeExpired = pObj->GetCreationTime() + 2 * nSuperblockCycleSeconds + GOVERNANCE_DELETION_DELAY;
 
             if(pObj->GetObjectType() == GOVERNANCE_OBJECT_WATCHDOG) {
@@ -869,7 +880,13 @@ bool CGovernanceManager::MasternodeRateCheck(const CGovernanceObject& govobj, bo
     const CTxIn& vin = govobj.GetMasternodeVin();
     int64_t nTimestamp = govobj.GetCreationTime();
     int64_t nNow = GetAdjustedTime();
-    int64_t nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
+
+    int64_t nSuperblockCycleSeconds = 0;
+    int nTempSuperblockCycle = ConvertSuperblockCycle(chainActive.Height());
+    if (chainActive.Height() >= g_nStartSPOSHeight)
+        nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nSPOSTargetSpacing;
+    else
+        nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
 
     std::string strHash = govobj.GetHash().ToString();
 
@@ -1067,7 +1084,12 @@ void CGovernanceManager::CheckPostponedObjects(CConnman& connman)
 
     // Perform additional relays for triggers/watchdogs
     int64_t nNow = GetAdjustedTime();
-    int64_t nSuperblockCycleSeconds = Params().GetConsensus().nSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
+    int64_t nSuperblockCycleSeconds = 0;
+    int nTempSuperblockCycle = ConvertSuperblockCycle(chainActive.Height());
+    if (chainActive.Height() >= g_nStartSPOSHeight)
+        nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nSPOSTargetSpacing;
+    else
+        nSuperblockCycleSeconds = nTempSuperblockCycle * Params().GetConsensus().nPowTargetSpacing;
 
     for(hash_s_it it = setAdditionalRelayObjects.begin(); it != setAdditionalRelayObjects.end();) {
 

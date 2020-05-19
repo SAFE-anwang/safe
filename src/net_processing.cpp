@@ -37,6 +37,7 @@
 #include "masternodeman.h"
 #include "privatesend-client.h"
 #include "privatesend-server.h"
+#include "main.h"
 
 #include <boost/thread.hpp>
 
@@ -45,6 +46,10 @@ using namespace std;
 #if defined(NDEBUG)
 # error "Safe Core cannot be compiled without assertions."
 #endif
+
+extern int g_nStartSPOSHeight;
+extern int g_nForbidOldVersionHeight;
+extern vector<string> g_versionVec;
 
 int64_t nTimeBestReceived = 0; // Used only to inform the wallet of when we last received a block
 
@@ -318,9 +323,23 @@ void ProcessBlockAvailability(NodeId nodeid) {
 
     if (!state->hashLastUnknownBlock.IsNull()) {
         BlockMap::iterator itOld = mapBlockIndex.find(state->hashLastUnknownBlock);
-        if (itOld != mapBlockIndex.end() && itOld->second->nChainWork > 0) {
-            if (state->pindexBestKnownBlock == NULL || itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
+        if (itOld != mapBlockIndex.end()) {
+            if (state->pindexBestKnownBlock == NULL)
                 state->pindexBestKnownBlock = itOld->second;
+            else
+            {
+                if (IsStartSPosHeight(state->pindexBestKnownBlock->nHeight))
+                {
+                    if (itOld->second->nActiveTime > 0 && CompareBestChainActiveTime(itOld->second, state->pindexBestKnownBlock, true))
+                        state->pindexBestKnownBlock = itOld->second;   
+                }
+                else
+                {
+                    if (itOld->second->nChainWork > 0 && itOld->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
+                        state->pindexBestKnownBlock = itOld->second;
+                }
+            }
+
             state->hashLastUnknownBlock.SetNull();
         }
     }
@@ -334,10 +353,23 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
     ProcessBlockAvailability(nodeid);
 
     BlockMap::iterator it = mapBlockIndex.find(hash);
-    if (it != mapBlockIndex.end() && it->second->nChainWork > 0) {
+    if (it != mapBlockIndex.end()) {
         // An actually better block was announced.
-        if (state->pindexBestKnownBlock == NULL || it->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
+        if (state->pindexBestKnownBlock == NULL)
             state->pindexBestKnownBlock = it->second;
+        else
+        {
+            if (IsStartSPosHeight(state->pindexBestKnownBlock->nHeight))
+            {
+                if (it->second->nActiveTime > 0 && CompareBestChainActiveTime(it->second, state->pindexBestKnownBlock, true))
+                    state->pindexBestKnownBlock = it->second;
+            }
+            else
+            {
+                if (it->second->nChainWork > 0 && it->second->nChainWork >= state->pindexBestKnownBlock->nChainWork)
+                    state->pindexBestKnownBlock = it->second;
+            }
+        }
     } else {
         // An unknown block was announced; just assume that the latest one is the best one.
         state->hashLastUnknownBlock = hash;
@@ -347,7 +379,10 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
 // Requires cs_main
 bool CanDirectFetch(const Consensus::Params &consensusParams)
 {
-    return chainActive.Tip()->GetBlockTime() > GetAdjustedTime() - consensusParams.nPowTargetSpacing * 20;
+    if (chainActive.Height() >= g_nStartSPOSHeight)
+        return chainActive.Tip()->GetBlockTime() > GetAdjustedTime() - consensusParams.nSPOSTargetSpacing * 20;
+    else
+        return chainActive.Tip()->GetBlockTime() > GetAdjustedTime() - consensusParams.nPowTargetSpacing * 20;
 }
 
 // Requires cs_main
@@ -392,9 +427,20 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
     // Make sure pindexBestKnownBlock is up to date, we'll need it.
     ProcessBlockAvailability(nodeid);
 
-    if (state->pindexBestKnownBlock == NULL || state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork || state->pindexBestKnownBlock->nChainWork < UintToArith256(consensusParams.nMinimumChainWork)) {
-        // This peer has nothing interesting.
+    if (state->pindexBestKnownBlock == NULL)
         return;
+    else
+    {
+        if (IsStartSPosHeight(state->pindexBestKnownBlock->nHeight))
+        {
+            if (CompareBestChainActiveTime(chainActive.Tip(), state->pindexBestKnownBlock))
+                return;
+        }
+        else
+        {
+             if (state->pindexBestKnownBlock->nChainWork < chainActive.Tip()->nChainWork || state->pindexBestKnownBlock->nChainWork < UintToArith256(consensusParams.nMinimumChainWork))
+                return;
+        }
     }
 
     if (state->pindexLastCommonBlock == NULL) {
@@ -815,9 +861,19 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
                         // To prevent fingerprinting attacks, only send blocks outside of the active
                         // chain if they are valid, and no more than a month older (both in time, and in
                         // best equivalent proof of work) than the best header chain we know about.
-                        send = mi->second->IsValid(BLOCK_VALID_SCRIPTS) && (pindexBestHeader != NULL) &&
-                            (pindexBestHeader->GetBlockTime() - mi->second->GetBlockTime() < nOneMonth) &&
+                        
+                        if (IsStartSPosHeight(pindexBestHeader->nHeight))
+                        {
+                            send = mi->second->IsValid(BLOCK_VALID_SCRIPTS) && (pindexBestHeader != NULL) &&
+                            (pindexBestHeader->GetBlockTime() - mi->second->GetBlockTime() < nOneMonth);
+                        }
+                        else
+                        {
+                             send = mi->second->IsValid(BLOCK_VALID_SCRIPTS) && (pindexBestHeader != NULL) &&
+                            (pindexBestHeader->GetBlockTime() - mi->second->GetBlockTime() < nOneMonth) && 
                             (GetBlockProofEquivalentTime(*pindexBestHeader, *mi->second, *pindexBestHeader, consensusParams) < nOneMonth);
+                        }
+
                         if (!send) {
                             LogPrintf("%s: ignoring request from peer=%i for old block that isn't in the main chain\n", __func__, pfrom->GetId());
                         }
@@ -1073,6 +1129,7 @@ void static ProcessGetData(CNode* pfrom, const Consensus::Params& consensusParam
 
 bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t nTimeReceived, CConnman& connman, std::atomic<bool>& interruptMsgProc)
 {
+    //LogPrintf("SPOS_Test:recv:%s %s\n",pfrom->addr.ToStringIP(),strCommand);
     const CChainParams& chainparams = Params();
     RandAddSeedPerfmon();
 
@@ -1163,15 +1220,22 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             vRecv >> LIMITED_STRING(strSubVer, MAX_SUBVERSION_LENGTH);
         }
 
-        if(strSubVer.find("Safe Core:1.0.0")!=string::npos||strSubVer.find("Safe Core:1.0.1")!=string::npos)
+        if(chainActive.Height()>=g_nForbidOldVersionHeight)
         {
-            // disconnect from peers older
-            LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
-            connman.PushMessageWithVersion(pfrom, INIT_PROTO_VERSION, NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
-                               strprintf("Sub version(%s) must be 2.0.0 or greater",strSubVer));
-            pfrom->fDisconnect = true;
-            return false;
+            for(unsigned int i=0;i<g_versionVec.size();i++)
+            {
+                if(strSubVer.find(g_versionVec[i])!=string::npos)
+                {
+                    // disconnect from peers older
+                    LogPrintf("peer=%d using sub version %s; disconnecting\n", pfrom->id, strSubVer);
+                    connman.PushMessageWithVersion(pfrom, INIT_PROTO_VERSION, NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
+                                       strprintf("Sub version(%s) must be %s or greater",strSubVer, FormatFullVersion()));
+                    pfrom->fDisconnect = true;
+                    return false;
+                }
+            }
         }
+
         if (!vRecv.empty()) {
             vRecv >> nStartingHeight;
         }
@@ -1368,7 +1432,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         LOCK(cs_main);
 
         std::vector<CInv> vToFetch;
-
+        //startup ask announce once
+        static bool fStartUpAskAnnounce = true;
+        bool fAlreadyAskedAnnounce = false;
 
         for (unsigned int nInv = 0; nInv < vInv.size(); nInv++)
         {
@@ -1385,6 +1451,11 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             pfrom->AddInventoryKnown(inv);
 
             bool fAlreadyHave = AlreadyHave(inv);
+            if(inv.type==MSG_MASTERNODE_ANNOUNCE&&fStartUpAskAnnounce)
+            {
+                fAlreadyAskedAnnounce = true;
+                fAlreadyHave = false;
+            }
             LogPrint("net", "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->id);
 
             if (inv.type == MSG_BLOCK) {
@@ -1431,6 +1502,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
             // Track requests for our stuff
             GetMainSignals().Inventory(inv.hash);
+        }
+        if(fAlreadyAskedAnnounce){
+            fStartUpAskAnnounce = false;
         }
 
         if (!vToFetch.empty())
@@ -1485,7 +1559,11 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             }
             // If pruning, don't inv blocks unless we have on disk and are likely to still have
             // for some reasonable time window (1 hour) that block relay might require.
-            const int nPrunedBlocksLikelyToHave = MIN_BLOCKS_TO_KEEP - 3600 / chainparams.GetConsensus().nPowTargetSpacing;
+            int nPrunedBlocksLikelyToHave = 0;
+            if (pindex->nHeight >= g_nStartSPOSHeight)
+                nPrunedBlocksLikelyToHave = MIN_BLOCKS_TO_KEEP - 3600 / chainparams.GetConsensus().nSPOSTargetSpacing;
+            else
+                nPrunedBlocksLikelyToHave = MIN_BLOCKS_TO_KEEP - 3600 / chainparams.GetConsensus().nPowTargetSpacing;
             if (fPruneMode && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= chainActive.Tip()->nHeight - nPrunedBlocksLikelyToHave))
             {
                 LogPrint("net", " getblocks stopping, pruned or too old block at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
@@ -1515,7 +1593,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             LogPrint("net", "Ignoring getheaders from peer=%d because node is in initial block download\n", pfrom->id);
             return true;
         }
-
         CNodeState *nodestate = State(pfrom->GetId());
         CBlockIndex* pindex = NULL;
         if (locator.IsNull())
@@ -1885,7 +1962,24 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         CNodeState *nodestate = State(pfrom->GetId());
         // If this set of headers is valid and ends in a block with at least as
         // much work as our tip, download as much as possible.
-        if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && chainActive.Tip()->nChainWork <= pindexLast->nChainWork) {
+
+        bool bNewEffectiveBlock = false;
+
+        if (pindexLast)
+        {
+             if (IsStartSPosHeight(pindexLast->nHeight))
+            {
+                if (CompareBestChainActiveTime(pindexLast, chainActive.Tip(), true))
+                    bNewEffectiveBlock = true;
+            }
+            else
+            {
+                if (chainActive.Tip()->nChainWork <= pindexLast->nChainWork)
+                    bNewEffectiveBlock = true;
+            }
+        }
+       
+        if (fCanDirectFetch && pindexLast && pindexLast->IsValid(BLOCK_VALID_TREE) && bNewEffectiveBlock) {
             vector<CBlockIndex *> vToFetch;
             CBlockIndex *pindexWalk = pindexLast;
             // Calculate all the blocks we'd need to switch to pindexLast, up to a limit.
@@ -1956,6 +2050,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             mapBlockSource.emplace(hash, pfrom->GetId());
         }
         bool fNewBlock = false;
+        LogPrintf("SPOS_Message:received block from:%s,chainActive height:%d,blockHash:%s\n",pfrom->addr.ToStringIP()
+                  ,chainActive.Height(),block.GetHash().ToString());
         ProcessNewBlock(chainparams, &block, forceProcessing, NULL, &fNewBlock);
         if (fNewBlock)
             pfrom->nLastBlockTime = GetTime();
@@ -2449,7 +2545,10 @@ bool SendMessages(CNode* pto, CConnman& connman, std::atomic<bool>& interruptMsg
             // Only actively request headers from a single peer, unless we're close to end of initial download.
             if ((nSyncStarted == 0 && fFetch) || pindexBestHeader->GetBlockTime() > GetAdjustedTime() - 6 * 60 * 60) { // NOTE: was "close to today" and 24h in Bitcoin
                 state.fSyncStarted = true;
-                state.nHeadersSyncTimeout = GetTimeMicros() + HEADERS_DOWNLOAD_TIMEOUT_BASE + HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER * (GetAdjustedTime() - pindexBestHeader->GetBlockTime())/(consensusParams.nPowTargetSpacing);
+                if (chainActive.Height() >= g_nStartSPOSHeight)
+                    state.nHeadersSyncTimeout = GetTimeMicros() + HEADERS_DOWNLOAD_TIMEOUT_BASE + HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER * (GetAdjustedTime() - pindexBestHeader->GetBlockTime())/consensusParams.nSPOSTargetSpacing;
+                else
+                    state.nHeadersSyncTimeout = GetTimeMicros() + HEADERS_DOWNLOAD_TIMEOUT_BASE + HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER * (GetAdjustedTime() - pindexBestHeader->GetBlockTime())/(consensusParams.nPowTargetSpacing);
                 nSyncStarted++;
                 const CBlockIndex *pindexStart = pindexBestHeader;
                 /* If possible, start at the block preceding the currently
@@ -2666,9 +2765,20 @@ bool SendMessages(CNode* pto, CConnman& connman, std::atomic<bool>& interruptMsg
         if (!pto->fDisconnect && state.vBlocksInFlight.size() > 0) {
             QueuedBlock &queuedBlock = state.vBlocksInFlight.front();
             int nOtherPeersWithValidatedDownloads = nPeersWithValidatedDownloads - (state.nBlocksInFlightValidHeaders > 0);
-            if (nNow > state.nDownloadingSince + consensusParams.nPowTargetSpacing * (BLOCK_DOWNLOAD_TIMEOUT_BASE + BLOCK_DOWNLOAD_TIMEOUT_PER_PEER * nOtherPeersWithValidatedDownloads)) {
-                LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", queuedBlock.hash.ToString(), pto->id);
-                pto->fDisconnect = true;
+
+            if (chainActive.Height() >= g_nStartSPOSHeight)
+            {
+                 if (nNow > state.nDownloadingSince + consensusParams.nSPOSTargetSpacing * (BLOCK_DOWNLOAD_TIMEOUT_BASE + BLOCK_DOWNLOAD_TIMEOUT_PER_PEER * nOtherPeersWithValidatedDownloads)) {
+                    LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", queuedBlock.hash.ToString(), pto->id);
+                    pto->fDisconnect = true;
+                }
+            }
+            else
+            {
+                 if (nNow > state.nDownloadingSince + consensusParams.nPowTargetSpacing * (BLOCK_DOWNLOAD_TIMEOUT_BASE + BLOCK_DOWNLOAD_TIMEOUT_PER_PEER * nOtherPeersWithValidatedDownloads)) {
+                    LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", queuedBlock.hash.ToString(), pto->id);
+                    pto->fDisconnect = true;
+                }
             }
         }
         // Check for headers sync timeouts
@@ -2730,10 +2840,18 @@ bool SendMessages(CNode* pto, CConnman& connman, std::atomic<bool>& interruptMsg
         //
         // Message: getdata (non-blocks)
         //
+        static bool fStartUpAskAnnounce = true;
+        bool fAlreadyAskedAnnounce = false;
         while (!pto->fDisconnect && !pto->mapAskFor.empty() && (*pto->mapAskFor.begin()).first <= nNow)
         {
             const CInv& inv = (*pto->mapAskFor.begin()).second;
-            if (!AlreadyHave(inv))
+            bool fAlreadyHave = AlreadyHave(inv);
+            if(inv.type == MSG_MASTERNODE_ANNOUNCE && fStartUpAskAnnounce)
+            {
+                fAlreadyAskedAnnounce = true;
+                fAlreadyHave = false;
+            }
+            if (!fAlreadyHave)
             {
                 LogPrint("net", "SendMessages -- GETDATA -- requesting inv = %s peer=%d\n", inv.ToString(), pto->id);
                 vGetData.push_back(inv);
@@ -2750,6 +2868,10 @@ bool SendMessages(CNode* pto, CConnman& connman, std::atomic<bool>& interruptMsg
             }
             pto->mapAskFor.erase(pto->mapAskFor.begin());
         }
+        if(fAlreadyAskedAnnounce){
+            fStartUpAskAnnounce = false;
+        }
+
         if (!vGetData.empty()) {
             connman.PushMessage(pto, NetMsgType::GETDATA, vGetData);
             LogPrint("net", "SendMessages -- GETDATA -- pushed size = %lu peer=%d\n", vGetData.size(), pto->id);

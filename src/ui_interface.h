@@ -117,11 +117,11 @@ public:
     /** Banlist did change. */
     boost::signals2::signal<void (void)> BannedListChanged;
 
-    /** New asset has been found */
-    boost::signals2::signal<void (const std::string& strAssetName)> AssetFound;
+	/** New asset has been found */
+	boost::signals2::signal<void(const std::vector<uint256> &vtNewAssetId)> AssetFound;
 
-    /** New candy has been put */
-    boost::signals2::signal<void ()> CandyVecPut;
+	/** New candy has been put */
+	boost::signals2::signal<void()> CandyVecPut;
 };
 
 extern CClientUIInterface uiInterface;

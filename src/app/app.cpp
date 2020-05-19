@@ -21,11 +21,11 @@ static string szKeyWords[] = {
     "BTC", "ETH", "EOS", "LTC", "DASH", "ETC",
     "Bitcoin", "Ethereum", "LiteCoin", "Ethereum Classic",
     "人民币", "港元", "港币", "澳门元", "澳门币", "新台币", "RMB", "CNY", "HKD", "MOP", "TWD", "人民幣", "港幣", "澳門元", "澳門幣", "新台幣", "澳门幣",
-    "mSAFE", "μSAFE", "duffs", "tSAFE", "mtSAFE", "μtSAFE", "tduffs"
+    "mSAFE", "μSAFE", "duffs", "tSAFE", "mtSAFE", "μtSAFE", "tduffs", "AnYou", "SafeGame"
 };
 
 static string szSimilarKeyWords[] = {
-    "安网", "银链", "安網", "銀鏈", "銀链", "银鏈"
+    "安网", "银链", "安網", "銀鏈", "銀链", "银鏈", "安游", "安遊"
 };
 
 string TrimString(const string& strValue)
@@ -326,6 +326,15 @@ static void ParseHeader(const vector<unsigned char>& vData, CAppHeader& header, 
 bool ParseReserve(const vector<unsigned char>& vReserve, CAppHeader& header, vector<unsigned char>& vData)
 {
     if(vReserve.size() <= TXOUT_RESERVE_MIN_SIZE + sizeof(uint16_t) + 32 + sizeof(uint32_t))
+        return false;
+
+    //SPOS no need to parse 
+    unsigned int nStartSPOSOffset = TXOUT_RESERVE_MIN_SIZE;
+    std::vector<unsigned char> vchConAlg;
+    for(unsigned int k = 0; k < 4; k++)
+        vchConAlg.push_back(vReserve[nStartSPOSOffset++]);
+
+    if (vchConAlg[0] == 's' && vchConAlg[1] == 'p' && vchConAlg[2] == 'o' && vchConAlg[3] == 's')
         return false;
 
     unsigned int nOffset = 0;

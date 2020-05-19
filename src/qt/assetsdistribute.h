@@ -20,7 +20,6 @@ public:
     explicit AssetsDistribute(AssetsPage* assetsPage);
     ~AssetsDistribute();
 
-    void updateAssetsInfo();
 private:
     void clearDisplay();
     void initWidget();
@@ -34,6 +33,9 @@ private:
     void updateCandyValue();
     bool amountFromString(const std::string& valueStr,int decimal,CAmount& amount,bool* invalidDecimal=NULL);
     void updateTotalAssetsEdit();
+
+public Q_SLOTS:
+    void updateAssetsInfo(QStringList listAsset);
 
 private Q_SLOTS:
     void on_distributeComboBox_currentIndexChanged(int index);

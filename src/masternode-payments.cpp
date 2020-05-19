@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -12,6 +12,10 @@
 #include "netfulfilledman.h"
 #include "spork.h"
 #include "util.h"
+#include "main.h"
+#include "validation.h"
+
+
 
 #include <boost/lexical_cast.hpp>
 
@@ -46,7 +50,8 @@ bool IsBlockValueValid(const CBlock& block, int nBlockHeight, CAmount blockRewar
     const Consensus::Params& consensusParams = Params().GetConsensus();
 
     if(nBlockHeight < consensusParams.nSuperblockStartBlock) {
-        int nOffset = nBlockHeight % consensusParams.nBudgetPaymentsCycleBlocks;
+        int nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks;
+        int nOffset = nBlockHeight % nBudgetPaymentsCycleBlocks;
         if(nBlockHeight >= consensusParams.nBudgetPaymentsStartBlock &&
             nOffset < consensusParams.nBudgetPaymentsWindowBlocks) {
             // NOTE: make sure SPORK_13_OLD_SUPERBLOCK_FLAG is disabled when 12.1 starts to go live
@@ -149,7 +154,8 @@ bool IsBlockPayeeValid(const CTransaction& txNew, int nBlockHeight, CAmount bloc
             return true;
         }
 
-        int nOffset = nBlockHeight % consensusParams.nBudgetPaymentsCycleBlocks;
+        int nBudgetPaymentsCycleBlocks = consensusParams.nBudgetPaymentsCycleBlocks;
+        int nOffset = nBlockHeight % nBudgetPaymentsCycleBlocks;
         if(nBlockHeight >= consensusParams.nBudgetPaymentsStartBlock &&
             nOffset < consensusParams.nBudgetPaymentsWindowBlocks) {
             if(!sporkManager.IsSporkActive(SPORK_13_OLD_SUPERBLOCK_FLAG)) {
@@ -219,10 +225,13 @@ void FillBlockPayments(CMutableTransaction& txNew, int nBlockHeight, CAmount blo
             return;
     }
 
-    // FILL BLOCK PAYEE WITH MASTERNODE PAYMENT OTHERWISE
-    mnpayments.FillBlockPayee(txNew, nBlockHeight, blockReward, txoutMasternodeRet);
-    LogPrint("mnpayments", "FillBlockPayments -- nBlockHeight %d blockReward %lld txoutMasternodeRet %s txNew %s",
-                            nBlockHeight, blockReward, txoutMasternodeRet.ToString(), txNew.ToString());
+    if (sporkManager.IsSporkActive(SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT))
+    {
+        // FILL BLOCK PAYEE WITH MASTERNODE PAYMENT OTHERWISE
+        mnpayments.FillBlockPayee(txNew, nBlockHeight, blockReward, txoutMasternodeRet);
+        LogPrint("mnpayments", "FillBlockPayments -- nBlockHeight %d blockReward %lld txoutMasternodeRet %s txNew %s",
+                                nBlockHeight, blockReward, txoutMasternodeRet.ToString(), txNew.ToString());
+    }
 }
 
 std::string GetRequiredPaymentsString(int nBlockHeight)
@@ -295,7 +304,7 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int nBlockH
     ExtractDestination(payee, address1);
     CBitcoinAddress address2(address1);
 
-    LogPrintf("CMasternodePayments::FillBlockPayee -- Masternode payment %lld to %s\n", masternodePayment, address2.ToString());
+    //LogPrintf("CMasternodePayments::FillBlockPayee -- Masternode payment %lld to %s\n", masternodePayment, address2.ToString());
 }
 
 int CMasternodePayments::GetMinMasternodePaymentsProto() {
@@ -411,7 +420,8 @@ void CMasternodePayments::ProcessMessage(CNode* pfrom, std::string& strCommand, 
 
         if(AddPaymentVote(vote)){
             vote.Relay(connman);
-            masternodeSync.BumpAssetLastTime("MASTERNODEPAYMENTVOTE");
+            if(!IsStartSPosHeight(vote.nBlockHeight))
+                masternodeSync.BumpAssetLastTime("MASTERNODEPAYMENTVOTE");
         }
     }
 }
@@ -658,7 +668,6 @@ void CMasternodePayments::CheckAndRemove()
 bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, std::string& strError, CConnman& connman)
 {
     masternode_info_t mnInfo;
-
     if(!mnodeman.GetMasternodeInfo(vinMasternode.prevout, mnInfo)) {
         strError = strprintf("Unknown Masternode: prevout=%s", vinMasternode.prevout.ToStringShort());
         // Only ask if we are already synced and still have no idea about that Masternode
@@ -1010,7 +1019,8 @@ bool CMasternodePayments::IsEnoughData()
 {
     float nAverageVotes = (MNPAYMENTS_SIGNATURES_TOTAL + MNPAYMENTS_SIGNATURES_REQUIRED) / 2;
     int nStorageLimit = GetStorageLimit();
-    return GetBlockCount() > nStorageLimit && GetVoteCount() > nStorageLimit * nAverageVotes;
+    int nBlockCount = GetBlockCount();
+    return nBlockCount > nStorageLimit && nBlockCount > nStorageLimit * nAverageVotes;
 }
 
 int CMasternodePayments::GetStorageLimit()

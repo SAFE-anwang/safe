@@ -38,6 +38,8 @@ public:
 
     void setModel(WalletModel *model);
 
+	void refreshPage();
+
     // Date ranges for filter
     enum DateEnum
     {

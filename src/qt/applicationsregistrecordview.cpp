@@ -201,12 +201,12 @@ void ApplicationsRegistRecordView::setModel(WalletModel *model)
     if(model)
     {
         transactionProxyModel = new TransactionFilterProxy(this);
-        transactionProxyModel->setSourceModel(model->getAssetsRegistTableModel());
-        transactionProxyModel->setDynamicSortFilter(true);
-        transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
+        transactionProxyModel->setSourceModel(model->getApplicationRegistTableModel());
+    //    transactionProxyModel->setDynamicSortFilter(true);
+    //    transactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
         transactionProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
 
-        transactionProxyModel->setSortRole(Qt::EditRole);
+    //    transactionProxyModel->setSortRole(Qt::EditRole);
 
         applicationsView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         applicationsView->setModel(transactionProxyModel);
@@ -427,7 +427,7 @@ void ApplicationsRegistRecordView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getAssetsRegistTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+	model->getUpdateTransaction()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void ApplicationsRegistRecordView::copyAddress()
@@ -702,4 +702,15 @@ void ApplicationsRegistRecordView::updateWatchOnlyColumn(bool fHaveWatchOnly)
     applicationsView->setColumnHidden(ApplicationsRegistRecordModel::ApplicationsRegistColumnWatchonly, !fHaveWatchOnly);
 }
 
-
+void ApplicationsRegistRecordView::refreshPage()
+{
+	if (model->getApplicationRegistTableModel()->size() > 0)
+	{
+        bool bHidden = applicationsView->isColumnHidden(ApplicationsRegistRecordModel::ApplicationsRegistColumnWatchonly);
+		transactionProxyModel->invalidate();
+        if(bHidden)
+        {
+            applicationsView->setColumnHidden(ApplicationsRegistRecordModel::ApplicationsRegistColumnWatchonly, bHidden);
+        }
+	}
+}

@@ -20,6 +20,8 @@
 #include "base58.h"
 #include "main.h"
 #include "app/app.h"
+#include <boost/thread.hpp>
+
 
 using namespace std;
 
@@ -193,6 +195,7 @@ bool CTxMemPool::CalculateMemPoolAncestors(const CTxMemPoolEntry &entry, setEntr
         // GetMemPoolParents() is only valid for entries in the mempool, so we
         // iterate mapTx to find parents.
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
+            boost::this_thread::interruption_point();
             txiter piter = mapTx.find(tx.vin[i].prevout.hash);
             if (piter != mapTx.end()) {
                 parentHashes.insert(piter);
@@ -212,6 +215,7 @@ bool CTxMemPool::CalculateMemPoolAncestors(const CTxMemPoolEntry &entry, setEntr
     size_t totalSizeWithAncestors = entry.GetTxSize();
 
     while (!parentHashes.empty()) {
+        boost::this_thread::interruption_point();
         txiter stageit = *parentHashes.begin();
 
         setAncestors.insert(stageit);
@@ -231,6 +235,7 @@ bool CTxMemPool::CalculateMemPoolAncestors(const CTxMemPoolEntry &entry, setEntr
 
         const setEntries & setMemPoolParents = GetMemPoolParents(stageit);
         BOOST_FOREACH(const txiter &phash, setMemPoolParents) {
+            boost::this_thread::interruption_point();
             // If this is a new ancestor, add it.
             if (setAncestors.count(phash) == 0) {
                 parentHashes.insert(phash);
@@ -635,8 +640,10 @@ void CTxMemPool::addAppInfoIndex(const CTxMemPoolEntry& entry, const CCoinsViewC
         }
     }
 
-    mapAppId_AppInfo_Inserted.insert(make_pair(txhash, appId_inserted));
-    mapAppName_AppId_Inserted.insert(make_pair(txhash, appName_inserted));
+    if (appId_inserted.size())
+        mapAppId_AppInfo_Inserted.insert(make_pair(txhash, appId_inserted));
+    if (appName_inserted.size())
+        mapAppName_AppId_Inserted.insert(make_pair(txhash, appName_inserted));
 }
 
 bool CTxMemPool::getAppInfoByAppId(const uint256& appId, CAppId_AppInfo_IndexValue& appInfo)
@@ -751,7 +758,8 @@ void CTxMemPool::add_AppTx_Index(const CTxMemPoolEntry& entry, const CCoinsViewC
         }
     }
 
-    mapAppTx_Inserted.insert(make_pair(txhash, inserted));
+    if (inserted.size())
+        mapAppTx_Inserted.insert(make_pair(txhash, inserted));
 }
 
 bool CTxMemPool::get_AppTx_Index(const uint256& appId, std::vector<COutPoint>& vOut)
@@ -843,7 +851,8 @@ void CTxMemPool::add_Auth_Index(const CTxMemPoolEntry& entry, const CCoinsViewCa
         }
     }
 
-    mapAuth_Inserted.insert(make_pair(txhash, inserted));
+    if (inserted.size())
+        mapAuth_Inserted.insert(make_pair(txhash, inserted));
 }
 
 bool CTxMemPool::get_Auth_Index(const uint256& appId, const std::string& strAddress, std::vector<uint32_t>& vAuth)
@@ -916,9 +925,12 @@ void CTxMemPool::addAssetInfoIndex(const CTxMemPoolEntry& entry, const CCoinsVie
         }
     }
 
-    mapAssetId_AssetInfo_Inserted.insert(make_pair(txhash, assetId_inserted));
-    mapShortName_AssetId_Inserted.insert(make_pair(txhash, shortName_inserted));
-    mapAssetName_AssetId_Inserted.insert(make_pair(txhash, assetName_inserted));
+    if (assetId_inserted.size())
+        mapAssetId_AssetInfo_Inserted.insert(make_pair(txhash, assetId_inserted));
+    if (shortName_inserted.size())
+        mapShortName_AssetId_Inserted.insert(make_pair(txhash, shortName_inserted));
+    if (assetName_inserted.size())
+        mapAssetName_AssetId_Inserted.insert(make_pair(txhash, assetName_inserted));
 }
 
 bool CTxMemPool::getAssetInfoByAssetId(const uint256& assetId, CAssetId_AssetInfo_IndexValue& assetInfo)
@@ -1105,7 +1117,8 @@ void CTxMemPool::add_AssetTx_Index(const CTxMemPoolEntry& entry, const CCoinsVie
         }
     }
 
-    mapAssetTx_Inserted.insert(make_pair(txhash, inserted));
+    if (inserted.size())
+        mapAssetTx_Inserted.insert(make_pair(txhash, inserted));
 }
 
 bool CTxMemPool::get_AssetTx_Index(const uint256& assetId, const uint8_t& nTxClass, std::vector<COutPoint>& vOut)
@@ -1277,7 +1290,8 @@ void CTxMemPool::add_GetCandy_Index(const CTxMemPoolEntry& entry, const CCoinsVi
         }
     }
 
-    mapGetCandy_Inserted.insert(make_pair(txhash, getCandy_inserted));
+    if (getCandy_inserted.size())
+        mapGetCandy_Inserted.insert(make_pair(txhash, getCandy_inserted));
 }
 
 bool CTxMemPool::get_GetCandy_Index(const uint256& assetId, const COutPoint& out, const std::string& strAddress, CAmount& nAmount)
@@ -1347,7 +1361,6 @@ void CTxMemPool::add_GetCandyCount_Index(const CTxMemPoolEntry& entry, const CCo
                             continue;
                         if(CBitcoinAddress(in_dest).ToString() == g_strPutCandyAddress)
                         {
-                            //XJTODO test
                             CGetCandyCount_IndexKey key(candyData.assetId,txin.prevout);
                             CGetCandyCount_IndexValue& value = mapGetCandyCount[key];
                             value.nGetCandyCount += candyData.nAmount;
@@ -1361,7 +1374,8 @@ void CTxMemPool::add_GetCandyCount_Index(const CTxMemPoolEntry& entry, const CCo
         }
     }
 
-    mapGetCandyCount_Inserted.insert(make_pair(txhash, getCandyCount_inserted));
+    if (getCandyCount_inserted.size())
+        mapGetCandyCount_Inserted.insert(make_pair(txhash, getCandyCount_inserted));
 }
 
 bool CTxMemPool::get_GetCandyCount_Index(const uint256 &assetId, const COutPoint &out, CGetCandyCount_IndexValue &value)
@@ -1391,7 +1405,6 @@ bool CTxMemPool::remove_GetCandyCount_Index(const uint256& txhash)
         std::vector<std::pair<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> > keys = (*it).second;
         for(std::vector<std::pair<CGetCandyCount_IndexKey,CGetCandyCount_IndexValue> >::iterator mit = keys.begin(); mit != keys.end(); mit++)
         {
-            //XJTODO test
             const CGetCandyCount_IndexKey& key = mit->first;
             if(mapGetCandyCount.find(key) != mapGetCandyCount.end())
             {
@@ -1520,8 +1533,8 @@ void CTxMemPool::removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMem
                 if (it2 != mapTx.end())
                     continue;
                 const CCoins *coins = pcoins->AccessCoins(txin.prevout.hash);
-		if (nCheckFrequency != 0) assert(coins);
-                if (!coins || (coins->IsCoinBase() && ((signed long)nMemPoolHeight) - coins->nHeight < COINBASE_MATURITY)) {
+        if (nCheckFrequency != 0) assert(coins);
+                if (!coins || (coins->IsCoinBase() && !coins->IsMaturity((signed long)nMemPoolHeight))) {
                     transactionsToRemove.push_back(tx);
                     break;
                 }

@@ -1,13 +1,13 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "overviewpage.h"
 #include "ui_overviewpage.h"
 
-#include "bitcoinunits.h"
+
 #include "clientmodel.h"
 #include "guiconstants.h"
 #include "guiutil.h"
@@ -15,9 +15,10 @@
 #include "optionsmodel.h"
 #include "platformstyle.h"
 #include "transactionfilterproxy.h"
-#include "transactiontablemodel.h"
 #include "utilitydialog.h"
 #include "walletmodel.h"
+#include "transactiontablemodel.h"
+#include "bitcoinunits.h"
 
 #include "instantx.h"
 #include "darksendconfig.h"
@@ -26,104 +27,112 @@
 #include "overviewentry.h"
 #include "assetsdistributerecordmodel.h"
 
+
+
+
 #include <QAbstractItemDelegate>
 #include <QPainter>
 #include <QSettings>
 #include <QTimer>
 #include <QScrollBar>
 #include <QToolButton>
+#include <boost/thread.hpp>
 
 #define ICON_OFFSET 16
 #define DECORATION_SIZE 54
 #define NUM_ITEMS 5
 #define NUM_ITEMS_ADV 7
 
+
+
 class TxViewDelegate : public QAbstractItemDelegate
 {
-    Q_OBJECT
+	Q_OBJECT
+
 public:
-    TxViewDelegate(const PlatformStyle *_platformStyle, QObject *parent=nullptr):
-        QAbstractItemDelegate(parent), unit(BitcoinUnits::SAFE),
-        platformStyle(_platformStyle)
-    {
+	TxViewDelegate(const PlatformStyle *_platformStyle, QObject *parent = nullptr) :
+		QAbstractItemDelegate(parent), unit(BitcoinUnits::SAFE),
+		platformStyle(_platformStyle)
+	{
 
-    }
+	}
 
-    inline void paint(QPainter *painter, const QStyleOptionViewItem &option,
-                      const QModelIndex &index ) const
-    {
-        painter->save();
+	inline void paint(QPainter *painter, const QStyleOptionViewItem &option,
+		const QModelIndex &index) const
+	{
+		painter->save();
 
-        QIcon icon = qvariant_cast<QIcon>(index.data(TransactionTableModel::RawDecorationRole));
-        QRect mainRect = option.rect;
-        mainRect.moveLeft(ICON_OFFSET);
-        QRect decorationRect(mainRect.topLeft(), QSize(DECORATION_SIZE, DECORATION_SIZE));
-        int xspace = DECORATION_SIZE + 8;
-        int ypad = 6;
-        int halfheight = (mainRect.height() - 2*ypad)/2;
-        QRect amountRect(mainRect.left() + xspace, mainRect.top()+ypad, mainRect.width() - xspace - ICON_OFFSET, halfheight);
-        QRect addressRect(mainRect.left() + xspace, mainRect.top()+ypad+halfheight, mainRect.width() - xspace, halfheight);
-        icon = platformStyle->SingleColorIcon(icon);
-        icon.paint(painter, decorationRect);
+		QIcon icon = qvariant_cast<QIcon>(index.data(TransactionTableModel::RawDecorationRole));
+		QRect mainRect = option.rect;
+		mainRect.moveLeft(ICON_OFFSET);
+		QRect decorationRect(mainRect.topLeft(), QSize(DECORATION_SIZE, DECORATION_SIZE));
+		int xspace = DECORATION_SIZE + 8;
+		int ypad = 6;
+		int halfheight = (mainRect.height() - 2 * ypad) / 2;
+		QRect amountRect(mainRect.left() + xspace, mainRect.top() + ypad, mainRect.width() - xspace - ICON_OFFSET, halfheight);
+		QRect addressRect(mainRect.left() + xspace, mainRect.top() + ypad + halfheight, mainRect.width() - xspace, halfheight);
+		icon = platformStyle->SingleColorIcon(icon);
+		icon.paint(painter, decorationRect);
 
-        QDateTime date = index.data(TransactionTableModel::DateRole).toDateTime();
-        QString address = index.data(Qt::DisplayRole).toString();
-        qint64 amount = index.data(TransactionTableModel::AmountRole).toLongLong();
-        bool confirmed = index.data(TransactionTableModel::ConfirmedRole).toBool();
-        QVariant value = index.data(Qt::ForegroundRole);
-        QColor foreground = option.palette.color(QPalette::Text);
-        if(value.canConvert<QBrush>())
-        {
-            QBrush brush = qvariant_cast<QBrush>(value);
-            foreground = brush.color();
-        }
+		QDateTime date = index.data(TransactionTableModel::DateRole).toDateTime();
+		QString address = index.data(Qt::DisplayRole).toString();
+		qint64 amount = index.data(TransactionTableModel::AmountRole).toLongLong();
+		bool confirmed = index.data(TransactionTableModel::ConfirmedRole).toBool();
+		QVariant value = index.data(Qt::ForegroundRole);
+		QColor foreground = option.palette.color(QPalette::Text);
+		if (value.canConvert<QBrush>())
+		{
+			QBrush brush = qvariant_cast<QBrush>(value);
+			foreground = brush.color();
+		}
 
-        painter->setPen(foreground);
-        QRect boundingRect;
-        painter->drawText(addressRect, Qt::AlignLeft|Qt::AlignVCenter, address, &boundingRect);
+		painter->setPen(foreground);
+		QRect boundingRect;
+		painter->drawText(addressRect, Qt::AlignLeft | Qt::AlignVCenter, address, &boundingRect);
 
-        if (index.data(TransactionTableModel::WatchonlyRole).toBool())
-        {
-            QIcon iconWatchonly = qvariant_cast<QIcon>(index.data(TransactionTableModel::WatchonlyDecorationRole));
-            QRect watchonlyRect(boundingRect.right() + 5, mainRect.top()+ypad+halfheight, 16, halfheight);
-            iconWatchonly.paint(painter, watchonlyRect);
-        }
+		if (index.data(TransactionTableModel::WatchonlyRole).toBool())
+		{
+			QIcon iconWatchonly = qvariant_cast<QIcon>(index.data(TransactionTableModel::WatchonlyDecorationRole));
+			QRect watchonlyRect(boundingRect.right() + 5, mainRect.top() + ypad + halfheight, 16, halfheight);
+			iconWatchonly.paint(painter, watchonlyRect);
+		}
 
-        if(amount < 0)
-        {
-            foreground = COLOR_NEGATIVE;
-        }
-        else if(!confirmed)
-        {
-            foreground = COLOR_UNCONFIRMED;
-        }
-        else
-        {
-            foreground = option.palette.color(QPalette::Text);
-        }
-        painter->setPen(foreground);
-        QString amountText = BitcoinUnits::floorWithUnit(unit, amount, true, BitcoinUnits::separatorAlways);
-        if(!confirmed)
-        {
-            amountText = QString("[") + amountText + QString("]");
-        }
-        painter->drawText(amountRect, Qt::AlignRight|Qt::AlignVCenter, amountText);
+		if (amount < 0)
+		{
+			foreground = COLOR_NEGATIVE;
+		}
+		else if (!confirmed)
+		{
+			foreground = COLOR_UNCONFIRMED;
+		}
+		else
+		{
+			foreground = option.palette.color(QPalette::Text);
+		}
+		painter->setPen(foreground);
+		QString amountText = BitcoinUnits::floorWithUnit(unit, amount, true, BitcoinUnits::separatorAlways);
+		if (!confirmed)
+		{
+			amountText = QString("[") + amountText + QString("]");
+		}
+		painter->drawText(amountRect, Qt::AlignRight | Qt::AlignVCenter, amountText);
 
-        painter->setPen(option.palette.color(QPalette::Text));
-        painter->drawText(amountRect, Qt::AlignLeft|Qt::AlignVCenter, GUIUtil::dateTimeStr(date));
+		painter->setPen(option.palette.color(QPalette::Text));
+		painter->drawText(amountRect, Qt::AlignLeft | Qt::AlignVCenter, GUIUtil::dateTimeStr(date));
 
-        painter->restore();
-    }
+		painter->restore();
+	}
 
-    inline QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
-    {
-        return QSize(DECORATION_SIZE, DECORATION_SIZE);
-    }
+	inline QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
+	{
+		return QSize(DECORATION_SIZE, DECORATION_SIZE);
+	}
 
-    int unit;
-    const PlatformStyle *platformStyle;
+	int unit;
+	const PlatformStyle *platformStyle;
 
 };
+
 #include "overviewpage.moc"
 
 OverviewPage::OverviewPage(const PlatformStyle *platformStyle, QWidget *parent) :
@@ -142,33 +151,8 @@ OverviewPage::OverviewPage(const PlatformStyle *platformStyle, QWidget *parent) 
     txdelegate(new TxViewDelegate(platformStyle, this)),
     timer(nullptr),
     platformStyle(platformStyle)
-    //columnResizingFixer(0)
 {
     ui->setupUi(this);
-
-/*
-//remove
-    QString theme = GUIUtil::getThemeName();
-    // Recent transactions
-    ui->listTransactions->setItemDelegate(txdelegate);
-    ui->listTransactions->setIconSize(QSize(DECORATION_SIZE, DECORATION_SIZE));
-    // Note: minimum height of listTransactions will be set later in updateAdvancedPSUI() to reflect actual settings
-    ui->listTransactions->setAttribute(Qt::WA_MacShowFocusRect, false);
-
-    connect(ui->listTransactions, SIGNAL(clicked(QModelIndex)), this, SLOT(handleTransactionClicked(QModelIndex)));
-    ui->labelTransactionsStatus->setText("(" + tr("out of sync") + ")");
-*/
-
-/*
- //table view display
-    ui->otherBalanceView->setItemDelegate(txdelegate);
-    ui->otherBalanceView->setIconSize(QSize(DECORATION_SIZE, DECORATION_SIZE));
-    // Note: minimum height of listTransactions will be set later in updateAdvancedPSUI() to reflect actual settings
-    ui->otherBalanceView->setAttribute(Qt::WA_MacShowFocusRect, false);
-
-    connect(ui->otherBalanceView, SIGNAL(clicked(QModelIndex)), this, SLOT(handleTransactionClicked(QModelIndex)));
-    //ui->otherBalanceView->setText("(" + tr("out of sync") + ")");
-*/
 
     // init "out of sync" warning labels
     //ui->labelWalletStatus->setText("(" + tr("out of sync") + ")");
@@ -267,17 +251,6 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
     currentWatchUnconfBalance = watchUnconfBalance;
     currentWatchImmatureBalance = watchImmatureBalance;
     currentWatchLockedBalance = watchLockedBalance;
-//    ui->labelBalance->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, balance, false, BitcoinUnits::separatorAlways));
-//    ui->labelUnconfirmed->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, unconfirmedBalance, false, BitcoinUnits::separatorAlways));
-//    ui->labelImmature->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, immatureBalance, false, BitcoinUnits::separatorAlways));
-//    ui->labelLocked->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, lockedBalance, false, BitcoinUnits::separatorAlways));
-//    ui->labelAnonymized->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, anonymizedBalance, false, BitcoinUnits::separatorAlways));
-//    ui->labelTotal->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, balance + unconfirmedBalance + immatureBalance + lockedBalance, false, BitcoinUnits::separatorAlways));
-//    ui->labelWatchAvailable->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, watchOnlyBalance, false, BitcoinUnits::separatorAlways));
-//    ui->labelWatchPending->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, watchUnconfBalance, false, BitcoinUnits::separatorAlways));
-//    ui->labelWatchImmature->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, watchImmatureBalance, false, BitcoinUnits::separatorAlways));
-//    ui->labelWatchLocked->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, watchLockedBalance, false, BitcoinUnits::separatorAlways));
-//    ui->labelWatchTotal->setText(BitcoinUnits::floorHtmlWithUnit(nDisplayUnit, watchOnlyBalance + watchUnconfBalance + watchImmatureBalance + watchLockedBalance, false, BitcoinUnits::separatorAlways));
     ui->labelAvailable->setText(tr("Available:")+"\n"+BitcoinUnits::floorWithUnit(nDisplayUnit, balance, false, BitcoinUnits::separatorAlways));
     ui->labelPending->setText(tr("Pending:")+"\n"+BitcoinUnits::floorWithUnit(nDisplayUnit, unconfirmedBalance, false, BitcoinUnits::separatorAlways));
     ui->labelImmature->setText(tr("Immature:")+"\n"+BitcoinUnits::floorWithUnit(nDisplayUnit, immatureBalance, false, BitcoinUnits::separatorAlways));
@@ -333,55 +306,34 @@ bool OverviewPage::getCurrAssetInfoByName(const QString &strAssetName, CAmount &
     return false;
 }
 
-void OverviewPage::updateAssetsInfo(const QString &strAssetName)
+void OverviewPage::updateAssetsInfo(const QList<AssetBalance> &listAssetBalance)
 {
-    bool updateOneAsset = !strAssetName.isEmpty();
     QList<QString> entryList;
-    QStringList assetsNames;
-    //tranfer asset,get candy will recv new assets
-    walletModel->getAssetsNames(false,assetsNames);
-
-    CAmount amount = 0,unconfirmAmount=0,lockedAmount=0;
-    int nDecimals = 0;
-    QString strUnit = "SAFE";
-
     //update existed assets entry
     for(int i = 0; i < ui->entries->count(); ++i)
     {
         OverViewEntry *entry = qobject_cast<OverViewEntry*>(ui->entries->itemAt(i)->widget());
-        QString strEntryAssetName = entry->getAssetName();
-        if(updateOneAsset&&strEntryAssetName!=strAssetName)
-            continue;
-        if(!assetsNames.contains(strEntryAssetName))
-            continue;
-        if(!getCurrAssetInfoByName(strEntryAssetName,amount,unconfirmAmount,lockedAmount,nDecimals,strUnit))
-            continue;
-        entry->setAssetsInfo(amount,unconfirmAmount,lockedAmount,nDecimals,strUnit);
-        entry->updateAssetsInfo();
-        entryList.push_back(strEntryAssetName);
-        //only update one asset
-        if(updateOneAsset)
-            return;
-    }
-
-    //the asset is a new asset
-    if(updateOneAsset)
-    {
-        if(getCurrAssetInfoByName(strAssetName,amount,unconfirmAmount,lockedAmount,nDecimals,strUnit))
-            insertEntry(strAssetName,amount,unconfirmAmount,lockedAmount,strUnit,nDecimals);
-        return;
+		QString strEntryAssetName = entry->getAssetName();
+		QList<AssetBalance>::const_iterator itFind = qFind(listAssetBalance.begin(), listAssetBalance.end(), strEntryAssetName);
+		if (itFind != listAssetBalance.end())
+		{
+			const AssetBalance& assetBalance = *itFind;
+			entry->setAssetsInfo(assetBalance.amount, assetBalance.unconfirmAmount, assetBalance.lockedAmount, assetBalance.nDecimals, assetBalance.strUnit);
+			entry->updateAssetsInfo();
+			entryList.push_back(strEntryAssetName);
+		}
     }
 
     //insert new assets entry
-    Q_FOREACH(const QString& assetName,assetsNames)
+	QList<AssetBalance>::const_iterator iter = listAssetBalance.begin();
+    for(;iter != listAssetBalance.end();++iter)
     {
+        QString assetName = iter->strAssetName;
         if(entryList.contains(assetName))
             continue;
 
-        if(!getCurrAssetInfoByName(assetName,amount,unconfirmAmount,lockedAmount,nDecimals,strUnit))
-            continue;
-
-        insertEntry(assetName,amount,unconfirmAmount,lockedAmount,strUnit,nDecimals);
+        const AssetBalance& assetBalance = *iter;
+        insertEntry(assetName,assetBalance.amount,assetBalance.unconfirmAmount,assetBalance.lockedAmount,assetBalance.strUnit,assetBalance.nDecimals);
     }
 }
 
@@ -400,7 +352,6 @@ OverViewEntry * OverviewPage::insertEntry(const QString assetName, const CAmount
 //    if(bar)
 //        bar->setSliderPosition(bar->maximum());
 
-    updateTabsAndLabels();
     return entry;
 }
 
@@ -416,29 +367,6 @@ void OverviewPage::clear()
     {
         ui->entries->takeAt(0)->widget()->deleteLater();
     }
-
-    updateTabsAndLabels();
-}
-
-void OverviewPage::updateTabsAndLabels()
-{
- //   setupTabChain(0);
-//    coinControlUpdateLabels();
-}
-
-QWidget * OverviewPage::setupTabChain(QWidget *prev)
-{
-    for(int i = 0; i < ui->entries->count(); ++i)
-    {
-        OverViewEntry *entry = qobject_cast<OverViewEntry*>(ui->entries->itemAt(i)->widget());
-        if(entry){
-            prev = entry->setupTabChain(prev);
-        }
-    }
-    //QWidget::setTabOrder(prev, ui->sendButton);
-    //QWidget::setTabOrder(ui->sendButton, ui->clearButton);
-    //QWidget::setTabOrder(ui->clearButton, ui->addButton);
-    //return ui->addButton;
 }
 
 // show/hide watch-only labels
@@ -451,14 +379,6 @@ void OverviewPage::updateWatchOnlyLabels(bool showWatchOnly)
 
     if (!showWatchOnly){
         ui->labelWatchImmature->hide();
-    }
-    else{
-//        int indent = 20;
-//        ui->labelBalance->setIndent(indent);
-//        ui->labelUnconfirmed->setIndent(indent);
-//        ui->labelImmature->setIndent(indent);
-//        ui->labelImmature->setIndent(indent);
-//        ui->labelTotal->setIndent(indent);
     }
 }
 
@@ -477,12 +397,12 @@ void OverviewPage::setWalletModel(WalletModel *model)
 {
     this->walletModel = model;
     if(model && model->getOptionsModel())
-    {
+    {	
         // update the display unit, to not use the default ("SAFE")
         updateDisplayUnit();
         // Keep up to date with wallet
-        setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getImmatureBalance(), model->getLockedBalance(), model->getAnonymizedBalance(),
-                   model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance(), model->getWatchLockedBalance());
+//        setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getImmatureBalance(), model->getLockedBalance(), model->getAnonymizedBalance(),
+//                   model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance(), model->getWatchLockedBalance());
         connect(model, SIGNAL(balanceChanged(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)), this, SLOT(setBalance(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)));
 
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
@@ -853,8 +773,6 @@ void OverviewPage::togglePrivateSend(){
 }
 
 void OverviewPage::SetupTransactionList(int nNumItems) {
-    //ui->listTransactions->setMinimumHeight(nNumItems * (DECORATION_SIZE + 2));
-    //ui->otherBalanceView->setMinimumHeight(nNumItems * (DECORATION_SIZE + 2));
 
     if(walletModel && walletModel->getOptionsModel()) {
         // Set up transaction list
@@ -865,16 +783,6 @@ void OverviewPage::SetupTransactionList(int nNumItems) {
         filter->setSortRole(Qt::EditRole);
         filter->setShowInactive(false);
         filter->sort(TransactionTableModel::TransactionColumnStatus, Qt::DescendingOrder);
-
-        //ui->listTransactions->setModel(filter.get());
-        //ui->listTransactions->setModelColumn(TransactionTableModel::ToAddress);
-
-        //ui->otherBalanceView->setModel(filter.get());
-        //remove header and grid
-        //ui->otherBalanceView->horizontalHeader()->setVisible(false);
-        //ui->otherBalanceView->setShowGrid(false);
-
-        //initTableView();
     }
 }
 

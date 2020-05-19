@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -14,11 +14,14 @@
 #include "netfulfilledman.h"
 #include "spork.h"
 #include "util.h"
+#include "main.h"
 
 class CMasternodeSync;
 CMasternodeSync masternodeSync;
 
 extern bool fGetCandyInfoStart;
+extern int64_t g_nMasternodeResetTime;
+extern int g_nMasternodeResetInterval;
 
 void CMasternodeSync::Fail()
 {
@@ -89,6 +92,7 @@ void CMasternodeSync::SwitchToNextAsset(CConnman& connman)
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetAssetName(), GetTime() - nTimeAssetSyncStarted);
             nRequestedMasternodeAssets = MASTERNODE_SYNC_FINISHED;
             uiInterface.NotifyAdditionalDataSyncProgressChanged(1);
+
             //try to activate our masternode if possible
             activeMasternode.ManageState(connman);
 
@@ -464,12 +468,19 @@ void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitia
     // Note: since we sync headers first, it should be ok to use this
     static bool fReachedBestHeader = false;
     bool fReachedBestHeaderNew = pindexNew->GetBlockHash() == pindexBestHeader->GetBlockHash();
-
     if (fReachedBestHeader && !fReachedBestHeaderNew) {
         // Switching from true to false means that we previousely stuck syncing headers for some reason,
         // probably initial timeout was not enough,
         // because there is no way we can update tip not having best header
-        Reset();
+        int64_t currTime = GetTime();
+        int64_t ret = currTime-g_nMasternodeResetTime;
+        //if(ret>g_nMasternodeResetInterval) //XJTODO
+        {
+            static int cnt = 0;
+            LogPrintf("SPOS_Message:update block Reset:%d times,retTime:%d\n",cnt++,ret);
+            Reset();
+            g_nMasternodeResetTime = currTime;
+        }
         fReachedBestHeader = false;
         return;
     }

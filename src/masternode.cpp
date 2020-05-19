@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -16,6 +16,7 @@
 
 #include <boost/lexical_cast.hpp>
 
+extern unsigned int g_nMasternodeCanBeSelectedTime;
 
 CMasternode::CMasternode() :
     masternode_info_t{ MASTERNODE_ENABLED, PROTOCOL_VERSION, GetAdjustedTime()},
@@ -589,15 +590,15 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
             return false;
         }
 
-        if(chainActive.Height() - nHeight + 1 < Params().GetConsensus().nMasternodeMinimumConfirmations) {
+        if(chainActive.Height() - nHeight + 1 < ConvertMasternodeConfirmationsByHeight(nHeight, Params().GetConsensus())) {
             LogPrintf("CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO must have at least %d confirmations, masternode=%s\n",
-                    Params().GetConsensus().nMasternodeMinimumConfirmations, vin.prevout.ToStringShort());
+                      ConvertMasternodeConfirmationsByHeight(nHeight, Params().GetConsensus()), vin.prevout.ToStringShort());
             // maybe we miss few blocks, let this mnb to be checked again later
             mnodeman.mapSeenMasternodeBroadcast.erase(GetHash());
             return false;
         }
         // remember the hash of the block where masternode collateral had minimum required confirmations
-        nCollateralMinConfBlockHash = chainActive[nHeight + Params().GetConsensus().nMasternodeMinimumConfirmations - 1]->GetBlockHash();
+        nCollateralMinConfBlockHash = chainActive[nHeight + ConvertMasternodeConfirmationsByHeight(nHeight, Params().GetConsensus()) - 1]->GetBlockHash();
     }
 
     LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO verified\n");
@@ -620,10 +621,10 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
         BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
         if (mi != mapBlockIndex.end() && (*mi).second) {
             CBlockIndex* pMNIndex = (*mi).second; // block for 1000 SAFE tx -> 1 confirmation
-            CBlockIndex* pConfIndex = chainActive[pMNIndex->nHeight + Params().GetConsensus().nMasternodeMinimumConfirmations - 1]; // block where tx got nMasternodeMinimumConfirmations
+            CBlockIndex* pConfIndex = chainActive[pMNIndex->nHeight + ConvertMasternodeConfirmationsByHeight(pMNIndex->nHeight, Params().GetConsensus()) - 1]; // block where tx got nMasternodeMinimumConfirmations
             if(pConfIndex->GetBlockTime() > sigTime) {
                 LogPrintf("CMasternodeBroadcast::CheckOutpoint -- Bad sigTime %d (%d conf block is at %d) for Masternode %s %s\n",
-                          sigTime, Params().GetConsensus().nMasternodeMinimumConfirmations, pConfIndex->GetBlockTime(), vin.prevout.ToStringShort(), addr.ToString());
+                          sigTime, ConvertMasternodeConfirmationsByHeight(pMNIndex->nHeight, Params().GetConsensus()), pConfIndex->GetBlockTime(), vin.prevout.ToStringShort(), addr.ToString());
                 return false;
             }
         }
@@ -876,6 +877,25 @@ void CMasternode::UpdateWatchdogVoteTime(uint64_t nVoteTime)
 {
     LOCK(cs);
     nTimeLastWatchdogVote = (nVoteTime == 0) ? GetAdjustedTime() : nVoteTime;
+}
+
+uint32_t CMasternode::getCanbeSelectTime(int nHeight) const
+{
+    if(nTxHeight < 0 )
+    {
+        LogPrintf("SPOS_Warning:masternode(ip:%s,vin:%s) tx height not found,height:%d,locked tx height:%d\n"
+                  ,addr.ToStringIP(),vin.ToString(),nHeight,nTxHeight);
+        return 0;
+    }
+    if(nHeight < nTxHeight)
+    {
+        LogPrintf("SPOS_Error:masternode(ip:%s,vin:%s) height error,curr height(%d) is less than locked tx height(%d)\n"
+                  ,addr.ToStringIP(),vin.ToString(),nHeight,nTxHeight);
+        return 0;
+    }
+    unsigned int depth = nHeight - nTxHeight;
+    unsigned int canbeSelectTime = depth * Params().GetConsensus().nSPOSTargetSpacing;
+    return canbeSelectTime;
 }
 
 /**

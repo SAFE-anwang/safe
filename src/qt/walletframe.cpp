@@ -6,6 +6,7 @@
 
 #include "bitcoingui.h"
 #include "walletview.h"
+#include "walletmodel.h"
 
 #include <cstdio>
 
@@ -50,6 +51,7 @@ bool WalletFrame::addWallet(const QString& name, WalletModel *walletModel)
     walletView->setWalletModel(walletModel);
     walletView->showOutOfSyncWarning(bOutOfSync);
     walletView->setMouseTracking(true);
+	walletModel->setWalletView(walletView);
 
      /* TODO we should goto the currently selected page once dynamically adding wallets is supported */
     walletView->gotoOverviewPage();
@@ -108,17 +110,6 @@ void WalletFrame::showOutOfSyncWarning(bool fShow)
     QMap<QString, WalletView*>::const_iterator i;
     for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
         i.value()->showOutOfSyncWarning(fShow);
-}
-
-bool WalletFrame::updateAssetsDisplay()
-{
-    WalletView* walletView = currentWalletView();
-    if(walletView)
-    {
-        walletView->updateAssetsDisplay();
-        return true;
-    }
-    return false;
 }
 
 void WalletFrame::gotoOverviewPage()
@@ -282,4 +273,22 @@ WalletView *WalletFrame::currentWalletView()
 void WalletFrame::outOfSyncWarningClicked()
 {
     Q_EMIT requestedSyncWarningInfo();
+}
+
+void WalletFrame::ShowHistoryPage(const QString& name)
+{
+	WalletView *walletView = mapWalletViews.value(name);
+	if (walletView != NULL)
+	{
+		walletView->ShowHistoryPage();
+	}
+}
+
+void WalletFrame::disconnectSign(const QString& name)
+{
+	WalletView *walletView = mapWalletViews.value(name);
+	if (walletView != NULL)
+	{
+		walletView->disconnectSign();
+	}
 }

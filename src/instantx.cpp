@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -950,7 +950,6 @@ bool CTxLockRequest::IsValid() const
     BOOST_FOREACH(const CTxIn& txin, vin) {
 
         CCoins coins;
-
         if(!GetUTXOCoins(txin.prevout, coins)) {
             LogPrint("instantsend", "CTxLockRequest::IsValid -- Failed to find UTXO %s\n", txin.prevout.ToStringShort());
             return false;
@@ -958,7 +957,7 @@ bool CTxLockRequest::IsValid() const
 
         int nTxAge = chainActive.Height() - coins.nHeight + 1;
         // 1 less than the "send IX" gui requires, in case of a block propagating the network at the time
-        int nConfirmationsRequired = INSTANTSEND_CONFIRMATIONS_REQUIRED - 1;
+        int nConfirmationsRequired = INSTANTSEND_CONFIRMATIONS_REQUIRED * ConvertBlockConfirmationsByHeight(chainActive.Height()) - 1;
 
         if(nTxAge < nConfirmationsRequired) {
             LogPrint("instantsend", "CTxLockRequest::IsValid -- outpoint %s too new: nTxAge=%d, nConfirmationsRequired=%d, txid=%s\n",

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -124,8 +124,8 @@ UniValue issueasset(const UniValue& params, bool fHelp)
 
         nCandyAmount = AmountFromValue(params[9], nAssetDecimals, true);
         char totalAmountStr[64] = "",candyAmountStr[64]="";
-        snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",nAssetTotalAmount);
-        snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",nCandyAmount);
+        snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,nAssetTotalAmount);
+        snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,nCandyAmount);
         string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
         string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
         if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -161,10 +161,6 @@ UniValue issueasset(const UniValue& params, bool fHelp)
 
     if (pwalletMain->GetBroadcastTransactions() && !g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
-
-    int nOffset = g_nChainHeight - g_nProtocolV2Height;
-    if (nOffset < 0)
-        throw JSONRPCError(INVALID_CANCELLED_SAFE, strprintf("This feature is enabled when the block height is %d", g_nProtocolV2Height));
 
     CAmount nCancelledValue = GetCancelledAmount(g_nChainHeight);
     if(!IsCancelledRange(nCancelledValue))
@@ -523,8 +519,8 @@ UniValue putcandy(const UniValue& params, bool fHelp)
 
     CAmount nAmount = AmountFromValue(params[1], assetInfo.assetData.nDecimals, true);
     char totalAmountStr[64] = "",candyAmountStr[64]="";
-    snprintf(totalAmountStr,sizeof(totalAmountStr),"%lld",assetInfo.assetData.nTotalAmount);
-    snprintf(candyAmountStr,sizeof(candyAmountStr),"%lld",nAmount);
+    snprintf(totalAmountStr,sizeof(totalAmountStr),"%" PRId64,assetInfo.assetData.nTotalAmount);
+    snprintf(candyAmountStr,sizeof(candyAmountStr),"%" PRId64,nAmount);
     string candyMinStr = numtofloatstring(totalAmountStr,3); // 1‰
     string candyMaxStr = numtofloatstring(totalAmountStr,1); // 10%
     if(compareFloatString(candyAmountStr,candyMinStr)<0 || compareFloatString(candyAmountStr,candyMaxStr)>0)
@@ -653,12 +649,43 @@ UniValue getcandy(const UniValue& params, bool fHelp)
         int nTxHeight = GetTxHeight(out.hash, &blockHash);
         if(blockHash.IsNull())
             continue;
-        if(nTxHeight + BLOCKS_PER_DAY > nCurrentHeight)
-            continue;
 
-        if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
-            continue;
+        if (nTxHeight >= g_nStartSPOSHeight)
+        {
+            if(nTxHeight + SPOS_BLOCKS_PER_DAY > nCurrentHeight)
+                continue;
 
+            if(candyInfo.nExpired * SPOS_BLOCKS_PER_MONTH + nTxHeight - 3 * SPOS_BLOCKS_PER_DAY < nCurrentHeight)
+                continue;
+        }
+        else
+        {
+            if (nTxHeight + BLOCKS_PER_DAY >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (nTxHeight + BLOCKS_PER_DAY - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueBlockHeight > nCurrentHeight)
+                    continue;
+            }
+            else
+            {
+                if(nTxHeight + BLOCKS_PER_DAY > nCurrentHeight)
+                continue;
+            }
+            
+            if (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight >= g_nStartSPOSHeight)
+            {
+                int nSPOSLaveHeight = (candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight - g_nStartSPOSHeight) * (Params().GetConsensus().nPowTargetSpacing / Params().GetConsensus().nSPOSTargetSpacing);
+                int nTrueBlockHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                if (nTrueBlockHeight < nCurrentHeight)
+                    continue;
+            }
+            else
+            {
+                if(candyInfo.nExpired * BLOCKS_PER_MONTH + nTxHeight < nCurrentHeight)
+                    continue;
+            }
+        }
         CAmount nTotalSafe = 0;
         if(!GetTotalAmountByHeight(nTxHeight, nTotalSafe))
         {
@@ -1257,7 +1284,7 @@ UniValue getaddrassetbalance(const UniValue& params, bool fHelp)
                 if (strtempAddress == strAddress)
                 {
                     char ctempdata[64] = {0};
-                    sprintf(ctempdata, "%lld", txout.nValue);
+                    sprintf(ctempdata, "%" PRId64, txout.nValue);
                     TotalReceiveAmount = plusstring(TotalReceiveAmount, ctempdata);
 
                     if (txout.nUnlockedHeight > chainActive.Height())
@@ -1291,7 +1318,7 @@ UniValue getaddrassetbalance(const UniValue& params, bool fHelp)
                     if (strtempAddress == strAddress)
                     {
                         char ctempdata[64] = {0};
-                        sprintf(ctempdata, "%lld", txout.nValue);
+                        sprintf(ctempdata, "%" PRId64, txout.nValue);
                         TotalSendAmount = plusstring(TotalSendAmount, ctempdata);
                     }
                 }

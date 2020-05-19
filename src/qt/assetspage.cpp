@@ -42,24 +42,7 @@ void AssetsPage::setDistributeRecordLayout(QVBoxLayout *layout)
     ui->tabDistributeRecord->setLayout(layout);
 }
 
-void AssetsPage::updateAssetsInfo()
+AssetsDistribute *AssetsPage::getAssetDistribute()
 {
-    assetsDistribute->updateAssetsInfo();
+	return assetsDistribute;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

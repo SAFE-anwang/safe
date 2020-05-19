@@ -1,6 +1,6 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -25,6 +25,8 @@
 #include "main.h"
 #include <stdint.h>
 #include <string>
+
+extern int g_nStartSPOSHeight;
 
 bool TransactionDesc::needDisplay(int descColumn, int showType, int type)
 {
@@ -175,9 +177,14 @@ bool TransactionDesc::needDisplay(int descColumn, int showType, int type)
     }
     case DescGetCandyAssetId:
     case DescGetCandyAddress:
-    case DescGetCandyRemark:
     {
         if(showType==SHOW_CANDY_TX&&type==TransactionRecord::GETCandy)
+            ret = true;
+        break;
+    }
+    case DescPutCandyRemark:
+    {
+        if(showType==SHOW_TX&&type==TransactionRecord::PUTCandy)
             ret = true;
         break;
     }
@@ -443,7 +450,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
                         CAmount tmpCredit = 0;
                         if(fAllFromMe)
                         {
-                            tmpCredit = rec->assetCredit;
+                            tmpCredit = rec->assetCredit + rec->assetDebit;
                         }
                         else
                         {
@@ -520,7 +527,32 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
                 strHTML += "<b>" + tr("Locked amount") + ":</b> " + BitcoinUnits::formatHtmlWithUnit(rec->assetsData.nDecimals, rec->nLockedAmount, true,BitcoinUnits::separatorAlways,true,QString::fromStdString(rec->assetsData.strAssetUnit)) + "<br>";
         }
         if(needDisplay(DescColumnUnlockedHeight,showType))
-            strHTML += "<b>" + tr("Unlocked height") + ":</b> " + QString::number(rec->nUnlockedHeight) + "<br>";
+        {
+            int64_t unlockedHeight = 0;
+            if (wtx.nVersion>= SAFE_TX_VERSION_3)
+            {
+                unlockedHeight = rec->nUnlockedHeight;
+            }
+            else
+            {
+                 if (rec->nTxHeight >=  g_nStartSPOSHeight)
+                 {
+                    unlockedHeight = rec->nUnlockedHeight * ConvertBlockNum();
+                 }
+                 else
+                 {
+                    if (rec->nUnlockedHeight >= g_nStartSPOSHeight)
+                    {
+                        int nSPOSLaveHeight = (rec->nUnlockedHeight - g_nStartSPOSHeight) * ConvertBlockNum();
+                        unlockedHeight = g_nStartSPOSHeight + nSPOSLaveHeight;
+                    }
+                    else
+                        unlockedHeight = rec->nUnlockedHeight;
+                 }
+            }
+
+            strHTML += "<b>" + tr("Unlocked height") + ":</b> " + QString::number(unlockedHeight) + "<br>";
+        }
     }
 
     //
@@ -575,7 +607,6 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
 
     if(needDisplay(DescAppManagerAddress,showType))
         strHTML += "<b>" + tr("Manager Address") + ":</b> " + GUIUtil::HtmlEscape(QString::fromStdString(rec->address)) + "<br>";
-
 
     //Assets
     if(needDisplay(DescAssetsName,showType,rec->type))
@@ -657,6 +688,9 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
     if(needDisplay(DescCommonAssetsRemark,showType,rec->type))
         strHTML += "<b>" + tr("Assets Remarks") + ":</b> " + QString::fromStdString(rec->assetsData.strRemarks) + "<br>";
 
+    if(needDisplay(DescPutCandyRemark,showType,rec->type))
+        strHTML += "<b>" + tr("Comment") + ":</b> " + QString::fromStdString(rec->putCandyData.strRemarks) + "<br>";
+
     //Candy
     if(needDisplay(DescGetCandyAmount,showType,rec->type))
     {
@@ -701,7 +735,11 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
 
     if (wtx.IsCoinBase())
     {
-        quint32 numBlocksToMaturity = COINBASE_MATURITY +  1;
+        quint32 numBlocksToMaturity = 0;
+        if(chainActive.Height()>=g_nStartSPOSHeight)
+            numBlocksToMaturity = COINBASE_MATURITY_SPOS +  1;
+        else
+            numBlocksToMaturity = COINBASE_MATURITY +  1;
         strHTML += "<br>" + tr("Generated coins must mature %1 blocks before they can be spent. When you generated this block, it was broadcast to the network to be added to the block chain. If it fails to get into the chain, its state will change to \"not accepted\" and it won't be spendable. This may occasionally happen if another node generates a block within a few seconds of yours.").arg(QString::number(numBlocksToMaturity)) + "<br>";
     }
 

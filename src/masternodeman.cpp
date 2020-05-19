@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -13,9 +13,15 @@
 #include "netfulfilledman.h"
 #include "privatesend-client.h"
 #include "util.h"
+#include "config/safe-chain.h"
+#include "main.h"
 
 /** Masternode manager */
 CMasternodeMan mnodeman;
+extern int64_t g_nStartUpTime;
+extern unsigned int g_nMasternodeCanBeSelectedTime;
+extern int g_nCanSelectMasternodeHeight;
+extern int g_nLogMaxCnt;
 
 const std::string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-7";
 
@@ -88,10 +94,11 @@ void CMasternodeMan::AskForMN(CNode* pnode, const COutPoint& outpoint, CConnman&
     if (it1 != mWeAskedForMasternodeListEntry.end()) {
         std::map<CNetAddr, int64_t>::iterator it2 = it1->second.find(pnode->addr);
         if (it2 != it1->second.end()) {
-            if (GetTime() < it2->second) {
+            if (GetTime() < it2->second && !pnode->fFirstStartRequestOneMasternode) {
                 // we've asked recently, should not repeat too often or we could get banned
                 return;
             }
+            pnode->fFirstStartRequestOneMasternode = false;
             // we asked this node for this outpoint but it's ok to ask again already
             LogPrintf("CMasternodeMan::AskForMN -- Asking same peer %s for missing masternode entry again: %s\n", pnode->addr.ToString(), outpoint.ToStringShort());
         } else {
@@ -405,15 +412,19 @@ void CMasternodeMan::DsegUpdate(CNode* pnode, CConnman& connman)
         if(!(pnode->addr.IsRFC1918() || pnode->addr.IsLocal())) {
             std::map<CNetAddr, int64_t>::iterator it = mWeAskedForMasternodeList.find(pnode->addr);
             if(it != mWeAskedForMasternodeList.end() && GetTime() < (*it).second) {
-                LogPrintf("CMasternodeMan::DsegUpdate -- we already asked %s for the list; skipping...\n", pnode->addr.ToString());
-                return;
+                if(!pnode->fFirstStartRequestAllMasternodes)
+                {
+                    LogPrintf("CMasternodeMan::DsegUpdate -- we already asked %s for the list; skipping...\n", pnode->addr.ToString());
+                    return;
+                }
             }
         }
     }
 
     connman.PushMessage(pnode, NetMsgType::DSEG, CTxIn());
-    int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
+    int64_t askAgain = GetTime() /*+ DSEG_UPDATE_SECONDS*/;
     mWeAskedForMasternodeList[pnode->addr] = askAgain;
+    pnode->fFirstStartRequestAllMasternodes = false;
 
     LogPrint("masternode", "CMasternodeMan::DsegUpdate -- asked %s for the list\n", pnode->addr.ToString());
 }
@@ -736,7 +747,8 @@ void CMasternodeMan::ProcessMasternodeConnections(CConnman& connman)
             if(privateSendClient.infoMixingMasternode.fInfoValid && pnode->addr == privateSendClient.infoMixingMasternode.addr)
                 return;
             LogPrintf("Closing Masternode connection: peer=%d, addr=%s\n", pnode->id, pnode->addr.ToString());
-            pnode->fDisconnect = true;
+            //if(!fMasterNode)//XJTODO this code is no need
+                pnode->fDisconnect = true;
         }
     });
 }
@@ -778,6 +790,9 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         CMasternodeBroadcast mnb;
         vRecv >> mnb;
 
+        string fromAddrStr = pfrom->addr.ToString();
+        string mnbAddrStr = mnb.addr.ToString();
+        LogPrint("sposinfo","SPOS_Message:processmsg:from:%s,mn:%s,status:%d,mnodeman size:%d\n",fromAddrStr,mnbAddrStr,masternodeSync.GetAssetID(),mnodeman.size());
         pfrom->setAskFor.erase(mnb.GetHash());
 
         if(!masternodeSync.IsBlockchainSynced()) return;
@@ -848,7 +863,11 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         // Ignore such requests until we are fully synced.
         // We could start processing this after masternode list is synced
         // but this is a heavy one so it's better to finish sync first.
-        if (!masternodeSync.IsSynced()) return;
+        if (!masternodeSync.IsSynced())
+        {
+            LogPrintf("SPOS_Message:DSGE is syncing\n");
+            return;
+        }
 
         CTxIn vin;
         vRecv >> vin;
@@ -857,34 +876,64 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
         LOCK(cs);
 
+        //request all masternode list
         if(vin == CTxIn()) { //only should ask for this once
             //local network
             bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
 
             if(!isLocal && Params().NetworkIDString() == CBaseChainParams::MAIN) {
                 std::map<CNetAddr, int64_t>::iterator it = mAskedUsForMasternodeList.find(pfrom->addr);
+                int64_t currTime = GetTime();
+                string strCurrTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", currTime);
+                int64_t needAskTime = it->second;
+                string strNeedAskTime = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", needAskTime);
                 if (it != mAskedUsForMasternodeList.end() && it->second > GetTime()) {
                     Misbehaving(pfrom->GetId(), 34);
-                    LogPrintf("DSEG -- peer already asked me for the list, peer=%d\n", pfrom->id);
+                    LogPrintf("SPOS_Warning:DSGE peer already asked me for the list,peer:%s,currTime:%lld(%s),needAskTime:%lld(%s)\n"
+                              ,pfrom->addr.ToString(),currTime,strCurrTime,needAskTime,strNeedAskTime);
                     return;
                 }
-                int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
+                int64_t askAgain = GetTime();
+                //only main net use 3 hours
+                #if SCN_CURRENT == SCN__main
+                    askAgain += DSEG_UPDATE_SECONDS;
+                    LogPrintf("SPOS_Message:DSEG -- SCN__main, askAgain=%lld\n", askAgain);
+                #elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+                    LogPrintf("SPOS_Message:DSEG -- SCN__test, askAgain=%lld\n", askAgain);
+                #else
+                    #error unsupported <safe chain name>
+                #endif
+
                 mAskedUsForMasternodeList[pfrom->addr] = askAgain;
             }
         } //else, asking for a specific node which is ok
 
         int nInvCount = 0;
 
+        //reqeust single masternode,when ping,masternodevote by function AskForMN()
         for (auto& mnpair : mapMasternodes) {
-            if (vin != CTxIn() && vin != mnpair.second.vin) continue; // asked for specific vin but we are not there yet
-            if (mnpair.second.addr.IsRFC1918() || mnpair.second.addr.IsLocal()) continue; // do not send local network masternode
-            if (mnpair.second.IsUpdateRequired()) continue; // do not send outdated masternodes
+            if (vin != CTxIn() && vin != mnpair.second.vin)
+            {
+                //LogPrintf("SPOS_Warning:DSGE vin not exist\n");
+                continue; // asked for specific vin but we are not there yet
+            }
+            if (mnpair.second.addr.IsRFC1918() || mnpair.second.addr.IsLocal())
+            {
+                LogPrintf("SPOS_Warning:DSGE ip is local:%s\n",mnpair.second.addr.ToStringIP());
+                continue; // do not send local network masternode
+            }
+            if (mnpair.second.IsUpdateRequired())
+            {
+                LogPrintf("SPOS_Warning:DSGE no need update:%d\n",mnpair.second.nActiveState);
+                continue; // do not send outdated masternodes
+            }
 
             LogPrint("masternode", "DSEG -- Sending Masternode entry: masternode=%s  addr=%s\n", mnpair.first.ToStringShort(), mnpair.second.addr.ToString());
             CMasternodeBroadcast mnb = CMasternodeBroadcast(mnpair.second);
             CMasternodePing mnp = mnpair.second.lastPing;
             uint256 hashMNB = mnb.GetHash();
             uint256 hashMNP = mnp.GetHash();
+            //LogPrintf("SPOS_Message:DSGE:push announce,%s\n",mnb.addr.ToString());
             pfrom->PushInventory(CInv(MSG_MASTERNODE_ANNOUNCE, hashMNB));
             pfrom->PushInventory(CInv(MSG_MASTERNODE_PING, hashMNP));
             nInvCount++;
@@ -894,6 +943,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
             if (vin.prevout == mnpair.first) {
                 LogPrintf("DSEG -- Sent 1 Masternode inv to peer %d\n", pfrom->id);
+                LogPrintf("SPOS_Message:DSGE:Sent 1 Masternode inv to peer,%s\n",mnb.addr.ToString());
                 return;
             }
         }
@@ -901,6 +951,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         if(vin == CTxIn()) {
             connman.PushMessage(pfrom, NetMsgType::SYNCSTATUSCOUNT, MASTERNODE_SYNC_LIST, nInvCount);
             LogPrintf("DSEG -- Sent %d Masternode invs to peer %d\n", nInvCount, pfrom->id);
+            LogPrintf("SPOS_Message:DSGE -- Sent %d Masternode invs to peer %d(%s)\n", nInvCount, pfrom->id,pfrom->addr.ToStringIP());
             return;
         }
         // smth weird happen - someone asked us for vin we have no idea about?
@@ -1606,4 +1657,87 @@ void CMasternodeMan::NotifyMasternodeUpdates(CConnman& connman)
     LOCK(cs);
     fMasternodesAdded = false;
     fMasternodesRemoved = false;
+}
+
+void CMasternodeMan::GetFullMasternodeData(std::map<COutPoint, CMasternode> &mapOutMasternodes,const std::map<std::string,CMasternodePayee_IndexValue>& mapAllPayeeInfo,
+                                           bool fFilterSpent, const int& nHeight, bool fOfficialMasterNode)
+{
+    LOCK2(cs_main, cs);
+
+    if(fFilterSpent)
+    {
+        std::map<std::string, std::pair<COutPoint,CMasternode> > mapAddressMasternodes;
+        for (auto& mnpair : mapMasternodes)
+        {
+            std::string strPubKeyCollateralAddress = mnpair.second.pubKeyCollateralAddress.GetID().ToString();
+            mapAddressMasternodes[strPubKeyCollateralAddress] = make_pair(mnpair.first,mnpair.second);
+        }
+        int nLogOldCnt = 0,nLogPayNotFoundCnt = 0;
+        for(auto& payeeInfo : mapAllPayeeInfo)
+        {
+            if(!fOfficialMasterNode && mapAddressMasternodes.count(payeeInfo.first)<=0)
+            {
+                nLogPayNotFoundCnt++;
+                if(nLogPayNotFoundCnt<=g_nLogMaxCnt)
+                {
+                    LogPrintf("SPOS_Warning:payee(%s) not found in masternode map,nHeight:%d,blockTime:%lld,nPayeeTimes:%d\n",payeeInfo.first,
+                              payeeInfo.second.nHeight,payeeInfo.second.blockTime,payeeInfo.second.nPayeeTimes);
+                }else
+                {
+                    LogPrint("sposinfo","SPOS_Warning:extra payee(%s) not found in masternode map,nHeight:%d,blockTime:%lld,nPayeeTimes:%d\n",payeeInfo.first,
+                              payeeInfo.second.nHeight,payeeInfo.second.blockTime,payeeInfo.second.nPayeeTimes);
+                }
+
+                continue;
+            }
+
+            std::pair<COutPoint,CMasternode>& mnpair = mapAddressMasternodes[payeeInfo.first];
+            bool fSelfMasternode = activeMasternode.pubKeyMasternode == mnpair.second.pubKeyMasternode;
+            if(!fOfficialMasterNode && nHeight-payeeInfo.second.nHeight>=g_nCanSelectMasternodeHeight)
+            {
+                if(fSelfMasternode)
+                {
+                    LogPrintf("SPOS_Message:not meeted active masternode,payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",
+                              payeeInfo.first,mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
+                              payeeInfo.second.nPayeeTimes,nHeight);
+                }else
+                {
+                    nLogOldCnt++;
+                    if(nLogOldCnt<=g_nLogMaxCnt)
+                    {
+                        LogPrintf("SPOS_Message:payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
+                                  mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
+                                  payeeInfo.second.nPayeeTimes,nHeight);
+                    }else
+                    {
+                        LogPrint("sposinfo","SPOS_Message:extra payee(%s),ip:%s,nHeight:%d is old,blockTime:%lld,nPayeeTimes:%d,currHeight:%d\n",payeeInfo.first,
+                                  mnpair.second.addr.ToStringIP(),payeeInfo.second.nHeight,payeeInfo.second.blockTime,
+                                  payeeInfo.second.nPayeeTimes,nHeight);
+                    }
+                }
+                continue;
+            }
+            mnpair.second.nTxHeight = -1;
+            CMasternode::CollateralStatus err = CMasternode::CheckCollateral(mnpair.first,mnpair.second.nTxHeight);
+            unsigned int canBeSelectTime = mnpair.second.getCanbeSelectTime(nHeight);
+            if (err == CMasternode::COLLATERAL_OK && (fOfficialMasterNode || canBeSelectTime > g_nMasternodeCanBeSelectedTime))
+            {
+                mapOutMasternodes[mnpair.first] = mnpair.second;
+                if(fSelfMasternode)
+                    LogPrintf("SPOS_Message:meeted active masternode:%s,output:%s,err:%d,canBeSelectTime:%d,nProtocolVersion:%d,height:%d\n",
+                       mnpair.second.addr.ToStringIP(),mnpair.first.ToString(), err, canBeSelectTime,mnpair.second.nProtocolVersion,nHeight);
+            }else if(fSelfMasternode)
+            {
+                LogPrintf("SPOS_Message:not meeted active masternode:%s,output:%s,err:%d,canBeSelectTime:%d,nProtocolVersion:%d,height:%d\n",
+                       mnpair.second.addr.ToStringIP(),mnpair.first.ToString(), err, canBeSelectTime,mnpair.second.nProtocolVersion,nHeight);
+            }
+        }
+        LogPrintf("SPOS_Message:after GetFullMasternodeData,old masternode count:%d,pay not found count:%d\n",nLogOldCnt,nLogPayNotFoundCnt);
+    }else
+    {
+        for (auto& mnpair : mapMasternodes)
+        {
+            mapOutMasternodes[mnpair.first] = mnpair.second;
+        }
+    }
 }

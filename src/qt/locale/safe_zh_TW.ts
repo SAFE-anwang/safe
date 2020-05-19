@@ -2161,13 +2161,9 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>ApplicationsRegistry</name>
-    <message>
-        <source>This feature is enabled when the block height is %1</source>
-        <translation>该功能在区块高度为 %1 时启用</translation>
-    </message>
    <message>
-        <source>This feature is enabled when the block height is %d</source>
-        <translation>該功能在區塊高度爲 %d 時啓用</translation>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>該功能在區塊高度爲 %1 時啓用</translation>
     </message>
    <message>
         <source>Personal name is internal reserved words, not allowed to use</source>
@@ -2360,7 +2356,7 @@ http://www.anwang.com/</translation>
     <message>
         <source>Register</source>
         <translation>註冊</translation>
-    </message>  
+    </message>
     <message>
         <source>* Application Use Reference &lt;a href=https://www.anwang.com/download/API.pdf>Safe3 Application Protocol&lt;/a&gt;</source>
         <translation>* 應用使用參見 &lt;a href = https://www.anwang.com/download/API.pdf >安網3 應用協議&lt;/a&gt;</translation>
@@ -2370,11 +2366,7 @@ http://www.anwang.com/</translation>
     <name>AssetsDistribute</name>
     <message>
         <source>This feature is enabled when the block height is %1</source>
-        <translation>该功能在区块高度为 %1 时启用</translation>
-    </message>
-    <message>
-        <source>This feature is enabled when the block height is %d</source>
-        <translation>該功能在區塊高度爲 %d 時啓用</translation>
+        <translation>該功能在區塊高度爲 %1 時啓用</translation>
     </message>
     <message>
         <source>Put candy max %1 times,current can put %2 times.</source>
@@ -2747,6 +2739,10 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>CandyPage</name>
+    <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>該功能在區塊高度爲 %1 時啓用</translation>
+    </message>
     <message>
         <source>Failed to get the number of candy already received</source>
         <translation>獲取已領糖果數量失敗</translation>
@@ -4444,6 +4440,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>The transaction was rejected! The transaction (partial) amount has been sealed</source>
         <translation>交易被拒絕，該筆交易（部分）金額已被封存</translation>
+    </message>
+    <message>
+        <source>This feature is enabled when the block height is %1</source>
+        <translation>该功能在区块高度为 %1 时启用</translation>
     </message>
     <message>
         <source>Invalid asset name</source>
@@ -6384,6 +6384,10 @@ http://www.anwang.com/</translation>
         <translation>選擇金額:</translation>
     </message>
     <message>
+        <source>Only display %1 recent record</source>
+        <translation>啓動時只加載最近%1條記錄</translation>
+    </message>
+    <message>
         <source>Backup Wallet</source>
         <translation>備份錢包</translation>
     </message>
@@ -6410,6 +6414,10 @@ http://www.anwang.com/</translation>
 </context>
 <context>
     <name>safe-core</name>
+    <message>
+        <source>This feature is enabled when the block height is %d</source>
+        <translation>該功能在區塊高度爲 %d 時啓用</translation>
+    </message>
     <message>
         <source>Reach the current change limit,please try again later.</source>
         <translation>達到當前SAFE零錢使用上限,請稍後再試</translation>
@@ -6561,6 +6569,10 @@ http://www.anwang.com/</translation>
     <message>
         <source>Done loading</source>
         <translation>載入完成</translation>
+    </message>
+    <message>
+        <source>Analyzing transactions,please wait...</source>
+        <translation>正在解析交易,請稍等...</translation>
     </message>
     <message>
         <source>Entries are full.</source>

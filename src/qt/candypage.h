@@ -39,7 +39,7 @@ public:
     void setGetHistoryTabLayout(QVBoxLayout* layout);
     void setClientModel(ClientModel *model);
     void setModel(WalletModel *model);
-    void updateAssetsInfo();
+	WalletModel *getModel();
     bool amountFromString(const std::string& valueStr,const QString& msgboxTitle,int decimal,CAmount& amount);
 
 private:
@@ -61,6 +61,7 @@ Q_SIGNALS:
 
 public Q_SLOTS:
     void handlerGetCandyResult(const bool result, const QString errorStr, const int rowNum, const CAmount nFeeRequired);
+    void updateAssetsInfo(QStringList listAsset);
 
 private Q_SLOTS:
     void on_okButton_clicked();

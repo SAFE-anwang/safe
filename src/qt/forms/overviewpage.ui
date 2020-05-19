@@ -42,8 +42,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>958</width>
-        <height>449</height>
+        <width>943</width>
+        <height>467</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -507,22 +507,6 @@
               </property>
              </widget>
             </item>
-            <item row="0" column="1">
-             <widget class="QLabel" name="labelPrivateSendSyncStatus">
-              <property name="toolTip">
-               <string>The displayed information may be out of date. Your wallet automatically synchronizes with the Safe network after a connection is established, but this process has not completed yet.</string>
-              </property>
-              <property name="styleSheet">
-               <string notr="true">QLabel { color: red; }</string>
-              </property>
-              <property name="text">
-               <string notr="true">(out of sync)</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-              </property>
-             </widget>
-            </item>
             <item row="0" column="2">
              <spacer name="horizontalSpacer_8">
               <property name="orientation">
@@ -546,6 +530,22 @@
               </property>
               <property name="text">
                <string>Start/Stop Mixing</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QLabel" name="labelPrivateSendSyncStatus">
+              <property name="toolTip">
+               <string>The displayed information may be out of date. Your wallet automatically synchronizes with the Safe network after a connection is established, but this process has not completed yet.</string>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">QLabel { color: red; }</string>
+              </property>
+              <property name="text">
+               <string notr="true">(out of sync)</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
               </property>
              </widget>
             </item>

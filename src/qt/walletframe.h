@@ -38,7 +38,10 @@ public:
     bool handlePaymentRequest(const SendCoinsRecipient& recipient);
 
     void showOutOfSyncWarning(bool fShow);
-    bool updateAssetsDisplay();
+
+	void ShowHistoryPage(const QString& name);
+
+	void disconnectSign(const QString& name);
 
 Q_SIGNALS:
     /** Notify that the user has requested more information about the out-of-sync warning */

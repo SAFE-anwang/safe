@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -230,11 +230,11 @@ void LockedTransactionView::setModel(WalletModel *model)
     {
         lockedTransactionProxyModel = new TransactionFilterProxy(this);
         lockedTransactionProxyModel->setSourceModel(model->getLockedTransactionTableModel());
-        lockedTransactionProxyModel->setDynamicSortFilter(true);
-        lockedTransactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
+  //      lockedTransactionProxyModel->setDynamicSortFilter(true);
+  //      lockedTransactionProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
         lockedTransactionProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
 
-        lockedTransactionProxyModel->setSortRole(Qt::EditRole);
+    //    lockedTransactionProxyModel->setSortRole(Qt::EditRole);
 
         lockedTransactionView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         lockedTransactionView->setModel(lockedTransactionProxyModel);
@@ -403,7 +403,7 @@ void LockedTransactionView::changedAmount(const QString &amount)
     }
     else
     {
-        if(amount.trimmed().isEmpty()){
+        if(amount.trimmed().isEmpty()||amount.at(0)=='0'){
             lockedTransactionProxyModel->setMinAmount(0,assetAmountStr);
         }else{
             lockedTransactionProxyModel->setMinAmount(MAX_MONEY,assetAmountStr);
@@ -455,6 +455,10 @@ void LockedTransactionView::contextualMenu(const QPoint &point)
     if(!index.isValid())
         return;
     QModelIndexList selection = lockedTransactionView->selectionModel()->selectedRows(0);
+	if (selection.isEmpty())
+	{
+		return;
+	}
 
     // check if transaction can be abandoned, disable context menu action in case it doesn't
     uint256 hash;
@@ -478,7 +482,7 @@ void LockedTransactionView::abandonTx()
     model->abandonTransaction(hash);
 
     // Update the table
-    model->getLockedTransactionTableModel()->updateTransaction(hashQStr, CT_UPDATED, false);
+    model->getUpdateTransaction()->updateTransaction(hashQStr, CT_UPDATED, false);
 }
 
 void LockedTransactionView::copyAddress()
@@ -781,4 +785,17 @@ void LockedTransactionView::updateWatchOnlyColumn(bool fHaveWatchOnly)
 {
     watchOnlyWidget->setVisible(true);
     lockedTransactionView->setColumnHidden(LockedTransactionTableModel::LockedColumnWatchonly, !fHaveWatchOnly);
+}
+
+void LockedTransactionView::refreshPage()
+{
+	if (model->getLockedTransactionTableModel()->size() > 0)
+	{
+        bool bHidden = lockedTransactionView->isColumnHidden(LockedTransactionTableModel::LockedColumnWatchonly);
+		lockedTransactionProxyModel->invalidate();
+        if(bHidden)
+        {
+            lockedTransactionView->setColumnHidden(LockedTransactionTableModel::LockedColumnWatchonly, bHidden);
+        }
+	}
 }

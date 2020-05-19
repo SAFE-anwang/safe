@@ -3,6 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "config/safe-chain.h"
 #include "pow.h"
 
 #include "arith_uint256.h"
@@ -192,6 +193,14 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         else retarget = DIFF_BTC;
     }
 
+#if SCN_CURRENT == SCN__main
+    //do nothing
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    retarget = DIFF_BTC;
+#else
+#error unsupported <safe chain name>
+#endif
+
     // Bitcoin style retargeting
     if (retarget == DIFF_BTC)
     {
@@ -292,4 +301,21 @@ int64_t GetBlockProofEquivalentTime(const CBlockIndex& to, const CBlockIndex& fr
         return sign * std::numeric_limits<int64_t>::max();
     }
     return sign * r.GetLow64();
+}
+
+int64_t GetBlockSPOSEquivalentTime(const CBlockIndex& to, const CBlockIndex& from)
+{
+    int sign = 1;
+    unsigned int r = 0;
+    if (to.GetBlockTime() > from.GetBlockTime())
+    {
+        r = to.GetBlockTime() - from.GetBlockTime();
+    } 
+    else 
+    {
+        r = from.GetBlockTime() - to.GetBlockTime();
+        sign = -1;
+    }
+
+    return sign * r;
 }

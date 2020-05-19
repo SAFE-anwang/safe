@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -16,8 +16,12 @@
 
 #include <univalue.h>
 
+#include "main.h"
+
 // DECLARE GLOBAL VARIABLES FOR GOVERNANCE CLASSES
 CGovernanceTriggerManager triggerman;
+
+extern int g_nStartSPOSHeight;
 
 // SPLIT UP STRING BY DELIMITER
 // http://www.boost.org/doc/libs/1_58_0/doc/html/boost/algorithm/split_idp202406848.html
@@ -521,8 +525,9 @@ CSuperblock(uint256& nHash)
 bool CSuperblock::IsValidBlockHeight(int nBlockHeight)
 {
     // SUPERBLOCKS CAN HAPPEN ONLY after hardfork and only ONCE PER CYCLE
+    int nTempSuperblockCycle = ConvertSuperblockCycle(nBlockHeight);
     return nBlockHeight >= Params().GetConsensus().nSuperblockStartBlock &&
-            ((nBlockHeight % Params().GetConsensus().nSuperblockCycle) == 0);
+            ((nBlockHeight % nTempSuperblockCycle) == 0);
 }
 
 CAmount CSuperblock::GetPaymentsLimit(int nBlockHeight)
@@ -536,8 +541,21 @@ CAmount CSuperblock::GetPaymentsLimit(int nBlockHeight)
     // min subsidy for high diff networks and vice versa
     int nBits = consensusParams.fPowAllowMinDifficultyBlocks ? UintToArith256(consensusParams.powLimit).GetCompact() : 1;
     // some part of all blocks issued during the cycle goes to superblock, see GetBlockSubsidy
-    CAmount nSuperblockPartOfSubsidy = GetBlockSubsidy(nBits, nBlockHeight - 1, consensusParams, true);
-    CAmount nPaymentsLimit = nSuperblockPartOfSubsidy * consensusParams.nSuperblockCycle;
+    CAmount nSuperblockPartOfSubsidy = 0;
+    CAmount nPaymentsLimit = 0;
+
+    int ntempSuperblockCycle = consensusParams.nSuperblockCycle * ConvertBlockParameterByHeight(nBlockHeight, consensusParams);
+    if (IsStartSPosHeight(nBlockHeight))
+    {
+        nSuperblockPartOfSubsidy = GetSPOSBlockSubsidy(nBlockHeight - 1, consensusParams, true);
+        nPaymentsLimit = nSuperblockPartOfSubsidy * ntempSuperblockCycle;
+    }
+    else
+    {
+        nSuperblockPartOfSubsidy = GetBlockSubsidy(nBits, nBlockHeight - 1, consensusParams, true);
+        nPaymentsLimit = nSuperblockPartOfSubsidy * ntempSuperblockCycle;
+    }
+
     LogPrint("gobject", "CSuperblock::GetPaymentsLimit -- Valid superblock height %d, payments max %lld\n", nBlockHeight, nPaymentsLimit);
 
     return nPaymentsLimit;

@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -102,6 +102,21 @@ static const bool DEFAULT_PROXYRANDOMIZE = true;
 static const bool DEFAULT_REST_ENABLE = false;
 static const bool DEFAULT_DISABLE_SAFEMODE = false;
 static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
+extern int g_nStartSPOSHeight;
+extern unsigned int g_nMasternodeSPosCount;
+extern unsigned int g_nMasternodeCanBeSelectedTime;
+extern unsigned int g_nMasternodeMinCount;
+extern std::mutex g_mutexAllPayeeInfo;
+extern std::map<std::string,CMasternodePayee_IndexValue> gAllPayeeInfoMap;
+extern int64_t g_nAllowMasterNodeSyncErrorTime;
+extern int g_nLogMaxCnt;
+extern int g_nLocalStartSavePayeeHeight;
+extern int g_nCanSelectMasternodeHeight;
+extern int g_nMinerBlockTimeout;
+extern int g_nAdjustMiningRewardHeight;
+extern int g_nForbidOldVersionHeight;
+extern vector<string> g_versionVec;
+
 
 std::unique_ptr<CConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
@@ -235,6 +250,7 @@ void PrepareShutdown()
         pwalletMain->Flush(false);
 #endif
     GenerateBitcoins(false, 0, Params(), *g_connman);
+    GenerateBitcoinsBySPOS(false,0,Params(), *g_connman);
     MapPort(false);
     UnregisterValidationInterface(peerLogic.get());
     peerLogic.reset();
@@ -941,6 +957,15 @@ void InitLogging()
     LogPrintf("Safe Core version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
 }
 
+void initVersionVec()
+{
+    if(g_versionVec.empty())
+    {
+        g_versionVec.push_back("Safe Core:2.5.0");
+        g_versionVec.push_back("Safe Core:2.5.1");
+    }
+}
+
 /** Initialize Safe Core.
  *  @pre Parameters should be parsed and config file should be read.
  */
@@ -970,6 +995,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     PSETPROCDEPPOL setProcDEPPol = (PSETPROCDEPPOL)GetProcAddress(GetModuleHandleA("Kernel32.dll"), "SetProcessDEPPolicy");
     if (setProcDEPPol != NULL) setProcDEPPol(PROCESS_DEP_ENABLE);
 #endif
+
+    initVersionVec();
 
     if (!SetupNetworking())
         return InitError("Initializing networking failed");
@@ -1528,6 +1555,25 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     LogPrintf("* Using %.1fMiB for chain state database\n", nCoinDBCache * (1.0 / 1024 / 1024));
     LogPrintf("* Using %.1fMiB for in-memory UTXO set\n", nCoinCacheUsage * (1.0 / 1024 / 1024));
 
+    g_nAllowMasterNodeSyncErrorTime = GetArg("-spos_allow_masternode_sync_error_time", g_nAllowMasterNodeSyncErrorTime);
+#if SCN_CURRENT == SCN__main
+                        //do nothing
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    g_nStartSPOSHeight = GetArg("-start_spos_height", g_nStartSPOSHeight);
+    g_nSaveMasternodePayeeHeight = GetArg("-save_masternode_payee_height", g_nSaveMasternodePayeeHeight);
+    g_nMasternodeSPosCount = GetArg("-masternode_spos_count", g_nMasternodeSPosCount);
+    g_nMasternodeCanBeSelectedTime = GetArg("-masternode_can_be_selected_time", g_nMasternodeCanBeSelectedTime);
+    g_nMasternodeMinCount = GetArg("-masternode_min_count", g_nMasternodeMinCount);
+    g_nAllowableErrorTime = GetArg("-spos_allowable_error_time", g_nAllowableErrorTime);
+    g_nLogMaxCnt = GetArg("-spos_log_max_cnt", g_nLogMaxCnt);
+    g_nCanSelectMasternodeHeight = GetArg("-spos_can_select_masternode_height", g_nCanSelectMasternodeHeight);
+    g_nMinerBlockTimeout = GetArg("-spos_miner_block_timeout",g_nMinerBlockTimeout);
+    g_nAdjustMiningRewardHeight = GetArg("-spos_adjust_mining_reward_height", g_nAdjustMiningRewardHeight);
+    g_nForbidOldVersionHeight = GetArg("-spos_forbid_old_version_height", g_nForbidOldVersionHeight);
+#else
+#error unsupported <safe chain name>
+#endif
+
     bool fLoaded = false;
     while (!fLoaded) {
         bool fReset = fReindex;
@@ -1636,16 +1682,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
             }
         }
     }
-
-    if(!VerifyDetailFile())
-        return error("Verify detail.dat failed. Exiting");
-    if(!LoadChangeInfoToList())
-        return error("Load change info failed. Exiting.");
-    if(!LoadCandyHeightToList())
-        return error("Load candy height failed. Exiting.");
-
-    threadGroup.create_thread(boost::bind(&ThreadWriteChangeInfo));
-    threadGroup.create_thread(boost::bind(&ThreadCalculateAddressAmount));
 
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
@@ -1863,7 +1899,19 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         }
     }
 
-    // ********************************************************* Step 10: import blocks
+	// ********************************************************* Step 10: start candy module
+	if (!VerifyDetailFile())
+		return error("Verify detail.dat failed. Exiting");
+	if (!LoadChangeInfoToList())
+		return error("Load change info failed. Exiting.");
+	if (!LoadCandyHeightToList())
+		return error("Load candy height failed. Exiting.");
+
+	threadGroup.create_thread(boost::bind(&ThreadWriteChangeInfo));
+	threadGroup.create_thread(boost::bind(&ThreadCalculateAddressAmount));
+
+
+    // ********************************************************* Step 11: import blocks
 
     if (mapArgs.count("-blocknotify"))
         uiInterface.NotifyBlockTip.connect(BlockNotifyCallback);
@@ -1881,7 +1929,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
             MilliSleep(10);
     }
 
-    // ********************************************************* Step 11a: setup PrivateSend
+    // ********************************************************* Step 12a: setup PrivateSend
     fMasterNode = GetBoolArg("-masternode", false);
 
     if((fMasterNode || masternodeConfig.getCount() > -1) && fTxIndex == false) {
@@ -1959,7 +2007,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 
     CPrivateSend::InitStandardDenominations();
 
-    // ********************************************************* Step 11b: Load cache data
+    // ********************************************************* Step 12b: Load cache data
 
     // LOAD SERIALIZED DAT FILES INTO DATA CACHES FOR INTERNAL USE
 
@@ -1999,14 +2047,14 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         return InitError(_("Failed to load fulfilled requests cache from") + "\n" + (pathDB / strDBName).string());
     }
 
-    // ********************************************************* Step 11c: update block tip in Safe modules
+    // ********************************************************* Step 12c: update block tip in Safe modules
 
     // force UpdatedBlockTip to initialize nCachedBlockHeight for DS, MN payments and budgets
     // but don't call it directly to prevent triggering of other listeners like zmq etc.
     // GetMainSignals().UpdatedBlockTip(chainActive.Tip());
     pdsNotificationInterface->InitializeCurrentBlockTip();
 
-    // ********************************************************* Step 11d: start safe-ps-<smth> threads
+    // ********************************************************* Step 12d: start safe-ps-<smth> threads
 
     threadGroup.create_thread(boost::bind(&ThreadCheckPrivateSend, boost::ref(*g_connman)));
     if (fMasterNode)
@@ -2014,7 +2062,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     else
         threadGroup.create_thread(boost::bind(&ThreadCheckPrivateSendClient, boost::ref(*g_connman)));
 
-    // ********************************************************* Step 12: start node
+
+    // ********************************************************* Step 13: start node
 
     if (!CheckDiskSpace())
         return false;
@@ -2023,15 +2072,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
         return InitError(strErrors.str());
 
     RandAddSeedPerfmon();
-
-    if(IsCriticalHeight(g_nChainHeight + 1)) // create critical block
-    {
-        CBlock block = CreateCriticalBlock(chainActive.Tip());
-        LogPrintf("%s\n", block.ToString());
-        LogPrintf("generated %s\n", FormatMoney(block.vtx[0].vout[0].nValue));
-        if(!ProcessNewBlock(chainparams, &block, true, NULL, NULL))
-            return error("ProcessBlockFound -- ProcessNewBlock() failed, block not accepted");
-    }
 
     //// debug print
     LogPrintf("mapBlockIndex.size() = %u\n",   mapBlockIndex.size());
@@ -2074,6 +2114,29 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
     // Generate coins in the background
     GenerateBitcoins(GetBoolArg("-gen", DEFAULT_GENERATE), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
 
+    {
+        std::lock_guard<std::mutex> lock(g_mutexAllPayeeInfo);
+        if(!pblocktree->Read_MasternodePayee_Index(gAllPayeeInfoMap))
+        {
+            LogPrintf("SPOS_Warning:init read masternode payee fail\n");
+        }
+        if(!pblocktree->Read_LocalStartSavePayeeHeight_Index(g_nLocalStartSavePayeeHeight))
+        {
+            LogPrintf("SPOS_Warning:init read local start save payee height fail\n");
+        }else
+        {
+            LogPrintf("SPOS_Message:read local start save payee height(%d) succ\n",g_nLocalStartSavePayeeHeight);
+        }
+    }
+
+#if SCN_CURRENT == SCN__main
+    GenerateBitcoinsBySPOS(fMasterNode, GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+    GenerateBitcoinsBySPOS(GetBoolArg("-sposgen", !fHaveGUI), GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, connman);
+#else
+#error unsupported <safe chain name>
+#endif
+
     // ********************************************************* Step 13: finished
 
     SetRPCWarmupFinished();
@@ -2093,6 +2156,8 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler, bool have
 #endif
 
     threadGroup.create_thread(boost::bind(&ThreadSendAlert, boost::ref(connman)));
+
+    threadGroup.create_thread(boost::bind(&ThreadSPOSAutoReselect,boost::cref(chainparams), boost::ref(connman)));
 
     return !fRequestShutdown;
 }

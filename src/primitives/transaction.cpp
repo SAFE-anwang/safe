@@ -3,6 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "config/safe-chain.h"
 #include "primitives/transaction.h"
 
 #include "hash.h"
@@ -10,8 +11,15 @@
 #include "utilstrencodings.h"
 
 int g_nChainHeight = -1;
+#if SCN_CURRENT == SCN__main
 int g_nProtocolV1Height = 809220;
 int g_nProtocolV2Height = 943809;
+#elif SCN_CURRENT == SCN__dev || SCN_CURRENT == SCN__test
+int g_nProtocolV1Height = 200;
+int g_nProtocolV2Height = 400;
+#else
+#error unsupported <safe chain name>
+#endif
 
 bool IsProtocolV0(const int& nHeight)
 {

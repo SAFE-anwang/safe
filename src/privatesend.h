@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -23,7 +23,7 @@ static const int PRIVATESEND_QUEUE_TIMEOUT          = 30;
 static const int PRIVATESEND_SIGNING_TIMEOUT        = 15;
 
 //! minimum peer version accepted by mixing pool
-static const int MIN_PRIVATESEND_PEER_PROTO_VERSION = 70208;
+static const int MIN_PRIVATESEND_PEER_PROTO_VERSION = 70210;
 
 static const CAmount PRIVATESEND_ENTRY_MAX_SIZE     = 9;
 

@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2018 The Safe Core developers
+// Copyright (c) 2018-2019 The Safe Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -301,6 +301,7 @@ public:
     char fFromMe;
     std::string strFromAccount;
     int64_t nOrderPos; //! position in ordered transaction list
+	
 
     // memory only
     mutable bool fDebitCached;
@@ -327,6 +328,7 @@ public:
     mutable CAmount nImmatureWatchCreditCached;
     mutable CAmount nAvailableWatchCreditCached;
     mutable CAmount nChangeCached;
+	mutable int64_t nTxHeight;
 
     CWalletTx()
     {
@@ -383,6 +385,7 @@ public:
         nImmatureWatchCreditCached = 0;
         nChangeCached = 0;
         nOrderPos = -1;
+		nTxHeight = 0;
     }
 
     ADD_SERIALIZE_METHODS;
@@ -754,6 +757,7 @@ public:
     }
 
     std::map<uint256, CWalletTx> mapWallet;
+    std::map<uint256, int> mapWallet_bk;
     std::map<uint256, CWalletTx> mapWallet_tmp;
     std::list<CAccountingEntry> laccentries;
 
@@ -897,6 +901,7 @@ public:
     CAmount GetUnconfirmedWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
     CAmount GetImmatureWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
     CAmount GetLockedWatchOnlyBalance(const bool fAsset = false, const uint256* pAssetId = NULL, const CBitcoinAddress* pAddress = NULL,bool bLock=true) const;
+	bool GetAssetBalance(const uint256* pAssetId, bool bLock, CAmount &totalBalance, CAmount &unconfirmedBalance, CAmount &lockBalance) const;
 
     CAmount GetAnonymizableBalance(bool fSkipDenominated = false, bool fSkipUnconfirmed = true) const;
     CAmount GetAnonymizedBalance(bool bLock=true) const;
