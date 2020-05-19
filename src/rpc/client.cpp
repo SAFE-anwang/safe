@@ -39,6 +39,11 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "sendtoaddress", 6 },
     { "sendwithlock", 1 },
     { "sendwithlock", 2 },
+
+    //safe
+    { "collectoutputs", 2 },
+    { "collectoutputs", 3 },
+
     { "instantsendtoaddress", 1 },
     { "instantsendtoaddress", 4 },
     { "settxfee", 0 },

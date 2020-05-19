@@ -478,6 +478,9 @@ static const CRPCCommand vRPCCommands[] =
     { "wallet",             "walletpassphrasechange", &walletpassphrasechange,      true  },
     { "wallet",             "walletpassphrase",       &walletpassphrase,            true  },
 
+    //safe
+    { "wallet",             "collectoutputs",         &collectoutputs,              true  },
+
     /* App */
     { "app",                "registerapp",            &registerapp,                 true  },
     { "app",                "setappauth",             &setappauth,                  true  },

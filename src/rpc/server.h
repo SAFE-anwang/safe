@@ -259,6 +259,9 @@ extern UniValue getnetworkinfo(const UniValue& params, bool fHelp);
 extern UniValue setmocktime(const UniValue& params, bool fHelp);
 extern UniValue resendwallettransactions(const UniValue& params, bool fHelp);
 
+//safe
+extern UniValue collectoutputs(const UniValue& params, bool fHelp);
+
 extern UniValue getrawtransaction(const UniValue& params, bool fHelp); // in rpc/rawtransaction.cpp
 extern UniValue listunspent(const UniValue& params, bool fHelp);
 extern UniValue freezeunspent(const UniValue& params, bool fHelp);

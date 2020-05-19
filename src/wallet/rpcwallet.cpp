@@ -3006,3 +3006,72 @@ UniValue sendmanywithlock(const UniValue& params, bool fHelp)
 
     return wtx.GetHash().GetHex();
 }
+
+UniValue collectoutputs(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+     if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "collectoutputs {\"safeaddress\":\"xxx\",\"max_amount\":10, \"min_conf\":100} \n"
+            "\nTry to collect all the outputs less than max_amount to one address, with min_conf confirms, thus reduce the UTXO collections.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"receiveinfo\"        (string, required) A json array of json objects\n"
+            "     {\n"
+            "         \"safeaddress\":\"xxx\",      (string, required) The safe address to send to.\n"
+            "         \"max_amount\":n,             (numeric, required) The mixamum amount in " + CURRENCY_UNIT + " to collect. eg 10, range: > 0 \n"
+            "         \"min_conf\":n                (numeric, optional) the minimum confirms of these outputs. default: 30, range: > 0 \n"
+            "     }\n"
+            "\nResult:\n"
+            "\"transactionid\"  (string) The locked transaction id.\n"
+            "\"amount\"         (numeric) The amount of this txid.\n"
+            "\"Total amount\"   (numeric) All amount of the collecting action.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("collectoutputs", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"min_amount\\\":10,\\\"min_conf\\\":100},{\\\"safeaddress\\\":\\\"XuQQkwA4FYkq2XERzMY2CiAZhJTEDAbtcg\\\",\\\"min_amount\\\":10,\\\"min_conf\\\":100}]\"")
+            + HelpExampleRpc("collectoutputs", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"min_amount\\\":10,\\\"min_conf\\\":100},{\\\"safeaddress\\\":\\\"XuQQkwA4FYkq2XERzMY2CiAZhJTEDAbtcg\\\",\\\"min_amount\\\":10,\\\"min_conf\\\":100}]\"")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    if(!masternodeSync.IsBlockchainSynced())
+        throw JSONRPCError(SYNCING_BLOCK, "Synchronizing block data");
+
+    CBitcoinAddress address(params[0].get_str());
+    if (!address.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Safe address");
+
+    // Amount
+    CAmount nAmount = AmountFromValue(params[1]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for collecting");
+
+    int min_conf = 30;
+     if (!params[2].isNull())
+     {
+        min_conf =  params[2].get_int();
+        if(min_conf <= 0) throw JSONRPCError(RPC_TYPE_ERROR, "Invalid min_conf for collecting");
+    }
+
+    EnsureWalletIsUnlocked();
+
+    string strFailReason;
+    std::vector<CWalletTx> vWtx;
+    if(!pwalletMain->CollectOutputs(address.Get(), nAmount, min_conf, vWtx, strFailReason))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strFailReason);
+
+    CReserveKey reservekey(pwalletMain);
+    UniValue result;
+
+    BOOST_FOREACH(wtx, vWtx) 
+    {
+        if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get()))
+          throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+
+        result.push(wtx.GetHash().GetHex());
+
+    }
+    
+    return result;
+}
