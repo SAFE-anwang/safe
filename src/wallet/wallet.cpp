@@ -3795,52 +3795,52 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
     std::sort(vCoins.begin(), vCoins.end(), CompareOutputs);
 
     //delete all items larger than nValueMax
-    std::remove_if(vCoins.rbegin(), vCoins.rend(), bool (*ItemNotNeed)(COutput &out){if(!out.fSpendable || out.tx->vout[out.i].nValue > nValueMax || out.nDepth < min_conf) return true;});
+    std::remove_if(vCoins.rbegin(), vCoins.rend(), [nValueMax,min_conf](COutput out){if(!out.fSpendable || out.tx->vout[out.i].nValue > nValueMax || out.nDepth < min_conf) return true;});
 
     int nBytes = 0,nBytesInputs = 0;//calcurate tx size
    
     //Calcurate TX Bytes
-    if(ExtractDestination(out.tx->vout[out.i].scriptPubKey, dest))
+
+    CPubKey pubkey;
+    CKeyID *keyid = boost::get<CKeyID>((CTxDestination*)&dest);
+    if (keyid && GetPubKey(*keyid, pubkey))
     {
-        CPubKey pubkey;
-        CKeyID *keyid = boost::get<CKeyID>(&dest);
-        if (keyid && model->getPubKey(*keyid, pubkey))
-         {
-            nBytesInputs += (pubkey.IsCompressed() ? 148 : 180);
-        }
-        else
-            nBytesInputs += 148; // in all error cases, simply assume 148 here
+        nBytesInputs += (pubkey.IsCompressed() ? 148 : 180);
     }
-    else nBytesInputs += 148;
+    else
+        nBytesInputs += 148; // in all error cases, simply assume 148 here
+  
 
     nBytes = nBytesInputs + 10; 
 
     CCoinControl coinControl;
     CAmount nTxAmount = 0;
     vector<CRecipient> vecSend;
-    CScript scriptPubKey = GetScriptForDestination(address.Get());
+    CScript scriptPubKey = GetScriptForDestination(dest);
     int nTxBytes = nBytes;
     CReserveKey reservekey(this);
     CAmount nFeeRequired = 0;
     int nChangePosRet = -1;
 
-    BOOST_FOREACH(const COutput& out, vCoins)
+    BOOST_FOREACH(const COutput &out, vCoins)
     {
         // Limit tx size
-        if(nTxBytes + out.nInputBytes < MAX_STANDARD_TX_SIZE)
+        if(nTxBytes + 34 < MAX_STANDARD_TX_SIZE)
         {
-            nTxBytes += out.nInputBytes;
+            nTxBytes += 34;
             nTxAmount += out.tx->vout[out.i].nValue;
 
-            if(!coinControl->IsSelected(out))
-                coinControl->Select(out);
+            COutPoint op(out.tx->GetHash(),out.i);
+            
+            if(!coinControl.IsSelected(op))
+                coinControl.Select(op);
         }
         else
         {
             //build a tx which consume a lot of outputs, and send money to one of address in the wallet
             
             CWalletTx wtx;
-            CRecipient recipient = {scriptPubKey, nTxAmount, true};
+            CRecipient recipient = {scriptPubKey, nTxAmount, 0, true};
             vecSend.push_back(recipient);
 
             //create a tx
@@ -3854,17 +3854,18 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
                 break;
             }
 
+            COutPoint op(out.tx->GetHash(),out.i);
             vWtx.push_back(wtx);
 
             //construct the next tx
             nTxBytes = nBytes;
-            nTxBytes += out.nInputBytes;
+            nTxBytes += 34;
 
             nTxAmount = 0;
             nTxAmount += out.tx->vout[out.i].nValue;
 
             coinControl.UnSelectAll();
-            coinControl->Select(out);
+            coinControl.Select(op);
         }
     }
 
@@ -3872,7 +3873,7 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
     if(bRet == true && coinControl.HasSelected())
     {
         CWalletTx wtx;
-        CRecipient recipient = {scriptPubKey, nTxAmount, true};
+        CRecipient recipient = {scriptPubKey, nTxAmount,0,true};
         vecSend.push_back(recipient);
 
         //create the last tx
