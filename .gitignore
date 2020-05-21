@@ -139,3 +139,4 @@ safe-qt
 make
 depends_bin
 /build_msvc
+.build.txt
