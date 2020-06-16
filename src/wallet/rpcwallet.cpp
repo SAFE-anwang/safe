@@ -3019,14 +3019,14 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
             "1. safeaddress,      (string, required) The safe address to send to.\n"
-            "2. max_amount,       (numeric, required) The maximum amount in " + CURRENCY_UNIT + " to collect. eg 1, range: > 0 \n"
-            "3. min_conf,         (numeric, optional) the minimum confirms of these outputs. default: 10, range: > 0 \n"
+            "2. max_amount,       (numeric, optional) The maximum amount in " + CURRENCY_UNIT + " to collect.  default: 1, range: > 0 \n"
+            "3. min_conf,         (numeric, optional) the minimum confirms of these outputs. default: 1, range: > 0 \n"
  
             "\nResult:\n"
             "\"transactionid list\"  (std::vector) The list of generated transaction ids.\n"
             "\nExamples:\n"
-            + HelpExampleCli("collectoutputs", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"max_amount\\\":1,\\\"min_conf\\\":10}]\"")
-            + HelpExampleRpc("collectoutputs", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"max_amount\\\":1,\\\"min_conf\\\":10}]\"")
+            + HelpExampleCli("collectoutputs", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"max_amount\\\":1,\\\"min_conf\\\":1}]\"")
+            + HelpExampleRpc("collectoutputs", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"max_amount\\\":1,\\\"min_conf\\\":1}]\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -3039,11 +3039,15 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Safe address");
 
     // Amount
-    CAmount nAmount = AmountFromValue(params[1]);
-    if (nAmount <= 0)
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for collecting");
+    CAmount nAmount = 1;
+    if (!params[1].isNull())
+     {
+        nAmount =  AmountFromValue(params[1]);
+        if(nAmount <= 0) throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for collecting");
+    }
 
-    int min_conf = 30;
+    //min_conf
+    int min_conf = 1;
      if (!params[2].isNull())
      {
         min_conf =  params[2].get_int();

@@ -3792,7 +3792,7 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
     AvailableCoins(vCoins, true, NULL, false, ONLY_NONDENOMINATED_NOT1000IFMN);
 
     //sort by value asc
-    std::sort(vCoins.begin(), vCoins.end(), CompareOutputs);
+    //std::sort(vCoins.begin(), vCoins.end(), CompareOutputs);
 
     //delete all items larger than nValueMax
     std::erase(std::remove_if(vCoins.rbegin(), vCoins.rend(), [nValueMax,min_conf](COutput out){if(!out.fSpendable || out.tx->vout[out.i].nValue > nValueMax || out.nDepth < min_conf) return true;}));
