@@ -3058,7 +3058,7 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INTERNAL_ERROR, strFailReason);
 
     CReserveKey reservekey(pwalletMain);
-    UniValue result(UniValue::VOBJ);
+    UniValue result(UniValue::VARR);
 
     BOOST_FOREACH(CWalletTx &wtx, vWtx) 
     {
