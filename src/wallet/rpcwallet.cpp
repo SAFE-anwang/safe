@@ -3014,23 +3014,19 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
 
      if (fHelp || params.size() != 1)
         throw runtime_error(
-            "collectoutputs {\"safeaddress\":\"xxx\",\"max_amount\":10, \"min_conf\":100} \n"
+            "collectoutputs safeaddress max_amount min_conf\n"
             "\nTry to collect all the outputs less than max_amount to one address, with min_conf confirms, thus reduce the UTXO collections.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"receiveinfo\"        (string, required) A json array of json objects\n"
-            "     {\n"
-            "         \"safeaddress\":\"xxx\",      (string, required) The safe address to send to.\n"
-            "         \"max_amount\":n,             (numeric, required) The mixamum amount in " + CURRENCY_UNIT + " to collect. eg 10, range: > 0 \n"
-            "         \"min_conf\":n                (numeric, optional) the minimum confirms of these outputs. default: 30, range: > 0 \n"
-            "     }\n"
+            "1. safeaddress,      (string, required) The safe address to send to.\n"
+            "2. max_amount,       (numeric, required) The maximum amount in " + CURRENCY_UNIT + " to collect. eg 1, range: > 0 \n"
+            "3. min_conf,         (numeric, optional) the minimum confirms of these outputs. default: 10, range: > 0 \n"
+ 
             "\nResult:\n"
-            "\"transactionid\"  (string) The locked transaction id.\n"
-            "\"amount\"         (numeric) The amount of this txid.\n"
-            "\"Total amount\"   (numeric) All amount of the collecting action.\n"
+            "\"transactionid list\"  (std::vector) The list of generated transaction ids.\n"
             "\nExamples:\n"
-            + HelpExampleCli("collectoutputs", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"min_amount\\\":10,\\\"min_conf\\\":100},{\\\"safeaddress\\\":\\\"XuQQkwA4FYkq2XERzMY2CiAZhJTEDAbtcg\\\",\\\"min_amount\\\":10,\\\"min_conf\\\":100}]\"")
-            + HelpExampleRpc("collectoutputs", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"min_amount\\\":10,\\\"min_conf\\\":100},{\\\"safeaddress\\\":\\\"XuQQkwA4FYkq2XERzMY2CiAZhJTEDAbtcg\\\",\\\"min_amount\\\":10,\\\"min_conf\\\":100}]\"")
+            + HelpExampleCli("collectoutputs", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"max_amount\\\":1,\\\"min_conf\\\":10}]\"")
+            + HelpExampleRpc("collectoutputs", "\"[{\\\"safeaddress\\\":\\\"Xy2m1dQCatw23HasWwmEp84woBS1sfoGDH\\\",\\\"max_amount\\\":1,\\\"min_conf\\\":10}]\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
