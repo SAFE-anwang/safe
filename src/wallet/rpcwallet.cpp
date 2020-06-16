@@ -3012,7 +3012,7 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-     if (fHelp || params.size() != 1)
+     if (fHelp || params.size() != 3)
         throw runtime_error(
             "collectoutputs safeaddress max_amount min_conf\n"
             "\nTry to collect all the outputs less than max_amount to one address, with min_conf confirms, thus reduce the UTXO collections.\n"
@@ -3058,7 +3058,7 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INTERNAL_ERROR, strFailReason);
 
     CReserveKey reservekey(pwalletMain);
-    UniValue result;
+    UniValue result(UniValue::VOBJ);
 
     BOOST_FOREACH(CWalletTx &wtx, vWtx) 
     {
