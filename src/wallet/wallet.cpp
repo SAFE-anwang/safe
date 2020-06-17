@@ -3796,7 +3796,7 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
     printf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
 
     //delete all items larger than nValueMax
-    std::erase_if(vCoins, [nValueMax,min_conf](COutput out){if(!out.fSpendable || out.tx->vout[out.i].nValue > nValueMax || out.nDepth < min_conf) return true;});
+    vCoins.erase(std::remove_if(vCoins.begin(),vCoins.end(), [nValueMax,min_conf](COutput out){if(!out.fSpendable || out.tx->vout[out.i].nValue > nValueMax || out.nDepth < min_conf) return true;}),vCoins.end());
 
     printf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
 
