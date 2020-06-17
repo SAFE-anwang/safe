@@ -3781,7 +3781,7 @@ bool CompareOutputs(COutput &o1,COutput &o2)
     return o1.tx->vout[o1.i].nValue < o2.tx->vout[o2.i].nValue;
 }
 
-//compare function, if true then delete the item
+//delete function, if true then delete the item
 
 //safe
 bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int min_conf, std::vector<CWalletTx>& vWtx, std::string& strFailReason)
@@ -3796,7 +3796,7 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
     printf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
 
     //delete all items larger than nValueMax
-    vCoins.erase(std::remove_if(vCoins.begin(),vCoins.end(), [nValueMax,min_conf](COutput out){if(!out.fSpendable || out.tx->vout[out.i].nValue > nValueMax || out.nDepth < min_conf) return true;}),vCoins.end());
+    vCoins.erase(std::remove_if(vCoins.begin(),vCoins.end(), [nValueMax,min_conf](COutput out){if(!out.fSpendable || out.tx->vout[out.i].nValue > nValueMax || out.nDepth < min_conf) return true;else return false;}),vCoins.end());
 
     printf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
 
