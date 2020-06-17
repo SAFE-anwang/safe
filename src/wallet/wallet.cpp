@@ -3793,12 +3793,12 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
 
     //sort by value asc
     //std::sort(vCoins.begin(), vCoins.end(), CompareOutputs);
-    LogPrintf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
+    printf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
 
     //delete all items larger than nValueMax
     std::erase_if(vCoins, [nValueMax,min_conf](COutput out){if(!out.fSpendable || out.tx->vout[out.i].nValue > nValueMax || out.nDepth < min_conf) return true;});
 
-    LogPrintf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
+    printf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
 
     int nBytes = 0,nBytesInputs = 0;//calcurate tx size
    
