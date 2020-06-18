@@ -52,6 +52,10 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     tx.vout[0].nValue=0LL;
     CFeeRate baseRate(basefee, ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION));
 
+    CCoinsView dummy;
+    CCoinsViewCache view(&dummy);
+
+
     // Create a fake block
     std::vector<CTransaction> block;
     int blocknum = 0;
@@ -64,7 +68,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
             for (int k = 0; k < 5; k++) { // add 4 fee txs for every priority tx
                 tx.vin[0].prevout.n = 10000*blocknum+100*j+k; // make transaction unique
                 uint256 hash = tx.GetHash();
-                mpool.addUnchecked(hash, entry.Fee(feeV[k/4][j]).Time(GetTime()).Priority(priV[k/4][j]).Height(blocknum).FromTx(tx, &mpool));
+                mpool.addUnchecked(hash, entry.Fee(feeV[k/4][j]).Time(GetTime()).Priority(priV[k/4][j]).Height(blocknum).FromTx(tx, &mpool),view);
                 txHashes[j].push_back(hash);
             }
         }
@@ -133,8 +137,6 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
         BOOST_CHECK(mpool.estimatePriority(i) > origPriEst[i-1] - deltaPri);
     }
 
-    CCoinsView dummy;
-    CCoinsViewCache view(&dummy);
 
 
     // Mine 15 more blocks with lots of transactions happening and not getting mined
