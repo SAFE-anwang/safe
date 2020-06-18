@@ -7,20 +7,28 @@
 
 #include <atomic>
 #include <chrono>
-/*#include <condition_variable>
-#include <mutex>
-*/
+
+#if defined(__MINGW32__ ) && !defined(_GLIBCXX_HAS_GTHREADS)
+
 #include <boost/thread.hpp>
 
 namespace std
 {
    using boost::mutex;
    using boost::recursive_mutex;
-   //using boost::lock_guard;
+   using boost::lock_guard;
    using boost::condition_variable;
-   //using boost::unique_lock;
+   using boost::unique_lock;
    using boost::thread;
 }
+#elif
+
+#include <condition_variable>
+#include <mutex>
+
+
+#endif
+
 /*
     A helper class for interruptible sleeps. Calling operator() will interrupt
     any current sleep, and after that point operator bool() will return true
