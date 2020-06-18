@@ -5,11 +5,22 @@
 #ifndef BITCOIN_THREADINTERRUPT_H
 #define BITCOIN_THREADINTERRUPT_H
 
-#include <atomic>
+/*#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+*/
+#include <boost/thread.hpp>
 
+namespace std
+{
+   using boost::mutex;
+   using boost::recursive_mutex;
+   using boost::lock_guard;
+   using boost::condition_variable;
+   using boost::unique_lock;
+   using boost::thread;
+}
 /*
     A helper class for interruptible sleeps. Calling operator() will interrupt
     any current sleep, and after that point operator bool() will return true
