@@ -16,9 +16,9 @@ namespace std
 {
    using boost::mutex;
    using boost::recursive_mutex;
-   using boost::lock_guard;
+   //using boost::lock_guard;
    using boost::condition_variable;
-   using boost::unique_lock;
+   //using boost::unique_lock;
    using boost::thread;
 }
 /*
