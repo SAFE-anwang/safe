@@ -126,6 +126,9 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     BOOST_CHECK(pblocktemplate = CreateNewBlock(chainparams, scriptPubKey));
     delete pblocktemplate;
 
+    CCoinsView dummy;
+    CCoinsViewCache view(&dummy);
+
     // block sigops > limit: 1000 CHECKMULTISIG + 1
     tx.vin.resize(1);
     // NOTE: OP_NOP is used to force 20 SigOps for the CHECKMULTISIG
@@ -140,7 +143,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         hash = tx.GetHash();
         bool spendsCoinbase = (i == 0) ? true : false; // only first tx spends coinbase
         // If we don't set the # of sig ops in the CTxMemPoolEntry, template creation fails
-        mempool.addUnchecked(hash, entry.Fee(1000000).Time(GetTime()).SpendsCoinbase(spendsCoinbase).FromTx(tx));
+        mempool.addUnchecked(hash, entry.Fee(1000000).Time(GetTime()).SpendsCoinbase(spendsCoinbase).FromTx(tx),view);
         tx.vin[0].prevout.hash = hash;
     }
     BOOST_CHECK_THROW(CreateNewBlock(chainparams, scriptPubKey), std::runtime_error);
@@ -154,7 +157,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         hash = tx.GetHash();
         bool spendsCoinbase = (i == 0) ? true : false; // only first tx spends coinbase
         // If we do set the # of sig ops in the CTxMemPoolEntry, template creation passes
-        mempool.addUnchecked(hash, entry.Fee(1000000).Time(GetTime()).SpendsCoinbase(spendsCoinbase).SigOps(20).FromTx(tx));
+        mempool.addUnchecked(hash, entry.Fee(1000000).Time(GetTime()).SpendsCoinbase(spendsCoinbase).SigOps(20).FromTx(tx),view);
         tx.vin[0].prevout.hash = hash;
     }
     BOOST_CHECK(pblocktemplate = CreateNewBlock(chainparams, scriptPubKey));
@@ -175,7 +178,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         tx.vout[0].nValue -= 10000000;
         hash = tx.GetHash();
         bool spendsCoinbase = (i == 0) ? true : false; // only first tx spends coinbase
-        mempool.addUnchecked(hash, entry.Fee(1000000).Time(GetTime()).SpendsCoinbase(spendsCoinbase).FromTx(tx));
+        mempool.addUnchecked(hash, entry.Fee(1000000).Time(GetTime()).SpendsCoinbase(spendsCoinbase).FromTx(tx),view);
         tx.vin[0].prevout.hash = hash;
     }
     BOOST_CHECK(pblocktemplate = CreateNewBlock(chainparams, scriptPubKey));
@@ -184,7 +187,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
 
     // orphan in mempool, template creation fails
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Fee(1000000).Time(GetTime()).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Fee(1000000).Time(GetTime()).FromTx(tx),view);
     BOOST_CHECK_THROW(CreateNewBlock(chainparams, scriptPubKey), std::runtime_error);
     mempool.clear();
 
@@ -193,7 +196,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     tx.vin[0].prevout.hash = txFirst[1]->GetHash();
     tx.vout[0].nValue = 49000000000LL;
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Fee(1000000000LL).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Fee(1000000000LL).Time(GetTime()).SpendsCoinbase(true).FromTx(tx),view);
     tx.vin[0].prevout.hash = hash;
     tx.vin.resize(2);
     tx.vin[1].scriptSig = CScript() << OP_1;
@@ -201,7 +204,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     tx.vin[1].prevout.n = 0;
     tx.vout[0].nValue = 59000000000LL;
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Fee(4000000000LL).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Fee(4000000000LL).Time(GetTime()).SpendsCoinbase(true).FromTx(tx),view);
     BOOST_CHECK(pblocktemplate = CreateNewBlock(chainparams, scriptPubKey));
     delete pblocktemplate;
     mempool.clear();
@@ -213,7 +216,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     tx.vout[0].nValue = 0;
     hash = tx.GetHash();
     // give it a fee so it'll get mined
-    mempool.addUnchecked(hash, entry.Fee(100000).Time(GetTime()).SpendsCoinbase(false).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Fee(100000).Time(GetTime()).SpendsCoinbase(false).FromTx(tx),view);
     BOOST_CHECK_THROW(CreateNewBlock(chainparams, scriptPubKey), std::runtime_error);
     mempool.clear();
 
@@ -225,12 +228,12 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     script = CScript() << OP_0;
     tx.vout[0].scriptPubKey = GetScriptForDestination(CScriptID(script));
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Fee(100000000L).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Fee(100000000L).Time(GetTime()).SpendsCoinbase(true).FromTx(tx),view);
     tx.vin[0].prevout.hash = hash;
     tx.vin[0].scriptSig = CScript() << std::vector<unsigned char>(script.begin(), script.end());
     tx.vout[0].nValue -= 1000000;
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Fee(1000000).Time(GetTime()).SpendsCoinbase(false).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Fee(1000000).Time(GetTime()).SpendsCoinbase(false).FromTx(tx),view);
     BOOST_CHECK_THROW(CreateNewBlock(chainparams, scriptPubKey), std::runtime_error);
     mempool.clear();
 
@@ -240,10 +243,10 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     tx.vout[0].nValue = 49000000000LL;
     tx.vout[0].scriptPubKey = CScript() << OP_1;
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Fee(1000000000L).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Fee(1000000000L).Time(GetTime()).SpendsCoinbase(true).FromTx(tx),view);
     tx.vout[0].scriptPubKey = CScript() << OP_2;
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Fee(1000000000L).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Fee(1000000000L).Time(GetTime()).SpendsCoinbase(true).FromTx(tx),view);
     BOOST_CHECK_THROW(CreateNewBlock(chainparams, scriptPubKey), std::runtime_error);
     mempool.clear();
 
@@ -304,7 +307,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     tx.vout[0].scriptPubKey = CScript() << OP_1;
     tx.nLockTime = 0;
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Fee(1000000000L).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Fee(1000000000L).Time(GetTime()).SpendsCoinbase(true).FromTx(tx),view);
     BOOST_CHECK(CheckFinalTx(tx, flags)); // Locktime passes
     BOOST_CHECK(!TestSequenceLocks(tx, flags)); // Sequence locks fail
     BOOST_CHECK(SequenceLocks(tx, flags, &prevheights, CreateBlockIndex(chainActive.Tip()->nHeight + 2))); // Sequence locks pass on 2nd block
@@ -314,7 +317,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     tx.vin[0].nSequence = CTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | (((chainActive.Tip()->GetMedianTimePast()+1-chainActive[1]->GetMedianTimePast()) >> CTxIn::SEQUENCE_LOCKTIME_GRANULARITY) + 1); // txFirst[1] is the 3rd block
     prevheights[0] = baseheight + 2;
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Time(GetTime()).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Time(GetTime()).FromTx(tx),view);
     BOOST_CHECK(CheckFinalTx(tx, flags)); // Locktime passes
     BOOST_CHECK(!TestSequenceLocks(tx, flags)); // Sequence locks fail
 
@@ -330,7 +333,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     prevheights[0] = baseheight + 3;
     tx.nLockTime = chainActive.Tip()->nHeight + 1;
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Time(GetTime()).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Time(GetTime()).FromTx(tx),view);
     BOOST_CHECK(!CheckFinalTx(tx, flags)); // Locktime fails
     BOOST_CHECK(TestSequenceLocks(tx, flags)); // Sequence locks pass
     BOOST_CHECK(IsFinalTx(tx, chainActive.Tip()->nHeight + 2, chainActive.Tip()->GetMedianTimePast())); // Locktime passes on 2nd block
@@ -341,7 +344,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     prevheights.resize(1);
     prevheights[0] = baseheight + 4;
     hash = tx.GetHash();
-    mempool.addUnchecked(hash, entry.Time(GetTime()).FromTx(tx));
+    mempool.addUnchecked(hash, entry.Time(GetTime()).FromTx(tx),view);
     BOOST_CHECK(!CheckFinalTx(tx, flags)); // Locktime fails
     BOOST_CHECK(TestSequenceLocks(tx, flags)); // Sequence locks pass
     BOOST_CHECK(IsFinalTx(tx, chainActive.Tip()->nHeight + 2, chainActive.Tip()->GetMedianTimePast() + 1)); // Locktime passes 1 second later
