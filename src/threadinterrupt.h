@@ -21,7 +21,7 @@ namespace std
    using boost::unique_lock;
    using boost::thread;
 }
-#elif
+#else
 
 #include <condition_variable>
 #include <mutex>
