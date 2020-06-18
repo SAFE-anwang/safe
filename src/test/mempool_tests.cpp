@@ -123,6 +123,9 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     TestMemPoolEntryHelper entry;
     entry.hadNoDependencies = true;
 
+    CCoinsView dummy;
+    CCoinsViewCache view(&dummy);
+
     /* 3rd highest fee */
     CMutableTransaction tx1 = CMutableTransaction();
     tx1.vout.resize(1);
@@ -199,7 +202,7 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     BOOST_CHECK_EQUAL(pool.CalculateMemPoolAncestors(entry.Fee(2000000LL).FromTx(tx7), setAncestorsCalculated, 100, 1000000, 1000, 1000000, dummy), true);
     BOOST_CHECK(setAncestorsCalculated == setAncestors);
 
-    pool.addUnchecked(tx7.GetHash(), entry.FromTx(tx7), setAncestors);
+    pool.addUnchecked(tx7.GetHash(), entry.FromTx(tx7),view, setAncestors);
     BOOST_CHECK_EQUAL(pool.size(), 7);
 
     // Now tx6 should be sorted higher (high fee child): tx7, tx6, tx2, ...
@@ -217,7 +220,7 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     tx8.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
     tx8.vout[0].nValue = 10 * COIN;
     setAncestors.insert(pool.mapTx.find(tx7.GetHash()));
-    pool.addUnchecked(tx8.GetHash(), entry.Fee(0LL).Time(2).FromTx(tx8), setAncestors);
+    pool.addUnchecked(tx8.GetHash(), entry.Fee(0LL).Time(2).FromTx(tx8),view, setAncestors);
 
     // Now tx8 should be sorted low, but tx6/tx both high
     sortedOrder.insert(sortedOrder.begin(), tx8.GetHash().ToString());
@@ -231,7 +234,7 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     tx9.vout.resize(1);
     tx9.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
     tx9.vout[0].nValue = 1 * COIN;
-    pool.addUnchecked(tx9.GetHash(), entry.Fee(0LL).Time(3).FromTx(tx9), setAncestors);
+    pool.addUnchecked(tx9.GetHash(), entry.Fee(0LL).Time(3).FromTx(tx9),view, setAncestors);
 
     // tx9 should be sorted low
     BOOST_CHECK_EQUAL(pool.size(), 9);
@@ -257,7 +260,7 @@ BOOST_AUTO_TEST_CASE(MempoolIndexingTest)
     BOOST_CHECK_EQUAL(pool.CalculateMemPoolAncestors(entry.Fee(200000LL).Time(4).FromTx(tx10), setAncestorsCalculated, 100, 1000000, 1000, 1000000, dummy), true);
     BOOST_CHECK(setAncestorsCalculated == setAncestors);
 
-    pool.addUnchecked(tx10.GetHash(), entry.FromTx(tx10), setAncestors);
+    pool.addUnchecked(tx10.GetHash(), entry.FromTx(tx10),view, setAncestors);
 
     /**
      *  tx8 and tx9 should both now be sorted higher
@@ -328,6 +331,9 @@ BOOST_AUTO_TEST_CASE(MempoolSizeLimitTest)
     TestMemPoolEntryHelper entry;
     entry.dPriority = 10.0;
 
+    CCoinsView dummy;
+    CCoinsViewCache view(&dummy);
+    
     CMutableTransaction tx1 = CMutableTransaction();
     tx1.vin.resize(1);
     tx1.vin[0].scriptSig = CScript() << OP_1;
