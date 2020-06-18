@@ -5,9 +5,9 @@
 #ifndef BITCOIN_THREADINTERRUPT_H
 #define BITCOIN_THREADINTERRUPT_H
 
-/*#include <atomic>
+#include <atomic>
 #include <chrono>
-#include <condition_variable>
+/*#include <condition_variable>
 #include <mutex>
 */
 #include <boost/thread.hpp>
