@@ -41,6 +41,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "sendwithlock", 2 },
 
     //safe
+    { "collectoutputs", 1 },
     { "collectoutputs", 2 },
     { "collectoutputs", 3 },
 

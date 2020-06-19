@@ -23,9 +23,7 @@
 #include <atomic>
 #include <deque>
 #include <stdint.h>
-#include <thread>
 #include <memory>
-#include <condition_variable>
 
 #ifndef WIN32
 #include <arpa/inet.h>

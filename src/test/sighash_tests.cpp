@@ -199,8 +199,10 @@ BOOST_AUTO_TEST_CASE(sighash_from_data)
           CDataStream stream(ParseHex(raw_tx), SER_NETWORK, PROTOCOL_VERSION);
           stream >> tx;
 
+          CTxSrcType nType = FROM_WALLET;
+
           CValidationState state;
-          BOOST_CHECK_MESSAGE(CheckTransaction(tx, state), strTest);
+          BOOST_CHECK_MESSAGE(CheckTransaction(tx, state,nType), strTest);
           BOOST_CHECK(state.IsValid());
 
           std::vector<unsigned char> raw = ParseHex(raw_script);
