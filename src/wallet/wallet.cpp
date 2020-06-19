@@ -3833,6 +3833,8 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
             nTxBytes += 34;
             nTxAmount += out.tx->vout[out.i].nValue;
 
+            printf("CWallet::CollectOutputs nTxBytes -- %d\n",nTxBytes);
+
             COutPoint op(out.tx->GetHash(),out.i);
             
             if(!coinControl.IsSelected(op))
@@ -3841,6 +3843,8 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
         else
         {
             //build a tx which consume a lot of outputs, and send money to one of address in the wallet
+
+            printf("CWallet::CollectOutputs nTxBytes -- %d, to create transaction...\n",nTxBytes);
             
             CWalletTx wtx;
             CRecipient recipient = {scriptPubKey, nTxAmount, 0, true};
