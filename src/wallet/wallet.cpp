@@ -3793,47 +3793,42 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
 
     //sort by value asc
     //std::sort(vCoins.begin(), vCoins.end(), CompareOutputs);
-    printf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
+    LogPrintf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
 
     //delete all items larger than nValueMax
     vCoins.erase(std::remove_if(vCoins.begin(),vCoins.end(), [nValueMax,min_conf](COutput out){if(!out.fSpendable || out.tx->vout[out.i].nValue > nValueMax || out.nDepth < min_conf) return true;else return false;}),vCoins.end());
 
-    printf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
+    LogPrintf("CWallet::CollectOutputs vCoins -- %d\n", vCoins.size());
 
-    int nBytes = 0,nBytesInputs = 0;//calcurate tx size
-   
     //Calcurate TX Bytes
-
-    CPubKey pubkey;
-    CKeyID *keyid = boost::get<CKeyID>((CTxDestination*)&dest);
-    if (keyid && GetPubKey(*keyid, pubkey))
-    {
-        nBytesInputs += (pubkey.IsCompressed() ? 148 : 180);
-    }
-    else
-        nBytesInputs += 148; // in all error cases, simply assume 148 here
-  
-
-    nBytes = nBytesInputs + 10; 
-
     CCoinControl coinControl;
     CAmount nTxAmount = 0;
     vector<CRecipient> vecSend;
     CScript scriptPubKey = GetScriptForDestination(dest);
+
+    CMutableTransaction tx;
+
+    //basic bytes of a transaction
+    int nBytes = ::GetSerializeSize(tx,SER_NETWORK, PROTOCOL_VERSION) + ::GetSerializeSize((CScriptBase)scriptPubKey, SER_NETWORK, PROTOCOL_VERSION);
     int nTxBytes = nBytes;
+
     CReserveKey reservekey(this);
     CAmount nFeeRequired = 0;
     int nChangePosRet = -1;
 
+    //the size of CTxIn
+    CTxIn in;
+    int nTxIn_Bytes = ::GetSerializeSize(in,SER_NETWORK, PROTOCOL_VERSION);
+
     BOOST_FOREACH(const COutput &out, vCoins)
     {
-        // Limit tx size
-        if(nTxBytes + 34 < MAX_STANDARD_TX_SIZE)
+        // Limit tx size, it is 1/5 of a stardard tx
+        if(nTxBytes + nTxIn_Bytes < MAX_STANDARD_TX_SIZE/5)
         {
-            nTxBytes += 34;
+            nTxBytes += nTxIn_Bytes;
             nTxAmount += out.tx->vout[out.i].nValue;
 
-            printf("CWallet::CollectOutputs nTxBytes -- %d\n",nTxBytes);
+            LogPrintf("CWallet::CollectOutputs nTxBytes -- %d, adding outputs...\n",nTxBytes);
 
             COutPoint op(out.tx->GetHash(),out.i);
             
@@ -3844,7 +3839,7 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
         {
             //build a tx which consume a lot of outputs, and send money to one of address in the wallet
 
-            printf("CWallet::CollectOutputs nTxBytes -- %d, to create transaction...\n",nTxBytes);
+            LogPrintf("CWallet::CollectOutputs nTxBytes -- %d, creating transaction...\n",nTxBytes);
             
             CWalletTx wtx;
             CRecipient recipient = {scriptPubKey, nTxAmount, 0, true};
@@ -3866,7 +3861,7 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
 
             //construct the next tx
             nTxBytes = nBytes;
-            nTxBytes += 34;
+            nTxBytes += nTxIn_Bytes;
 
             nTxAmount = 0;
             nTxAmount += out.tx->vout[out.i].nValue;
