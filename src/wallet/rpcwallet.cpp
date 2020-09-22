@@ -491,20 +491,21 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 
 UniValue sendwithlock(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() != 3)
+    if (fHelp || (params.size() != 3 && params.size() != 4) )
         throw runtime_error(
-            "sendwithlock \"safeaddress\" amount month\n"
-            "\nTry to send an amount to a given address with locked monthe(s)\n"
+            "sendwithlock \"safeaddress\" amount month \"memo\"\n"
+            "\nTry to send an amount to a given address with locked monthe(s) and memo stored in the transaction.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
             "1. \"safeaddress\" (string, required) The safe address to send to.\n"
             "2. \"amount\"      (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
-            "3. \"month\"       (numeric or string, required) The lokced month(s), minimum: 1 month, maximum: 120 months\n"
+            "3. \"month\"       (numeric or string, required) The locked month(s), minimum: 0 month(not locked), maximum: 120 months\n"
+			"4. \"memo\"        (string, opitional) some memo you want to store in the transaction.\n"
             "\nResult:\n"
             "\"transactionid\"  (string) The locked transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("sendwithlock", "\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\" 0.1 6")
-            + HelpExampleRpc("sendwithlock", "\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\", 0.1, 6")
+            + HelpExampleCli("sendwithlock", "\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\" 0.1 6 \"This is my first SAFE transaction.\"")
+            + HelpExampleRpc("sendwithlock", "\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\", 0.1, 6 ,\"This is my first SAFE transaction.\"")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -523,9 +524,9 @@ UniValue sendwithlock(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid locked amount, minimum: 0.00000001 SAFE, maximum: 37000000 SAFE");
 
     int nLockMonth = params[2].get_int();
-    if(nLockMonth < 1 || nLockMonth > 120)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid locked month, minimum: 1 month, maximum: 120 months");
-
+    if(nLockMonth < 0 || nLockMonth > 120)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid locked month, minimum: 0 month, maximum: 120 months");
+	
     CAmount curBalance = pwalletMain->GetBalance();
     if(nLockAmount > curBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
@@ -542,7 +543,13 @@ UniValue sendwithlock(const UniValue& params, bool fHelp)
     std::string strError;
     vector<CRecipient> vecSend;
     int nChangePosRet = -1;
-    CRecipient recipient = {scriptPubKey, nLockAmount, nLockMonth, false};
+	
+	CRecipient recipient;
+	if(params.size() == 4)
+		recipient = {scriptPubKey, nLockAmount, nLockMonth, false, false, params[3].get_str()};
+	else
+		recipient = {scriptPubKey, nLockAmount, nLockMonth, false};
+	
     vecSend.push_back(recipient);
     CWalletTx wtx;
     if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError)) {

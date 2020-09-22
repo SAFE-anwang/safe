@@ -3823,7 +3823,7 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
     BOOST_FOREACH(const COutput &out, vCoins)
     {
         // Limit tx size, it is 1/5 of a stardard tx
-        if(nTxBytes + nTxIn_Bytes < MAX_STANDARD_TX_SIZE/5)
+        if(nTxBytes + nTxIn_Bytes < MAX_STANDARD_TX_SIZE/10)
         {
             nTxBytes += nTxIn_Bytes;
             nTxAmount += out.tx->vout[out.i].nValue;
