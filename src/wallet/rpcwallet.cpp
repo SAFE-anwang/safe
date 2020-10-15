@@ -3019,7 +3019,7 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-     if (fHelp || params.size() != 3 || || params.size() != 4)
+     if (fHelp || params.size() != 4)
         throw runtime_error(
             "collectoutputs safeaddress max_amount min_conf max_transactions\n"
             "\nTry to collect all the outputs less than max_amount to one address, with min_conf confirms, thus reduce the UTXO collections.\n"
