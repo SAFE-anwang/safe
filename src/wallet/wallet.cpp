@@ -3784,9 +3784,10 @@ bool CompareOutputs(COutput &o1,COutput &o2)
 //delete function, if true then delete the item
 
 //safe
-bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int min_conf, std::vector<CWalletTx>& vWtx, std::string& strFailReason)
+bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int min_conf, int max_transction,std::vector<CWalletTx>& vWtx, std::string& strFailReason)
 {
     bool bRet = true;
+	int nTxCount = 0;
     vector<COutput> vCoins;
     
     AvailableCoins(vCoins, true, NULL, false, ONLY_NONDENOMINATED_NOT1000IFMN);
@@ -3822,8 +3823,8 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
 
     BOOST_FOREACH(const COutput &out, vCoins)
     {
-        // Limit tx size, it is 1/5 of a stardard tx
-        if(nTxBytes + nTxIn_Bytes < MAX_STANDARD_TX_SIZE/10)
+        // Limit tx size, it is 1/20 of a stardard tx
+        if(nTxBytes + nTxIn_Bytes < MAX_STANDARD_TX_SIZE/20)
         {
             nTxBytes += nTxIn_Bytes;
             nTxAmount += out.tx->vout[out.i].nValue;
@@ -3857,7 +3858,14 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
             }
 
             COutPoint op(out.tx->GetHash(),out.i);
-            vWtx.push_back(wtx);
+            vWtx.push_back(wtx); nTxCount++;
+			
+			//if the txcount exceed needed max_transction, then return
+			if(nTxCount <= max_transctions) 
+			{
+				bRet = true;
+                break;
+            }
 
             //construct the next tx
             nTxBytes = nBytes;
@@ -3869,6 +3877,12 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
             coinControl.UnSelectAll();
             coinControl.Select(op);
         }
+    }
+	
+	//if reach the needed txs, then return
+	if(bRet == true && nTxCount <= max_transctions) 
+	{
+		return bRet;
     }
 
     //There are some outputs left

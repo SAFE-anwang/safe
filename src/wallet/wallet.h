@@ -803,7 +803,7 @@ public:
     bool SelectCoinsGrouppedByAddresses(std::vector<CompactTallyItem>& vecTallyRet, bool fSkipDenominated = true, bool fAnonymizable = true, bool fSkipUnconfirmed = true) const;
 
     //safe
-    bool CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int min_conf, std::vector<CWalletTx>& vWtx, std::string& strFailReason);
+    bool CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int min_conf,int max_transction, std::vector<CWalletTx>& vWtx, std::string& strFailReason);
 
     /// Get 1000SAFE output and keys which can be used for the Masternode
     bool GetMasternodeOutpointAndKeys(COutPoint& outpointRet, CPubKey& pubKeyRet, CKey& keyRet, std::string strTxHash = "", std::string strOutputIndex = "");
