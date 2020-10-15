@@ -3025,10 +3025,10 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
             "\nTry to collect all the outputs less than max_amount to one address, with min_conf confirms, thus reduce the UTXO collections.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. safeaddress,      (string, required) The safe address to send to.\n"
-            "2. max_amount,       (numeric, optional) The maximum amount in " + CURRENCY_UNIT + " to collect.  default: 1, range: > 0 \n"
-            "3. min_conf,         (numeric, optional) the minimum confirms of these outputs. default: 30, range: > 0 \n"
-			"4. max_transactions, (numeric, optional) the maximum transactions will be commited. default: 5, range: > 0 \n"
+            "1. safeaddress,      (string,  required) The safe address to send to.\n"
+            "2. max_amount,       (numeric, required) The maximum amount in " + CURRENCY_UNIT + " to collect.  default: 1, range: > 0 \n"
+            "3. min_conf,         (numeric, required) the minimum confirms of these outputs. default: 30, range: > 0 \n"
+			"4. max_transactions, (numeric, required) the maximum transactions will be commited. default: 5, range: > 0 \n"
  
             "\nResult:\n"
             "\"transactionid list\"  (std::vector) The list of generated transaction ids.\n"
@@ -3061,7 +3061,7 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
         min_conf =  params[2].get_int();
         if(min_conf <= 0) throw JSONRPCError(RPC_TYPE_ERROR, "Invalid min_conf for collecting");
     }
-
+	
     //max_transactions
     int max_transactions = 5;
      if (!params[3].isNull())
