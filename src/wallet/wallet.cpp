@@ -3784,7 +3784,7 @@ bool CompareOutputs(COutput &o1,COutput &o2)
 //delete function, if true then delete the item
 
 //safe
-bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int min_conf, int max_transction,std::vector<CWalletTx>& vWtx, std::string& strFailReason)
+bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int min_conf, int max_transactions,std::vector<CWalletTx>& vWtx, std::string& strFailReason)
 {
     bool bRet = true;
 	int nTxCount = 0;
@@ -3860,8 +3860,8 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
             COutPoint op(out.tx->GetHash(),out.i);
             vWtx.push_back(wtx); nTxCount++;
 			
-			//if the txcount exceed needed max_transction, then return
-			if(nTxCount <= max_transctions) 
+			//if the txcount exceed needed max_transactions, then return
+			if(nTxCount <= max_transactions) 
 			{
 				bRet = true;
                 break;
@@ -3880,7 +3880,7 @@ bool CWallet::CollectOutputs(const CTxDestination &dest,CAmount nValueMax,int mi
     }
 	
 	//if reach the needed txs, then return
-	if(bRet == true && nTxCount <= max_transctions) 
+	if(bRet == true && nTxCount <= max_transactions) 
 	{
 		return bRet;
     }

@@ -3073,7 +3073,7 @@ UniValue collectoutputs(const UniValue& params, bool fHelp)
 
     string strFailReason;
     std::vector<CWalletTx> vWtx;
-    if(!pwalletMain->CollectOutputs(address.Get(), nAmount, min_conf, max_transctions, vWtx, strFailReason))
+    if(!pwalletMain->CollectOutputs(address.Get(), nAmount, min_conf, max_transactions, vWtx, strFailReason))
         throw JSONRPCError(RPC_INTERNAL_ERROR, strFailReason);
 
     CReserveKey reservekey(pwalletMain);
