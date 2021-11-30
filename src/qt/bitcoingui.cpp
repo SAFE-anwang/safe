@@ -230,7 +230,7 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *platformStyle, const NetworkStyle *n
     if(enableWallet)
     {
         frameBlocksLayout->addStretch();
-        labelCopyRight->setText(tr("    © 2018 SAFE Foundation All rights reserved    "));
+        labelCopyRight->setText(tr("   © 2018-2021 SAFE Foundation All Rights Reserved   "));
         frameBlocksLayout->addWidget(labelCopyRight);
         frameBlocksLayout->addStretch();
         frameBlocksLayout->addWidget(unitDisplayControl);
