@@ -23,7 +23,7 @@
 #include "keepass.h"
 #include "main.h"
 #include "masternode-sync.h"
-
+#include "coincontrol.h"
 #include <stdint.h>
 
 #include <boost/assign/list_of.hpp>
@@ -391,6 +391,17 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
 
     // Parse Safe address
     CScript scriptPubKey = GetScriptForDestination(address);
+	
+	//set change address
+	CCoinControl coinControl;
+	CBitcoinAddress addr = CBitcoinAddress(changeaddress.c_str());
+	CCoinControl *coin_ptr = nullptr;
+	if(!changeaddress.empty() && addr.IsValid()) 
+	{
+		coinControl.fAllowOtherInputs = true;
+		coinControl.destChange = addr.Get();
+		coin_ptr = &coinControl;
+	}
 
     // Create and send the transaction
     CReserveKey reservekey(pwalletMain);
@@ -398,10 +409,13 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
     std::string strError;
     vector<CRecipient> vecSend;
     int nChangePosRet = -1;
+
+	//add memo
     CRecipient recipient = {scriptPubKey, nValue, 0, fSubtractFeeFromAmount,false,memo};
     vecSend.push_back(recipient);
     if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet,
-                                         strError, NULL, true, fUsePrivateSend ? ONLY_DENOMINATED : ALL_COINS, fUseInstantSend)) {
+                                         strError, coin_ptr , true, fUsePrivateSend ? ONLY_DENOMINATED : ALL_COINS, fUseInstantSend)) 
+	{
         if (!fSubtractFeeFromAmount && nValue + nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
@@ -424,9 +438,9 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 2 || params.size() > 7)
+    if (fHelp || params.size() < 2 || params.size() > 9)
         throw runtime_error(
-            "sendtoaddress \"safeaddress\" amount ( \"comment\" \"comment-to\" subtractfeefromamount use_is use_ps changeaddress memo)\n"
+            "sendtoaddress \"safeaddress\" amount ( \"comment\" \"comment-to\" subtractfeefromamount use_is use_ps \"changeaddress\" \"memo\")\n"
             "\nSend an amount to a given address.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
@@ -441,8 +455,8 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
             "                             The recipient will receive less amount of Safe than you enter in the amount field.\n"
             "6. \"use_is\"      (bool, optional) Send this transaction as InstantSend (default: false)\n"
             "7. \"use_ps\"      (bool, optional) Use anonymized funds only (default: false)\n"
-            "8. \"changeaddress\"        (bool, optional) a safe address for change money (default: none)\n"
-			"9. \"memo\"        (bool, optional) information written on SAFE blockchain (default: none)\n"
+            "8. \"changeaddress\"        (string, optional) a safe address for change money (default: none)\n"
+			"9. \"memo\"        (string, optional) information written on SAFE blockchain (default: none)\n"
 			"\nResult:\n"
             "\"transactionid\"  (string) The transaction id.\n"
             "\nExamples:\n"
