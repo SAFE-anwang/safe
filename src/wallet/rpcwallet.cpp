@@ -375,7 +375,7 @@ UniValue getaddressesbyaccount(const UniValue& params, bool fHelp)
     return ret;
 }
 
-static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, bool fUseInstantSend=false, bool fUsePrivateSend=false)
+static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, bool fUseInstantSend=false, bool fUsePrivateSend=false,string changeaddress="",string memo = "")
 {
     CAmount curBalance = pwalletMain->GetBalance();
 
@@ -398,7 +398,7 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
     std::string strError;
     vector<CRecipient> vecSend;
     int nChangePosRet = -1;
-    CRecipient recipient = {scriptPubKey, nValue, 0, fSubtractFeeFromAmount};
+    CRecipient recipient = {scriptPubKey, nValue, 0, fSubtractFeeFromAmount,false,memo};
     vecSend.push_back(recipient);
     if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet,
                                          strError, NULL, true, fUsePrivateSend ? ONLY_DENOMINATED : ALL_COINS, fUseInstantSend)) {
@@ -426,7 +426,7 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 2 || params.size() > 7)
         throw runtime_error(
-            "sendtoaddress \"safeaddress\" amount ( \"comment\" \"comment-to\" subtractfeefromamount use_is use_ps )\n"
+            "sendtoaddress \"safeaddress\" amount ( \"comment\" \"comment-to\" subtractfeefromamount use_is use_ps changeaddress memo)\n"
             "\nSend an amount to a given address.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
@@ -441,7 +441,9 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
             "                             The recipient will receive less amount of Safe than you enter in the amount field.\n"
             "6. \"use_is\"      (bool, optional) Send this transaction as InstantSend (default: false)\n"
             "7. \"use_ps\"      (bool, optional) Use anonymized funds only (default: false)\n"
-            "\nResult:\n"
+            "8. \"changeaddress\"        (bool, optional) a safe address for change money (default: none)\n"
+			"9. \"memo\"        (bool, optional) information written on SAFE blockchain (default: none)\n"
+			"\nResult:\n"
             "\"transactionid\"  (string) The transaction id.\n"
             "\nExamples:\n"
             + HelpExampleCli("sendtoaddress", "\"XwnLY9Tf7Zsef8gMGL2fhWA9ZmMjt4KPwg\" 0.1")
@@ -477,14 +479,20 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
 
     bool fUseInstantSend = false;
     bool fUsePrivateSend = false;
+	string changeaddress,memo;
+
     if (params.size() > 5)
         fUseInstantSend = params[5].get_bool();
     if (params.size() > 6)
         fUsePrivateSend = params[6].get_bool();
+    if (params.size() > 7)
+        changeaddress = params[7].get_str();
+    if (params.size() > 8)
+        memo = params[8].get_str();
 
     EnsureWalletIsUnlocked();
 
-    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, fUseInstantSend, fUsePrivateSend);
+    SendMoney(address.Get(), nAmount, fSubtractFeeFromAmount, wtx, fUseInstantSend, fUsePrivateSend,changeaddress,memo);
 
     return wtx.GetHash().GetHex();
 }
