@@ -15,7 +15,7 @@
 
 ![pic1](https://github.com/SAFE-anwang/safe/blob/master/safe-docs/img/pic1.png)
 
-二、SAFE币的现状
+### 二、SAFE币的现状
 至2022年4月15日，SAFE币的现状如下所示：
 
 1.  SAFE币总量2940万枚；
