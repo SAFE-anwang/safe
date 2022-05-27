@@ -12,7 +12,7 @@
 
 (5) 20.41% is used for marketing, about 6 million SAFEs, and this part has been used up;    
 
-(6) 26.53% was used to exchange DNC2 and VoteChain ELT users into SAFE, about 7.8 million coins, which was completed in January 2019; SAFE team's Anwang 2 and ELT exchanged for nearly 2 million SAFE, after 3-4 years of team expenses, the remaining 500,000 coins will be locked together with the coins in Part 4.  
+(6) 26.53% was used to exchange Anwang2 and VoteChain ELT users into SAFE, about 7.8 million coins, which was completed in January 2019; SAFE team's Anwang2 and ELT exchanged for nearly 2 million SAFE, after 3-4 years of team expenses, the remaining 500,000 coins will be locked together with the coins in Part 4.  
 
 ![pic1](https://github.com/SAFE-anwang/safe/blob/master/safe-docs/img/pic1.png)
 
