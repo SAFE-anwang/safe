@@ -13,3 +13,4 @@
 ####20.41% is used for marketing, about 6 million pieces, and this part has been used up;    
 
 ####26.53% was used to exchange SAFE 2 and voting chain ELT users into SAFE, about 7.8 million coins, which was completed in January 2019; SAFE team's Anwang 2 and ELT exchanged for nearly 2 million SAFE, after 3- For 4 years of team expenses, the remaining 500,000 coins will be locked together with the coins in Part 4.  
+
