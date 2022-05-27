@@ -1,4 +1,4 @@
-## SAFE币分配说明 ([English version](https://github.com/SAFE-anwang/safe/edit/master/safe-docs/safe-distribution.md))
+## SAFE币分配说明 ([English version](https://github.com/SAFE-anwang/safe/blob/master/safe-docs/safe-distribution.md))
 
 ### 一、SAFE的初始分配
 1. 代币数量：2940万枚，实际SAFE数量会更少，如2021年5月份-9月份未产出超级块；
