@@ -17,9 +17,9 @@
 ![pic1](https://github.com/SAFE-anwang/safe/blob/master/safe-docs/img/pic1.png)
 
 ### 2. Status of SAFE
-As of April 15, 2022, the status of SAFEs is as follows:
+As of April 15, 2022, the status of SAFE is as follows:
 
-(1) The total amount of SAFEs is 29.4 million;
+(1) The total amount of SAFE is 29.4 million;
 
 (2) Not mined, 8.55 million;
 
