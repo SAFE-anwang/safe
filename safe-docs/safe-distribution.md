@@ -1,4 +1,5 @@
-## SAFE Coin Distribution Instructions  
+## SAFE Coin Distribution Instructions  ([中文版本](https://github.com/SAFE-anwang/safe/edit/master/safe-docs/safe-distribution-cn.md))
+
 
 ### 1. Initial allocation of SAFE  
 
