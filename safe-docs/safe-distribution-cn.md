@@ -40,7 +40,7 @@
 
 4. 其他锁仓，970万枚；可在https://chain.anwang.com/rankings 查看，已经有1360万枚锁仓，减去团队锁仓390万；
 
-5. 真实流通，790万；2940万减去上述3部分金额可得到790万；其中跨链到ETH链上的SAFE有3900枚左右[ETH上的合约](https://etherscan.io/token/0xEE9c1Ea4DCF0AAf4Ff2D78B6fF83AA69797B65Eb)，跨链到BSC链上的SAFE有97万枚左右：[BSC上的合约](https://bscscan.com/token/0x4d7fa587ec8e50bd0e9cd837cb4da796f47218a1)
+5. 真实流通，790万；2940万减去上述3部分金额可得到790万；其中跨链到ETH链上的SAFE有3900枚左右[ETH上的合约](https://etherscan.io/token/0xEE9c1Ea4DCF0AAf4Ff2D78B6fF83AA69797B65Eb)，跨链到BSC链上的SAFE有98万枚左右：[BSC上的合约](https://bscscan.com/token/0x4d7fa587ec8e50bd0e9cd837cb4da796f47218a1)
 
 
 
