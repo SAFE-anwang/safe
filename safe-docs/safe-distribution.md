@@ -28,5 +28,6 @@ As of April 6, 2023, the status of SAFE is as follows:
 
 (4) Other lock-up, 9.80 million; view at [https://chain.anwang.com/rankings](https://chain.anwang.com/rankings) , there are already 13.2 million locked, minus 3.4 million locked by the team;
 
-(5) Real circulation, 8.34 million; 29.4 million minus the above 3 parts of the amount can get 7.05 million;
+(5) Real circulation, 8.34 million; 29.4 million minus the above 3 parts of the amount can get 7.05 million;  
 
+Approximately 4,300 SAFEs [contract on ETH](https://etherscan.io/token/0xEE9c1Ea4DCF0AAf4Ff2D78B6fF83AA69797B65Eb) have been cross-chain linked to ETH, and approximately 1.02 million SAFEs [contract on BSC](https://bscscan.com/token/0x4d7fa587ec8e50bd0e9cd837cb4da796f47218a1) have been cross-chain linked to BSC.
