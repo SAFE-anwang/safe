@@ -30,17 +30,17 @@
 
 ![pic2](https://github.com/SAFE-anwang/safe/blob/master/safe-docs/img/pic2.png)
 
-至2023年3月9日，SAFE币的现状如下所示：
+至2023年4月6日，SAFE币的现状如下所示：
 
 1. SAFE币总量2940万枚；
 
-2. 未挖出，790万枚；
+2. 未挖出，785万枚；
 
-3. 团队锁仓，390万枚；SAFE官方锁币地址: [XmVvAye4ph9s3M5AjrWDRFAzTKrkpwcHHR](https://chain.anwang.com/address/XmVvAye4ph9s3M5AjrWDRFAzTKrkpwcHHR)
+3. 团队锁仓，340万枚；SAFE官方锁币地址: [XmVvAye4ph9s3M5AjrWDRFAzTKrkpwcHHR](https://chain.anwang.com/address/XmVvAye4ph9s3M5AjrWDRFAzTKrkpwcHHR)
 
-4. 其他锁仓，970万枚；可在https://chain.anwang.com/rankings 查看，已经有1360万枚锁仓，减去团队锁仓390万；
+4. 其他锁仓，980万枚；可在https://chain.anwang.com/rankings 查看，已经有1320万枚锁仓，减去团队锁仓340万；
 
-5. 真实流通，790万；2940万减去上述3部分金额可得到790万；其中跨链到ETH链上的SAFE有3900枚左右[ETH上的合约](https://etherscan.io/token/0xEE9c1Ea4DCF0AAf4Ff2D78B6fF83AA69797B65Eb)，跨链到BSC链上的SAFE有98万枚左右：[BSC上的合约](https://bscscan.com/token/0x4d7fa587ec8e50bd0e9cd837cb4da796f47218a1)
+5. 真实流通，835万；2940万减去上述3部分金额可得；其中跨链到ETH链上的SAFE有4300枚左右[ETH上的合约](https://etherscan.io/token/0xEE9c1Ea4DCF0AAf4Ff2D78B6fF83AA69797B65Eb)，跨链到BSC链上的SAFE有102万枚左右：[BSC上的合约](https://bscscan.com/token/0x4d7fa587ec8e50bd0e9cd837cb4da796f47218a1)
 
 
 
