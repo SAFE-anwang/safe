@@ -24,7 +24,7 @@ As of April 6, 2023, the status of SAFE is as follows:
 
 (2) Not mined, 7.85 million;
 
-(3) Team lock-up, 3.4 million coins; SAFE official lock-up address: [XmVvAye4ph9s3M5AjrWDRFAzTKrkpwcHHR](https://chain.anwang.com/address/XmVvAye4ph9s3M5AjrWDRFAzTKrkpwcHHR)
+(3) Team lock-up, 3.4 million coins; SAFE official lock-up address: [XmVvAye4ph9s3M5AjrWDRFAzTKrkpwcHHR](https://chain.anwang.com/address/XmVvAye4ph9s3M5AjrWDRFAzTKrkpwcHHR), this part releases 500,000 SAFEs every half-year for team development and marketing.
 
 (4) Other lock-up, 9.80 million; view at [https://chain.anwang.com/rankings](https://chain.anwang.com/rankings) , there are already 13.2 million locked, minus 3.4 million locked by the team;
 
