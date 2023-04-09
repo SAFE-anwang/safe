@@ -16,19 +16,6 @@
 ![pic1](https://github.com/SAFE-anwang/safe/blob/master/safe-docs/img/pic1.png)
 
 ### 二、SAFE币的现状
-至2022年4月15日，SAFE币的现状如下所示：
-
-1.  SAFE币总量2940万枚；
-
-2. 未挖出，855万枚；
-
-3. 团队锁仓，450万枚；SAFE官方锁币地址: [XmVvAye4ph9s3M5AjrWDRFAzTKrkpwcHHR](https://chain.anwang.com/address/XmVvAye4ph9s3M5AjrWDRFAzTKrkpwcHHR)
-
-4. 其他锁仓，930万枚；可在https://chain.anwang.com/rankings 查看，已经有1380万枚锁仓，减去团队锁仓450万；
-
-5. 真实流通，705万；2940万减去上述3部分金额可得到705万；
-
-![pic2](https://github.com/SAFE-anwang/safe/blob/master/safe-docs/img/pic2.png)
 
 至2023年4月6日，SAFE币的现状如下所示：
 
